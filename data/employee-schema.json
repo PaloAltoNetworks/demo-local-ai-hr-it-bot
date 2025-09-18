@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Employee Data Schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Unique employee identifier"
+      },
+      "firstName": {
+        "type": "string",
+        "description": "Employee first name"
+      },
+      "lastName": {
+        "type": "string",
+        "description": "Employee last name"
+      },
+      "email": {
+        "type": "string",
+        "format": "email",
+        "description": "Employee email address"
+      },
+      "department": {
+        "type": "string",
+        "description": "Employee department"
+      },
+      "position": {
+        "type": "string",
+        "description": "Employee job title/position"
+      },
+      "manager": {
+        "type": ["string", "null"],
+        "description": "Manager's email address or null if top-level"
+      },
+      "hireDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Employee hire date in YYYY-MM-DD format"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["active", "inactive", "on-leave"],
+        "description": "Employee status"
+      },
+      "location": {
+        "type": "string",
+        "description": "Employee work location"
+      },
+      "phone": {
+        "type": "string",
+        "description": "Employee phone number"
+      },
+      "emergencyContact": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Emergency contact name"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Emergency contact phone"
+          },
+          "relationship": {
+            "type": "string",
+            "description": "Relationship to employee"
+          }
+        },
+        "required": ["name", "phone", "relationship"]
+      },
+      "benefits": {
+        "type": "object",
+        "properties": {
+          "vacation": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "description": "Total vacation days allocated"
+              },
+              "used": {
+                "type": "number",
+                "description": "Vacation days used"
+              },
+              "remaining": {
+                "type": "number",
+                "description": "Vacation days remaining"
+              }
+            },
+            "required": ["total", "used", "remaining"]
+          },
+          "sickLeave": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "description": "Total sick leave days allocated"
+              },
+              "used": {
+                "type": "number",
+                "description": "Sick leave days used"
+              },
+              "remaining": {
+                "type": "number",
+                "description": "Sick leave days remaining"
+              }
+            },
+            "required": ["total", "used", "remaining"]
+          }
+        },
+        "required": ["vacation", "sickLeave"]
+      },
+      "financial": {
+        "type": "object",
+        "properties": {
+          "salary": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "number",
+                "description": "Annual salary amount"
+              },
+              "currency": {
+                "type": "string",
+                "enum": ["USD", "EUR", "CAD", "GBP"],
+                "description": "Currency code"
+              },
+              "frequency": {
+                "type": "string",
+                "enum": ["annual", "monthly", "biweekly", "weekly"],
+                "description": "Payment frequency"
+              }
+            },
+            "required": ["amount", "currency", "frequency"]
+          },
+          "bankDetails": {
+            "type": "object",
+            "properties": {
+              "accountNumber": {
+                "type": "string",
+                "description": "Bank account number"
+              },
+              "routingNumber": {
+                "type": "string",
+                "description": "Bank routing number"
+              },
+              "bankName": {
+                "type": "string",
+                "description": "Name of the bank"
+              },
+              "accountType": {
+                "type": "string",
+                "enum": ["checking", "savings"],
+                "description": "Type of bank account"
+              }
+            },
+            "required": ["accountNumber", "routingNumber", "bankName", "accountType"]
+          }
+        },
+        "required": ["salary", "bankDetails"]
+      }
+    },
+    "required": [
+      "id", "firstName", "lastName", "email", "department", 
+      "position", "manager", "hireDate", "status", "location", 
+      "phone", "emergencyContact", "benefits", "financial"
+    ]
+  }
+}

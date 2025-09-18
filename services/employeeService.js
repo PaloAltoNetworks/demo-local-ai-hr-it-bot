@@ -1,5 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 
 class EmployeeService {
   constructor() {
@@ -10,105 +12,23 @@ class EmployeeService {
   }
   
   /**
-   * Initialize demo employee data
+   * Initialize employee data from JSON file
    */
   initializeDemoData() {
-    const demoEmployees = [
-      {
-        id: uuidv4(),
-        firstName: 'Marie',
-        lastName: 'Dubois',
-        email: 'marie.dubois@company.com',
-        department: 'Ressources Humaines',
-        position: 'Responsable RH',
-        manager: null,
-        hireDate: '2020-01-15',
-        status: 'active',
-        location: 'Paris',
-        phone: '+33 1 23 45 67 89',
-        emergencyContact: {
-          name: 'Pierre Dubois',
-          phone: '+33 6 12 34 56 78',
-          relationship: 'Époux'
-        },
-        benefits: {
-          vacation: {
-            total: 30,
-            used: 12,
-            remaining: 18
-          },
-          sickLeave: {
-            total: 10,
-            used: 2,
-            remaining: 8
-          }
-        }
-      },
-      {
-        id: uuidv4(),
-        firstName: 'Jean',
-        lastName: 'Martin',
-        email: 'jean.martin@company.com',
-        department: 'Informatique',
-        position: 'Développeur Senior',
-        manager: 'marie.dubois@company.com',
-        hireDate: '2019-03-10',
-        status: 'active',
-        location: 'Lyon',
-        phone: '+33 4 23 45 67 89',
-        emergencyContact: {
-          name: 'Sophie Martin',
-          phone: '+33 6 87 65 43 21',
-          relationship: 'Épouse'
-        },
-        benefits: {
-          vacation: {
-            total: 30,
-            used: 8,
-            remaining: 22
-          },
-          sickLeave: {
-            total: 10,
-            used: 0,
-            remaining: 10
-          }
-        }
-      },
-      {
-        id: uuidv4(),
-        firstName: 'Sarah',
-        lastName: 'Johnson',
-        email: 'sarah.johnson@company.com',
-        department: 'IT Support',
-        position: 'System Administrator',
-        manager: 'jean.martin@company.com',
-        hireDate: '2021-06-01',
-        status: 'active',
-        location: 'Remote',
-        phone: '+1 555 123 4567',
-        emergencyContact: {
-          name: 'Michael Johnson',
-          phone: '+1 555 987 6543',
-          relationship: 'Husband'
-        },
-        benefits: {
-          vacation: {
-            total: 25,
-            used: 10,
-            remaining: 15
-          },
-          sickLeave: {
-            total: 10,
-            used: 3,
-            remaining: 7
-          }
-        }
-      }
-    ];
-    
-    demoEmployees.forEach(employee => {
-      this.employees.set(employee.id, employee);
-    });
+    try {
+      const dataPath = path.join(__dirname, '../data/employees.json');
+      const employeeData = fs.readFileSync(dataPath, 'utf8');
+      const demoEmployees = JSON.parse(employeeData);
+      
+      demoEmployees.forEach(employee => {
+        this.employees.set(employee.id, employee);
+      });
+      
+      console.log(`Loaded ${demoEmployees.length} employees from ${dataPath}`);
+    } catch (error) {
+      console.error('Error loading employee data:', error);
+      console.log('Using empty employee dataset');
+    }
   }
   
   /**
@@ -276,6 +196,72 @@ class EmployeeService {
     }, 0);
     
     return Math.round((totalYears / employees.length) * 10) / 10; // Round to 1 decimal
+  }
+
+  /**
+   * Get employee salary information
+   * @param {string} employeeId - Employee ID
+   * @returns {Object|null} - Salary information or null if not found
+   */
+  getEmployeeSalary(employeeId) {
+    const employee = this.employees.get(employeeId);
+    if (!employee || !employee.financial?.salary) {
+      return null;
+    }
+    return employee.financial.salary;
+  }
+
+  /**
+   * Get employee bank details
+   * @param {string} employeeId - Employee ID
+   * @returns {Object|null} - Bank details or null if not found
+   */
+  getEmployeeBankDetails(employeeId) {
+    const employee = this.employees.get(employeeId);
+    if (!employee || !employee.financial?.bankDetails) {
+      return null;
+    }
+    return employee.financial.bankDetails;
+  }
+
+  /**
+   * Get complete financial information for an employee
+   * @param {string} employeeId - Employee ID
+   * @returns {Object|null} - Financial information or null if not found
+   */
+  getEmployeeFinancialInfo(employeeId) {
+    const employee = this.employees.get(employeeId);
+    if (!employee || !employee.financial) {
+      return null;
+    }
+    return employee.financial;
+  }
+
+  /**
+   * Get financial information by email (for authenticated user)
+   * @param {string} email - Employee email
+   * @returns {Object|null} - Financial information or null if not found
+   */
+  getFinancialInfoByEmail(email) {
+    const employee = this.getEmployeeByEmail(email);
+    if (!employee || !employee.financial) {
+      return null;
+    }
+    return employee.financial;
+  }
+
+  /**
+   * Save employee data to JSON file
+   */
+  saveEmployeeData() {
+    try {
+      const dataPath = path.join(__dirname, '../data/employees.json');
+      const employeeData = Array.from(this.employees.values());
+      fs.writeFileSync(dataPath, JSON.stringify(employeeData, null, 2), 'utf8');
+      console.log(`Saved ${employeeData.length} employees to ${dataPath}`);
+    } catch (error) {
+      console.error('Error saving employee data:', error);
+    }
   }
 
   /**

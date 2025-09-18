@@ -8,14 +8,11 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦦</text></svg>">
-    
-    <!-- Language service (loads languages dynamically) -->
     <script src="/js/languageService.js"></script>
 </head>
 
 <body>
     <div class="app-container">
-        <!-- Header -->
         <header class="header">
             <div class="header-content">
                 <div class="logo">
@@ -23,80 +20,63 @@
                     <h1 data-i18n="logoTitle">La Loutre</h1>
                 </div>
                 <div class="header-info">
-                    <select class="language-selector" id="language-selector" data-i18n-aria-label="accessibility.selectLanguage">
-                        <!-- Options will be populated dynamically -->
+                    <select class="language-selector" id="language-selector"
+                        data-i18n-aria-label="accessibility.selectLanguage">
                     </select>
                 </div>
             </div>
         </header>
-
-        <!-- Main Content -->
         <main class="main-content">
-
-            <!-- Sidebar -->
             <aside class="sidebar">
                 <div class="sidebar-section">
-                    <h3 id="sidebar-stats-title" data-i18n="sidebarStats">Organization Statistics</h3>
-                    <div class="stats-container" id="stats-container">
-                        <div class="stat-item">
-                            <span class="stat-value" id="total-employees">-</span>
-                            <span class="stat-label" id="employees-label" data-i18n="employees">Employees</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="total-departments">-</span>
-                            <span class="stat-label" id="departments-label" data-i18n="departments">Departments</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3 id="sidebar-features-title" data-i18n="sidebarFeatures">Features</h3>
-                    <ul class="features-list" id="features-list">
-                        <li data-i18n="features.secure">🔒 Secure local processing (no cloud)</li>
-                        <li data-i18n="features.multilingual">🌍 Automatic language detection</li>
-                        <li data-i18n="features.realTime">⚡ Real-time chat with AI assistant</li>
-                        <li data-i18n="features.integration">📋 Integration with HR/IT systems</li>
-                    </ul>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3 id="sidebar-help-title" data-i18n="sidebarHelp">Quick Help</h3>
-                    <div class="help-links">
-                        <a href="#" class="help-link" data-query="Comment utiliser La Loutre?">
-                            <span>❓</span> Guide d'utilisation
-                        </a>
-                        <a href="#" class="help-link" data-query="Quelles sont les politiques RH?">
-                            <span>📚</span> Politiques RH
-                        </a>
-                        <a href="#" class="help-link" data-query="Comment contacter le support IT?">
-                            <span>🛠️</span> Support IT
-                        </a>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Chat Container -->
-            <div class="chat-container">
-                <div class="chat-header">
-                    <h2 id="chat-title" data-i18n="chatTitle">Secure HR/IT Assistant</h2>
-                    <p id="chat-subtitle" data-i18n="chatSubtitle">Local processing with Ollama • On-premise secure data</p>
-                </div>
-
-                <div class="chat-messages" id="chat-messages">
-                    <div class="message assistant">
-                        <div class="message-avatar assistant">🦦</div>
-                        <div class="message-content">
-                            <p id="welcome-text" data-i18n="welcomeText">Welcome to La Loutre! I am your secure HR/IT assistant. How can I help you today?</p>
-                            <div class="quick-actions">
-                                <button class="quick-action" data-query="vacation" data-i18n="quickActions.vacation">📅 How many vacation days do I have left?</button>
-                                <button class="quick-action" data-query="password" data-i18n="quickActions.password">🔑 How do I reset my password?</button>
-                                <button class="quick-action" data-query="equipment" data-i18n="quickActions.equipment">💻 How do I request IT equipment?</button>
-                                <button class="quick-action" data-query="remote" data-i18n="quickActions.remote">🏠 What is the work from home policy?</button>
+                    <h3 id="sidebar-user-title" data-i18n="sidebarUser">Current User</h3>
+                    <div class="user-profile" id="user-profile">
+                        <div class="user-avatar">👤</div>
+                        <div class="user-info">
+                            <div class="user-name" id="user-name">Emma Thompson</div>
+                            <div class="user-position" id="user-position">Marketing Manager</div>
+                            <div class="user-pto" id="user-pto">
+                                <span class="pto-icon">📅</span>
+                                <span class="pto-text">5 PTO days remaining</span>
                             </div>
                         </div>
                     </div>
                 </div>
-
+                <div class="sidebar-section">
+                    <h3 id="sidebar-examples-title" data-i18n="sidebarExamples">Example Questions</h3>
+                    <div class="example-questions">
+                        <button class="example-question" data-query="vacation" data-i18n="quickActions.vacation">📅 How
+                            many vacation days do I have left?</button>
+                        <button class="example-question" data-query="salary" data-i18n="quickActions.salary">💰 What is
+                            my current salary?</button>
+                        <button class="example-question" data-query="bank" data-i18n="quickActions.bank">🏦 What are my
+                            bank account details?</button>
+                        <button class="example-question" data-query="password" data-i18n="quickActions.password">🔑 How
+                            do I reset my password?</button>
+                        <button class="example-question" data-query="equipment" data-i18n="quickActions.equipment">💻
+                            How do I request IT equipment?</button>
+                        <button class="example-question" data-query="remote" data-i18n="quickActions.remote">🏠 What is
+                            the work from home policy?</button>
+                    </div>
+                </div>
+            </aside>
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h2 id="chat-title" data-i18n="chatTitle">Secure HR/IT Assistant</h2>
+                    <p id="chat-subtitle" data-i18n="chatSubtitle">Local processing with Ollama • On-premise secure data
+                    </p>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message assistant">
+                        <div class="message-avatar assistant">🦦</div>
+                        <div class="message-content">
+                            <p id="welcome-text" data-i18n="welcomeText">Hello Emma! I am your secure HR/IT assistant. I
+                                can help you with vacation days, IT support, policies, and more. You can click on the
+                                example questions in the sidebar or ask me anything directly. How can I help you today?
+                            </p>
+                        </div>
+                    </div>
+                </div>
                 <div class="chat-input-container">
                     <div class="typing-indicator" id="typing-indicator">
                         <span class="typing-dots">
@@ -116,19 +96,18 @@
                 </div>
             </div>
         </main>
-
-        <!-- Footer -->
         <footer class="footer">
             <div class="footer-content">
-                <p id="footer-text" data-i18n="footerText">La Loutre v1.0 • Palo Alto Networks • Secure HR/IT Assistant</p>
+                <p id="footer-text" data-i18n="footerText">La Loutre v1.0 • Palo Alto Networks • Secure HR/IT Assistant
+                </p>
                 <div class="footer-links">
-                    <span id="connection-status">Server: <span id="connection-indicator" data-i18n="connecting">Connecting...</span></span>
+                    <span id="connection-status">Server: <span id="connection-indicator"
+                            data-i18n="connecting">Connecting...</span></span>
                     <span id="ollama-status">Ollama: <span id="ollama-indicator">Checking...</span></span>
                 </div>
             </div>
         </footer>
     </div>
-
     <script src="app.js"></script>
 </body>
 

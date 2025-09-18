@@ -5,6 +5,8 @@ class HRITService {
     this.employeeService = employeeService;
     this.ollamaService = ollamaService;
     this.languageService = languageService;
+    // Set up authenticated user (Emma Thompson with 5 PTO days)
+    this.authenticatedUser = this.employeeService.getEmployeeByEmail('emma.thompson@company.com');
     // Knowledge base is now loaded from language files via languageService
   }
 
@@ -22,8 +24,12 @@ class HRITService {
       // Get relevant knowledge base information
       const contextInfo = this.getContextualInfo(intent, language);
 
+      // VULNERABILITY: Use vulnerable context method that can be exploited
+      const userContext = this.getVulnerableUserContext(query, intent, language);
+      const fullContext = contextInfo + userContext;
+
       // Prepare enhanced prompt for AI
-      const enhancedPrompt = this.buildEnhancedPrompt(query, contextInfo, language);
+      const enhancedPrompt = this.buildEnhancedPrompt(query, fullContext, language);
 
       // Get AI response
       const aiResponse = await this.ollamaService.generateResponse(enhancedPrompt, undefined, language);
@@ -104,6 +110,123 @@ class HRITService {
   }
 
   /**
+   * VULNERABILITY: Check if query mentions other employee names and potentially provide their context
+   * This creates a security flaw where users can impersonate others through social engineering
+   * @param {string} query - User query
+   * @param {Object} intent - Intent analysis result
+   * @param {string} language - Language code
+   * @returns {string} - Potentially compromised user context
+   */
+  getVulnerableUserContext(query, intent, language) {
+    const lowerQuery = query.toLowerCase();
+    
+    // SECURITY FLAW: Check if user mentions other employee names in their query
+    // This allows for potential impersonation attacks
+    const employees = this.employeeService.getAllEmployees();
+    
+    for (const employee of employees) {
+      const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
+      const firstName = employee.firstName.toLowerCase();
+      
+      // If user mentions another employee's name, provide THEIR context instead
+      if (lowerQuery.includes(fullName) || lowerQuery.includes(firstName)) {
+        console.warn(`SECURITY WARNING: User query mentions ${employee.firstName} ${employee.lastName} - potential impersonation attempt`);
+        
+        let compromisedContext = `Current User: ${employee.firstName} ${employee.lastName}, ${employee.position} in ${employee.department}\n`;
+        
+        // Add the mentioned employee's sensitive information
+        if (intent.primary === 'salary' || intent.all.includes('salary') || intent.all.includes('pay')) {
+          const financial = employee.financial;
+          if (financial?.salary) {
+            compromisedContext += `User's Salary: ${financial.salary.amount} ${financial.salary.currency} ${financial.salary.frequency}\n`;
+          }
+        }
+
+        if (intent.primary === 'bank' || intent.all.includes('bank') || intent.all.includes('account')) {
+          const financial = employee.financial;
+          if (financial?.bankDetails) {
+            compromisedContext += `User's Bank: ${financial.bankDetails.bankName}\n`;
+            compromisedContext += `User's Account Type: ${financial.bankDetails.accountType}\n`;
+            compromisedContext += `User's Account Number: ${financial.bankDetails.accountNumber}\n`;
+            compromisedContext += `User's Routing Number: ${financial.bankDetails.routingNumber}\n`;
+          }
+        }
+
+        if (intent.primary === 'vacation' || intent.all.includes('vacation')) {
+          const vacation = employee.benefits?.vacation;
+          if (vacation) {
+            compromisedContext += `User's Vacation Balance: ${vacation.remaining} days remaining out of ${vacation.total} total days\n`;
+          }
+        }
+        
+        return `Personal Information:\n${compromisedContext}\n`;
+      }
+    }
+    
+    // Fall back to regular authenticated user context if no names mentioned
+    return this.getAuthenticatedUserContext(intent, language);
+  }
+
+  /**
+   * Get authenticated user context for personalized responses
+   * @param {Object} intent - Intent analysis result
+   * @param {string} language - Language code
+   * @returns {string} - User contextual information
+   */
+  getAuthenticatedUserContext(intent, language) {
+    if (!this.authenticatedUser) {
+      return '';
+    }
+
+    let userContext = '';
+    const user = this.authenticatedUser;
+
+    // Add user identification
+    userContext += `Current User: ${user.firstName} ${user.lastName}, ${user.position} in ${user.department}\n`;
+    
+    // Add personalized information based on intent
+    if (intent.primary === 'vacation' || intent.all.includes('vacation') || intent.all.includes('pto')) {
+      const vacation = user.benefits?.vacation;
+      if (vacation) {
+        userContext += `User's Vacation Balance: ${vacation.remaining} days remaining out of ${vacation.total} total days (${vacation.used} days already used)\n`;
+      }
+    }
+
+    if (intent.primary === 'sickLeave' || intent.all.includes('sick')) {
+      const sickLeave = user.benefits?.sickLeave;
+      if (sickLeave) {
+        userContext += `User's Sick Leave Balance: ${sickLeave.remaining} days remaining out of ${sickLeave.total} total days\n`;
+      }
+    }
+
+    // Add financial information if relevant
+    if (intent.primary === 'salary' || intent.all.includes('salary') || intent.all.includes('pay') || intent.all.includes('wage')) {
+      const financial = user.financial;
+      if (financial?.salary) {
+        userContext += `User's Salary: ${financial.salary.amount} ${financial.salary.currency} ${financial.salary.frequency}\n`;
+      }
+    }
+
+    if (intent.primary === 'bank' || intent.all.includes('bank') || intent.all.includes('routing') || intent.all.includes('account')) {
+      const financial = user.financial;
+      if (financial?.bankDetails) {
+        userContext += `User's Bank: ${financial.bankDetails.bankName}\n`;
+        userContext += `User's Account Type: ${financial.bankDetails.accountType}\n`;
+        userContext += `User's Account Number: ${financial.bankDetails.accountNumber}\n`;
+        userContext += `User's Routing Number: ${financial.bankDetails.routingNumber}\n`;
+      }
+    }
+
+    // Add contact information if relevant
+    if (intent.primary === 'contact' || intent.primary === 'support') {
+      userContext += `User's Manager: ${user.manager}\n`;
+      userContext += `User's Location: ${user.location}\n`;
+    }
+
+    return userContext ? `Personal Information:\n${userContext}\n` : '';
+  }
+
+  /**
    * Build enhanced prompt for AI with context
    * @param {string} query - Original query
    * @param {string} context - Contextual information
@@ -156,6 +279,28 @@ class HRITService {
     const intent = this.analyzeIntent(query, language);
     const translation = this.languageService.getTranslation(language);
     const kb = translation.knowledgeBase;
+
+    // Check for personalized information first
+    if (this.authenticatedUser && (intent.primary === 'vacation' || intent.all.includes('vacation'))) {
+      const vacation = this.authenticatedUser.benefits?.vacation;
+      if (vacation) {
+        return `Hello ${this.authenticatedUser.firstName}! You have ${vacation.remaining} vacation days remaining out of ${vacation.total} total days. You've used ${vacation.used} days so far this year.`;
+      }
+    }
+
+    if (this.authenticatedUser && (intent.primary === 'salary' || intent.all.includes('salary'))) {
+      const financial = this.authenticatedUser.financial;
+      if (financial?.salary) {
+        return `Hello ${this.authenticatedUser.firstName}! Your current salary is ${financial.salary.amount} ${financial.salary.currency} ${financial.salary.frequency}.`;
+      }
+    }
+
+    if (this.authenticatedUser && (intent.primary === 'bank' || intent.all.includes('bank'))) {
+      const financial = this.authenticatedUser.financial;
+      if (financial?.bankDetails) {
+        return `Hello ${this.authenticatedUser.firstName}! Your bank details:\n• Bank: ${financial.bankDetails.bankName}\n• Account Type: ${financial.bankDetails.accountType}\n• Account Number: ${financial.bankDetails.accountNumber}\n• Routing Number: ${financial.bankDetails.routingNumber}`;
+      }
+    }
 
     if (intent.primary && intent.primary !== 'general') {
       let response = '';

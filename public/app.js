@@ -22,7 +22,6 @@ class LaLoutreApp {
         
         this.setupEventListeners();
         this.connectWebSocket();
-        this.loadOrganizationStats();
         this.checkOllamaStatus();
 
         // Auto-resize textarea
@@ -81,25 +80,19 @@ class LaLoutreApp {
             }
         });
 
-                // Quick action buttons
+                // Example question buttons (moved from quick actions)
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('quick-action')) {
+            if (e.target.classList.contains('example-question')) {
                 const queryKey = e.target.getAttribute('data-query');
                 if (queryKey) {
                     // Get the localized query text
                     const query = this.languageService.getText(`quickActions.${queryKey}`);
-                    this.sendMessage(query);
-                }
-            }
-        });
-
-        // Help links
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('help-link')) {
-                e.preventDefault();
-                const query = e.target.getAttribute('data-query');
-                if (query) {
-                    this.sendQuickMessage(query);
+                    // Put the text in the input field
+                    const input = document.getElementById('chat-input');
+                    input.value = query;
+                    input.focus();
+                    // Optionally auto-send the message
+                    // this.sendMessage();
                 }
             }
         });
@@ -325,29 +318,7 @@ class LaLoutreApp {
         this.checkOllamaStatus();
     }
 
-    /**
-     * Load organization statistics
-     */
-    async loadOrganizationStats() {
-        try {
-            const response = await fetch('/api/employees');
-            if (response.ok) {
-                const employees = await response.json();
 
-                // Calculate statistics
-                const totalEmployees = employees.length;
-                const departments = new Set(employees.map(emp => emp.department)).size;
-
-                // Update UI
-                document.getElementById('total-employees').textContent = totalEmployees;
-                document.getElementById('total-departments').textContent = departments;
-            }
-        } catch (error) {
-            console.error('Failed to load organization stats:', error);
-            document.getElementById('total-employees').textContent = '-';
-            document.getElementById('total-departments').textContent = '-';
-        }
-    }
 
     /**
      * Check Ollama service status

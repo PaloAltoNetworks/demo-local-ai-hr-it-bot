@@ -464,29 +464,93 @@ body {
     gap: var(--space-sm);
 }
 
-/* Help Links */
-.help-links {
+/* User Profile */
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+}
+
+.user-avatar {
+    font-size: 2rem;
+    background: var(--primary-color);
+    color: var(--text-white);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    margin-bottom: var(--space-xs);
+}
+
+.user-position {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-bottom: var(--space-sm);
+}
+
+.user-pto {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    background: var(--secondary-color);
+    color: var(--text-white);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.pto-icon {
+    font-size: 0.85rem;
+}
+
+/* Example Questions */
+.example-questions {
     display: flex;
     flex-direction: column;
     gap: var(--space-sm);
 }
 
-.help-link {
+.example-question {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    padding: var(--space-sm);
-    text-decoration: none;
-    color: var(--text-secondary);
+    padding: var(--space-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
+    cursor: pointer;
     transition: all 0.2s ease;
     font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-align: left;
+    width: 100%;
 }
 
-.help-link:hover {
-    background: var(--bg-secondary);
-    color: var(--primary-color);
-    transform: translateX(2px);
+.example-question:hover {
+    background: var(--primary-color);
+    color: var(--text-white);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
 /* Footer */
