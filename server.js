@@ -11,6 +11,7 @@ const LanguageService = require('./services/languageService');
 const OllamaService = require('./services/ollamaService');
 const EmployeeService = require('./services/employeeService');
 const HRITService = require('./services/hrItService');
+const ConfigService = require('./services/configService');
 
 class LaLoutreServer {
   constructor() {
@@ -19,11 +20,15 @@ class LaLoutreServer {
     this.wss = new WebSocket.Server({ server: this.server });
     this.port = process.env.PORT || 3000;
     
-    // Initialize services
+    // Initialize services (note the dependency injection order)
     this.languageService = new LanguageService();
-    this.ollamaService = new OllamaService();
+    this.ollamaService = new OllamaService(this.languageService);
     this.employeeService = new EmployeeService();
-    this.hrItService = new HRITService(this.employeeService, this.ollamaService);
+    this.hrItService = new HRITService(this.employeeService, this.ollamaService, this.languageService);
+    this.configService = new ConfigService(this.languageService);
+    
+    // Get server language from environment (for server messages and logs)
+    this.serverLanguage = process.env.SERVER_LANGUAGE || this.languageService.getDefaultLanguage();
     
     // Rate limiter
     this.rateLimiter = new RateLimiterMemory({
@@ -64,7 +69,7 @@ class LaLoutreServer {
         next();
       } catch (rejRes) {
         res.status(429).json({
-          error: 'Trop de requêtes / Too many requests',
+          error: this.languageService.getText('errors.tooManyRequests', this.serverLanguage),
           retryAfter: Math.round(rejRes.msBeforeNext) || 1,
         });
       }
@@ -75,64 +80,14 @@ class LaLoutreServer {
   }
   
   setupRoutes() {
-    // Health check
-    this.app.get('/health', (req, res) => {
-      res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        service: 'La Loutre HR/IT Assistant',
-        version: '1.0.0'
-      });
-    });
+    // Mount service routes with clean service-based paths
+    this.app.use('/', this.configService.getHealthRoutes());                     // /health (independent)
+    this.app.use('/api/config', this.configService.getRoutes());                 // /api/config (includes supportedLanguages)
+    this.app.use('/api/language', this.languageService.getRoutes());             // /api/language/translations/:lang, /api/language/names, /api/language/detect
+    this.app.use('/api/employees', this.employeeService.getRoutes(this.languageService)); // /api/employees, /api/employees/:id
+    this.app.use('/api/hr', this.hrItService.getRoutes());                       // /api/hr/request
     
-    // Language detection endpoint
-    this.app.post('/api/detect-language', (req, res) => {
-      const { text } = req.body;
-      if (!text) {
-        return res.status(400).json({ error: 'Texte requis / Text required' });
-      }
-      
-      const detectedLanguage = this.languageService.detectLanguage(text);
-      res.json({ language: detectedLanguage });
-    });
-    
-    // Employee data endpoints
-    this.app.get('/api/employees', (req, res) => {
-      const employees = this.employeeService.getAllEmployees();
-      res.json(employees);
-    });
-    
-    this.app.get('/api/employees/:id', (req, res) => {
-      const employee = this.employeeService.getEmployeeById(req.params.id);
-      if (!employee) {
-        return res.status(404).json({ error: 'Employé non trouvé / Employee not found' });
-      }
-      res.json(employee);
-    });
-    
-    // HR/IT automation endpoints
-    this.app.post('/api/hr-request', async (req, res) => {
-      try {
-        const { query, language } = req.body;
-        if (!query) {
-          return res.status(400).json({ error: 'Requête requise / Query required' });
-        }
-        
-        const detectedLang = language || this.languageService.detectLanguage(query);
-        const response = await this.hrItService.processHRRequest(query, detectedLang);
-        
-        res.json({
-          response,
-          language: detectedLang,
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        console.error('HR request error:', error);
-        res.status(500).json({ error: 'Erreur interne / Internal error' });
-      }
-    });
-    
-    // Serve main application
+    // Serve main application (catch-all route must be last)
     this.app.get('*', (req, res) => {
       res.sendFile(path.join(__dirname, 'public', 'index.html'));
     });
@@ -140,7 +95,8 @@ class LaLoutreServer {
   
   setupWebSocket() {
     this.wss.on('connection', (ws, req) => {
-      console.log('Nouvelle connexion WebSocket / New WebSocket connection');
+      const connectionMsg = this.languageService.getText('server.newConnection', this.serverLanguage);
+      console.log(connectionMsg);
       
       ws.on('message', async (message) => {
         try {
@@ -148,16 +104,18 @@ class LaLoutreServer {
           await this.handleWebSocketMessage(ws, data);
         } catch (error) {
           console.error('WebSocket message error:', error);
+          const errorMsg = this.languageService.getText('errors.messageProcessingError', this.serverLanguage);
           ws.send(JSON.stringify({
             type: 'error',
-            content: 'Erreur de traitement du message / Message processing error',
+            content: errorMsg,
             timestamp: new Date().toISOString()
           }));
         }
       });
       
       ws.on('close', () => {
-        console.log('Connexion WebSocket fermée / WebSocket connection closed');
+        const closeMsg = this.languageService.getText('server.connectionClosed', this.serverLanguage);
+        console.log(closeMsg);
       });
     });
   }
@@ -184,10 +142,11 @@ class LaLoutreServer {
   
   start() {
     this.server.listen(this.port, () => {
-      console.log(`🦦 La Loutre HR/IT Assistant démarré sur le port ${this.port}`);
-      console.log(`🦦 La Loutre HR/IT Assistant started on port ${this.port}`);
-      console.log(`🌐 Interface web: http://localhost:${this.port}`);
-      console.log(`🌐 Web interface: http://localhost:${this.port}`);
+      const startedMsg = this.languageService.getText('server.started', this.serverLanguage);
+      const webInterface = this.languageService.getText('server.webInterface', this.serverLanguage);
+      
+      console.log(`🦦 ${startedMsg} ${this.port}`);
+      console.log(`🌐 ${webInterface}: http://localhost:${this.port}`);
     });
   }
 }

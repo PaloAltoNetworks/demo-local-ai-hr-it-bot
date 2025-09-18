@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const express = require('express');
 
 class EmployeeService {
   constructor() {
@@ -275,6 +276,35 @@ class EmployeeService {
     }, 0);
     
     return Math.round((totalYears / employees.length) * 10) / 10; // Round to 1 decimal
+  }
+
+  /**
+   * Get Express router with all employee-related routes
+   * @param {LanguageService} languageService - Language service instance for error messages
+   * @returns {express.Router} - Express router instance
+   */
+  getRoutes(languageService) {
+    const router = express.Router();
+    const serverLanguage = process.env.SERVER_LANGUAGE || languageService.getDefaultLanguage();
+
+    // Get all employees
+    router.get('/', (req, res) => {
+      const employees = this.getAllEmployees();
+      res.json(employees);
+    });
+    
+    // Get employee by ID
+    router.get('/:id', (req, res) => {
+      const employee = this.getEmployeeById(req.params.id);
+      if (!employee) {
+        return res.status(404).json({ 
+          error: languageService.getText('errors.employeeNotFound', serverLanguage) 
+        });
+      }
+      res.json(employee);
+    });
+
+    return router;
   }
 }
 

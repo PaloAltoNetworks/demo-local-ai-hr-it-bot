@@ -1,10 +1,11 @@
 const axios = require('axios');
 
 class OllamaService {
-  constructor() {
+  constructor(languageService) {
     this.baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
     this.defaultModel = process.env.OLLAMA_MODEL || 'llama2';
     this.timeout = 30000; // 30 seconds timeout
+    this.languageService = languageService;
   }
   
   /**
@@ -30,7 +31,7 @@ class OllamaService {
    * @param {string} language - Language context for the response
    * @returns {Promise<string>} - AI generated response
    */
-  async generateResponse(prompt, model = this.defaultModel, language = 'fr') {
+  async generateResponse(prompt, model = this.defaultModel, language = 'en') {
     try {
       // Check if Ollama is available
       const available = await this.isAvailable();
@@ -77,33 +78,7 @@ class OllamaService {
    * @returns {string} - System prompt
    */
   getSystemPrompt(language) {
-    const prompts = {
-      fr: `Vous êtes La Loutre, un assistant IA spécialisé dans l'automatisation RH et IT pour les entreprises. 
-      Vous aidez les employés avec leurs questions concernant les ressources humaines et l'informatique.
-      Répondez de manière professionnelle, claire et concise en français uniquement.
-      
-      Domaines d'expertise:
-      - Gestion des congés et absences
-      - Politique RH et procédures
-      - Support informatique
-      - Gestion des comptes et accès
-      - Formation et développement professionnel
-      - Équipement informatique`,
-      
-      en: `You are La Loutre, an AI assistant specialized in HR and IT automation for enterprises.
-      You help employees with their human resources and information technology questions.
-      Respond professionally, clearly and concisely in English only.
-      
-      Areas of expertise:
-      - Leave and absence management
-      - HR policies and procedures
-      - IT support
-      - Account and access management
-      - Training and professional development
-      - IT equipment`
-    };
-    
-    return prompts[language] || prompts['fr'];
+    return this.languageService.getText('ollama.systemPrompt', language);
   }
   
   /**
@@ -113,30 +88,15 @@ class OllamaService {
    * @returns {string} - Fallback response
    */
   getFallbackResponse(prompt, language) {
-    const responses = {
-      fr: {
-        greeting: 'Bonjour! Je suis La Loutre, votre assistant RH/IT. Le service IA est temporairement indisponible, mais je peux vous aider avec des informations de base.',
-        help: 'Je peux vous aider avec les demandes RH et IT courantes. Le service IA complet sera bientôt disponible.',
-        error: 'Désolé, le service IA n\'est pas disponible actuellement. Veuillez contacter directement le service RH/IT pour une assistance immédiate.'
-      },
-      en: {
-        greeting: 'Hello! I am La Loutre, your HR/IT assistant. The AI service is temporarily unavailable, but I can help with basic information.',
-        help: 'I can help you with common HR and IT requests. The full AI service will be available soon.',
-        error: 'Sorry, the AI service is currently unavailable. Please contact HR/IT directly for immediate assistance.'
-      }
-    };
-    
-    const lang = language === 'en' ? 'en' : 'fr';
-    
     // Simple keyword matching for basic responses
     const lowerPrompt = prompt.toLowerCase();
     
     if (lowerPrompt.includes('bonjour') || lowerPrompt.includes('hello') || lowerPrompt.includes('salut')) {
-      return responses[lang].greeting;
+      return this.languageService.getText('ollama.fallback.greeting', language);
     } else if (lowerPrompt.includes('aide') || lowerPrompt.includes('help') || lowerPrompt.includes('assistance')) {
-      return responses[lang].help;
+      return this.languageService.getText('ollama.fallback.help', language);
     } else {
-      return responses[lang].error;
+      return this.languageService.getText('ollama.fallback.error', language);
     }
   }
   

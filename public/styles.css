@@ -135,7 +135,7 @@ body {
     }
 }
 
-.language-toggle {
+.language-selector {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: var(--text-white);
@@ -144,11 +144,18 @@ body {
     cursor: pointer;
     font-weight: 600;
     transition: all 0.2s ease;
+    font-size: 0.875rem;
+    min-width: 120px;
 }
 
-.language-toggle:hover {
+.language-selector:hover {
     background: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
+}
+
+.language-selector:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
 }
 
 /* Main Content */

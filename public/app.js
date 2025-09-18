@@ -6,56 +6,9 @@
 class LaLoutreApp {
     constructor() {
         this.ws = null;
-        this.currentLanguage = 'fr';
         this.isConnected = false;
         this.messageHistory = [];
-
-        this.translations = {
-            fr: {
-                chatTitle: 'Assistant RH/IT Sécurisé',
-                chatSubtitle: 'Traitement local avec Ollama • Données sécurisées sur site',
-                welcomeText: 'Bienvenue dans La Loutre! Je suis votre assistant RH/IT sécurisé. Comment puis-je vous aider aujourd\'hui?',
-                placeholder: 'Tapez votre question RH ou IT...',
-                connecting: 'Connexion...',
-                connected: 'Connecté',
-                disconnected: 'Déconnecté',
-                typing: 'La Loutre tape...',
-                sidebarStats: 'Statistiques Organisation',
-                sidebarFeatures: 'Fonctionnalités',
-                sidebarHelp: 'Aide Rapide',
-                employees: 'Employés',
-                departments: 'Départements',
-                footerText: 'La Loutre v1.0 • Palo Alto Networks • Assistant RH/IT Sécurisé',
-                quickActions: {
-                    vacation: 'Combien de jours de congés me reste-t-il?',
-                    password: 'Comment réinitialiser mon mot de passe?',
-                    equipment: 'Comment faire une demande d\'équipement IT?',
-                    remote: 'Quelle est la politique de télétravail?'
-                }
-            },
-            en: {
-                chatTitle: 'Secure HR/IT Assistant',
-                chatSubtitle: 'Local processing with Ollama • On-premise secure data',
-                welcomeText: 'Welcome to La Loutre! I am your secure HR/IT assistant. How can I help you today?',
-                placeholder: 'Type your HR or IT question...',
-                connecting: 'Connecting...',
-                connected: 'Connected',
-                disconnected: 'Disconnected',
-                typing: 'La Loutre is typing...',
-                sidebarStats: 'Organization Statistics',
-                sidebarFeatures: 'Features',
-                sidebarHelp: 'Quick Help',
-                employees: 'Employees',
-                departments: 'Departments',
-                footerText: 'La Loutre v1.0 • Palo Alto Networks • Secure HR/IT Assistant',
-                quickActions: {
-                    vacation: 'How many vacation days do I have left?',
-                    password: 'How do I reset my password?',
-                    equipment: 'How do I request IT equipment?',
-                    remote: 'What is the work from home policy?'
-                }
-            }
-        };
+        this.languageService = null;
 
         this.init();
     }
@@ -63,24 +16,56 @@ class LaLoutreApp {
     /**
      * Initialize the application
      */
-    init() {
+    async init() {
+        // Wait for language service to be available
+        await this.initializeLanguageService();
+        
         this.setupEventListeners();
         this.connectWebSocket();
         this.loadOrganizationStats();
         this.checkOllamaStatus();
-        this.updateLanguage();
 
         // Auto-resize textarea
         this.setupTextareaResize();
     }
 
     /**
+     * Initialize the language service
+     */
+    async initializeLanguageService() {
+        // Wait for language service to be ready
+        if (window.languageService) {
+            this.languageService = window.languageService;
+        } else {
+            // Wait for language service to initialize
+            await new Promise((resolve) => {
+                const checkService = () => {
+                    if (window.languageService) {
+                        this.languageService = window.languageService;
+                        resolve();
+                    } else {
+                        setTimeout(checkService, 100);
+                    }
+                };
+                checkService();
+            });
+        }
+
+        // Listen for language changes
+        window.addEventListener('languageChanged', (event) => {
+            this.onLanguageChanged(event.detail);
+        });
+
+        console.log('Language service initialized in app');
+    }
+
+    /**
      * Setup event listeners
      */
     setupEventListeners() {
-        // Language toggle
-        document.getElementById('language-toggle').addEventListener('click', () => {
-            this.toggleLanguage();
+        // Language selector
+        document.getElementById('language-selector').addEventListener('change', async (e) => {
+            await this.languageService.setLanguage(e.target.value);
         });
 
         // Send message
@@ -96,11 +81,15 @@ class LaLoutreApp {
             }
         });
 
-        // Quick action buttons
+                // Quick action buttons
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('quick-action')) {
-                const query = e.target.getAttribute('data-query');
-                this.sendQuickMessage(query);
+                const queryKey = e.target.getAttribute('data-query');
+                if (queryKey) {
+                    // Get the localized query text
+                    const query = this.languageService.getText(`quickActions.${queryKey}`);
+                    this.sendMessage(query);
+                }
             }
         });
 
@@ -176,7 +165,7 @@ class LaLoutreApp {
     updateConnectionStatus(status) {
         const statusText = document.getElementById('connection-indicator');
 
-        const text = this.translations[this.currentLanguage][status] || status;
+        const text = this.languageService ? this.languageService.getText(status) : status;
         statusText.textContent = text;
 
         console.log(`Connection status: ${status}`);
@@ -186,7 +175,6 @@ class LaLoutreApp {
         } else {
             statusText.className = 'disconnected';
         }
-
     }
 
     /**
@@ -217,13 +205,13 @@ class LaLoutreApp {
         }
 
         // Add user message to chat
-        this.addMessageToChat('user', message, this.currentLanguage);
+        this.addMessageToChat('user', message, this.languageService.getCurrentLanguage());
 
         // Send to server
         this.ws.send(JSON.stringify({
             type: 'chat',
             content: message,
-            language: this.currentLanguage,
+            language: this.languageService.getCurrentLanguage(),
             timestamp: new Date().toISOString()
         }));
 
@@ -236,7 +224,7 @@ class LaLoutreApp {
         this.messageHistory.push({
             type: 'user',
             content: message,
-            language: this.currentLanguage,
+            language: this.languageService ? this.languageService.getCurrentLanguage() : 'en',
             timestamp: new Date().toISOString()
         });
     }
@@ -315,93 +303,26 @@ class LaLoutreApp {
     }
 
     /**
-     * Toggle language between French and English
+     * Handle language change events from the language service
      */
-    toggleLanguage() {
-        this.currentLanguage = this.currentLanguage === 'fr' ? 'en' : 'fr';
-        this.updateLanguage();
-
-        // Update language toggle button
-        document.getElementById('current-lang').textContent = this.currentLanguage.toUpperCase();
+    onLanguageChanged(detail) {
+        const { currentLanguage } = detail;
+        
+        // Update any dynamic content that isn't handled by data-i18n attributes
+        this.updateDynamicContent();
+        
+        console.log(`Language changed to: ${currentLanguage}`);
     }
 
     /**
-     * Update UI text based on current language
+     * Update dynamic content that can't use data-i18n attributes
      */
-    updateLanguage() {
-        const t = this.translations[this.currentLanguage];
-
-        // Update main UI elements
-        document.getElementById('chat-title').textContent = t.chatTitle;
-        document.getElementById('chat-subtitle').textContent = t.chatSubtitle;
-        document.getElementById('chat-input').placeholder = t.placeholder;
-        document.getElementById('sidebar-stats-title').textContent = t.sidebarStats;
-        document.getElementById('sidebar-features-title').textContent = t.sidebarFeatures;
-        document.getElementById('sidebar-help-title').textContent = t.sidebarHelp;
-        document.getElementById('employees-label').textContent = t.employees;
-        document.getElementById('departments-label').textContent = t.departments;
-        document.getElementById('footer-text').textContent = t.footerText;
-        document.getElementById('current-lang').textContent = this.currentLanguage.toUpperCase();
-
-        // Update typing indicator
-        document.querySelector('.typing-text').textContent = t.typing;
-
-        // Update quick action buttons
-        const quickActions = document.querySelectorAll('.quick-action');
-        quickActions.forEach((button, index) => {
-            const keys = Object.keys(t.quickActions);
-            if (keys[index]) {
-                const query = t.quickActions[keys[index]];
-                button.textContent = button.textContent.split(' ').slice(0, 1).join(' ') + ' ' + query.split('?')[0].split(' ').slice(-2).join(' ');
-                button.setAttribute('data-query', query);
-            }
-        });
-
-        // Update features list
-        const features = document.getElementById('features-list');
-        if (this.currentLanguage === 'en') {
-            features.innerHTML = `
-                <li>🔒 Secure Local AI</li>
-                <li>🌍 French & English</li>
-                <li>⚡ Real-time Chat</li>
-                <li>👥 Employee Management</li>
-                <li>📋 HR/IT Automation</li>
-                <li>🏢 Enterprise Integration</li>
-            `;
-        } else {
-            features.innerHTML = `
-                <li>🔒 IA Locale Sécurisée</li>
-                <li>🌍 Français & Anglais</li>
-                <li>⚡ Chat Temps Réel</li>
-                <li>👥 Gestion Employés</li>
-                <li>📋 Automatisation RH/IT</li>
-                <li>🏢 Intégration Enterprise</li>
-            `;
-        }
-
-        // Update help links
-        const helpLinks = document.querySelectorAll('.help-link');
-        if (this.currentLanguage === 'en') {
-            helpLinks[0].innerHTML = '<span>❓</span> User Guide';
-            helpLinks[0].setAttribute('data-query', 'How do I use La Loutre?');
-            helpLinks[1].innerHTML = '<span>📚</span> HR Policies';
-            helpLinks[1].setAttribute('data-query', 'What are the HR policies?');
-            helpLinks[2].innerHTML = '<span>🛠️</span> IT Support';
-            helpLinks[2].setAttribute('data-query', 'How do I contact IT support?');
-        } else {
-            helpLinks[0].innerHTML = '<span>❓</span> Guide d\'utilisation';
-            helpLinks[0].setAttribute('data-query', 'Comment utiliser La Loutre?');
-            helpLinks[1].innerHTML = '<span>📚</span> Politiques RH';
-            helpLinks[1].setAttribute('data-query', 'Quelles sont les politiques RH?');
-            helpLinks[2].innerHTML = '<span>🛠️</span> Support IT';
-            helpLinks[2].setAttribute('data-query', 'Comment contacter le support IT?');
-        }
-
-        // Update welcome message
-        const welcomeText = document.getElementById('welcome-text');
-        if (welcomeText) {
-            welcomeText.textContent = t.welcomeText;
-        }
+    updateDynamicContent() {
+        // Most content is now handled automatically by the language service's updateUI method
+        // Only add specific dynamic updates here if needed
+        
+        // Example: Update Ollama status if needed
+        this.checkOllamaStatus();
     }
 
     /**
@@ -436,52 +357,35 @@ class LaLoutreApp {
             const response = await fetch('/health');
             if (response.ok) {
                 // Try to detect if Ollama is available by checking AI response
-                const testResponse = await fetch('/api/hr-request', {
+                const testResponse = await fetch('/api/hr/request', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         query: 'test',
-                        language: this.currentLanguage
+                        language: this.languageService ? this.languageService.getCurrentLanguage() : 'en'
                     })
                 });
 
                 const indicator = document.getElementById('ollama-indicator');
                 if (testResponse.ok) {
-                    indicator.textContent = this.currentLanguage === 'fr' ? 'Connecté' : 'Connected';
+                    indicator.textContent = this.languageService ? this.languageService.getText('status.ollamaConnected') : 'Connected';
                     indicator.className = 'connected';
                 } else {
-                    indicator.textContent = this.currentLanguage === 'fr' ? 'Mode Fallback' : 'Fallback Mode';
+                    indicator.textContent = this.languageService ? this.languageService.getText('status.ollamaDisconnected') : 'Fallback Mode';
                     indicator.className = 'disconnected';
                 }
             }
         } catch (error) {
             console.error('Failed to check Ollama status:', error);
             const indicator = document.getElementById('ollama-indicator');
-            indicator.textContent = this.currentLanguage === 'fr' ? 'Indisponible' : 'Unavailable';
+            indicator.textContent = this.languageService ? this.languageService.getText('status.ollamaError') : 'Unavailable';
             indicator.className = 'disconnected';
         }
     }
 
-    /**
-     * Detect language from text (basic implementation)
-     */
-    detectLanguage(text) {
-        const frenchWords = ['le', 'la', 'les', 'de', 'et', 'à', 'un', 'une', 'ce', 'que', 'qui', 'dans', 'pour', 'avec', 'sur'];
-        const englishWords = ['the', 'and', 'to', 'of', 'a', 'in', 'for', 'is', 'on', 'that', 'by', 'this', 'with', 'i', 'you'];
 
-        const words = text.toLowerCase().split(/\s+/);
-        let frenchCount = 0;
-        let englishCount = 0;
-
-        words.forEach(word => {
-            if (frenchWords.includes(word)) frenchCount++;
-            if (englishWords.includes(word)) englishCount++;
-        });
-
-        return frenchCount > englishCount ? 'fr' : 'en';
-    }
 }
 
 // Initialize the application when DOM is loaded

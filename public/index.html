@@ -1,13 +1,16 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Loutre - Assistant RH/IT</title>
+    <title>La Loutre - HR/IT Assistant</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦦</text></svg>">
+    
+    <!-- Language service (loads languages dynamically) -->
+    <script src="/js/languageService.js"></script>
 </head>
 
 <body>
@@ -17,12 +20,12 @@
             <div class="header-content">
                 <div class="logo">
                     <span class="logo-icon">🦦</span>
-                    <h1>La Loutre</h1>
+                    <h1 data-i18n="logoTitle">La Loutre</h1>
                 </div>
                 <div class="header-info">
-                    <button class="language-toggle" id="language-toggle">
-                        <span id="current-lang">FR</span>
-                    </button>
+                    <select class="language-selector" id="language-selector" data-i18n-aria-label="accessibility.selectLanguage">
+                        <!-- Options will be populated dynamically -->
+                    </select>
                 </div>
             </div>
         </header>
@@ -33,33 +36,31 @@
             <!-- Sidebar -->
             <aside class="sidebar">
                 <div class="sidebar-section">
-                    <h3 id="sidebar-stats-title">Statistiques Organisation</h3>
+                    <h3 id="sidebar-stats-title" data-i18n="sidebarStats">Organization Statistics</h3>
                     <div class="stats-container" id="stats-container">
                         <div class="stat-item">
                             <span class="stat-value" id="total-employees">-</span>
-                            <span class="stat-label" id="employees-label">Employés</span>
+                            <span class="stat-label" id="employees-label" data-i18n="employees">Employees</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-value" id="total-departments">-</span>
-                            <span class="stat-label" id="departments-label">Départements</span>
+                            <span class="stat-label" id="departments-label" data-i18n="departments">Departments</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="sidebar-section">
-                    <h3 id="sidebar-features-title">Fonctionnalités</h3>
+                    <h3 id="sidebar-features-title" data-i18n="sidebarFeatures">Features</h3>
                     <ul class="features-list" id="features-list">
-                        <li>🔒 IA Locale Sécurisée</li>
-                        <li>🌍 Français & Anglais</li>
-                        <li>⚡ Chat Temps Réel</li>
-                        <li>👥 Gestion Employés</li>
-                        <li>📋 Automatisation RH/IT</li>
-                        <li>🏢 Intégration Enterprise</li>
+                        <li data-i18n="features.secure">🔒 Secure local processing (no cloud)</li>
+                        <li data-i18n="features.multilingual">🌍 Automatic language detection</li>
+                        <li data-i18n="features.realTime">⚡ Real-time chat with AI assistant</li>
+                        <li data-i18n="features.integration">📋 Integration with HR/IT systems</li>
                     </ul>
                 </div>
 
                 <div class="sidebar-section">
-                    <h3 id="sidebar-help-title">Aide Rapide</h3>
+                    <h3 id="sidebar-help-title" data-i18n="sidebarHelp">Quick Help</h3>
                     <div class="help-links">
                         <a href="#" class="help-link" data-query="Comment utiliser La Loutre?">
                             <span>❓</span> Guide d'utilisation
@@ -77,25 +78,20 @@
             <!-- Chat Container -->
             <div class="chat-container">
                 <div class="chat-header">
-                    <h2 id="chat-title">Assistant RH/IT Sécurisé</h2>
-                    <p id="chat-subtitle">Traitement local avec Ollama • Données sécurisées sur site</p>
+                    <h2 id="chat-title" data-i18n="chatTitle">Secure HR/IT Assistant</h2>
+                    <p id="chat-subtitle" data-i18n="chatSubtitle">Local processing with Ollama • On-premise secure data</p>
                 </div>
 
                 <div class="chat-messages" id="chat-messages">
                     <div class="message assistant">
                         <div class="message-avatar assistant">🦦</div>
                         <div class="message-content">
-                            <p id="welcome-text">Bienvenue dans La Loutre! Je suis votre assistant RH/IT sécurisé.
-                                Comment puis-je vous aider aujourd'hui?</p>
+                            <p id="welcome-text" data-i18n="welcomeText">Welcome to La Loutre! I am your secure HR/IT assistant. How can I help you today?</p>
                             <div class="quick-actions">
-                                <button class="quick-action" data-query="Combien de jours de congés me reste-t-il?">📅
-                                    Congés</button>
-                                <button class="quick-action" data-query="Comment réinitialiser mon mot de passe?">🔑 Mot
-                                    de passe</button>
-                                <button class="quick-action" data-query="Comment faire une demande d'équipement IT?">💻
-                                    Équipement</button>
-                                <button class="quick-action" data-query="Quelle est la politique de télétravail?">🏠
-                                    Télétravail</button>
+                                <button class="quick-action" data-query="vacation" data-i18n="quickActions.vacation">📅 How many vacation days do I have left?</button>
+                                <button class="quick-action" data-query="password" data-i18n="quickActions.password">🔑 How do I reset my password?</button>
+                                <button class="quick-action" data-query="equipment" data-i18n="quickActions.equipment">💻 How do I request IT equipment?</button>
+                                <button class="quick-action" data-query="remote" data-i18n="quickActions.remote">🏠 What is the work from home policy?</button>
                             </div>
                         </div>
                     </div>
@@ -108,12 +104,12 @@
                             <span></span>
                             <span></span>
                         </span>
-                        <span class="typing-text">La Loutre tape...</span>
+                        <span class="typing-text" data-i18n="typing">La Loutre is typing...</span>
                     </div>
                     <div class="chat-input-wrapper">
-                        <textarea id="chat-input" class="chat-input" placeholder="Tapez votre question RH ou IT..."
-                            rows="1"></textarea>
-                        <button class="send-button" id="send-button">
+                        <textarea id="chat-input" class="chat-input" data-i18n-placeholder="placeholder"
+                            placeholder="Type your HR or IT question..." rows="1"></textarea>
+                        <button class="send-button" id="send-button" data-i18n-aria-label="accessibility.sendMessage">
                             <span class="send-icon">📤</span>
                         </button>
                     </div>
@@ -124,10 +120,10 @@
         <!-- Footer -->
         <footer class="footer">
             <div class="footer-content">
-                <p id="footer-text">La Loutre v1.0 • Palo Alto Networks • Assistant RH/IT Sécurisé</p>
+                <p id="footer-text" data-i18n="footerText">La Loutre v1.0 • Palo Alto Networks • Secure HR/IT Assistant</p>
                 <div class="footer-links">
-                    <span id="connection-status">Server: <span id="connection-indicator">Connexion...</span></span>
-                    <span id="ollama-status">Ollama: <span id="ollama-indicator">Vérification...</span></span>
+                    <span id="connection-status">Server: <span id="connection-indicator" data-i18n="connecting">Connecting...</span></span>
+                    <span id="ollama-status">Ollama: <span id="ollama-indicator">Checking...</span></span>
                 </div>
             </div>
         </footer>
