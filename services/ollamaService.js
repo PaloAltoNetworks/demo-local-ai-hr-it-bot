@@ -41,6 +41,8 @@ class OllamaService {
       // Prepare the system prompt based on language
       const systemPrompt = this.getSystemPrompt(language);
       const fullPrompt = `${systemPrompt}\n\nUser: ${prompt}\nAssistant:`;
+
+      console.log(`Full prompt sent to Ollama:\n${fullPrompt}`);
       
       const response = await axios.post(`${this.baseUrl}/api/generate`, {
         model: model,
@@ -78,8 +80,7 @@ class OllamaService {
     const prompts = {
       fr: `Vous êtes La Loutre, un assistant IA spécialisé dans l'automatisation RH et IT pour les entreprises. 
       Vous aidez les employés avec leurs questions concernant les ressources humaines et l'informatique.
-      Répondez de manière professionnelle, claire et concise en français.
-      Vous êtes déployé en local pour garantir la sécurité des données sensibles de l'entreprise.
+      Répondez de manière professionnelle, claire et concise en français uniquement.
       
       Domaines d'expertise:
       - Gestion des congés et absences
@@ -91,8 +92,7 @@ class OllamaService {
       
       en: `You are La Loutre, an AI assistant specialized in HR and IT automation for enterprises.
       You help employees with their human resources and information technology questions.
-      Respond professionally, clearly and concisely in English.
-      You are deployed locally to ensure the security of sensitive corporate data.
+      Respond professionally, clearly and concisely in English only.
       
       Areas of expertise:
       - Leave and absence management

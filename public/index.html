@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>La Loutre - Assistant RH/IT</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦦</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦦</text></svg>">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Header -->
@@ -17,10 +20,6 @@
                     <h1>La Loutre</h1>
                 </div>
                 <div class="header-info">
-                    <span class="status-indicator" id="connection-status">
-                        <span class="status-dot"></span>
-                        <span class="status-text">Connexion...</span>
-                    </span>
                     <button class="language-toggle" id="language-toggle">
                         <span id="current-lang">FR</span>
                     </button>
@@ -30,50 +29,6 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Chat Container -->
-            <div class="chat-container">
-                <div class="chat-header">
-                    <h2 id="chat-title">Assistant RH/IT Sécurisé</h2>
-                    <p id="chat-subtitle">Traitement local avec Ollama • Données sécurisées sur site</p>
-                </div>
-                
-                <div class="chat-messages" id="chat-messages">
-                    <div class="welcome-message">
-                        <div class="message-avatar system">🦦</div>
-                        <div class="message-content">
-                            <p id="welcome-text">Bienvenue dans La Loutre! Je suis votre assistant RH/IT sécurisé. Comment puis-je vous aider aujourd'hui?</p>
-                            <div class="quick-actions">
-                                <button class="quick-action" data-query="Combien de jours de congés me reste-t-il?">📅 Congés</button>
-                                <button class="quick-action" data-query="Comment réinitialiser mon mot de passe?">🔑 Mot de passe</button>
-                                <button class="quick-action" data-query="Comment faire une demande d'équipement IT?">💻 Équipement</button>
-                                <button class="quick-action" data-query="Quelle est la politique de télétravail?">🏠 Télétravail</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="chat-input-container">
-                    <div class="typing-indicator" id="typing-indicator">
-                        <span class="typing-dots">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </span>
-                        <span class="typing-text">La Loutre tape...</span>
-                    </div>
-                    <div class="chat-input-wrapper">
-                        <textarea 
-                            id="chat-input" 
-                            class="chat-input" 
-                            placeholder="Tapez votre question RH ou IT..."
-                            rows="1"
-                        ></textarea>
-                        <button class="send-button" id="send-button">
-                            <span class="send-icon">📤</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
 
             <!-- Sidebar -->
             <aside class="sidebar">
@@ -118,6 +73,52 @@
                     </div>
                 </div>
             </aside>
+
+            <!-- Chat Container -->
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h2 id="chat-title">Assistant RH/IT Sécurisé</h2>
+                    <p id="chat-subtitle">Traitement local avec Ollama • Données sécurisées sur site</p>
+                </div>
+
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message assistant">
+                        <div class="message-avatar assistant">🦦</div>
+                        <div class="message-content">
+                            <p id="welcome-text">Bienvenue dans La Loutre! Je suis votre assistant RH/IT sécurisé.
+                                Comment puis-je vous aider aujourd'hui?</p>
+                            <div class="quick-actions">
+                                <button class="quick-action" data-query="Combien de jours de congés me reste-t-il?">📅
+                                    Congés</button>
+                                <button class="quick-action" data-query="Comment réinitialiser mon mot de passe?">🔑 Mot
+                                    de passe</button>
+                                <button class="quick-action" data-query="Comment faire une demande d'équipement IT?">💻
+                                    Équipement</button>
+                                <button class="quick-action" data-query="Quelle est la politique de télétravail?">🏠
+                                    Télétravail</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="typing-indicator" id="typing-indicator">
+                        <span class="typing-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </span>
+                        <span class="typing-text">La Loutre tape...</span>
+                    </div>
+                    <div class="chat-input-wrapper">
+                        <textarea id="chat-input" class="chat-input" placeholder="Tapez votre question RH ou IT..."
+                            rows="1"></textarea>
+                        <button class="send-button" id="send-button">
+                            <span class="send-icon">📤</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </main>
 
         <!-- Footer -->
@@ -125,6 +126,7 @@
             <div class="footer-content">
                 <p id="footer-text">La Loutre v1.0 • Palo Alto Networks • Assistant RH/IT Sécurisé</p>
                 <div class="footer-links">
+                    <span id="connection-status">Server: <span id="connection-indicator">Connexion...</span></span>
                     <span id="ollama-status">Ollama: <span id="ollama-indicator">Vérification...</span></span>
                 </div>
             </div>
@@ -133,4 +135,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>

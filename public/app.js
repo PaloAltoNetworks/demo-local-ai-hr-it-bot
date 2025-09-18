@@ -9,7 +9,7 @@ class LaLoutreApp {
         this.currentLanguage = 'fr';
         this.isConnected = false;
         this.messageHistory = [];
-        
+
         this.translations = {
             fr: {
                 chatTitle: 'Assistant RH/IT Sécurisé',
@@ -56,10 +56,10 @@ class LaLoutreApp {
                 }
             }
         };
-        
+
         this.init();
     }
-    
+
     /**
      * Initialize the application
      */
@@ -69,11 +69,11 @@ class LaLoutreApp {
         this.loadOrganizationStats();
         this.checkOllamaStatus();
         this.updateLanguage();
-        
+
         // Auto-resize textarea
         this.setupTextareaResize();
     }
-    
+
     /**
      * Setup event listeners
      */
@@ -82,12 +82,12 @@ class LaLoutreApp {
         document.getElementById('language-toggle').addEventListener('click', () => {
             this.toggleLanguage();
         });
-        
+
         // Send message
         document.getElementById('send-button').addEventListener('click', () => {
             this.sendMessage();
         });
-        
+
         // Enter to send (Ctrl+Enter for new line)
         document.getElementById('chat-input').addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
@@ -95,7 +95,7 @@ class LaLoutreApp {
                 this.sendMessage();
             }
         });
-        
+
         // Quick action buttons
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('quick-action')) {
@@ -103,7 +103,7 @@ class LaLoutreApp {
                 this.sendQuickMessage(query);
             }
         });
-        
+
         // Help links
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('help-link')) {
@@ -115,7 +115,7 @@ class LaLoutreApp {
             }
         });
     }
-    
+
     /**
      * Setup textarea auto-resize
      */
@@ -126,100 +126,99 @@ class LaLoutreApp {
             textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
         });
     }
-    
+
     /**
      * Connect to WebSocket server
      */
     connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}`;
-        
+
         try {
             this.ws = new WebSocket(wsUrl);
-            
+
             this.ws.onopen = () => {
                 console.log('WebSocket connected');
                 this.isConnected = true;
                 this.updateConnectionStatus('connected');
             };
-            
+
             this.ws.onmessage = (event) => {
                 const message = JSON.parse(event.data);
                 this.handleIncomingMessage(message);
             };
-            
+
             this.ws.onclose = () => {
                 console.log('WebSocket disconnected');
                 this.isConnected = false;
                 this.updateConnectionStatus('disconnected');
-                
+
                 // Attempt to reconnect after 3 seconds
                 setTimeout(() => {
                     this.connectWebSocket();
                 }, 3000);
             };
-            
+
             this.ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
                 this.updateConnectionStatus('disconnected');
             };
-            
+
         } catch (error) {
             console.error('Failed to create WebSocket connection:', error);
             this.updateConnectionStatus('disconnected');
         }
     }
-    
+
     /**
      * Update connection status indicator
      */
     updateConnectionStatus(status) {
-        const statusText = document.querySelector('.status-text');
-        const statusDot = document.querySelector('.status-dot');
-        
+        const statusText = document.getElementById('connection-indicator');
+
         const text = this.translations[this.currentLanguage][status] || status;
         statusText.textContent = text;
-        
-        statusDot.className = 'status-dot';
+
+        console.log(`Connection status: ${status}`);
+
         if (status === 'connected') {
-            statusDot.style.backgroundColor = '#10b981';
-        } else if (status === 'disconnected') {
-            statusDot.style.backgroundColor = '#ef4444';
+            statusText.className = 'connected';
         } else {
-            statusDot.style.backgroundColor = '#f59e0b';
+            statusText.className = 'disconnected';
         }
+
     }
-    
+
     /**
      * Handle incoming WebSocket messages
      */
     handleIncomingMessage(message) {
         this.hideTypingIndicator();
-        
+
         if (message.type === 'system' || message.type === 'assistant') {
             this.addMessageToChat('assistant', message.content, message.language);
         } else if (message.type === 'error') {
             this.addMessageToChat('system', message.content, message.language);
         }
-        
+
         // Store message in history
         this.messageHistory.push(message);
     }
-    
+
     /**
      * Send a message via WebSocket
      */
     sendMessage() {
         const input = document.getElementById('chat-input');
         const message = input.value.trim();
-        
+
         if (!message || !this.isConnected) {
             return;
         }
-        
+
         // Add user message to chat
         this.addMessageToChat('user', message, this.currentLanguage);
-        
+
         // Send to server
         this.ws.send(JSON.stringify({
             type: 'chat',
@@ -227,12 +226,12 @@ class LaLoutreApp {
             language: this.currentLanguage,
             timestamp: new Date().toISOString()
         }));
-        
+
         // Clear input and show typing indicator
         input.value = '';
         input.style.height = 'auto';
         this.showTypingIndicator();
-        
+
         // Store in history
         this.messageHistory.push({
             type: 'user',
@@ -241,7 +240,7 @@ class LaLoutreApp {
             timestamp: new Date().toISOString()
         });
     }
-    
+
     /**
      * Send a quick message from buttons/links
      */
@@ -250,19 +249,19 @@ class LaLoutreApp {
         input.value = query;
         this.sendMessage();
     }
-    
+
     /**
      * Add message to chat display
      */
     addMessageToChat(sender, content, language) {
         const chatMessages = document.getElementById('chat-messages');
-        
+
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
-        
+
         const avatar = document.createElement('div');
         avatar.className = `message-avatar ${sender}`;
-        
+
         if (sender === 'user') {
             avatar.textContent = '👤';
         } else if (sender === 'assistant') {
@@ -270,23 +269,23 @@ class LaLoutreApp {
         } else {
             avatar.textContent = '🤖';
         }
-        
+
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
-        
+
         // Format message content with basic markdown-like formatting
         const formattedContent = this.formatMessageContent(content);
         messageContent.innerHTML = formattedContent;
-        
+
         messageDiv.appendChild(avatar);
         messageDiv.appendChild(messageContent);
-        
+
         chatMessages.appendChild(messageDiv);
-        
+
         // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-    
+
     /**
      * Format message content with basic styling
      */
@@ -298,7 +297,7 @@ class LaLoutreApp {
             .replace(/\n/g, '<br>')                            // Line breaks
             .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>'); // Links
     }
-    
+
     /**
      * Show typing indicator
      */
@@ -306,7 +305,7 @@ class LaLoutreApp {
         const indicator = document.getElementById('typing-indicator');
         indicator.classList.add('show');
     }
-    
+
     /**
      * Hide typing indicator
      */
@@ -314,24 +313,24 @@ class LaLoutreApp {
         const indicator = document.getElementById('typing-indicator');
         indicator.classList.remove('show');
     }
-    
+
     /**
      * Toggle language between French and English
      */
     toggleLanguage() {
         this.currentLanguage = this.currentLanguage === 'fr' ? 'en' : 'fr';
         this.updateLanguage();
-        
+
         // Update language toggle button
         document.getElementById('current-lang').textContent = this.currentLanguage.toUpperCase();
     }
-    
+
     /**
      * Update UI text based on current language
      */
     updateLanguage() {
         const t = this.translations[this.currentLanguage];
-        
+
         // Update main UI elements
         document.getElementById('chat-title').textContent = t.chatTitle;
         document.getElementById('chat-subtitle').textContent = t.chatSubtitle;
@@ -343,10 +342,10 @@ class LaLoutreApp {
         document.getElementById('departments-label').textContent = t.departments;
         document.getElementById('footer-text').textContent = t.footerText;
         document.getElementById('current-lang').textContent = this.currentLanguage.toUpperCase();
-        
+
         // Update typing indicator
         document.querySelector('.typing-text').textContent = t.typing;
-        
+
         // Update quick action buttons
         const quickActions = document.querySelectorAll('.quick-action');
         quickActions.forEach((button, index) => {
@@ -357,7 +356,7 @@ class LaLoutreApp {
                 button.setAttribute('data-query', query);
             }
         });
-        
+
         // Update features list
         const features = document.getElementById('features-list');
         if (this.currentLanguage === 'en') {
@@ -379,7 +378,7 @@ class LaLoutreApp {
                 <li>🏢 Intégration Enterprise</li>
             `;
         }
-        
+
         // Update help links
         const helpLinks = document.querySelectorAll('.help-link');
         if (this.currentLanguage === 'en') {
@@ -397,14 +396,14 @@ class LaLoutreApp {
             helpLinks[2].innerHTML = '<span>🛠️</span> Support IT';
             helpLinks[2].setAttribute('data-query', 'Comment contacter le support IT?');
         }
-        
+
         // Update welcome message
         const welcomeText = document.getElementById('welcome-text');
         if (welcomeText) {
             welcomeText.textContent = t.welcomeText;
         }
     }
-    
+
     /**
      * Load organization statistics
      */
@@ -413,11 +412,11 @@ class LaLoutreApp {
             const response = await fetch('/api/employees');
             if (response.ok) {
                 const employees = await response.json();
-                
+
                 // Calculate statistics
                 const totalEmployees = employees.length;
                 const departments = new Set(employees.map(emp => emp.department)).size;
-                
+
                 // Update UI
                 document.getElementById('total-employees').textContent = totalEmployees;
                 document.getElementById('total-departments').textContent = departments;
@@ -428,7 +427,7 @@ class LaLoutreApp {
             document.getElementById('total-departments').textContent = '-';
         }
     }
-    
+
     /**
      * Check Ollama service status
      */
@@ -447,7 +446,7 @@ class LaLoutreApp {
                         language: this.currentLanguage
                     })
                 });
-                
+
                 const indicator = document.getElementById('ollama-indicator');
                 if (testResponse.ok) {
                     indicator.textContent = this.currentLanguage === 'fr' ? 'Connecté' : 'Connected';
@@ -464,23 +463,23 @@ class LaLoutreApp {
             indicator.className = 'disconnected';
         }
     }
-    
+
     /**
      * Detect language from text (basic implementation)
      */
     detectLanguage(text) {
         const frenchWords = ['le', 'la', 'les', 'de', 'et', 'à', 'un', 'une', 'ce', 'que', 'qui', 'dans', 'pour', 'avec', 'sur'];
         const englishWords = ['the', 'and', 'to', 'of', 'a', 'in', 'for', 'is', 'on', 'that', 'by', 'this', 'with', 'i', 'you'];
-        
+
         const words = text.toLowerCase().split(/\s+/);
         let frenchCount = 0;
         let englishCount = 0;
-        
+
         words.forEach(word => {
             if (frenchWords.includes(word)) frenchCount++;
             if (englishWords.includes(word)) englishCount++;
         });
-        
+
         return frenchCount > englishCount ? 'fr' : 'en';
     }
 }

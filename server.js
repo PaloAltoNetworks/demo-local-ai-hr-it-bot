@@ -142,15 +142,6 @@ class LaLoutreServer {
     this.wss.on('connection', (ws, req) => {
       console.log('Nouvelle connexion WebSocket / New WebSocket connection');
       
-      // Send welcome message
-      const welcomeMessage = {
-        type: 'system',
-        content: 'Bienvenue dans La Loutre! Je suis votre assistant RH/IT. Comment puis-je vous aider? / Welcome to La Loutre! I am your HR/IT assistant. How can I help you?',
-        timestamp: new Date().toISOString(),
-        language: 'fr'
-      };
-      ws.send(JSON.stringify(welcomeMessage));
-      
       ws.on('message', async (message) => {
         try {
           const data = JSON.parse(message);

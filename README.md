@@ -85,10 +85,6 @@ NODE_ENV=development
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama2
 
-# Security
-JWT_SECRET=your-super-secret-jwt-key
-SESSION_SECRET=your-session-secret
-
 # Language Settings
 DEFAULT_LANGUAGE=fr
 SUPPORTED_LANGUAGES=fr,en
