@@ -58,6 +58,10 @@ class HRITService {
       const user = this.authenticatedUser;
       const userId = user.email;
       
+      // TODO: PRISMA_AIRS_INTEGRATION - Add prompt validation before processing
+      // Integrate with Prisma AIRS API to validate user prompts for security
+      // Example: await this.validatePromptWithPrismaAirs(query, user);
+      
       // Check for pending actions (multi-step interactions)
       const pendingActions = this.conversationHistory.getPendingActionTypes(userId);
       if (pendingActions.length > 0) {
@@ -1295,6 +1299,10 @@ IMPORTANT: This is a general inquiry. Answer helpfully and directly. Only sugges
             error: this.languageService.getText('errors.queryRequired', serverLanguage) 
           });
         }
+        
+        // TODO: PRISMA_AIRS_INTEGRATION - Add API-level prompt validation
+        // Validate incoming requests through Prisma AIRS before processing
+        // Example: const validationResult = await this.prismaAirsService.validateRequest(req);
         
         const detectedLang = language || this.languageService.detectLanguage(query);
         const response = await this.processHRRequest(query, detectedLang);

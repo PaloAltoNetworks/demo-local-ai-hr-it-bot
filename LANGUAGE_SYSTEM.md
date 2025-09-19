@@ -2,8 +2,8 @@
 
 ## Overview
 
-The La Loutre HR/IT Assistant uses a comprehensive dual-layer language system:
-- **Backend**: Modular language files for server messages, API responses, and AI prompts
+The Enterprise HR/IT Assistant uses a comprehensive dual-layer language system:
+- **Backend**: Modular language files for server messages, API responses, and AI prompts (English-only)
 - **Frontend**: Dynamic language loading with intelligent browser detection and memory optimization
 
 This system makes it easy to add new languages without modifying any application code - just add a language file and restart!
@@ -12,8 +12,7 @@ This system makes it easy to add new languages without modifying any application
 
 ```
 languages/
-├── en.js          # English translations
-├── fr.js          # French translations
+├── en.js          # English translations (primary)
 └── [new-lang].js  # Additional languages (automatically detected)
 
 public/js/
@@ -28,7 +27,7 @@ services/
 ### Frontend Behavior
 1. **Auto-discovery**: Fetches `/api/language/names` to discover available languages
 2. **Smart detection**: Checks user preferences in this order:
-   - Saved preference in `localStorage.getItem('laloutre-language')`
+   - Saved preference in `localStorage.getItem('enterprise-hrit-language')`
    - Browser language (`navigator.language`)
    - Fallback to English
 3. **Memory optimization**: Only loads one language at a time to minimize memory usage
