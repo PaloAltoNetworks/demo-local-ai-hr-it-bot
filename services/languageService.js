@@ -220,7 +220,7 @@ class LanguageService {
       content,
       language,
       timestamp: new Date().toISOString(),
-      service: 'La Loutre'
+      service: 'HR/IT Assistant'
     };
   }
 

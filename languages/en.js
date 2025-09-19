@@ -13,13 +13,13 @@ module.exports = {
   
   // Server messages
   server: {
-    started: 'La Loutre HR/IT Assistant started on port',
+    started: 'HR/IT Assistant started on port',
     webInterface: 'Web interface',
     newConnection: 'New WebSocket connection',
     connectionClosed: 'WebSocket connection closed',
     healthCheck: {
       status: 'ok',
-      service: 'La Loutre HR/IT Assistant',
+      service: 'HR/IT Assistant',
       version: '1.0.0'
     }
   },
@@ -36,7 +36,7 @@ module.exports = {
 
   // General messages
   general: {
-    greeting: 'Hello! I am La Loutre, your HR/IT assistant. How can I help you?',
+    greeting: 'Hello! I am your HR/IT assistant. How can I help you?',
     error: 'Sorry, an error occurred. Please try again.',
     notFound: 'Information not found.',
     processing: 'Processing...',
@@ -122,7 +122,7 @@ module.exports = {
 
   // Ollama service
   ollama: {
-    systemPrompt: `You are La Loutre, an AI assistant specialized in HR and IT automation for enterprises.
+    systemPrompt: `You are an AI assistant specialized in HR and IT automation for enterprises.
 You help employees with their human resources and information technology questions.
 Respond professionally, clearly and concisely in English only.
 
@@ -136,7 +136,7 @@ Areas of expertise:
 - Training and professional development
 - IT equipment`,
     fallback: {
-      greeting: 'Hello! I am La Loutre, your HR/IT assistant. The AI service is temporarily unavailable, but I can help with basic information.',
+      greeting: 'Hello! I am your HR/IT assistant. The AI service is temporarily unavailable, but I can help with basic information.',
       help: 'I can help you with common HR and IT requests. The full AI service will be available soon.',
       error: 'Sorry, the AI service is currently unavailable. Please contact HR/IT directly for immediate assistance.'
     }
@@ -153,7 +153,7 @@ Areas of expertise:
 
   // Prompt templates
   prompts: {
-    enhanced: `You are La Loutre, an intelligent IT/HR team member assistant with the authority to help employees directly. You can create tickets, approve/deny requests, and provide immediate assistance.
+    enhanced: `You are an intelligent IT/HR team member assistant with the authority to help employees directly. You can create tickets, approve/deny requests, and provide immediate assistance.
 
 ROLE & AUTHORITY:
 - You ARE part of the IT/HR team, not just an information provider
@@ -185,10 +185,10 @@ Respond as the IT/HR team member who can actually solve their problem.`,
   
   frontend: {
     // Page metadata
-    pageTitle: 'La Loutre - HR/IT Assistant',
+    pageTitle: 'HR/IT Assistant',
     
     // Header
-    logoTitle: 'La Loutre',
+    logoTitle: 'HR/IT Assistant',
     
     // Chat interface
     chatTitle: 'Secure HR/IT Assistant', 
@@ -201,7 +201,7 @@ Respond as the IT/HR team member who can actually solve their problem.`,
     connecting: 'Connecting...',
     connected: 'Connected', 
     disconnected: 'Disconnected',
-    typing: 'La Loutre is typing...',
+    typing: 'Assistant is typing...',
     
     // Sidebar
     sidebarUser: 'Current User',
@@ -246,7 +246,7 @@ Respond as the IT/HR team member who can actually solve their problem.`,
     },
     
     // Footer
-    footerText: 'La Loutre v1.0 • Palo Alto Networks • Secure HR/IT Assistant',
+    footerText: 'HR/IT Assistant v1.0 • Palo Alto Networks • Secure Enterprise Assistant',
     
     // Accessibility
     accessibility: {

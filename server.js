@@ -14,7 +14,11 @@ const ApplicationService = require('./services/applicationService');
 const HRITService = require('./services/hrItService');
 const ConfigService = require('./services/configService');
 
-class LaLoutreServer {
+/**
+ * Enterprise HR/IT Assistant Server
+ * Main server application for the HR/IT chatbot with service-oriented architecture
+ */
+class HRITServer {
   constructor() {
     this.app = express();
     this.server = http.createServer(this.app);
@@ -155,8 +159,8 @@ class LaLoutreServer {
 
 // Start the server
 if (require.main === module) {
-  const server = new LaLoutreServer();
+  const server = new HRITServer();
   server.start();
 }
 
-module.exports = LaLoutreServer;
+module.exports = HRITServer;

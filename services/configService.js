@@ -52,7 +52,7 @@ class ConfigService {
           res.json({
             status: 'ok',
             timestamp: new Date().toISOString(),
-            service: 'La Loutre HR/IT Assistant',
+            service: 'HR/IT Assistant',
             version: '1.0.0'
           });
         }
@@ -61,7 +61,7 @@ class ConfigService {
         res.json({
           status: 'ok',
           timestamp: new Date().toISOString(),
-          service: 'La Loutre HR/IT Assistant',
+          service: 'HR/IT Assistant',
           version: '1.0.0'
         });
       }

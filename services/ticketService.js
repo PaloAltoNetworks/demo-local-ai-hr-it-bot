@@ -28,7 +28,7 @@ class TicketService {
       category: request.category || 'general',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      assignedTo: 'La Loutre AI Assistant',
+      assignedTo: 'HR/IT AI Assistant',
       metadata: request.metadata || {}
     };
 

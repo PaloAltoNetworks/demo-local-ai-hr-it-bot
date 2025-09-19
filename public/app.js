@@ -1,5 +1,5 @@
 /**
- * La Loutre - Frontend Application
+ * HR/IT Assistant - Frontend Application
  * Enterprise HR/IT Assistant with WebSocket Real-time Chat
  */
 

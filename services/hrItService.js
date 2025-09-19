@@ -355,7 +355,7 @@ Anything else I can help you with?`;
     
     // Use RAG context to provide detailed policy information
     const enhancedPrompt = `
-You are La Loutre, the IT/HR assistant. The user asked about company policy.
+You are the IT/HR assistant. The user asked about company policy.
 
 Retrieved Policy Information:
 ${ragResult.context}
@@ -495,7 +495,7 @@ How can I help you further?`;
 
     // Use RAG for other HR inquiries
     const enhancedPrompt = `
-You are La Loutre, the HR assistant. Provide a helpful response to this HR inquiry.
+You are the HR assistant. Provide a helpful response to this HR inquiry.
 
 Employee Information:
 - Name: ${user.firstName} ${user.lastName}
@@ -532,7 +532,7 @@ Need to create an HR ticket or have other questions? I'm here to help!`;
     const user = this.authenticatedUser;
     
     const enhancedPrompt = `
-You are La Loutre, the intelligent IT/HR assistant. Answer this question helpfully.
+You are the intelligent IT/HR assistant. Answer this question helpfully.
 
 Employee: ${user.firstName} ${user.lastName} (${user.position})
 Company Knowledge Base:
