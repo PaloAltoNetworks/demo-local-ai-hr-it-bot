@@ -1,0 +1,27 @@
+{
+  "session_emma.thompson@company.com": {
+    "userId": "emma.thompson@company.com",
+    "history": [
+      {
+        "timestamp": "2025-09-19T14:11:18.687Z",
+        "userMessage": "test",
+        "botResponse": "Salut Emma ! I need to know which application you want access to. Here are some available options:\n\nComment puis-je vous aider d'autre ?",
+        "metadata": {
+          "intent": "application_access",
+          "confidence": 1,
+          "handlingService": "ApplicationService",
+          "sources": [
+            "company_policy (Static)",
+            "it_policy (Static)",
+            "application (ApplicationService)",
+            "application_policy (ApplicationService)"
+          ]
+        }
+      }
+    ],
+    "context": {},
+    "pendingActions": [],
+    "lastActivity": "2025-09-19T14:11:18.687Z",
+    "created": "2025-09-19T14:11:18.661Z"
+  }
+}
