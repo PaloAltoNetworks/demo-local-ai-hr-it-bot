@@ -10,6 +10,7 @@ require('dotenv').config();
 const LanguageService = require('./services/languageService');
 const OllamaService = require('./services/ollamaService');
 const EmployeeService = require('./services/employeeService');
+const ApplicationService = require('./services/applicationService');
 const HRITService = require('./services/hrItService');
 const ConfigService = require('./services/configService');
 
@@ -24,7 +25,8 @@ class LaLoutreServer {
     this.languageService = new LanguageService();
     this.ollamaService = new OllamaService(this.languageService);
     this.employeeService = new EmployeeService();
-    this.hrItService = new HRITService(this.employeeService, this.ollamaService, this.languageService);
+    this.applicationService = new ApplicationService();
+    this.hrItService = new HRITService(this.employeeService, this.ollamaService, this.languageService, this.applicationService);
     this.configService = new ConfigService(this.languageService);
     
     // Get server language from environment (for server messages and logs)

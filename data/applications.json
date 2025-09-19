@@ -1,0 +1,122 @@
+[
+  {
+    "id": "autocad-001",
+    "name": "AutoCAD",
+    "description": "Computer-aided design and drafting software for 2D and 3D design",
+    "category": "Design & Engineering",
+    "url": "https://company-apps.internal/autocad/app001",
+    "targetPersonas": ["Engineer", "Architect", "Designer", "Product Manager"],
+    "restrictedFrom": ["HR Manager", "Financial Analyst", "Marketing Manager"],
+    "accessLevel": "specialized",
+    "vendor": "Autodesk",
+    "cost": "high"
+  },
+  {
+    "id": "payroll-002",
+    "name": "Payroll System",
+    "description": "Employee payroll management and salary administration system",
+    "category": "HR & Finance",
+    "url": "https://company-apps.internal/payroll/app002",
+    "targetPersonas": ["HR Manager", "Financial Analyst", "Finance Manager"],
+    "restrictedFrom": ["System Administrator", "Senior Developer", "Marketing Manager"],
+    "accessLevel": "confidential",
+    "vendor": "ADP",
+    "cost": "medium"
+  },
+  {
+    "id": "jira-003",
+    "name": "Jira",
+    "description": "Project management and issue tracking for software development",
+    "category": "Development & Project Management",
+    "url": "https://company-apps.internal/jira/app003",
+    "targetPersonas": ["Senior Developer", "System Administrator", "Product Manager"],
+    "restrictedFrom": [],
+    "accessLevel": "standard",
+    "vendor": "Atlassian",
+    "cost": "medium"
+  },
+  {
+    "id": "salesforce-004",
+    "name": "Salesforce CRM",
+    "description": "Customer relationship management and sales tracking platform",
+    "category": "Sales & Marketing",
+    "url": "https://company-apps.internal/salesforce/app004",
+    "targetPersonas": ["Marketing Manager", "Sales Manager", "Account Manager"],
+    "restrictedFrom": ["System Administrator", "Senior Developer"],
+    "accessLevel": "standard",
+    "vendor": "Salesforce",
+    "cost": "high"
+  },
+  {
+    "id": "adobe-creative-005",
+    "name": "Adobe Creative Suite",
+    "description": "Design and creative tools including Photoshop, Illustrator, and InDesign",
+    "category": "Design & Marketing",
+    "url": "https://company-apps.internal/adobe/app005",
+    "targetPersonas": ["Marketing Manager", "Designer", "Creative Director"],
+    "restrictedFrom": ["System Administrator", "Financial Analyst"],
+    "accessLevel": "specialized",
+    "vendor": "Adobe",
+    "cost": "high"
+  },
+  {
+    "id": "vmware-006",
+    "name": "VMware vSphere",
+    "description": "Virtualization platform for managing virtual machines and infrastructure",
+    "category": "IT Infrastructure",
+    "url": "https://company-apps.internal/vmware/app006",
+    "targetPersonas": ["System Administrator", "Infrastructure Engineer", "DevOps Engineer"],
+    "restrictedFrom": ["HR Manager", "Marketing Manager", "Financial Analyst"],
+    "accessLevel": "administrative",
+    "vendor": "VMware",
+    "cost": "high"
+  },
+  {
+    "id": "quickbooks-007",
+    "name": "QuickBooks Enterprise",
+    "description": "Accounting and financial management software for business operations",
+    "category": "Finance & Accounting",
+    "url": "https://company-apps.internal/quickbooks/app007",
+    "targetPersonas": ["Financial Analyst", "Accountant", "Finance Manager"],
+    "restrictedFrom": ["System Administrator", "Senior Developer", "Marketing Manager"],
+    "accessLevel": "confidential",
+    "vendor": "Intuit",
+    "cost": "medium"
+  },
+  {
+    "id": "slack-008",
+    "name": "Slack",
+    "description": "Team communication and collaboration platform",
+    "category": "Communication",
+    "url": "https://company-apps.internal/slack/app008",
+    "targetPersonas": ["All Employees"],
+    "restrictedFrom": [],
+    "accessLevel": "standard",
+    "vendor": "Slack",
+    "cost": "low"
+  },
+  {
+    "id": "tableau-009",
+    "name": "Tableau",
+    "description": "Business intelligence and data visualization platform",
+    "category": "Analytics & BI",
+    "url": "https://company-apps.internal/tableau/app009",
+    "targetPersonas": ["Financial Analyst", "Data Analyst", "Marketing Manager", "Business Analyst"],
+    "restrictedFrom": [],
+    "accessLevel": "standard",
+    "vendor": "Tableau",
+    "cost": "high"
+  },
+  {
+    "id": "office365-010",
+    "name": "Microsoft Office 365",
+    "description": "Productivity suite including Word, Excel, PowerPoint, and Outlook",
+    "category": "Productivity",
+    "url": "https://company-apps.internal/office365/app010",
+    "targetPersonas": ["All Employees"],
+    "restrictedFrom": [],
+    "accessLevel": "standard",
+    "vendor": "Microsoft",
+    "cost": "low"
+  }
+]

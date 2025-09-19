@@ -43,7 +43,7 @@ class OllamaService {
       const systemPrompt = this.getSystemPrompt(language);
       const fullPrompt = `${systemPrompt}\n\nUser: ${prompt}\nAssistant:`;
 
-      console.log(`Full prompt sent to Ollama:\n${fullPrompt}`);
+      // console.log(`Full prompt sent to Ollama:\n${fullPrompt}`);
       
       const response = await axios.post(`${this.baseUrl}/api/generate`, {
         model: model,

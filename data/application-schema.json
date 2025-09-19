@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Application Data Schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Unique application identifier"
+      },
+      "name": {
+        "type": "string",
+        "description": "Application display name"
+      },
+      "description": {
+        "type": "string",
+        "description": "Brief description of the application's purpose and functionality"
+      },
+      "category": {
+        "type": "string",
+        "description": "Application category for organization"
+      },
+      "url": {
+        "type": "string",
+        "format": "uri",
+        "description": "Application access URL"
+      },
+      "targetPersonas": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Employee roles/personas that typically use this application"
+      },
+      "restrictedFrom": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Employee roles that should typically NOT have access to this application"
+      },
+      "accessLevel": {
+        "type": "string",
+        "enum": ["standard", "specialized", "confidential", "administrative"],
+        "description": "Security classification of the application"
+      },
+      "vendor": {
+        "type": "string",
+        "description": "Software vendor or provider"
+      },
+      "cost": {
+        "type": "string",
+        "enum": ["low", "medium", "high"],
+        "description": "Relative cost category for the application"
+      }
+    },
+    "required": [
+      "id", "name", "description", "category", "url", 
+      "targetPersonas", "restrictedFrom", "accessLevel", "vendor", "cost"
+    ]
+  }
+}

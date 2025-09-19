@@ -30,6 +30,10 @@
         "type": "string",
         "description": "Employee job title/position"
       },
+      "jobDescription": {
+        "type": "string",
+        "description": "Brief description of the employee's job responsibilities and role"
+      },
       "manager": {
         "type": ["string", "null"],
         "description": "Manager's email address or null if top-level"
@@ -164,7 +168,7 @@
     },
     "required": [
       "id", "firstName", "lastName", "email", "department", 
-      "position", "manager", "hireDate", "status", "location", 
+      "position", "jobDescription", "manager", "hireDate", "status", "location", 
       "phone", "emergencyContact", "benefits", "financial"
     ]
   }

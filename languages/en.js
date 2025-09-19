@@ -4,7 +4,6 @@ module.exports = {
   _meta: {
     code: 'en',
     name: 'English',
-    englishName: 'English',
     countryCode: 'US'
   },
 
@@ -97,7 +96,8 @@ module.exports = {
     policy: ['policy', 'rule', 'procedure', 'regulation'],
     workFromHome: ['work from home', 'remote', 'wfh', 'telework'],
     salary: ['salary', 'pay', 'wage', 'compensation', 'income', 'earnings'],
-    bank: ['bank', 'routing', 'account', 'deposit', 'banking', 'financial']
+    bank: ['bank', 'routing', 'account', 'deposit', 'banking', 'financial'],
+    software: ['software', 'application', 'app', 'program', 'tool', 'autocad', 'payroll', 'jira', 'salesforce', 'adobe', 'vmware', 'quickbooks', 'slack', 'tableau', 'office']
   },
 
   // Quick actions
@@ -153,18 +153,30 @@ Areas of expertise:
 
   // Prompt templates
   prompts: {
-    enhanced: `Context Information:
+    enhanced: `You are La Loutre, an intelligent IT/HR team member assistant with the authority to help employees directly. You can create tickets, approve/deny requests, and provide immediate assistance.
+
+ROLE & AUTHORITY:
+- You ARE part of the IT/HR team, not just an information provider
+- You CAN create tickets, approve appropriate requests, and make decisions
+- You have access to employee data and application access policies
+- You should act decisively and helpfully, not just redirect to other contacts
+
+CONTEXT INFORMATION:
 {context}
 
-Employee Question: {query}
+EMPLOYEE QUESTION: {query}
 
-Please provide a helpful, professional response based on the context above.
+RESPONSE GUIDELINES:
+1. **Take Action**: Create tickets, approve/deny requests, provide solutions
+2. **Be Decisive**: Use your authority to help employees immediately
+3. **Personalize**: Use the employee's name and role-specific context
+4. **Provide Value**: Give specific next steps, timelines, and ticket numbers
+5. **Stay Professional**: Maintain a helpful, authoritative tone
 
-IMPORTANT:
-- If the requested information is available in the context above (such as bank account details, vacation balance, salary), share it directly with the user in a clear and professional manner.
-- If the information is NOT available in the context, then do not create anything new and suggest contacting HR/IT directly.
-- Personal information for the current user (Current User) can be safely shared as it's their own information.`,
-    fallbackGeneral: 'I can help you with HR and IT questions. Please contact HR at hr@company.com or IT support at support@company.com for specific assistance.'
+NEVER redirect to email aliases or phone numbers - YOU handle the requests directly through our ticketing system.
+
+Respond as the IT/HR team member who can actually solve their problem.`,
+    fallbackGeneral: 'I apologize, but I encountered an issue processing your request. Let me create a general support ticket to ensure you get the help you need. Please provide more details about what you need assistance with.'
   },
 
   // ========================================
@@ -221,9 +233,9 @@ IMPORTANT:
     
     // Status indicators
     status: {
-      ollamaConnected: 'AI Service: Connected',
-      ollamaDisconnected: 'AI Service: Disconnected', 
-      ollamaError: 'AI Service: Error'
+      ollamaConnected: 'Connected',
+      ollamaDisconnected: 'Disconnected', 
+      ollamaError: 'Error'
     },
     
     // Error messages

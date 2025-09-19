@@ -292,6 +292,282 @@ class EmployeeService {
 
     return router;
   }
+
+  // ========================================
+  // LANGCHAIN INTEGRATION METHODS
+  // ========================================
+
+  /**
+   * Get intent patterns that this service can handle
+   * @returns {Array} Array of intent patterns with examples
+   */
+  getIntentPatterns() {
+    return [
+      {
+        intent: 'hr_inquiry',
+        examples: [
+          'How many vacation days do I have',
+          'What is my salary information',
+          'Show me my benefits',
+          'What are my emergency contacts',
+          'When was I hired',
+          'Who is my manager'
+        ],
+        confidence: 1.0,
+        serviceHandler: 'handleHRInquiryIntent'
+      },
+      {
+        intent: 'employee_lookup',
+        examples: [
+          'Who is John Smith',
+          'Find employee in marketing',
+          'Show me HR team members',
+          'What is Emma Thompson\'s role',
+          'List all employees in IT'
+        ],
+        confidence: 0.9,
+        serviceHandler: 'handleEmployeeLookupIntent'
+      }
+    ];
+  }
+
+  /**
+   * Generate LangChain documents from employee data
+   * @returns {Array} Array of document objects for LangChain
+   */
+  getLangChainDocuments() {
+    const documents = [];
+    const employees = this.getAllEmployees();
+
+    employees.forEach(employee => {
+      // Employee profile document
+      documents.push({
+        pageContent: `Employee: ${employee.firstName} ${employee.lastName}, Position: ${employee.position}, Department: ${employee.department}, Location: ${employee.location}, Hire Date: ${employee.hireDate}, Job Description: ${employee.jobDescription || 'Not specified'}`,
+        metadata: {
+          type: 'employee_profile',
+          employeeId: employee.id,
+          department: employee.department,
+          position: employee.position,
+          serviceSource: 'EmployeeService'
+        }
+      });
+
+      // Benefits information document
+      if (employee.benefits) {
+        documents.push({
+          pageContent: `${employee.firstName} ${employee.lastName} Benefits: Vacation days - Total: ${employee.benefits.vacation?.total}, Used: ${employee.benefits.vacation?.used}, Remaining: ${employee.benefits.vacation?.remaining}. Sick leave - Total: ${employee.benefits.sickLeave?.total}, Used: ${employee.benefits.sickLeave?.used}, Remaining: ${employee.benefits.sickLeave?.remaining}`,
+          metadata: {
+            type: 'employee_benefits',
+            employeeId: employee.id,
+            category: 'benefits',
+            serviceSource: 'EmployeeService'
+          }
+        });
+      }
+
+      // Job role and responsibilities document
+      if (employee.jobDescription) {
+        documents.push({
+          pageContent: `Job Role Information: ${employee.firstName} ${employee.lastName} (${employee.position}): ${employee.jobDescription}. This role is in the ${employee.department} department.`,
+          metadata: {
+            type: 'job_role',
+            employeeId: employee.id,
+            position: employee.position,
+            department: employee.department,
+            serviceSource: 'EmployeeService'
+          }
+        });
+      }
+    });
+
+    return documents;
+  }
+
+  /**
+   * Handle HR inquiry intent from LangChain
+   * @param {string} query - User query
+   * @param {Object} context - Additional context including current user
+   * @returns {Object} Intent handling result
+   */
+  async handleHRInquiryIntent(query, context = {}) {
+    const currentUser = context.user;
+    if (!currentUser) {
+      return {
+        type: 'authentication_required',
+        message: 'I need to know who you are to provide personal HR information.',
+        suggestedActions: ['Login', 'Provide employee ID']
+      };
+    }
+
+    const employee = this.getEmployeeByEmail(currentUser.email);
+    if (!employee) {
+      return {
+        type: 'employee_not_found',
+        message: 'I couldn\'t find your employee record.',
+        suggestedActions: ['Contact HR', 'Verify email address']
+      };
+    }
+
+    // Determine what specific information is being requested
+    const lowerQuery = query.toLowerCase();
+    
+    if (lowerQuery.includes('vacation') || lowerQuery.includes('pto')) {
+      return {
+        type: 'vacation_info',
+        data: employee.benefits?.vacation,
+        employee: {
+          name: `${employee.firstName} ${employee.lastName}`,
+          position: employee.position
+        },
+        message: 'Here is your vacation day information:',
+        suggestedActions: ['Request time off', 'View calendar']
+      };
+    }
+
+    if (lowerQuery.includes('salary') || lowerQuery.includes('pay')) {
+      return {
+        type: 'salary_info',
+        data: employee.financial?.salary,
+        employee: {
+          name: `${employee.firstName} ${employee.lastName}`,
+          position: employee.position
+        },
+        message: 'Here is your salary information:',
+        suggestedActions: ['View pay stubs', 'Discuss raise']
+      };
+    }
+
+    if (lowerQuery.includes('benefits')) {
+      return {
+        type: 'benefits_info',
+        data: employee.benefits,
+        employee: {
+          name: `${employee.firstName} ${employee.lastName}`,
+          position: employee.position
+        },
+        message: 'Here is your benefits information:',
+        suggestedActions: ['Enroll in benefits', 'Change selections']
+      };
+    }
+
+    if (lowerQuery.includes('manager')) {
+      const manager = this.getEmployeeByEmail(employee.manager);
+      return {
+        type: 'manager_info',
+        data: manager ? {
+          name: `${manager.firstName} ${manager.lastName}`,
+          email: manager.email,
+          position: manager.position
+        } : null,
+        message: manager ? 'Here is your manager information:' : 'Manager information not found.',
+        suggestedActions: ['Contact manager', 'Schedule meeting']
+      };
+    }
+
+    // General employee information
+    return {
+      type: 'general_employee_info',
+      data: {
+        name: `${employee.firstName} ${employee.lastName}`,
+        position: employee.position,
+        department: employee.department,
+        hireDate: employee.hireDate,
+        location: employee.location
+      },
+      message: 'Here is your general employment information:',
+      suggestedActions: ['View full profile', 'Update information']
+    };
+  }
+
+  /**
+   * Handle employee lookup intent from LangChain
+   * @param {string} query - User query
+   * @param {Object} context - Additional context
+   * @returns {Object} Intent handling result
+   */
+  async handleEmployeeLookupIntent(query, context = {}) {
+    const currentUser = context.user;
+    
+    // Security check - only HR and managers should do broad employee lookups
+    if (!currentUser || (!currentUser.position.toLowerCase().includes('hr') && 
+                        !currentUser.position.toLowerCase().includes('manager'))) {
+      return {
+        type: 'access_denied',
+        message: 'Employee lookup is restricted to HR personnel and managers.',
+        suggestedActions: ['Contact HR for directory access']
+      };
+    }
+
+    const lowerQuery = query.toLowerCase();
+    
+    // Look for department mentions
+    const departments = ['hr', 'it', 'marketing', 'finance', 'engineering', 'sales'];
+    const mentionedDept = departments.find(dept => lowerQuery.includes(dept));
+    
+    if (mentionedDept) {
+      const deptEmployees = this.getEmployeesByDepartment(mentionedDept);
+      return {
+        type: 'department_lookup',
+        department: mentionedDept,
+        employees: deptEmployees.map(emp => ({
+          name: `${emp.firstName} ${emp.lastName}`,
+          position: emp.position,
+          email: emp.email
+        })),
+        message: `Here are employees in the ${mentionedDept} department:`,
+        suggestedActions: ['Contact employee', 'View full profile']
+      };
+    }
+
+    // Look for specific employee names
+    const employees = this.getAllEmployees();
+    const nameMatches = employees.filter(emp => {
+      const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase();
+      return fullName.includes(lowerQuery.replace(/who is |find |show me /g, '').trim());
+    });
+
+    if (nameMatches.length > 0) {
+      return {
+        type: 'employee_search',
+        employees: nameMatches.map(emp => ({
+          name: `${emp.firstName} ${emp.lastName}`,
+          position: emp.position,
+          department: emp.department,
+          email: emp.email,
+          location: emp.location
+        })),
+        message: 'Here are the matching employees:',
+        suggestedActions: ['Contact employee', 'View department']
+      };
+    }
+
+    return {
+      type: 'no_matches',
+      message: 'I couldn\'t find any employees matching your search.',
+      suggestedActions: ['Try different keywords', 'Browse by department']
+    };
+  }
+
+  /**
+   * Get service metadata for LangChain registration
+   * @returns {Object} Service metadata
+   */
+  getServiceMetadata() {
+    return {
+      serviceName: 'EmployeeService',
+      description: 'Manages employee information, HR data, and organizational structure',
+      capabilities: [
+        'employee_profile_lookup',
+        'benefits_information',
+        'organizational_directory',
+        'personal_hr_data'
+      ],
+      intents: this.getIntentPatterns().map(pattern => pattern.intent),
+      dataTypes: ['employee_profile', 'employee_benefits', 'job_role'],
+      documentCount: this.getLangChainDocuments().length,
+      securityLevel: 'high' // Contains sensitive HR data
+    };
+  }
 }
 
 module.exports = EmployeeService;

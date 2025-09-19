@@ -506,21 +506,6 @@ body {
     margin-bottom: var(--space-sm);
 }
 
-.user-pto {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    background: var(--secondary-color);
-    color: var(--text-white);
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.pto-icon {
-    font-size: 0.85rem;
-}
 
 /* Example Questions */
 .example-questions {

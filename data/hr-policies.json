@@ -1,0 +1,117 @@
+{
+  "work_from_home": {
+    "id": "wfh_policy_2024",
+    "title": "Politique de Télétravail",
+    "category": "remote_work",
+    "description": "Directives et procédures pour les arrangements de travail à distance",
+    "eligibility": {
+      "departments": ["Engineering", "Marketing", "Sales", "HR", "Finance"],
+      "positions": ["Software Engineer", "Product Manager", "Marketing Specialist", "Sales Rep", "HR Specialist"],
+      "minimumTenure": 90,
+      "performanceRequirement": "Satisfaisant ou supérieur"
+    },
+    "process": {
+      "steps": [
+        {
+          "step": 1,
+          "action": "Soumettre la demande de télétravail",
+          "description": "L'employé soumet une demande formelle via le portail RH",
+          "requiredDocs": ["Formulaire d'accord de télétravail", "Liste de vérification du bureau à domicile"],
+          "timeline": "Au moins 2 semaines avant la date de début souhaitée"
+        },
+        {
+          "step": 2,
+          "action": "Approbation du manager",
+          "description": "Le manager direct examine et approuve/refuse la demande",
+          "criteria": ["Historique de performance", "Adéquation du rôle", "Impact sur l'équipe"],
+          "timeline": "5 jours ouvrables"
+        },
+        {
+          "step": 3,
+          "action": "Validation RH",
+          "description": "Les RH valident l'éligibilité et la conformité aux politiques",
+          "checks": ["Vérification de l'ancienneté", "Évaluation de performance", "Autorisation de sécurité IT"],
+          "timeline": "3 jours ouvrables"
+        },
+        {
+          "step": 4,
+          "action": "Coordination de la configuration IT",
+          "description": "L'équipe IT fournit l'équipement et les accès nécessaires",
+          "deliverables": ["Accès VPN", "Logiciel de sécurité", "Attribution d'équipement"],
+          "timeline": "5-7 jours ouvrables"
+        }
+      ],
+      "totalTimeline": "2-3 semaines",
+      "approvalRequired": ["Manager Direct", "RH", "Sécurité IT"]
+    },
+    "allowedFrequency": {
+      "fullTime": "Avec approbation pour les rôles éligibles",
+      "partTime": "2-3 jours par semaine standard",
+      "occasional": "Selon les besoins avec approbation du manager"
+    },
+    "requirements": {
+      "equipment": ["Connexion internet sécurisée", "Espace de travail dédié", "Ordinateur portable fourni par l'entreprise"],
+      "availability": "Disponible pendant les heures principales (9h-15h heure locale)",
+      "communication": "Check-ins quotidiens avec l'équipe, 1:1 hebdomadaire avec le manager"
+    },
+    "lastUpdated": "2024-01-15"
+  },
+  
+  "vacation_policy": {
+    "id": "vacation_policy_2024", 
+    "title": "Politique de Congés et Temps Libre",
+    "category": "time_off",
+    "description": "Congés annuels, jours de vacances et directives PTO",
+    "entitlement": {
+      "newEmployee": {"days": 15, "description": "Employés de première année"},
+      "standard": {"days": 20, "description": "2-5 ans de service"},
+      "senior": {"days": 25, "description": "5+ ans de service"},
+      "carryover": {"maxDays": 5, "description": "Nombre maximum de jours reportables à l'année suivante"}
+    },
+    "process": {
+      "requestProcess": "Soumettre la demande via le portail RH au moins 2 semaines à l'avance",
+      "approvalRequired": "Approbation du manager direct requise",
+      "blackoutPeriods": ["Fin d'exercice fiscal", "Lancements majeurs de produits"],
+      "documentation": "Formulaire de demande de congés avec justification métier pour les congés prolongés"
+    },
+    "lastUpdated": "2024-01-15"
+  },
+
+  "expense_reimbursement": {
+    "id": "expense_policy_2024",
+    "title": "Politique de Remboursement des Frais", 
+    "category": "financial",
+    "description": "Directives pour le remboursement des frais professionnels",
+    "eligibleExpenses": [
+      {"category": "Voyage", "maxAmount": 200, "description": "Voyages d'affaires, hôtels, vols"},
+      {"category": "Repas", "maxAmount": 75, "description": "Repas d'affaires et divertissement client", "perDay": true},
+      {"category": "Équipement", "maxAmount": 1000, "description": "Équipement et logiciels liés au travail", "approvalRequired": true},
+      {"category": "Formation", "maxAmount": 2000, "description": "Développement professionnel et certifications", "approvalRequired": true}
+    ],
+    "process": {
+      "submission": "Soumettre les reçus via le portail des dépenses dans les 30 jours",
+      "documentation": "Reçus originaux et justification métier requis",
+      "approval": "Approbation du manager pour les montants supérieurs à 100€",
+      "reimbursement": "Traité dans les 2 semaines suivant l'approbation"
+    },
+    "lastUpdated": "2024-01-15"
+  },
+
+  "professional_development": {
+    "id": "dev_policy_2024",
+    "title": "Politique de Développement Professionnel",
+    "category": "development", 
+    "description": "Support pour la formation, conférences et développement des compétences",
+    "budget": {
+      "annual": 3000,
+      "description": "Budget annuel de développement par employé",
+      "categories": ["Conférences", "Cours en ligne", "Certifications", "Livres et matériels"]
+    },
+    "process": {
+      "preApproval": "Requis pour les dépenses supérieures à 500€",
+      "documentation": "Objectifs d'apprentissage et pertinence métier",
+      "reporting": "Résumé post-formation et session de partage des connaissances"
+    },
+    "lastUpdated": "2024-01-15"
+  }
+}
