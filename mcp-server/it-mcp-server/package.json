@@ -1,0 +1,27 @@
+{
+  "name": "it-mcp-server-mcp",
+  "version": "1.0.0",
+  "description": "IT Agent MCP Server - Specialized agent for IT support and technical issues",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.2",
+    "ollama": "^0.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "keywords": [
+    "mcp",
+    "it",
+    "support",
+    "agent",
+    "chatbot"
+  ],
+  "author": "System",
+  "license": "MIT"
+}

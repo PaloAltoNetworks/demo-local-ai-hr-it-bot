@@ -1,0 +1,4 @@
+ticket_id,employee_name,date,status,description,priority,category
+"INC-2025-0123","Aurélien Delamarre","08/20/2025","Resolved","VPN connection issue","Medium","Network"
+"INC-2025-0119","Sophie Martin","08/15/2025","In progress","SharePoint access issue","High","Application"
+"INC-2025-0105","Paul Dupuis","08/10/2025","Resolved","Software update","Low","Software"

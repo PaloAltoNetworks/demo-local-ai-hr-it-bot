@@ -1,0 +1,118 @@
+services:
+  # MCP Host - User-facing chatbot application
+  chatbot-host:
+    build:
+      context: .
+      dockerfile: chatbot-host/Dockerfile
+    hostname: chatbot-host
+    ports:
+      - "3002:3002"
+    env_file:
+      - ./.env
+    environment:
+      - NODE_ENV=production
+      - CHATBOT_HOST_PORT=3002
+      - MCP_GATEWAY_URL=http://mcp-gateway:3001
+    depends_on:
+      - mcp-gateway
+      - hr-mcp-server
+      - it-mcp-server
+      - general-mcp-server
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # MCP Gateway - Enterprise routing and security layer
+  mcp-gateway:
+    build:
+      context: .
+      dockerfile: mcp-gateway/Dockerfile
+    hostname: mcp-gateway
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./.env
+    environment:
+      - NODE_ENV=production
+      - MCP_GATEWAY_PORT=3001
+      - COORDINATOR_MODEL=qwen3:1.7b
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - HR_MCP_SERVER_URL=http://hr-mcp-server:3000
+      - IT_MCP_SERVER_URL=http://it-mcp-server:3000
+      - GENERAL_MCP_SERVER_URL=http://general-mcp-server:3000
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    
+  # HR MCP Server
+  hr-mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/hr-mcp-server/Dockerfile
+    hostname: hr-mcp-server
+    ports:
+      - "3003:3000"
+    environment:
+      - NODE_ENV=production
+      - AGENT_MODEL=gemma3:1b
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - COORDINATOR_URL=http://mcp-gateway:3001
+    depends_on:
+      - mcp-gateway
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    
+  # IT MCP Server  
+  it-mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/it-mcp-server/Dockerfile
+    hostname: it-mcp-server
+    ports:
+      - "3004:3000"
+    environment:
+      - NODE_ENV=production
+      - AGENT_MODEL=gemma3:1b
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - COORDINATOR_URL=http://mcp-gateway:3001
+    depends_on:
+      - mcp-gateway
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    
+  # General MCP Server
+  general-mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/general-mcp-server/Dockerfile
+    hostname: general-mcp-server
+    ports:
+      - "3005:3000"
+    environment:
+      - NODE_ENV=production
+      - AGENT_MODEL=llama2-uncensored
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - COORDINATOR_URL=http://mcp-gateway:3001
+    depends_on:
+      - mcp-gateway
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Optional: Ollama service (uncomment if you want to run Ollama in Docker)
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+
+networks:
+  mcp-network:
+    driver: bridge
+
+# Uncomment if using Ollama service
+# volumes:
+#   ollama_data:

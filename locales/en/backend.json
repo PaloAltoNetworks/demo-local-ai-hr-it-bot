@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "cannotFulfillRequest": "I am unable to fulfill this request."
+  },
+  "status": {
+    "healthy": "Service is healthy",
+    "unhealthy": "Service is unavailable",
+    "allServicesOperational": "All services operational",
+    "mcpServicesUnavailable": "MCP services unavailable"
+  },
+  "mcp": {
+    "unavailableMessage": "I apologize, but our AI services are currently unavailable. This may be due to:\n\n• System maintenance\n• Network connectivity issues\n• Server overload\n\nPlease try again in a few minutes. For immediate assistance, you can:\n• Contact IT Helpdesk: ext. 1234\n• Contact HR: ext. 5678\n\nThank you for your patience."
+  },
+  "security": {
+    "detections": {
+      "injection": "an injection attempt",
+      "toxicContent": "toxic content",
+      "maliciousCode": "malicious code",
+      "dataLeak": "sensitive data leak",
+      "topicViolation": "topic policy violation",
+      "urlCategory": "unauthorized URL category content",
+      "suspiciousAgent": "suspicious agent behavior",
+      "ungrounded": "an ungrounded response",
+      "dbSecurity": "a database security issue"
+    },
+    "messages": {
+      "contentApproved": "Content approved",
+      "cannotProcessRequest": "I cannot process this request",
+      "cannotProvideResponse": "I cannot provide this response",
+      "containsIssues": "because it contains: {{issues}}.",
+      "policyViolation": "because it does not comply with the security policies in place.",
+      "rephraseRequest": "Please rephrase your question appropriately.",
+      "helpWithElse": "Can I help you with something else?"
+    },
+    "errors": {
+      "notConfigured": "I'm sorry, but the security system is not yet configured. Please contact the administrator to enable this feature.",
+      "serviceUnavailable": "I am sorry, but the security verification system is temporarily unavailable. Please try again in a few minutes."
+    }
+  }
+}

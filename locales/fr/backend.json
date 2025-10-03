@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "cannotFulfillRequest": "Je ne suis pas en mesure de satisfaire cette demande."
+  },
+  "status": {
+    "healthy": "Service en bon état",
+    "unhealthy": "Service indisponible",
+    "allServicesOperational": "Tous les services opérationnels",
+    "mcpServicesUnavailable": "Services MCP indisponibles"
+  },
+  "mcp": {
+    "unavailableMessage": "Je m'excuse, mais nos services IA sont actuellement indisponibles. Cela peut être dû à :\n\n• Maintenance du système\n• Problèmes de connectivité réseau\n• Surcharge du serveur\n\nVeuillez réessayer dans quelques minutes. Pour une assistance immédiate, vous pouvez :\n• Contacter le support IT : poste 1234\n• Contacter les RH : poste 5678\n\nMerci pour votre patience."
+  },
+  "security": {
+    "detections": {
+      "injection": "une tentative d'injection",
+      "toxicContent": "du contenu toxique",
+      "maliciousCode": "du code malveillant",
+      "dataLeak": "une fuite de données sensibles",
+      "topicViolation": "une violation de politique de sujet",
+      "urlCategory": "du contenu de catégorie d'URL non autorisée",
+      "suspiciousAgent": "un comportement d'agent suspect",
+      "ungrounded": "une réponse non fondée",
+      "dbSecurity": "un problème de sécurité base de données"
+    },
+    "messages": {
+      "contentApproved": "Contenu approuvé",
+      "cannotProcessRequest": "Je ne peux pas traiter cette demande",
+      "cannotProvideResponse": "Je ne peux pas fournir cette réponse",
+      "containsIssues": "car elle contient : {{issues}}.",
+      "policyViolation": "car elle ne respecte pas les politiques de sécurité en place.",
+      "rephraseRequest": "Veuillez reformuler votre question de manière appropriée.",
+      "helpWithElse": "Puis-je vous aider avec autre chose ?"
+    },
+    "errors": {
+      "notConfigured": "Je suis désolé, mais le système de sécurité n'est pas encore configuré. Veuillez contacter l'administrateur pour activer cette fonctionnalité.",
+      "serviceUnavailable": "Je suis désolé, mais le système de vérification de sécurité est temporairement indisponible. Veuillez réessayer dans quelques minutes."
+    }
+  }
+}

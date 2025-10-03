@@ -1,0 +1,28 @@
+{
+  "name": "chatbot-host",
+  "version": "1.0.0",
+  "description": "MCP Host - Chatbot user interface and API server",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "cors": "^2.8.5",
+    "axios": "^1.12.2",
+    "dotenv": "^17.2.3",
+    "i18next": "^25.5.2",
+    "i18next-fs-backend": "^2.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "keywords": [
+    "chatbot",
+    "mcp-host",
+    "ai-interface"
+  ],
+  "author": "Your Organization",
+  "license": "MIT"
+}
