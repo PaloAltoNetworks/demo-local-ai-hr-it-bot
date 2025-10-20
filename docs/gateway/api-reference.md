@@ -414,10 +414,6 @@ MIN_QUALITY_SCORE=0.7
 MIN_COMPLETENESS_SCORE=0.6
 MIN_CONFIDENCE_SCORE=0.7
 
-# Language Support
-SUPPORTED_LANGUAGES=en,fr,es,de,it,pt,zh,ja,ko,ar
-DEFAULT_LANGUAGE=en
-
 # Coordination Settings
 MAX_PARALLEL_SERVERS=5
 SEQUENTIAL_TIMEOUT=30000            # milliseconds
