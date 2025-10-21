@@ -86,14 +86,9 @@ class ITAgent extends MCPAgentBase {
       },
       async (uri, params) => {
         try {
-          console.log(`🔍 [${this.agentName}] Query resource handler called with URI: ${uri.href}`);
-          console.log(`🔍 [${this.agentName}] Resource params:`, params);
-          
           // Parse query from URI
           const urlObj = new URL(uri.href);
           const query = urlObj.searchParams.get('q');
-          
-          console.log(`🔍 [${this.agentName}] Processing enriched query: "${query}"`);
           
           if (!query) {
             throw new Error('No query parameter provided');
@@ -101,8 +96,6 @@ class ITAgent extends MCPAgentBase {
           
           // Process the enriched query that contains user context naturally embedded
           const response = await this.processQuery(query);
-          
-          console.log(`✅ [${this.agentName}] Query processed successfully`);
           
           return {
             contents: [{
@@ -156,14 +149,23 @@ class ITAgent extends MCPAgentBase {
    */
   getCapabilities() {
     return [
-      'IT ticket status and tracking',
-      'Technical troubleshooting support',
-      'System access and login assistance',
-      'Software and hardware support',
-      'IT policy and security guidance',
-      'System status and maintenance updates',
-      'Network and connectivity issues',
-      'Password reset and account management'
+      'IT ticket status tracking and resolution assistance',
+      'Technical troubleshooting with specific company context',
+      'System access, authentication, and login assistance',
+      'Software and hardware support with ticketing history',
+      'IT security policies, SSL/SSH keys, antivirus management',
+      'System status, maintenance windows, and patch management',
+      'Network connectivity, VPN, firewalls, and load balancing',
+      'Password reset, MFA, and account management',
+      'Cloud services (AWS, Azure, Google Cloud) support',
+      'Development tools and CI/CD pipeline assistance',
+      'Database connectivity and access management',
+      'Backup, disaster recovery, and data restoration',
+      'Application support (Teams, Slack, Zoom, Jira, Salesforce)',
+      'Hardware peripherals (monitors, printers, keyboards, webcams)',
+      'Issue pattern analysis and preventive recommendations',
+      'Escalation routing to appropriate technical teams',
+      'Recurring issue identification and workarounds'
     ];
   }
 
@@ -188,14 +190,48 @@ class ITAgent extends MCPAgentBase {
    */
   getKeywords() {
     return [
-      'ticket', 'support', 'issue', 'problem', 'bug', 'error',
-      'computer', 'laptop', 'desktop', 'hardware', 'software',
-      'network', 'wifi', 'internet', 'connection', 'login', 'password',
-      'email', 'outlook', 'access', 'permission', 'account',
-      'system', 'server', 'database', 'backup', 'security',
-      'antivirus', 'firewall', 'vpn', 'remote', 'printer',
-      'install', 'update', 'upgrade', 'configure', 'troubleshoot',
-      'it', 'technical', 'tech', 'help desk', 'support desk'
+      // Core IT terms
+      'ticket', 'incident', 'support', 'issue', 'problem', 'bug', 'error', 'failure',
+      'computer', 'laptop', 'desktop', 'workstation', 'hardware', 'software', 'device',
+      
+      // Networking
+      'network', 'wifi', 'wireless', 'internet', 'connection', 'connectivity', 'connected',
+      'vpn', 'firewall', 'router', 'bandwidth', 'speed', 'latency', 'ping', 'dns',
+      'load-balancer', 'proxy', 'ethernet', 'tcp', 'ip', 'port',
+      
+      // Authentication & Security
+      'login', 'password', 'authentication', 'access', 'permission', 'account', 'credential',
+      'mfa', '2fa', 'two-factor', 'security', 'ssl', 'certificate', 'ssh', 'key',
+      'antivirus', 'malware', 'virus', 'security', 'breach', 'encrypted', 'encryption',
+      
+      // Communication & Collaboration
+      'email', 'outlook', 'slack', 'teams', 'zoom', 'meeting', 'call', 'message',
+      'sharepoint', 'drive', 'storage', 'sync', 'synchronization', 'collaboration',
+      
+      // Systems & Services
+      'system', 'server', 'database', 'backup', 'restore', 'recovery', 'disaster',
+      'cloud', 'aws', 'azure', 'google', 'patch', 'update', 'upgrade', 'deployment',
+      
+      // Development & Tools
+      'git', 'github', 'gitlab', 'docker', 'container', 'ci', 'cd', 'pipeline',
+      'jira', 'github', 'ide', 'visual', 'code', 'python', 'node', 'npm', 'development',
+      
+      // Hardware & Peripherals
+      'printer', 'monitor', 'display', 'keyboard', 'mouse', 'usb', 'port', 'peripheral',
+      'webcam', 'microphone', 'audio', 'speaker', 'tablet', 'phone', 'mobile',
+      
+      // Applications
+      'application', 'app', 'software', 'office', 'excel', 'word', 'powerpoint',
+      'adobe', 'photoshop', 'illustrator', 'chrome', 'firefox', 'browser',
+      'salesforce', 'crm', 'erp', 'accounting', 'finance',
+      
+      // Actions & Issues
+      'install', 'uninstall', 'update', 'upgrade', 'configure', 'troubleshoot',
+      'crash', 'freeze', 'hang', 'slow', 'performance', 'lag', 'not working',
+      'cannot', "can't", 'unable', 'failed', 'failure', 'error', 'warning',
+      
+      // General IT
+      'it', 'technical', 'tech', 'help desk', 'support desk', 'it support', 'technical support'
     ];
   }
 
@@ -220,42 +256,89 @@ class ITAgent extends MCPAgentBase {
    * Get system prompt for IT agent
    */
   getSystemPrompt() {
-    return `You are an expert IT support specialist with access to the company's IT systems and ticket database. You must ONLY provide information that exists in the provided IT data.
+    return `You are an expert IT support specialist with comprehensive access to the company's IT systems, ticket database, and technical knowledge. Your role is to provide accurate, helpful IT support information.
 
 CORE RESPONSIBILITIES:
-- IT ticket status, tracking, and resolution
-- Technical troubleshooting and support guidance
-- System access and login assistance
-- Software and hardware support
-- IT policy and security guidance
-- System status and maintenance information
+- IT ticket status tracking and resolution assistance
+- Technical troubleshooting and diagnostic guidance
+- System access, login, and authentication support
+- Software and hardware support with specific company context
+- IT security policies, best practices, and incident response
+- System status, maintenance windows, and planned updates
+- Network connectivity and infrastructure issues
+- Cloud services, APIs, and development tools
+
+TICKET DATABASE CONTEXT:
+You have access to the company's IT ticket database containing real support tickets. When relevant to the user's query:
+- Reference specific ticket IDs, statuses, and resolution times
+- Identify patterns (e.g., recurring issues, common problem areas)
+- Provide context about assigned technicians and support teams
+- Track issue escalation and critical tickets
+- Understand the company's IT infrastructure and systems
 
 RESPONSE STYLE:
-- Be technical but accessible
-- Provide step-by-step troubleshooting when appropriate
-- Include specific ticket numbers, system names, or error codes when available
-- Offer escalation paths for complex issues
-- Use clear, actionable language
+- Be technical but clear and accessible to all employees
+- Provide specific, actionable information based on actual ticket data
+- Include relevant ticket numbers when discussing similar issues
+- Offer step-by-step guidance for common problems
+- Suggest escalation to specific technical teams when needed
+- Use professional, solution-oriented language
+- Provide estimated resolution times based on similar issues
+
+TECHNICAL EXPERTISE AREAS:
+- Network issues (VPN, WiFi, connectivity, firewalls, load balancing)
+- Application support (Microsoft Office, Slack, Teams, Zoom, Jira, GitLab, Salesforce)
+- Hardware (laptops, monitors, peripherals, printers, USB devices)
+- Software deployment, updates, and licensing
+- Security (SSL certificates, SSH keys, VPN, MDM, antivirus, firewalls)
+- Cloud services (AWS, Google Drive, Azure)
+- Development tools (Git, Docker, CI/CD, Node.js, Python, IDEs)
+- Database connectivity and access
+- Data backup, recovery, and disaster recovery
+- System administration and patching
+
+ANALYSIS CAPABILITIES:
+- Identify recurring technical issues from ticket history
+- Suggest preventive measures based on issue patterns
+- Provide context about system changes affecting multiple users
+- Recommend workarounds for known issues
+- Alert about critical issues or security concerns
 
 CRITICAL RULES:
-1. You must ONLY use information that is actually provided in the IT data context
-2. DO NOT make up ticket numbers, system statuses, or technical details
-3. If IT data shows specific tickets or issues, reference those EXACT details
-4. When providing troubleshooting steps, base them on actual company systems and policies
-5. Never invent system names, software versions, or technical specifications
+1. Base recommendations on actual company ticket data and real systems mentioned
+2. Reference specific ticket IDs and issue descriptions when relevant
+3. Provide accurate information about ticket statuses and assigned teams
+4. When suggesting solutions, acknowledge similar resolved tickets
+5. Always validate suggestions against known issues and resolutions
 
-DATA HANDLING:
-- If the context shows "No IT data found" or similar, respond: "I don't have access to current IT information. Please contact the IT help desk directly."
-- If you cannot find specific ticket or system information, say: "I don't have that information in our IT database."
-- If the query is completely outside IT scope, respond with "OUTSIDE_SCOPE"
-- For urgent issues, always suggest contacting IT support directly
+DATA-DRIVEN RESPONSES:
+- "Based on ticket INC-2025-XXXX, we resolved this by..." (when applicable)
+- "We've seen similar issues (tickets: INC-2025-..., INC-2025-...) resolved by..."
+- "Your issue matches ticket category: [category] - we typically resolve these in [time]"
+- Show employee names and roles when discussing related issues
+- Reference technician expertise when recommending escalation
 
-SECURITY:
-- Never provide sensitive system information like passwords or security keys
-- Always recommend proper security protocols
-- Escalate security-related issues appropriately
+SECURITY PROTOCOLS:
+- Never provide actual passwords or security credentials
+- Recommend secure authentication methods
+- Always escalate security incidents appropriately
+- Reference security ticket category when relevant
+- Emphasize importance of VPN, SSL, and access control
 
-NEVER invent ticket numbers, system statuses, or technical details. Always be truthful about data limitations.`;
+ESCALATION GUIDELINES:
+- Direct to Robert Taylor for network/infrastructure issues
+- Direct to Dmitri Volkov for systems/storage/virtualization
+- Direct to Lars Eriksson for security/SSL/SSH/certificates
+- Direct to Chloe Williams for software deployment/cloud
+- Direct to Mohammed Benali for applications/troubleshooting
+
+LIMITATIONS:
+- If information isn't in the ticket database, say: "I don't have that specific information in our IT database"
+- For queries outside IT scope, respond with: "This appears to be outside IT support scope"
+- For urgent security issues, always recommend immediate escalation
+
+TONE:
+Professional, helpful, and solution-focused. Balance technical depth with accessibility.`;
   }
 
   /**
@@ -287,13 +370,6 @@ USER QUERY: ${query}
 
 IT SPECIALIST RESPONSE:`;
 
-      // Log the full prompt being sent to Ollama
-      console.log(`📤 [${this.agentName}] SENDING TO OLLAMA:`);
-      console.log(`📤 [${this.agentName}] Model: ${this.preferredModel}`);
-      console.log(`📤 [${this.agentName}] Prompt length: ${itPrompt.length} characters`);
-      console.log(`📤 [${this.agentName}] Prompt preview (first 500 chars):`);
-      console.log(`📤 [${this.agentName}] ${itPrompt.substring(0, 500)}...`);
-
       const result = await this.ollama.generate({
         model: this.preferredModel,
         prompt: itPrompt,
@@ -301,13 +377,6 @@ IT SPECIALIST RESPONSE:`;
           temperature: 0.2 // Low temperature for accurate technical information
         }
       });
-
-      console.log(`📥 [${this.agentName}] RECEIVED FROM OLLAMA:`);
-      console.log(`📥 [${this.agentName}] Response length: ${result.response.length} characters`);
-      console.log(`📥 [${this.agentName}] Response preview (first 300 chars):`);
-      console.log(`📥 [${this.agentName}] ${result.response.substring(0, 300)}...`);
-
-      this.sendThinkingMessage("Finalizing IT support response...");
       
       return result.response;
       
