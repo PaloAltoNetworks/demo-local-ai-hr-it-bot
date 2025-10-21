@@ -151,7 +151,7 @@ class IntelligentCoordinator {
     
     // LLM Models
     this.coordinatorModel = process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b';
-    this.translationModel = process.env.TRANSLATION_MODEL || 'qwen2.5:1.5b';
+    this.translationModel = process.env.TRANSLATION_MODEL || 'qwen2.5-translator';
     
     // Security Phase 3 Integration
     // NOTE: Phase selection is done per-request via frontend UI, not at initialization
@@ -214,6 +214,13 @@ class IntelligentCoordinator {
       console.log(`✅ [Coordinator] Initialized - waiting for agent registrations...`);
       console.log(`🤖 [Coordinator] Using coordinator model: ${this.coordinatorModel}`);
       console.log(`🌍 [Coordinator] Using translation model: ${this.translationModel}`);
+      
+      // Warn if using extended thinking model
+      if (this.coordinatorModel.includes('qwen3') || this.coordinatorModel.includes('deepseek')) {
+        console.log(`⚠️  [Coordinator] WARNING: Using extended thinking model (${this.coordinatorModel})`);
+        console.log(`    Extended thinking may cause routing JSON to appear in the 'thinking' field`);
+        console.log(`    This is handled by the coordinator but may use more tokens`);
+      }
       
       if (this.prismaAIRS && this.prismaAIRS.isConfigured()) {
         console.log(`🔒 [Coordinator] Prisma AIRS security active`);
@@ -316,12 +323,7 @@ Query: "${query}"`;
         const selectedAgentId = this.findAgentIdByName(selectedAgentName);
         
         if (!selectedAgentId) {
-          console.warn(`🤔 [Coordinator] LLM selected unknown agent: "${selectedAgentName}", using fallback`);
-          // Fallback to first available agent
-          const fallbackAgentId = candidateAgentIds[0];
-          const fallbackAgent = this.registry.getAgent(fallbackAgentId);
-          console.log(`🎯 [Coordinator] Falling back to: ${fallbackAgent.name} agent (${fallbackAgentId})`);
-          return fallbackAgentId;
+          throw new Error(`LLM selected unknown agent: "${selectedAgentName}". LLM must select from registered agents: ${this.registry.getAllAgents().map(a => a.name).join(', ')}`);
         }
         
         const selectedAgent = this.registry.getAgent(selectedAgentId);
@@ -330,16 +332,8 @@ Query: "${query}"`;
       }
     } catch (error) {
       console.error('❌ [Coordinator] Routing failed:', error.message);
-      
-      // Fallback to any available agent
-      const allAgents = this.registry.getAllAgents();
-      if (allAgents.length > 0) {
-        const fallbackAgent = allAgents[0];
-        console.log(`🎯 [Coordinator] Falling back to: ${fallbackAgent.name} agent`);
-        return fallbackAgent.agentId;
-      }
-      
-      throw new Error('No agents available for routing');
+      // Propagate error up - don't silently fall back
+      throw error;
     }
   }
 
@@ -440,69 +434,96 @@ Specializes in:
 ${capabilities}`;
       }).join('\n');
 
-      const strategyPrompt = `Route this query to the most appropriate specialist agent(s) based on their announced capabilities.
+      const strategyPrompt = `You are a JSON-only router. Output ONLY the JSON object below. No thinking, no explanation.
 
-AVAILABLE AGENTS AND THEIR CAPABILITIES:
+AVAILABLE AGENTS:
 ${agentProfiles}
 
 USER QUERY: "${query}"
 
-INSTRUCTIONS:
-1. Match the query to agent capabilities (not predefined rules)
-2. Choose the agent whose capabilities best match the query requirements  
-3. Only use multiple agents if the query explicitly needs information from different specialists
-4. Base decisions entirely on the agent capability descriptions provided above
+Output this JSON format exactly (replace values in quotes):
+{"agents": [{"agent": "agent_name", "subQuery": "the query"}], "reasoning": "brief"}
 
-CRITICAL: You MUST respond ONLY with valid JSON. Do not include thinking, explanations, or any text outside the JSON structure.
-
-Required JSON format:
-{"agents": [{"agent": "agent_name", "subQuery": "the query or relevant part"}], "reasoning": "brief explanation based on agent capabilities"}`;
+Now output the JSON:
+{`;
 
       this.sendThinkingMessage(`🤖 Analyzing query routing strategy...`);
 
       const response = await this.ollama.generate({
         model: this.coordinatorModel,
         prompt: strategyPrompt,
-        system: 'You are a JSON-only query routing specialist. NEVER include <think> tags, explanations, or any text outside JSON. Respond with raw JSON only.',
+        system: `You are a JSON output formatter. You output ONLY valid JSON.
+Start with { and end with }
+Do not include any text before { or after }
+Do not think or reason
+Output JSON immediately`,
         options: { 
-          temperature: 0.0,  // Lower temperature for more consistent formatting
-          format: 'json',
-          num_predict: 150,
+          temperature: 0.0,
+          num_predict: 200,
+          stop: [],
         }
       });
 
       try {
-        
-        console.log(`🧠 [Coordinator] Extracted Raw:`, response.response);
+        // Validate response structure
+        if (!response) {
+          console.error(`❌ [Coordinator] LLM returned null/undefined response`, response);
+          throw new Error('LLM returned null/undefined response');
+        }
 
-        // Clean the response - sometimes LLM adds extra text
-        let jsonText = response.response.trim();
-        
-        // Extract JSON if it's wrapped in other text
-        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          jsonText = jsonMatch[0];
+        // Handle extended thinking models (qwen3, etc.) where content is in 'thinking' field
+        let responseContent = response.response;
+        if (!responseContent && response.thinking) {
+          console.log(`🧠 [Coordinator] Extended thinking detected, extracting from thinking field`);
+          responseContent = response.thinking;
         }
-        
-        // If no JSON found, create a fallback response based on text analysis
-        if (!jsonText || !jsonText.startsWith('{')) {
-          console.warn(`⚠️ [Coordinator] No valid JSON found, analyzing text for routing hints`);
-          const textResponse = response.response.toLowerCase();
-          let chosenAgent = 'general';
-          
-          if (textResponse.includes('hr') || textResponse.includes('manager') || textResponse.includes('employee')) {
-            chosenAgent = 'hr';
-          } else if (textResponse.includes('it') || textResponse.includes('technical') || textResponse.includes('system')) {
-            chosenAgent = 'it';
-          }
-          
-          jsonText = JSON.stringify({
-            agents: [{ agent: chosenAgent, subQuery: query }],
-            reasoning: 'Fallback routing due to invalid LLM response format'
+
+        if (!responseContent || responseContent.trim().length === 0) {
+          console.error(`❌ [Coordinator] LLM returned empty response`, {
+            hasResponse: !!response.response,
+            hasThinking: !!response.thinking,
+            responseLength: response.response?.length || 0,
+            thinkingLength: response.thinking?.length || 0
           });
+          throw new Error('LLM returned empty response and thinking');
+        }
+
+        console.log(`🧠 [Coordinator] Extracted Raw:`, responseContent.substring(0, 500)); // Log first 500 chars
+
+        // Clean the response - remove any markdown code blocks
+        let jsonText = responseContent.trim();
+        
+        // Remove markdown code blocks if present
+        if (jsonText.startsWith('```json')) {
+          jsonText = jsonText.substring(7);
+        }
+        if (jsonText.startsWith('```')) {
+          jsonText = jsonText.substring(3);
+        }
+        if (jsonText.endsWith('```')) {
+          jsonText = jsonText.substring(0, jsonText.length - 3);
+        }
+        jsonText = jsonText.trim();
+        
+        // Prepend { if the model didn't include it but should have
+        if (!jsonText.startsWith('{') && responseContent.includes('agents')) {
+          jsonText = '{' + jsonText;
         }
         
-        console.log(`🧠 [Coordinator] Extracted JSON:`, jsonText);
+        // Extract JSON - find from first { to last }
+        const firstBrace = jsonText.indexOf('{');
+        const lastBrace = jsonText.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+        }
+        
+        // Validate JSON is not empty
+        if (!jsonText || jsonText.length === 0 || !jsonText.includes('agents')) {
+          console.error(`❌ [Coordinator] LLM response produced no valid JSON content`);
+          throw new Error('LLM response produced no valid JSON content');
+        }
+        
+        console.log(`🧠 [Coordinator] Extracted JSON:`, jsonText.substring(0, 300)); // Log first 300 chars
         
         const strategy = JSON.parse(jsonText);
         
@@ -518,30 +539,18 @@ Required JSON format:
         console.log(`🧠 [Coordinator] Routing strategy:`, strategy);
         return strategy;
       } catch (parseError) {
-        console.warn(`⚠️ [Coordinator] Strategy JSON parsing failed:`, parseError.message);
-        console.warn(`⚠️ [Coordinator] Raw response was:`, response.response);
-        return this.createFallbackStrategy(query, candidateAgentIds);
+        console.error(`❌ [Coordinator] Strategy JSON parsing failed:`, parseError.message);
+        // Log both response and thinking fields if present
+        const rawContent = response?.response || response?.thinking || 'N/A';
+        console.error(`❌ [Coordinator] Raw response was:`, rawContent?.substring(0, 500));
+        console.error(`❌ [Coordinator] Full error:`, parseError);
+        throw new Error(`LLM routing failed - invalid JSON response. Please ensure LLM is returning valid JSON.`);
       }
     } catch (error) {
-      console.warn(`⚠️ [Coordinator] Strategy analysis failed:`, error.message);
-      return this.createFallbackStrategy(query, candidateAgentIds);
+      console.error(`❌ [Coordinator] Strategy analysis failed:`, error.message);
+      // Don't create a fallback strategy - let the error bubble up so we know LLM failed
+      throw error;
     }
-  }
-
-  /**
-   * Create fallback strategy for single agent routing
-   */
-  createFallbackStrategy(query, candidateAgentIds) {
-    const primaryAgent = this.registry.getAgent(candidateAgentIds[0]);
-    return {
-      requiresMultiple: false,
-      strategy: "single",
-      agents: [{
-        agent: primaryAgent.name,
-        subQuery: query
-      }],
-      reasoning: "Fallback to single agent due to analysis failure"
-    };
   }
 
   /**
@@ -870,11 +879,11 @@ Respond with JSON only:
         processedResponse = await this.translateResponse(processedResponse, targetLanguage);
       }
 
-      // Step 4: Final quality check - ensure response is concise and clear
-      if (processedResponse.length > 500) {
-        console.log(`📝 [Coordinator] Response is lengthy, making it more concise...`);
-        processedResponse = await this.makeConcise(processedResponse, originalQuery);
-      }
+      // // Step 4: Final quality check - ensure response is concise and clear
+      // if (processedResponse.length > 500) {
+      //   console.log(`📝 [Coordinator] Response is lengthy, making it more concise...`);
+      //   processedResponse = await this.makeConcise(processedResponse, originalQuery);
+      // }
 
       console.log(`✅ [Coordinator] Response processing completed`);
       return processedResponse;
