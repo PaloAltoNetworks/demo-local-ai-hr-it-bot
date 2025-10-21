@@ -304,12 +304,24 @@ Query: "${query}"`;
     console.log(`🧭 [Coordinator] Routing query: "${query}"`);
     
     try {
+      // Log all registered agents
+      const allAgents = this.registry.getAllAgents();
+      console.log(`📋 [Coordinator] Total registered agents: ${allAgents.length}`);
+      allAgents.forEach(agent => {
+        console.log(`   - ${agent.name} (${agent.agentId}) - ${agent.description.substring(0, 60)}...`);
+      });
+      
       // Use registry to find matching agents
       const candidateAgentIds = this.registry.findAgentsForQuery(query);
       
       if (candidateAgentIds.length === 0) {
         throw new Error('No registered agents available');
       }
+      
+      console.log(`✅ [Coordinator] Candidate agents for this query: ${candidateAgentIds.map(id => {
+        const agent = this.registry.getAgent(id);
+        return `${agent.name}`;
+      }).join(', ')}`);
 
       // Let LLM coordinator decide routing strategy and potential query splitting
       const routingStrategy = await this.analyzeRoutingStrategy(query, candidateAgentIds);
@@ -433,6 +445,12 @@ Description: ${agent.description}
 Specializes in:
 ${capabilities}`;
       }).join('\n');
+      
+      // Log available agents for routing
+      console.log(`📊 [Coordinator] Available agents for routing:`, candidateAgentIds.map(id => {
+        const agent = this.registry.getAgent(id);
+        return `${agent.name} (${id})`;
+      }).join(', '));
 
       const strategyPrompt = `You are a JSON-only router. Output ONLY the JSON object below. No thinking, no explanation.
 
@@ -440,6 +458,8 @@ AVAILABLE AGENTS:
 ${agentProfiles}
 
 USER QUERY: "${query}"
+
+Review each agent's description and specialties. Route to the agent whose specialization best matches the query.
 
 Output this JSON format exactly (replace values in quotes):
 {"agents": [{"agent": "agent_name", "subQuery": "the query"}], "reasoning": "brief"}
@@ -522,8 +542,6 @@ Output JSON immediately`,
           console.error(`❌ [Coordinator] LLM response produced no valid JSON content`);
           throw new Error('LLM response produced no valid JSON content');
         }
-        
-        console.log(`🧠 [Coordinator] Extracted JSON:`, jsonText.substring(0, 300)); // Log first 300 chars
         
         const strategy = JSON.parse(jsonText);
         
