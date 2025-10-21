@@ -328,7 +328,9 @@ Query: "${query}"`;
       
       if (routingStrategy.requiresMultiple) {
         console.log(`🔀 [Coordinator] Multi-agent query detected, splitting across: ${routingStrategy.agents.map(a => a.agent).join(', ')}`);
-        return await this.handleMultiAgentQuery(query, routingStrategy, phase, userContext);
+        const multiAgentResponse = await this.handleMultiAgentQuery(query, routingStrategy, phase, userContext);
+        // Return a special object to indicate this is a multi-agent final response
+        return { type: 'multi-agent-response', response: multiAgentResponse };
       } else {
         // Single agent routing - use the agent specified in the JSON response
         const selectedAgentName = routingStrategy.agents[0].agent;
@@ -340,7 +342,7 @@ Query: "${query}"`;
         
         const selectedAgent = this.registry.getAgent(selectedAgentId);
         console.log(`🎯 [Coordinator] Routed to: ${selectedAgent.name} agent (${selectedAgentId})`);
-        return selectedAgentId;
+        return { type: 'agent-id', agentId: selectedAgentId };
       }
     } catch (error) {
       console.error('❌ [Coordinator] Routing failed:', error.message);
@@ -459,10 +461,21 @@ ${agentProfiles}
 
 USER QUERY: "${query}"
 
-Review each agent's description and specialties. Route to the agent whose specialization best matches the query.
+CRITICAL INSTRUCTIONS:
+1. Review each agent's description and specialties carefully
+2. Determine if the query requires information from MULTIPLE agents
+3. If the query has distinct parts that belong to different specialties, route to MULTIPLE agents
+4. For example:
+   - "Who is my manager and which tickets require his approval?" → ["hr", "it"] (manager info from HR, tickets from IT)
+   - "What's my salary and computer status?" → ["hr", "it"] (salary from HR, computer from IT)
+   - "Show me my projects" → ["general"] (single agent)
+5. If routing to multiple agents, split the query into appropriate sub-queries for each
 
 Output this JSON format exactly (replace values in quotes):
-{"agents": [{"agent": "agent_name", "subQuery": "the query"}], "reasoning": "brief"}
+{"agents": [{"agent": "agent_name", "subQuery": "specific query for this agent"}], "reasoning": "brief"}
+
+For multiple agents:
+{"agents": [{"agent": "agent1", "subQuery": "query part 1"}, {"agent": "agent2", "subQuery": "query part 2"}], "reasoning": "brief"}
 
 Now output the JSON:
 {`;
@@ -1134,15 +1147,15 @@ Return only the concise version:`;
       this.sendThinkingMessage(`🎯 Determining the best routing strategy for your query...`);
       const routingResult = await this.routeQuery(translatedQuery, language, phase, userContext);
       
-      // routingResult is either a string (single agent ID) or the final response (multi-agent)
-      if (typeof routingResult === 'string') {
+      // routingResult is now always an object with type field
+      if (routingResult.type === 'agent-id') {
         // Single agent routing
-        const selectedAgent = this.registry.getAgent(routingResult);
+        const selectedAgent = this.registry.getAgent(routingResult.agentId);
         this.sendThinkingMessage(`📡 Connecting to ${selectedAgent.name} specialist...`);
 
         // Step 3: Query the selected agent
         this.sendThinkingMessage(`⏳ ${selectedAgent.name} specialist is processing your request...`);
-        const agentResponse = await this.queryAgent(routingResult, translatedQuery, userContext, language, phase);
+        const agentResponse = await this.queryAgent(routingResult.agentId, translatedQuery, userContext, language, phase);
         
         // Check if security blocked the response at Checkpoint 3
         if (agentResponse && agentResponse._securityBlock) {
@@ -1187,14 +1200,14 @@ Return only the concise version:`;
           translatedQuery: translatedQuery !== query ? translatedQuery : null
         };
       } else {
-        // Multi-agent response - routingResult is already the final response
+        // Multi-agent response - routingResult contains the final synthesized response
         this.sendThinkingMessage(`✅ Multi-agent coordination completed`);
         console.log(`✅ [Coordinator] Multi-agent response completed`);
         
         // Process multi-agent response
         this.sendThinkingMessage(`🔍 Processing and validating multi-agent response...`);
         const processedResponse = await this.processAgentResponse(
-          routingResult, 
+          routingResult.response, 
           query, 
           translatedQuery, 
           language, 
