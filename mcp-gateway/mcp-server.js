@@ -589,7 +589,7 @@ app.post('/api/agents/:agentId/heartbeat', (req, res) => {
 // Coordinator endpoints (routing and intelligence)
 app.post('/api/query', async (req, res) => {
   try {
-    const { query, language = 'en', phase = 'phase2', userContext } = req.body;
+    const { query, language = 'en', phase = 'phase2', userContext, streamThinking = false } = req.body;
     
     if (!query) {
       return res.status(400).json({
@@ -598,19 +598,57 @@ app.post('/api/query', async (req, res) => {
       });
     }
 
-    // ROUTING DECISION: Coordinator handles this
-    const result = await coordinator.processQuery(query, language, phase, userContext);
-    
-    res.json({
-      success: true,
-      ...result
-    });
+    // Check if client wants streaming thinking updates
+    if (streamThinking) {
+      // Set up streaming response
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      // Set callback for streaming thinking messages
+      coordinator.setStreamThinkingCallback((message) => {
+        res.write(JSON.stringify({ type: 'thinking', message: message }) + '\n');
+      });
+
+      // ROUTING DECISION: Coordinator handles this
+      const result = await coordinator.processQuery(query, language, phase, userContext);
+      
+      // Send final response
+      res.write(JSON.stringify({ 
+        type: 'response', 
+        success: true, 
+        ...result 
+      }) + '\n');
+      res.end();
+
+      // Clear callback
+      coordinator.setStreamThinkingCallback(null);
+    } else {
+      // Non-streaming mode (original behavior)
+      const result = await coordinator.processQuery(query, language, phase, userContext);
+      
+      res.json({
+        success: true,
+        ...result
+      });
+    }
   } catch (error) {
     console.error('❌ [MCPGateway] Query processing error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Internal server error during query processing'
-    });
+    
+    if (res.headersSent) {
+      // If headers already sent (streaming mode), send error as JSON line
+      res.write(JSON.stringify({ 
+        type: 'error', 
+        success: false, 
+        message: error.message || 'Internal server error during query processing' 
+      }) + '\n');
+      res.end();
+    } else {
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Internal server error during query processing'
+      });
+    }
   }
 });
 

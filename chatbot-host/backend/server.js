@@ -250,27 +250,107 @@ app.post('/api/process-prompt', async (req, res) => {
             // This uses the Intelligent Coordinator, not MCP tools
             const queryEndpoint = `${MCP_GATEWAY_URL}/api/query`;
             
-            const analysisResult = await axios.post(queryEndpoint, {
-                query: userMessage.content,
-                language: language || 'en',
-                phase: phase || 'phase2', // Pass security phase from frontend
-                userContext: {
-                    history: session.messageHistory.slice(-5),
-                    sessionId: session.sessionId
+            // If streaming is enabled, use streaming response handling
+            if (streamThinking) {
+                try {
+                    const response = await axios.post(queryEndpoint, {
+                        query: userMessage.content,
+                        language: language || 'en',
+                        phase: phase || 'phase1', // Pass security phase from frontend
+                        userContext: {
+                            history: session.messageHistory.slice(-5),
+                            sessionId: session.sessionId
+                        },
+                        streamThinking: true // Request streaming from coordinator
+                    }, {
+                        timeout: 1200000,
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        responseType: 'stream'
+                    });
+
+                    // Process streamed response
+                    await new Promise((resolve, reject) => {
+                        response.data.on('data', (chunk) => {
+                            const lines = chunk.toString().split('\n');
+                            lines.forEach(line => {
+                                if (line.trim()) {
+                                    try {
+                                        const data = JSON.parse(line);
+                                        if (data.type === 'thinking') {
+                                            // Forward thinking messages to client
+                                            sendThinkingUpdate(data.message);
+                                        } else if (data.type === 'response' && data.success) {
+                                            // Extract final response
+                                            sendThinkingUpdate('✅ Response received from MCP Gateway');
+                                            mcpResponse = {
+                                                role: 'assistant',
+                                                content: data.response
+                                            };
+                                        }
+                                    } catch (e) {
+                                        console.warn('⚠️ [ChatbotHost] Error parsing streamed response:', e);
+                                    }
+                                }
+                            });
+                        });
+
+                        response.data.on('error', reject);
+                        response.data.on('end', resolve);
+                    });
+                } catch (streamError) {
+                    console.warn('⚠️ [ChatbotHost] Streaming error, falling back to non-streaming mode:', streamError.message);
+                    // Fall back to non-streaming mode
+                    const analysisResult = await axios.post(queryEndpoint, {
+                        query: userMessage.content,
+                        language: language || 'en',
+                        phase: phase || 'phase1',
+                        userContext: {
+                            history: session.messageHistory.slice(-5),
+                            sessionId: session.sessionId
+                        },
+                        streamThinking: false
+                    }, {
+                        timeout: 1200000,
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (analysisResult.data && analysisResult.data.success && analysisResult.data.response) {
+                        sendThinkingUpdate('✅ Response received from MCP Gateway');
+                        mcpResponse = {
+                            role: 'assistant',
+                            content: analysisResult.data.response
+                        };
+                    }
                 }
-            }, {
-                timeout: 1200000,
-                headers: {
-                    'Content-Type': 'application/json'
+            } else {
+                // Non-streaming mode (original behavior)
+                const analysisResult = await axios.post(queryEndpoint, {
+                    query: userMessage.content,
+                    language: language || 'en',
+                    phase: phase || 'phase2', // Pass security phase from frontend
+                    userContext: {
+                        history: session.messageHistory.slice(-5),
+                        sessionId: session.sessionId
+                    },
+                    streamThinking: false
+                }, {
+                    timeout: 1200000,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (analysisResult.data && analysisResult.data.success && analysisResult.data.response) {
+                    sendThinkingUpdate('✅ Response received from MCP Gateway');
+                    mcpResponse = {
+                        role: 'assistant',
+                        content: analysisResult.data.response
+                    };
                 }
-            });
-            
-            if (analysisResult.data && analysisResult.data.success && analysisResult.data.response) {
-                sendThinkingUpdate('✅ Response received from MCP Gateway');
-                mcpResponse = {
-                    role: 'assistant',
-                    content: analysisResult.data.response
-                };
             }
         } catch (mcpError) {
             console.warn('⚠️ [ChatbotHost] MCP Gateway query failed:', mcpError.message);
