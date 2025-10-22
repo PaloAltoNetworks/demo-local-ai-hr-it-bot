@@ -48,7 +48,9 @@ services:
   hr-mcp-server:
     build:
       context: .
-      dockerfile: mcp-server/hr-mcp-server/Dockerfile
+      dockerfile: mcp-server/Dockerfile.agent
+      args:
+        AGENT_NAME: hr
     hostname: hr-mcp-server
     ports:
       - "3003:3000"
@@ -67,7 +69,9 @@ services:
   it-mcp-server:
     build:
       context: .
-      dockerfile: mcp-server/it-mcp-server/Dockerfile
+      dockerfile: mcp-server/Dockerfile.agent
+      args:
+        AGENT_NAME: it
     hostname: it-mcp-server
     ports:
       - "3004:3000"
@@ -86,7 +90,9 @@ services:
   general-mcp-server:
     build:
       context: .
-      dockerfile: mcp-server/general-mcp-server/Dockerfile
+      dockerfile: mcp-server/Dockerfile.agent
+      args:
+        AGENT_NAME: general
     hostname: general-mcp-server
     ports:
       - "3005:3000"

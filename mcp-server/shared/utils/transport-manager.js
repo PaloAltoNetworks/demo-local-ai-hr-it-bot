@@ -1,0 +1,248 @@
+/**
+ * HTTP transport and session management for MCP servers
+ */
+import express from 'express';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { randomUUID } from 'node:crypto';
+import { Logger } from './logger.js';
+
+class MCPTransportManager {
+  constructor(agentName, mcpServer) {
+    this.agentName = agentName;
+    this.mcpServer = mcpServer;
+    this.logger = new Logger(agentName);
+    this.transports = {};
+  }
+
+  /**
+   * Create and setup Express app with MCP handlers
+   */
+  createApp() {
+    const app = express();
+    app.use(express.json());
+
+    // Request logging middleware
+    app.use((req, res, next) => {
+      this.logger.request(req.method, req.url);
+      next();
+    });
+
+    // MCP endpoint handler
+    app.post('/mcp', async (req, res) => {
+      try {
+        await this._handleMCPRequest(req, res);
+      } catch (error) {
+        this.logger.error('MCP request handling failed', error);
+        if (!res.headersSent) {
+          res.status(500).json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32000,
+              message: `Request handling failed: ${error.message}`
+            },
+            id: null
+          });
+        }
+      }
+    });
+
+    // GET and DELETE handlers for session management
+    const handleSessionRequest = async (req, res) => {
+      const sessionId = req.headers['mcp-session-id'];
+      if (!sessionId || !this.transports[sessionId]) {
+        res.status(400).send('Invalid or missing session ID');
+        return;
+      }
+
+      const transport = this.transports[sessionId];
+      await transport.handleRequest(req, res);
+    };
+
+    app.get('/mcp', handleSessionRequest);
+    app.delete('/mcp', handleSessionRequest);
+
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+      res.json({
+        status: 'healthy',
+        agent: this.agentName,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    return app;
+  }
+
+  /**
+   * Handle MCP request (POST)
+   */
+  async _handleMCPRequest(req, res) {
+    const sessionId = req.headers['mcp-session-id'];
+    let transport = null;
+
+    // Reuse existing transport or create new one
+    if (sessionId && this.transports[sessionId]) {
+      this.logger.debug(`Reusing existing transport for session: ${sessionId}`);
+      transport = this.transports[sessionId];
+    } else if (!sessionId && isInitializeRequest(req.body)) {
+      this.logger.debug('Initialize request detected, creating new transport');
+      transport = await this._createNewTransport();
+    } else {
+      this.logger.error('Invalid request: No valid session or not an initialize request');
+      res.status(400).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Bad Request: Invalid session or request type'
+        },
+        id: null
+      });
+      return;
+    }
+
+    if (!transport) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Internal error: No transport available'
+        },
+        id: null
+      });
+      return;
+    }
+
+    // Handle specific request types with bypass for SDK issues
+    if (req.body.method === 'tools/call') {
+      await this._handleToolCall(req, res, transport);
+      return;
+    }
+
+    if (req.body.method === 'resources/list') {
+      await this._handleResourcesList(req, res, transport);
+      return;
+    }
+
+    // Standard MCP transport handling
+    await transport.handleRequest(req, res, req.body);
+    this.logger.success('Request completed successfully');
+  }
+
+  /**
+   * Create a new transport
+   */
+  async _createNewTransport() {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (sessionId) => {
+        this.logger.success(`Session initialized: ${sessionId}`);
+        this.transports[sessionId] = transport;
+      }
+    });
+
+    transport.onclose = () => {
+      this.logger.debug(`Transport closed for session: ${transport.sessionId}`);
+      if (transport.sessionId) {
+        delete this.transports[transport.sessionId];
+      }
+    };
+
+    try {
+      await this.mcpServer.connect(transport);
+      this.logger.success('Server connected to transport');
+    } catch (error) {
+      this.logger.error('Failed to connect server to transport', error);
+      throw error;
+    }
+
+    return transport;
+  }
+
+  /**
+   * Handle tool/call request
+   */
+  async _handleToolCall(req, res, transport) {
+    this.logger.debug('Handling tools/call request');
+    const { name, arguments: toolArgs } = req.body.params;
+
+    try {
+      let result;
+      switch (name) {
+        case 'process_query':
+          result = await this.mcpServer.agent.processQuery(
+            toolArgs.query,
+            toolArgs.context || {}
+          );
+          break;
+        case 'get_capabilities':
+          result = this.mcpServer.agent.getCapabilities();
+          break;
+        case 'health_check':
+          result = await this.mcpServer.agent.healthCheck();
+          break;
+        case 'can_handle':
+          result = this.mcpServer.agent.canHandle(toolArgs.query, toolArgs.context || {});
+          break;
+        default:
+          throw new Error(`Unknown tool: ${name}`);
+      }
+
+      this.logger.success(`Tool ${name} executed successfully`);
+      this._sendSSEResponse(res, transport.sessionId, req.body.id, {
+        content: [
+          {
+            type: 'text',
+            text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+          }
+        ]
+      });
+    } catch (error) {
+      this.logger.error(`Tool ${name} execution failed`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle resources/list request
+   */
+  async _handleResourcesList(req, res, transport) {
+    this.logger.debug('Handling resources/list request');
+
+    try {
+      const resources = this.mcpServer.agent.getResourcesList();
+      this.logger.success(`Found ${resources.length} registered resources`);
+
+      this._sendSSEResponse(res, transport.sessionId, req.body.id, {
+        resources
+      });
+    } catch (error) {
+      this.logger.error('Failed to list resources', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send SSE response
+   */
+  _sendSSEResponse(res, sessionId, requestId, result) {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'mcp-session-id': sessionId
+    });
+
+    const response = {
+      jsonrpc: '2.0',
+      id: requestId,
+      result
+    };
+
+    res.write(`event: message\n`);
+    res.write(`data: ${JSON.stringify(response)}\n\n`);
+    res.end();
+  }
+}
+
+export { MCPTransportManager };

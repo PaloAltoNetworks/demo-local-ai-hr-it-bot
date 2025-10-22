@@ -1,116 +1,185 @@
-import { MCPAgentBase } from './shared/mcp-agent-base.js';
-import { Ollama } from 'ollama';
-import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-
 /**
- * General Agent MCP Server
- * Fallback agent for general workplace questions and queries outside specialized domains
+ * General Agent MCP Server (Refactored)
+ * Fallback agent for general workplace questions
  */
+import { MCPAgentBase } from './shared/mcp-agent-base.js';
+import { ResourceManager } from './shared/utils/resource-manager.js';
+import { QueryProcessor } from './shared/utils/query-processor.js';
+
 class GeneralAgent extends MCPAgentBase {
   constructor() {
-    super('general', 'General workplace assistant for policies, navigation, and common questions');
-    
+    super(
+      'general',
+      'General workplace assistant for policies, navigation, and common questions'
+    );
+
     this.dataTypes = ['policies', 'procedures', 'general'];
-    this.preferredModel = process.env.AGENT_MODEL || 'llama3.2:3b';
-    this.ollama = new Ollama({ host: process.env.OLLAMA_URL || 'http://host.docker.internal:11434' });
+    this.queryProcessor = new QueryProcessor(this.agentName);
+    this.resourceManager = null;
   }
 
   /**
-   * Set up MCP resources for general data
+   * Setup MCP resources for general data
    */
   setupResources() {
-    // General workplace knowledge resource
-    this.server.registerResource(
-      "workplace-policies",
-      "general://policies",
+    this.resourceManager = new ResourceManager(this.agentName, this.server);
+
+    // Workplace policies resource
+    this.resourceManager.registerStaticResource(
+      'workplace-policies',
+      'general://policies',
       {
-        title: "Workplace Policies",
-        description: "General workplace policies, procedures, and guidelines",
-        mimeType: "text/plain"
+        title: 'Workplace Policies',
+        description: 'General workplace policies, procedures, and guidelines',
+        mimeType: 'text/plain'
       },
-      async (uri) => {
-        const policies = this.getWorkplacePolicies();
-        return {
-          contents: [{
+      async (uri) => ({
+        contents: [
+          {
             uri: uri.href,
-            text: policies
-          }]
-        };
-      }
+            text: this._getWorkplacePolicies()
+          }
+        ]
+      })
     );
 
-    // Query resource for processing general queries with user context
-    this.server.registerResource(
-      "query",
-      new ResourceTemplate('general://query{?q*}'),
+    // Query resource for processing general queries
+    this.resourceManager.registerTemplateResource(
+      'query',
+      {
+        uri: 'general://query{?q*}',
+        params: {}
+      },
       {
         title: 'General Query with User Context',
         description: 'Handle general queries with user context information',
         mimeType: 'text/plain'
       },
-      async (uri, params) => {
+      async (uri) => {
         try {
-          
-          // Parse query from URI
           const urlObj = new URL(uri.href);
           const query = urlObj.searchParams.get('q');
-          
-          console.log(`🔍 [${this.agentName}] Processing enriched query: "${query}"`);
-          
+
+          this.logger.debug(`Processing query: "${query}"`);
+
           if (!query) {
             throw new Error('No query parameter provided');
           }
-          
-          // Process the enriched query that contains user context naturally embedded
+
           const response = await this.processQuery(query);
-          
-          console.log(`✅ [${this.agentName}] Query processed successfully`);
-          
+
           return {
-            contents: [{
-              uri: uri.href,
-              text: response
-            }]
+            contents: [
+              {
+                uri: uri.href,
+                text: response
+              }
+            ]
           };
         } catch (error) {
-          console.error(`❌ [${this.agentName}] Query processing error:`, error);
+          this.logger.error('Query processing error', error);
           return {
-            contents: [{
-              uri: uri.href,
-              text: `Error processing query: ${error.message}`
-            }]
+            contents: [
+              {
+                uri: uri.href,
+                text: `Error processing query: ${error.message}`
+              }
+            ]
           };
         }
       }
     );
 
-    console.log(`📋 [${this.agentName}] General resources registered`);
+    this.resourceManager.logResourceSummary();
   }
 
   /**
-   * Get available resources for resources/list
+   * Get available resources
    */
   getAvailableResources() {
+    return this.resourceManager?.getResourcesList() || [];
+  }
+
+  /**
+   * Get agent capabilities
+   */
+  getCapabilities() {
     return [
-      {
-        uri: "general://policies",
-        name: "workplace-policies",
-        description: "General workplace policies, procedures, and guidelines",
-        mimeType: "text/plain"
-      },
-      {
-        uri: "general://query{?q*}",
-        name: "query",
-        description: "Handle general queries with user context information",
-        mimeType: "text/plain"
-      }
+      'Answer general workplace questions',
+      'Provide company policy information',
+      'Offer general guidance and support',
+      'Handle miscellaneous queries',
+      'Route users to appropriate specialists',
+      'Provide general navigation and orientation help',
+      'Handle queries outside specialized domains'
     ];
   }
 
   /**
-   * Get workplace policies and general information
+   * Get keywords for query matching
    */
-  getWorkplacePolicies() {
+  _getKeywords() {
+    return [
+      'help', 'question', 'policy', 'procedure', 'guideline',
+      'company', 'workplace', 'office', 'general', 'information',
+      'navigation', 'orientation', 'guidance', 'support',
+      'who', 'what', 'where', 'when', 'how', 'why',
+      'contact', 'department', 'location', 'building',
+      'schedule', 'hours', 'time', 'calendar'
+    ];
+  }
+
+  /**
+   * Check if agent can handle query
+   */
+  canHandle(query, context = {}) {
+    const keywords = this._getKeywords();
+    const queryLower = query.toLowerCase();
+
+    let score = 10; // Base score as fallback agent
+    keywords.forEach((keyword) => {
+      if (queryLower.includes(keyword.toLowerCase())) {
+        score += 8;
+      }
+    });
+
+    return Math.min(score, 60); // Cap at 60 for fallback priority
+  }
+
+  /**
+   * Get system prompt
+   */
+  _getSystemPrompt() {
+    return `You are a helpful general workplace assistant. You provide guidance on general workplace questions, company policies, and help users navigate to the right resources.
+
+CORE RESPONSIBILITIES:
+- Answer general workplace questions
+- Provide company policy information
+- Offer guidance and orientation help
+- Handle miscellaneous queries
+- Route users to appropriate specialists when needed
+
+RESPONSE STYLE:
+- Be helpful and friendly
+- Provide clear, actionable guidance
+- Suggest appropriate contacts when specific expertise is needed
+- Use conversational, supportive language
+- Keep responses concise but complete
+
+CRITICAL RULES:
+1. Do not make up specific data about employees, systems, or tickets
+2. Provide general guidance based on common workplace practices
+3. When you don't have specific information, direct users to the appropriate specialist
+4. Be honest about limitations
+5. For sensitive topics, recommend speaking with the appropriate department
+
+If a query requires specialized knowledge (HR, IT, legal, etc.), acknowledge the question but recommend contacting the appropriate specialist for accurate information.`;
+  }
+
+  /**
+   * Get workplace policies
+   */
+  _getWorkplacePolicies() {
     return `WORKPLACE POLICIES AND GENERAL INFORMATION
 
 WORKING HOURS:
@@ -146,176 +215,42 @@ IT POLICIES:
   }
 
   /**
-   * Get agent capabilities
-   */
-  getCapabilities() {
-    return [
-      'Answer general workplace questions',
-      'Provide company policy information',
-      'Offer general guidance and support',
-      'Handle miscellaneous queries',
-      'Route users to appropriate specialists',
-      'Provide general navigation and orientation help',
-      'Handle queries outside specialized domains'
-    ];
-  }
-
-  /**
-   * Get agent metadata
-   */
-  getMetadata() {
-    return {
-      name: 'general',
-      displayName: 'General Support Agent',
-      description: 'Fallback agent for general workplace questions and queries outside specialized domains',
-      version: '1.0.0',
-      category: 'General Support',
-      author: 'System',
-      tags: ['general', 'workplace', 'policies', 'guidance', 'fallback'],
-      preferredModel: this.preferredModel
-    };
-  }
-
-  /**
-   * Get keywords for query matching (broad keywords for general queries)
-   */
-  getKeywords() {
-    return [
-      'help', 'question', 'policy', 'procedure', 'guideline',
-      'company', 'workplace', 'office', 'general', 'information',
-      'navigation', 'orientation', 'guidance', 'support',
-      'who', 'what', 'where', 'when', 'how', 'why',
-      'contact', 'department', 'location', 'building',
-      'schedule', 'hours', 'time', 'calendar'
-    ];
-  }
-
-  /**
-   * Check if agent can handle query (lower confidence as fallback)
-   */
-  canHandle(query, context = {}) {
-    const keywords = this.getKeywords();
-    const queryLower = query.toLowerCase();
-    
-    let score = 10; // Base score as fallback agent
-    
-    keywords.forEach(keyword => {
-      if (queryLower.includes(keyword.toLowerCase())) {
-        score += 8; // Lower score increments for general keywords
-      }
-    });
-    
-    return Math.min(score, 60); // Cap at 60 to ensure specialized agents get priority
-  }
-
-  /**
-   * Get system prompt for General agent
-   */
-  getSystemPrompt() {
-    return `You are a helpful general workplace assistant. You provide guidance on general workplace questions, company policies, and help users navigate to the right resources.
-
-CORE RESPONSIBILITIES:
-- Answer general workplace questions
-- Provide company policy information
-- Offer guidance and orientation help
-- Handle miscellaneous queries
-- Route users to appropriate specialists when needed
-
-RESPONSE STYLE:
-- Be helpful and friendly
-- Provide clear, actionable guidance
-- Suggest appropriate contacts or departments when specific expertise is needed
-- Use conversational, supportive language
-- Keep responses concise but complete
-
-ROUTING GUIDANCE:
-- For employee information, leave, or salary questions: "For specific employee information, please contact HR"
-- For technical issues, system problems, or IT tickets: "For technical support, please contact the IT help desk"
-- For urgent matters: Always suggest appropriate escalation
-
-CRITICAL RULES:
-1. Do not make up specific data about employees, systems, or tickets
-2. Provide general guidance based on common workplace practices
-3. When you don't have specific information, direct users to the appropriate specialist
-4. Be honest about limitations - don't pretend to have access to specific systems or data
-5. For sensitive topics, always recommend speaking with the appropriate department directly
-
-GENERAL WORKPLACE KNOWLEDGE:
-- Standard business practices
-- Common workplace policies
-- General guidance on professional communication
-- Basic orientation information
-- Common workplace procedures
-
-If a query requires specialized knowledge (HR, IT, legal, etc.), acknowledge the question but recommend contacting the appropriate specialist for accurate, up-to-date information.`;
-  }
-
-  /**
-   * Process General query
+   * Process general query
    */
   async processQuery(query) {
-    this.sendThinkingMessage("Analyzing general workplace request...");
-    
+    this.sendThinkingMessage('Analyzing general workplace request...');
+
     try {
-      this.sendThinkingMessage("Providing general guidance and information...");
-      
-      // Create general-specific prompt (query now contains user context naturally)
-      const generalPrompt = `${this.getSystemPrompt()}
+      this.sendThinkingMessage('Providing general guidance and information...');
 
-USER QUERY: ${query}
+      const prompt = this._getSystemPrompt();
+      const response = await this.queryProcessor.processWithModel(prompt, query);
 
-GENERAL ASSISTANT RESPONSE:`;
+      this.sendThinkingMessage('Finalizing general response...');
 
-      // Log the full prompt being sent to Ollama
-      console.log(`📤 [${this.agentName}] SENDING TO OLLAMA:`);
-      console.log(`📤 [${this.agentName}] Model: ${this.preferredModel}`);
-      console.log(`📤 [${this.agentName}] Prompt length: ${generalPrompt.length} characters`);
-      console.log(`📤 [${this.agentName}] Prompt preview (first 500 chars):`);
-      console.log(`📤 [${this.agentName}] ${generalPrompt.substring(0, 500)}...`);
-
-      const result = await this.ollama.generate({
-        model: this.preferredModel,
-        prompt: generalPrompt,
-        options: {
-          temperature: 0.3
-        }
-      });
-
-      console.log(`📥 [${this.agentName}] RECEIVED FROM OLLAMA:`);
-      console.log(`📥 [${this.agentName}] Response length: ${result.response.length} characters`);
-      console.log(`📥 [${this.agentName}] Response preview (first 300 chars):`);
-      console.log(`📥 [${this.agentName}] ${result.response.substring(0, 300)}...`);
-
-      this.sendThinkingMessage("Finalizing general response...");
-      
-      return result.response;
-      
+      return response;
     } catch (error) {
-      console.error('❌ General Agent processing error:', error);
-      return "I encountered an error while processing your request. Please try rephrasing your question or contact the appropriate department for assistance.";
+      this.logger.error('General Agent processing error', error);
+      return 'I encountered an error while processing your request. Please try rephrasing your question or contact the appropriate department for assistance.';
     }
   }
 
   /**
-   * Health check with General-specific information
+   * Health check with agent-specific information
    */
   async healthCheck() {
     const baseHealth = await super.healthCheck();
-    
-    // Add General-specific health checks
+
     try {
-      const models = await this.ollama.list();
-      const ollamaHealth = {
-        status: 'healthy',
-        models: models.models?.map(m => m.name) || []
-      };
-      
+      const models = await this.queryProcessor.getAvailableModels();
       return {
         ...baseHealth,
-        ollama: ollamaHealth,
-        preferredModel: this.preferredModel,
+        ollama: {
+          status: 'healthy',
+          models
+        },
         dataTypes: this.dataTypes,
-        keywordCount: this.getKeywords().length
+        resources: this.getAvailableResources().length
       };
     } catch (error) {
       return {
@@ -324,9 +259,7 @@ GENERAL ASSISTANT RESPONSE:`;
           status: 'unhealthy',
           error: error.message
         },
-        preferredModel: this.preferredModel,
-        dataTypes: this.dataTypes,
-        keywordCount: this.getKeywords().length
+        dataTypes: this.dataTypes
       };
     }
   }
@@ -335,7 +268,7 @@ GENERAL ASSISTANT RESPONSE:`;
 // Start the MCP server if this file is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   const agent = new GeneralAgent();
-  agent.start().catch(error => {
+  agent.start().catch((error) => {
     console.error('❌ Failed to start General Agent MCP server:', error);
     process.exit(1);
   });

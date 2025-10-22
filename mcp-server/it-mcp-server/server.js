@@ -1,147 +1,161 @@
+/**
+ * IT Agent MCP Server (Refactored)
+ * Specialized agent for IT support and technical issues
+ */
 import path from 'path';
 import fs from 'fs/promises';
-import { MCPAgentBase } from './shared/mcp-agent-base.js';
-import { Ollama } from 'ollama';
-import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+
+import { MCPAgentBase } from './shared/mcp-agent-base.js';
+import { ResourceManager } from './shared/utils/resource-manager.js';
+import { QueryProcessor } from './shared/utils/query-processor.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/**
- * IT Agent MCP Server
- * Specialized agent for IT support and technical issues
- */
 class ITAgent extends MCPAgentBase {
   constructor() {
-    super('it', 'Specialized agent for IT support tickets, technical issues, and troubleshooting');
-    
+    super(
+      'it',
+      'Specialized agent for IT support tickets, technical issues, and troubleshooting'
+    );
+
     this.dataTypes = ['tickets', 'systems', 'hardware', 'software'];
-    this.preferredModel = process.env.AGENT_MODEL || 'llama3.2:3b';
-    this.ollama = new Ollama({ host: process.env.OLLAMA_URL || 'http://host.docker.internal:11434' });
+    this.queryProcessor = new QueryProcessor(this.agentName);
+    this.resourceManager = null;
+    this.ticketData = null;
   }
 
   /**
-   * Set up MCP resources for IT data
+   * Setup MCP resources for IT data
    */
   setupResources() {
+    this.resourceManager = new ResourceManager(this.agentName, this.server);
+
     // IT tickets database resource
-    this.server.registerResource(
-      "tickets",
-      "it://tickets",
+    this.resourceManager.registerStaticResource(
+      'tickets',
+      'it://tickets',
       {
-        title: "IT Tickets Database",
-        description: "Complete IT support tickets database with ticket IDs, statuses, priorities, assigned technicians, and resolution details",
-        mimeType: "text/csv"
+        title: 'IT Tickets Database',
+        description: 'Complete IT support tickets database with ticket details',
+        mimeType: 'text/csv'
       },
-      async (uri) => {
-        const ticketData = await this.fetchITData();
-        return {
-          contents: [{
+      async (uri) => ({
+        contents: [
+          {
             uri: uri.href,
-            text: ticketData
-          }]
-        };
-      }
+            text: await this._fetchITData()
+          }
+        ]
+      })
     );
 
     // Dynamic ticket resource
-    this.server.registerResource(
-      "ticket",
-      new ResourceTemplate("it://tickets/{ticketId}", { list: undefined }),
+    this.resourceManager.registerTemplateResource(
+      'ticket',
       {
-        title: "IT Ticket Details",
-        description: "Individual IT ticket information and status",
+        uri: 'it://tickets/{ticketId}',
+        params: {}
+      },
+      {
+        title: 'IT Ticket Details',
+        description: 'Individual IT ticket information and status',
         mimeType: 'text/plain'
       },
       async (uri, { ticketId }) => {
-        const ticketData = await this.fetchITData();
-        // Filter for specific ticket
-        const lines = ticketData.split('\n');
-        const header = lines[0];
-        const ticketRow = lines.find(line => 
-          line.toLowerCase().includes(ticketId.toLowerCase()) ||
-          line.startsWith(ticketId)
-        );
-        
-        const result = ticketRow ? `${header}\n${ticketRow}` : `Ticket ${ticketId} not found`;
-        return {
-          contents: [{
-            uri: uri.href,
-            text: result
-          }]
-        };
-      }
-    );
-
-    // Query resource for processing IT queries with user context
-    this.server.registerResource(
-      "query",
-      new ResourceTemplate('it://query{?q*}'),
-      {
-        title: 'IT Query with User Context',
-        description: 'Handle IT queries with user context information',
-        mimeType: 'text/plain'
-      },
-      async (uri, params) => {
         try {
-          // Parse query from URI
-          const urlObj = new URL(uri.href);
-          const query = urlObj.searchParams.get('q');
-          
-          if (!query) {
-            throw new Error('No query parameter provided');
-          }
-          
-          // Process the enriched query that contains user context naturally embedded
-          const response = await this.processQuery(query);
-          
+          const ticketData = await this._fetchITData();
+          const lines = ticketData.split('\n');
+          const header = lines[0];
+          const ticketRow = lines.find(
+            (line) =>
+              line.toLowerCase().includes(ticketId.toLowerCase()) ||
+              line.startsWith(ticketId)
+          );
+
+          const result = ticketRow
+            ? `${header}\n${ticketRow}`
+            : `Ticket ${ticketId} not found`;
+
           return {
-            contents: [{
-              uri: uri.href,
-              text: response
-            }]
+            contents: [
+              {
+                uri: uri.href,
+                text: result
+              }
+            ]
           };
         } catch (error) {
-          console.error(`❌ [${this.agentName}] Query processing error:`, error);
+          this.logger.error('Failed to fetch ticket', error);
           return {
-            contents: [{
-              uri: uri.href,
-              text: `Error processing query: ${error.message}`
-            }]
+            contents: [
+              {
+                uri: uri.href,
+                text: `Error fetching ticket: ${error.message}`
+              }
+            ]
           };
         }
       }
     );
 
-    console.log(`🎫 [${this.agentName}] IT resources registered`);
+    // Query resource for processing IT queries
+    this.resourceManager.registerTemplateResource(
+      'query',
+      {
+        uri: 'it://query{?q*}',
+        params: {}
+      },
+      {
+        title: 'IT Query with User Context',
+        description: 'Handle IT queries with user context information',
+        mimeType: 'text/plain'
+      },
+      async (uri) => {
+        try {
+          const urlObj = new URL(uri.href);
+          const query = urlObj.searchParams.get('q');
+
+          this.logger.debug(`Processing IT query: "${query}"`);
+
+          if (!query) {
+            throw new Error('No query parameter provided');
+          }
+
+          const response = await this.processQuery(query);
+
+          return {
+            contents: [
+              {
+                uri: uri.href,
+                text: response
+              }
+            ]
+          };
+        } catch (error) {
+          this.logger.error('Query processing error', error);
+          return {
+            contents: [
+              {
+                uri: uri.href,
+                text: `Error processing query: ${error.message}`
+              }
+            ]
+          };
+        }
+      }
+    );
+
+    this.resourceManager.logResourceSummary();
   }
 
   /**
-   * Get available resources for resources/list
+   * Get available resources
    */
   getAvailableResources() {
-    return [
-      {
-        uri: "it://tickets",
-        name: "tickets",
-        description: "Complete IT support tickets database with ticket IDs, statuses, priorities, assigned technicians, and resolution details",
-        mimeType: "text/csv"
-      },
-      {
-        uri: "it://tickets/{ticketId}",
-        name: "ticket",
-        description: "Individual IT ticket information and status",
-        mimeType: "text/plain"
-      },
-      {
-        uri: "it://query{?q*}",
-        name: "query",
-        description: "Handle IT queries with user context information",
-        mimeType: "text/plain"
-      }
-    ];
+    return this.resourceManager?.getResourcesList() || [];
   }
 
   /**
@@ -149,89 +163,30 @@ class ITAgent extends MCPAgentBase {
    */
   getCapabilities() {
     return [
-      'IT ticket status tracking and resolution assistance',
-      'Technical troubleshooting with specific company context',
-      'System access, authentication, and login assistance',
-      'Software and hardware support with ticketing history',
-      'IT security policies, SSL/SSH keys, antivirus management',
-      'System status, maintenance windows, and patch management',
-      'Network connectivity, VPN, firewalls, and load balancing',
-      'Password reset, MFA, and account management',
-      'Cloud services (AWS, Azure, Google Cloud) support',
-      'Development tools and CI/CD pipeline assistance',
-      'Database connectivity and access management',
-      'Backup, disaster recovery, and data restoration',
-      'Application support (Teams, Slack, Zoom, Jira, Salesforce)',
-      'Hardware peripherals (monitors, printers, keyboards, webcams)',
-      'Issue pattern analysis and preventive recommendations',
-      'Escalation routing to appropriate technical teams',
-      'Recurring issue identification and workarounds'
+      'Access IT support tickets and ticket history',
+      'Check ticket status and priority',
+      'Find ticket assignments and responsible technicians',
+      'Retrieve technical issue descriptions and symptoms',
+      'Check resolution details and closure information',
+      'Answer questions about system incidents',
+      'Provide IT policy information',
+      'Handle troubleshooting guidance for common issues'
     ];
-  }
-
-  /**
-   * Get agent metadata
-   */
-  getMetadata() {
-    return {
-      name: 'it',
-      displayName: 'IT Support Agent',
-      description: 'Specialized agent for IT support and technical issues including ticket management and troubleshooting',
-      version: '1.0.0',
-      category: 'Information Technology',
-      author: 'System',
-      tags: ['it', 'support', 'technical', 'tickets', 'troubleshooting', 'systems'],
-      preferredModel: this.preferredModel
-    };
   }
 
   /**
    * Get keywords for query matching
    */
-  getKeywords() {
+  _getKeywords() {
     return [
-      // Core IT terms
-      'ticket', 'incident', 'support', 'issue', 'problem', 'bug', 'error', 'failure',
-      'computer', 'laptop', 'desktop', 'workstation', 'hardware', 'software', 'device',
-      
-      // Networking
-      'network', 'wifi', 'wireless', 'internet', 'connection', 'connectivity', 'connected',
-      'vpn', 'firewall', 'router', 'bandwidth', 'speed', 'latency', 'ping', 'dns',
-      'load-balancer', 'proxy', 'ethernet', 'tcp', 'ip', 'port',
-      
-      // Authentication & Security
-      'login', 'password', 'authentication', 'access', 'permission', 'account', 'credential',
-      'mfa', '2fa', 'two-factor', 'security', 'ssl', 'certificate', 'ssh', 'key',
-      'antivirus', 'malware', 'virus', 'security', 'breach', 'encrypted', 'encryption',
-      
-      // Communication & Collaboration
-      'email', 'outlook', 'slack', 'teams', 'zoom', 'meeting', 'call', 'message',
-      'sharepoint', 'drive', 'storage', 'sync', 'synchronization', 'collaboration',
-      
-      // Systems & Services
-      'system', 'server', 'database', 'backup', 'restore', 'recovery', 'disaster',
-      'cloud', 'aws', 'azure', 'google', 'patch', 'update', 'upgrade', 'deployment',
-      
-      // Development & Tools
-      'git', 'github', 'gitlab', 'docker', 'container', 'ci', 'cd', 'pipeline',
-      'jira', 'github', 'ide', 'visual', 'code', 'python', 'node', 'npm', 'development',
-      
-      // Hardware & Peripherals
-      'printer', 'monitor', 'display', 'keyboard', 'mouse', 'usb', 'port', 'peripheral',
-      'webcam', 'microphone', 'audio', 'speaker', 'tablet', 'phone', 'mobile',
-      
-      // Applications
-      'application', 'app', 'software', 'office', 'excel', 'word', 'powerpoint',
-      'adobe', 'photoshop', 'illustrator', 'chrome', 'firefox', 'browser',
-      'salesforce', 'crm', 'erp', 'accounting', 'finance',
-      
-      // Actions & Issues
-      'install', 'uninstall', 'update', 'upgrade', 'configure', 'troubleshoot',
-      'crash', 'freeze', 'hang', 'slow', 'performance', 'lag', 'not working',
-      'cannot', "can't", 'unable', 'failed', 'failure', 'error', 'warning',
-      
-      // General IT
-      'it', 'technical', 'tech', 'help desk', 'support desk', 'it support', 'technical support'
+      'ticket', 'issue', 'problem', 'error', 'bug', 'support', 'help',
+      'system', 'software', 'hardware', 'network', 'connectivity',
+      'password', 'login', 'access', 'permission', 'account',
+      'printer', 'scanner', 'monitor', 'keyboard', 'mouse',
+      'email', 'outlook', 'slack', 'teams', 'application',
+      'crash', 'freeze', 'slow', 'broken', 'down',
+      'status', 'resolved', 'pending', 'assigned', 'priority',
+      'urgency', 'critical', 'high', 'medium', 'low'
     ];
   }
 
@@ -239,197 +194,271 @@ class ITAgent extends MCPAgentBase {
    * Check if agent can handle query
    */
   canHandle(query, context = {}) {
-    const keywords = this.getKeywords();
+    const keywords = this._getKeywords();
     const queryLower = query.toLowerCase();
-    
+
     let score = 0;
-    keywords.forEach(keyword => {
+    keywords.forEach((keyword) => {
       if (queryLower.includes(keyword.toLowerCase())) {
-        score += 15; // Higher score for IT keywords
+        score += 12;
       }
     });
-    
+
     return Math.min(score, 100);
   }
 
   /**
-   * Get system prompt for IT agent
+   * Analyze query to understand intent
    */
-  getSystemPrompt() {
-    return `You are an expert IT support specialist with comprehensive access to the company's IT systems, ticket database, and technical knowledge. Your role is to provide accurate, helpful IT support information.
+  _analyzeQuery(query) {
+    const queryLower = query.toLowerCase();
+    const analysis = {
+      type: 'general',
+      confidence: 0,
+      keywords: [],
+      entities: []
+    };
 
-CORE RESPONSIBILITIES:
-- IT ticket status tracking and resolution assistance
-- Technical troubleshooting and diagnostic guidance
-- System access, login, and authentication support
-- Software and hardware support with specific company context
-- IT security policies, best practices, and incident response
-- System status, maintenance windows, and planned updates
-- Network connectivity and infrastructure issues
-- Cloud services, APIs, and development tools
+    const patterns = {
+      ticket_lookup: /ticket|find ticket|lookup ticket|search ticket|ticket id/i,
+      issue_diagnosis: /issue|problem|error|troubleshoot|why|not working|slow|crash/i,
+      status_check: /status|pending|resolved|assigned|priority|urgency/i,
+      system_info: /system|software|hardware|network|connectivity|service/i,
+      access_issue: /access|login|password|permission|account|locked|reset/i,
+      device_issue: /printer|scanner|monitor|keyboard|mouse|device/i
+    };
 
-TICKET DATABASE CONTEXT:
-You have access to the company's IT ticket database containing real support tickets. When relevant to the user's query:
-- Reference specific ticket IDs, statuses, and resolution times
-- Identify patterns (e.g., recurring issues, common problem areas)
-- Provide context about assigned technicians and support teams
-- Track issue escalation and critical tickets
-- Understand the company's IT infrastructure and systems
+    for (const [type, pattern] of Object.entries(patterns)) {
+      if (pattern.test(queryLower)) {
+        analysis.type = type;
+        analysis.confidence = 85;
+        break;
+      }
+    }
 
-RESPONSE STYLE:
-- Be technical but clear and accessible to all employees
-- Provide specific, actionable information based on actual ticket data
-- Include relevant ticket numbers when discussing similar issues
-- Offer step-by-step guidance for common problems
-- Suggest escalation to specific technical teams when needed
-- Use professional, solution-oriented language
-- Provide estimated resolution times based on similar issues
+    analysis.keywords = this._getKeywords().filter((keyword) =>
+      queryLower.includes(keyword.toLowerCase())
+    );
 
-TECHNICAL EXPERTISE AREAS:
-- Network issues (VPN, WiFi, connectivity, firewalls, load balancing)
-- Application support (Microsoft Office, Slack, Teams, Zoom, Jira, GitLab, Salesforce)
-- Hardware (laptops, monitors, peripherals, printers, USB devices)
-- Software deployment, updates, and licensing
-- Security (SSL certificates, SSH keys, VPN, MDM, antivirus, firewalls)
-- Cloud services (AWS, Google Drive, Azure)
-- Development tools (Git, Docker, CI/CD, Node.js, Python, IDEs)
-- Database connectivity and access
-- Data backup, recovery, and disaster recovery
-- System administration and patching
+    // Extract ticket IDs (format: TKT-XXXX)
+    const ticketPattern = /TKT-\d+/gi;
+    analysis.entities = query.match(ticketPattern) || [];
 
-ANALYSIS CAPABILITIES:
-- Identify recurring technical issues from ticket history
-- Suggest preventive measures based on issue patterns
-- Provide context about system changes affecting multiple users
-- Recommend workarounds for known issues
-- Alert about critical issues or security concerns
+    return analysis;
+  }
 
-CRITICAL RULES:
-1. Base recommendations on actual company ticket data and real systems mentioned
-2. Reference specific ticket IDs and issue descriptions when relevant
-3. Provide accurate information about ticket statuses and assigned teams
-4. When suggesting solutions, acknowledge similar resolved tickets
-5. Always validate suggestions against known issues and resolutions
+  /**
+   * Preprocess ticket data
+   */
+  _preprocessTicketData(rawData, queryAnalysis) {
+    const lines = rawData.split('\n');
+    const header = lines[0];
+    const tickets = lines.slice(1).filter((line) => line.trim());
 
-DATA-DRIVEN RESPONSES:
-- "Based on ticket INC-2025-XXXX, we resolved this by..." (when applicable)
-- "We've seen similar issues (tickets: INC-2025-..., INC-2025-...) resolved by..."
-- "Your issue matches ticket category: [category] - we typically resolve these in [time]"
-- Show employee names and roles when discussing related issues
-- Reference technician expertise when recommending escalation
+    const processedData = {
+      header,
+      tickets,
+      ticketCount: tickets.length,
+      statuses: new Set(),
+      priorities: new Set(),
+      assignees: new Set(),
+      rawData
+    };
 
-SECURITY PROTOCOLS:
-- Never provide actual passwords or security credentials
-- Recommend secure authentication methods
-- Always escalate security incidents appropriately
-- Reference security ticket category when relevant
-- Emphasize importance of VPN, SSL, and access control
+    tickets.forEach((ticket) => {
+      const fields = this._parseCSVLine(ticket);
+      if (fields.length >= 6) {
+        processedData.statuses.add(fields[3]); // status
+        processedData.priorities.add(fields[4]); // priority
+        processedData.assignees.add(fields[5]); // assigned_to
+      }
+    });
 
-ESCALATION GUIDELINES:
-- Direct to Robert Taylor for network/infrastructure issues
-- Direct to Dmitri Volkov for systems/storage/virtualization
-- Direct to Lars Eriksson for security/SSL/SSH/certificates
-- Direct to Chloe Williams for software deployment/cloud
-- Direct to Mohammed Benali for applications/troubleshooting
+    return processedData;
+  }
 
-LIMITATIONS:
-- If information isn't in the ticket database, say: "I don't have that specific information in our IT database"
-- For queries outside IT scope, respond with: "This appears to be outside IT support scope"
-- For urgent security issues, always recommend immediate escalation
+  /**
+   * Parse CSV line
+   */
+  _parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
 
-TONE:
-Professional, helpful, and solution-focused. Balance technical depth with accessibility.`;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current.trim());
+    return result;
+  }
+
+  /**
+   * Build contextual prompt for query
+   */
+  _buildContextualPrompt(analysis, processedData) {
+    let prompt = `IT Tickets Database (${processedData.ticketCount} tickets):\n${processedData.rawData}`;
+
+    if (analysis.type.includes('status') || analysis.type.includes('ticket')) {
+      prompt += `\n\nTICKET SUMMARY:\n`;
+      prompt += `Statuses: ${Array.from(processedData.statuses).join(', ')}\n`;
+      prompt += `Priorities: ${Array.from(processedData.priorities).join(', ')}\n`;
+    }
+
+    if (analysis.type.includes('assigned') || analysis.type.includes('ticket')) {
+      prompt += `\n\nASSIGNMENT INFO:\n`;
+      prompt += `Assigned To: ${Array.from(processedData.assignees).join(', ')}\n`;
+    }
+
+    return prompt;
+  }
+
+  /**
+   * Get system prompt
+   */
+  _getSystemPrompt() {
+    return `You are an IT support specialist AI assistant with access to the IT ticketing system.
+
+## DATABASE STRUCTURE:
+- ticket_id: Unique ticket identifier (TKT-XXXX)
+- title: Short description of the issue
+- description: Detailed issue description
+- status: Current ticket status (Open, In Progress, Resolved, Closed)
+- priority: Issue priority (Critical, High, Medium, Low)
+- assigned_to: Technician handling the ticket
+- created_date: When the ticket was created
+- resolution: How the issue was resolved
+- notes: Additional notes or comments
+
+## CORE CAPABILITIES:
+✅ Ticket Lookup & Status Checking
+✅ Issue Diagnosis & Troubleshooting
+✅ Assignment & Responsibility Information
+✅ Priority & Urgency Assessment
+✅ Resolution & Closure Tracking
+✅ Technical Support Guidance
+
+## CRITICAL RULES:
+🔒 NEVER invent or assume ticket information
+🔒 Only use data explicitly present in the ticket database
+🔒 All ticket IDs and assignments must match database exactly
+🔒 When accessing sensitive systems, recommend official IT channels
+🔒 If query is outside IT domain, respond with "OUTSIDE_SCOPE"
+
+## RESPONSE GUIDELINES:
+- Precise Data: Only use information from the tickets database
+- Clear Formatting: Present ticket information in organized format
+- Complete Context: Include ticket status, priority, and assignment
+- Professional Tone: Maintain security and confidentiality standards
+- Error Handling: Clearly state when ticket information is not available
+
+## TROUBLESHOOTING APPROACH:
+1. Identify the specific issue or device affected
+2. Check if a related ticket already exists
+3. Provide basic troubleshooting steps if available
+4. Escalate to appropriate technician if needed
+5. Follow up with ticket status updates`;
+  }
+
+  /**
+   * Fetch IT ticket data from CSV
+   */
+  async _fetchITData() {
+    if (this.ticketData) {
+      return this.ticketData;
+    }
+
+    try {
+      const csvPath = path.join(__dirname, 'tickets.csv');
+      const csvData = await fs.readFile(csvPath, 'utf8');
+
+      const lines = csvData.split('\n').filter((line) => line.trim());
+      const ticketCount = Math.max(0, lines.length - 1);
+
+      this.logger.debug(`Loaded IT tickets database: ${ticketCount} tickets`);
+
+      this.ticketData = `IT TICKETS DATABASE (${ticketCount} tickets):
+${csvData}
+
+DATABASE FIELDS:
+- ticket_id: Unique ticket identifier (TKT-XXXX)
+- title: Short issue description
+- description: Detailed issue description
+- status: Current status (Open, In Progress, Resolved, Closed)
+- priority: Priority level (Critical, High, Medium, Low)
+- assigned_to: Assigned technician
+- created_date: Ticket creation date
+- resolution: Resolution details
+- notes: Additional notes`;
+
+      return this.ticketData;
+    } catch (error) {
+      this.logger.error('Failed to fetch IT data', error);
+      throw new Error('IT tickets database is not available. Please contact IT support.');
+    }
   }
 
   /**
    * Process IT query
    */
   async processQuery(query) {
-    this.sendThinkingMessage("Analyzing IT support request...");
-    
+    this.sendThinkingMessage('Analyzing IT support request...');
+
     try {
-      // Fetch IT ticket data - this will throw if no data available
-      let itData;
-      try {
-        itData = await this.fetchITData();
-      } catch (dataError) {
-        this.sendThinkingMessage("❌ IT ticket database is not available");
-        console.error(`❌ [${this.agentName}] Database unavailable:`, dataError.message);
-        return "I'm sorry, but the IT ticket database is currently unavailable. Please contact IT support to restore the ticket data file. I cannot provide IT support information without access to the ticket database.";
-      }
-      
-      this.sendThinkingMessage("Checking IT systems and ticket database...");
-      
-      // Create IT-specific prompt (query now contains user context naturally)
-      const itPrompt = `${this.getSystemPrompt()}
+      const queryAnalysis = this._analyzeQuery(query);
+      this.sendThinkingMessage(
+        `Query type: ${queryAnalysis.type} (confidence: ${queryAnalysis.confidence}%)`
+      );
 
-IT DATA CONTEXT:
-${itData}
+      const rawTicketData = await this._fetchITData();
+      const processedData = this._preprocessTicketData(rawTicketData, queryAnalysis);
+      this.sendThinkingMessage(
+        `Accessing ticket database (${processedData.ticketCount} tickets)...`
+      );
 
-USER QUERY: ${query}
+      const contextualPrompt = this._buildContextualPrompt(queryAnalysis, processedData);
 
-IT SPECIALIST RESPONSE:`;
+      const systemPrompt = this._getSystemPrompt();
+      const fullPrompt = `${systemPrompt}\n\n## QUERY ANALYSIS:\nType: ${queryAnalysis.type}\nKeywords: ${queryAnalysis.keywords.join(', ')}\n\n## TICKET DATABASE CONTEXT:\n${contextualPrompt}`;
 
-      const result = await this.ollama.generate({
-        model: this.preferredModel,
-        prompt: itPrompt,
-        options: {
-          temperature: 0.2 // Low temperature for accurate technical information
-        }
-      });
-      
-      return result.response;
-      
+      this.sendThinkingMessage('Preparing IT support analysis...');
+
+      const response = await this.queryProcessor.processWithModel(fullPrompt, query);
+
+      this.sendThinkingMessage('Finalizing IT support response...');
+
+      return response;
     } catch (error) {
-      console.error('❌ IT Agent processing error:', error);
-      return "I encountered an error while accessing IT information. Please contact the IT help desk directly for immediate assistance.";
+      this.logger.error('IT Agent processing error', error);
+      return 'I encountered an error while accessing IT support information. Please try again or contact IT support directly.';
     }
   }
-
-  /**
-   * Fetch IT data (reads from local data file)
-   */
-  async fetchITData(context = {}) {
-    try {
-      // Read from the local tickets.csv file in the agent directory
-      const csvPath = path.join(__dirname, 'tickets.csv');
-      
-      try {
-        const csvData = await fs.readFile(csvPath, 'utf8');
-        return `IT Ticket Database:\n${csvData}`;
-      } catch (fileError) {
-        console.error('❌ No tickets.csv found in IT agent directory:', fileError.message);
-        throw new Error('IT ticket database is not available. Please contact IT support to restore the ticket data file.');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error fetching IT data:', error);
-      throw error; // Propagate the error instead of returning fallback message
-    }
-  }
-
-
 
   /**
    * Health check with IT-specific information
    */
   async healthCheck() {
     const baseHealth = await super.healthCheck();
-    
-    // Add IT-specific health checks
+
     try {
-      const models = await this.ollama.list();
-      const ollamaHealth = {
-        status: 'healthy',
-        models: models.models?.map(m => m.name) || []
-      };
-      
+      const models = await this.queryProcessor.getAvailableModels();
       return {
         ...baseHealth,
-        ollama: ollamaHealth,
-        preferredModel: this.preferredModel,
+        ollama: {
+          status: 'healthy',
+          models
+        },
         dataTypes: this.dataTypes,
-        keywordCount: this.getKeywords().length
+        resources: this.getAvailableResources().length
       };
     } catch (error) {
       return {
@@ -438,9 +467,7 @@ IT SPECIALIST RESPONSE:`;
           status: 'unhealthy',
           error: error.message
         },
-        preferredModel: this.preferredModel,
-        dataTypes: this.dataTypes,
-        keywordCount: this.getKeywords().length
+        dataTypes: this.dataTypes
       };
     }
   }
@@ -449,7 +476,7 @@ IT SPECIALIST RESPONSE:`;
 // Start the MCP server if this file is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   const agent = new ITAgent();
-  agent.start().catch(error => {
+  agent.start().catch((error) => {
     console.error('❌ Failed to start IT Agent MCP server:', error);
     process.exit(1);
   });

@@ -1,0 +1,35 @@
+# Dockerfile.agent - Template for MCP Agent servers
+# Usage: Build with agent name parameter
+# docker build -f Dockerfile.agent --build-arg AGENT_NAME=general -t general-agent-mcp .
+
+ARG AGENT_NAME=general
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+ARG AGENT_NAME
+
+# Copy shared package files
+COPY mcp-server/shared/package*.json ./shared/
+# Copy agent-specific package files
+COPY mcp-server/${AGENT_NAME}-mcp-server/package*.json ./
+
+# Install dependencies
+RUN npm install && \
+    cd shared && npm install
+
+# Copy source files
+COPY mcp-server/shared ./shared
+COPY mcp-server/${AGENT_NAME}-mcp-server/server.js ./server.js
+
+# Copy data files (CSV) for agents that need them
+COPY mcp-server/${AGENT_NAME}-mcp-server/*.csv ./
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD node -e "console.log('Health Check - OK')" || exit 1
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
