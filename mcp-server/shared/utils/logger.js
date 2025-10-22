@@ -6,8 +6,13 @@ class Logger {
     this.agentName = agentName;
   }
 
+  _getTimestamp() {
+    const now = new Date();
+    return now.toISOString();
+  }
+
   _formatMessage(message) {
-    return `[${this.agentName.toUpperCase()}] ${message}`;
+    return `[${this._getTimestamp()}] [${this.agentName.toUpperCase()}] ${message}`;
   }
 
   debug(message, data = null) {
