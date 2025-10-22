@@ -743,21 +743,30 @@ SYNTHESIZED RESPONSE:`;
     }
 
     try {
+      let securityCheckResult = { maskedQuery: null, hasMasking: false };
+      
       // CHECKPOINT 2: Analyze outbound request security (use passed phase)
       if (shouldUsePrismaAIRS(phase)) {
         console.log(`🔒 [Coordinator] Phase 3 active - Running Security Checkpoint 2: Outbound Request to ${agent.name}`);
-        const outboundSecurity = await this.analyzeOutboundRequest(query, agent.name, language);
-        if (!outboundSecurity.approved) {
-          console.log(`🚫 [Coordinator] Security Checkpoint 2 BLOCKED: ${outboundSecurity.category}`);
-          throw new Error(`Security blocked outbound request to ${agent.name}: ${outboundSecurity.message}`);
+        securityCheckResult = await this.analyzeOutboundRequest(query, agent.name, language);
+        if (!securityCheckResult.approved) {
+          console.log(`🚫 [Coordinator] Security Checkpoint 2 BLOCKED: ${securityCheckResult.category}`);
+          throw new Error(`Security blocked outbound request to ${agent.name}: ${securityCheckResult.message}`);
         }
         console.log(`✅ [Coordinator] Security Checkpoint 2 PASSED`);
+        
+        // If sensitive data was detected and masked, use the masked query instead
+        if (securityCheckResult.hasMasking) {
+          console.log(`🔒 [Coordinator] Using masked query for agent (sensitive data detected)`);
+        }
       }
 
       this.sendThinkingMessage(`🔗 Establishing connection with ${agent.name}...`);
       
       // Build enriched query with user context embedded naturally
-      let enrichedQuery = query;
+      // Use masked query if sensitive data was detected, otherwise use original query
+      const queryToSend = securityCheckResult.maskedQuery || query;
+      let enrichedQuery = queryToSend;
       
       // Add user context to the query as natural language if provided
       if (userContext) {
@@ -804,6 +813,7 @@ SYNTHESIZED RESPONSE:`;
         const responseText = response.result.contents[0].text;
         
         // CHECKPOINT 3: Analyze inbound response security (use passed phase)
+        let responseToReturn = responseText;
         if (shouldUsePrismaAIRS(phase)) {
           console.log(`🔒 [Coordinator] Phase 3 active - Running Security Checkpoint 3: Inbound Response from ${agent.name}`);
           const inboundSecurity = await this.analyzeInboundResponse(query, responseText, agent.name, language);
@@ -818,9 +828,15 @@ SYNTHESIZED RESPONSE:`;
             };
           }
           console.log(`✅ [Coordinator] Security Checkpoint 3 PASSED`);
+          
+          // If sensitive data was detected and masked in the response, use the masked response
+          if (inboundSecurity.hasMasking) {
+            responseToReturn = inboundSecurity.maskedResponse;
+            console.log(`🔒 [Coordinator] Using masked response (sensitive data detected)`);
+          }
         }
         
-        return responseText;
+        return responseToReturn;
       } else {
         console.error(`❌ [Coordinator] Invalid response format from ${agent.name}:`, response);
         throw new Error('No valid response from agent');
@@ -1010,7 +1026,7 @@ Return only the concise version:`;
    */
   async analyzeUserInput(query, language = 'en') {
     if (!this.prismaAIRS || !this.prismaAIRS.isConfigured()) {
-      return { approved: true, message: 'Security not configured' };
+      return { approved: true, message: 'Security not configured', originalQuery: query };
     }
 
     console.log('🔒 [Coordinator] Security Checkpoint 1: Analyzing user input');
@@ -1027,7 +1043,20 @@ Return only the concise version:`;
       console.log('🚫 [Coordinator] User input BLOCKED by security');
     }
 
-    return result;
+    // Extract masked prompt if sensitive data was detected
+    let maskedQuery = query;
+    if (result.maskedData?.prompt?.data) {
+      maskedQuery = result.maskedData.prompt.data;
+      console.log(`🔒 [Coordinator] Sensitive data detected in user input - using masked query`);
+      console.log(`🔒 Detections:`, result.maskedData.prompt.pattern_detections || []);
+    }
+
+    return {
+      ...result,
+      originalQuery: query,
+      maskedQuery: maskedQuery,
+      hasMasking: maskedQuery !== query
+    };
   }
 
   /**
@@ -1035,7 +1064,7 @@ Return only the concise version:`;
    */
   async analyzeOutboundRequest(subQuery, serverName, language = 'en') {
     if (!this.prismaAIRS || !this.prismaAIRS.isConfigured()) {
-      return { approved: true, message: 'Security not configured' };
+      return { approved: true, message: 'Security not configured', originalQuery: subQuery };
     }
 
     console.log(`🔒 [Coordinator] Security Checkpoint 2: Analyzing outbound request to ${serverName}`);
@@ -1052,7 +1081,20 @@ Return only the concise version:`;
       console.log(`🚫 [Coordinator] Outbound request to ${serverName} BLOCKED by security`);
     }
 
-    return result;
+    // Extract masked prompt if sensitive data was detected
+    let maskedQuery = subQuery;
+    if (result.maskedData?.prompt?.data) {
+      maskedQuery = result.maskedData.prompt.data;
+      console.log(`🔒 [Coordinator] Sensitive data detected - using masked prompt for outbound request`);
+      console.log(`🔒 Detections:`, result.maskedData.prompt.pattern_detections || []);
+    }
+
+    return {
+      ...result,
+      originalQuery: subQuery,
+      maskedQuery: maskedQuery,
+      hasMasking: maskedQuery !== subQuery
+    };
   }
 
   /**
@@ -1060,7 +1102,7 @@ Return only the concise version:`;
    */
   async analyzeInboundResponse(prompt, response, serverName, language = 'en') {
     if (!this.prismaAIRS || !this.prismaAIRS.isConfigured()) {
-      return { approved: true, message: 'Security not configured' };
+      return { approved: true, message: 'Security not configured', originalResponse: response };
     }
 
     console.log(`🔒 [Coordinator] Security Checkpoint 3: Analyzing inbound response from ${serverName}`);
@@ -1077,7 +1119,20 @@ Return only the concise version:`;
       console.log(`🚫 [Coordinator] Inbound response from ${serverName} BLOCKED by security`);
     }
 
-    return result;
+    // Extract masked response if sensitive data was detected
+    let maskedResponse = response;
+    if (result.maskedData?.response?.data) {
+      maskedResponse = result.maskedData.response.data;
+      console.log(`🔒 [Coordinator] Sensitive data detected in response - using masked response`);
+      console.log(`🔒 Detections:`, result.maskedData.response.pattern_detections || []);
+    }
+
+    return {
+      ...result,
+      originalResponse: response,
+      maskedResponse: maskedResponse,
+      hasMasking: maskedResponse !== response
+    };
   }
 
   /**
@@ -1085,7 +1140,7 @@ Return only the concise version:`;
    */
   async analyzeFinalResponse(prompt, response, language = 'en') {
     if (!this.prismaAIRS || !this.prismaAIRS.isConfigured()) {
-      return { approved: true, message: 'Security not configured' };
+      return { approved: true, message: 'Security not configured', originalResponse: response };
     }
 
     console.log('🔒 [Coordinator] Security Checkpoint 4: Analyzing final coordinated response');
@@ -1102,7 +1157,20 @@ Return only the concise version:`;
       console.log('🚫 [Coordinator] Final response BLOCKED by security');
     }
 
-    return result;
+    // Extract masked response if sensitive data was detected
+    let maskedResponse = response;
+    if (result.maskedData?.response?.data) {
+      maskedResponse = result.maskedData.response.data;
+      console.log(`🔒 [Coordinator] Sensitive data detected in final response - using masked response`);
+      console.log(`🔒 Detections:`, result.maskedData.response.pattern_detections || []);
+    }
+
+    return {
+      ...result,
+      originalResponse: response,
+      maskedResponse: maskedResponse,
+      hasMasking: maskedResponse !== response
+    };
   }
 
   /**
@@ -1115,6 +1183,8 @@ Return only the concise version:`;
 
     console.log(`🎬 [Coordinator] Processing query: "${query}" (${language}, Phase: ${phase})`);
     this.sendThinkingMessage(`🔍 Analyzing your question...`);
+    
+    let queryToProcess = query;
     
     try {
       // CHECKPOINT 1: Analyze user input security (use passed phase, not instance variable)
@@ -1132,12 +1202,20 @@ Return only the concise version:`;
           };
         }
         console.log(`✅ [Coordinator] Security Checkpoint 1 PASSED`);
+        
+        // If sensitive data was detected and masked, use the masked query for all downstream processing
+        if (inputSecurity.hasMasking) {
+          queryToProcess = inputSecurity.maskedQuery;
+          console.log(`🔒 [Coordinator] Using masked query for all downstream processing`);
+          console.log(`   Original: "${query}"`);
+          console.log(`   Masked:   "${queryToProcess}"`);
+        }
       }
     
       // Step 1: Translate if needed
       this.sendThinkingMessage(`🌐 Checking language requirements...`);
-      const translatedQuery = await this.translateQuery(query, language);
-      if (translatedQuery !== query) {
+      const translatedQuery = await this.translateQuery(queryToProcess, language);
+      if (translatedQuery !== queryToProcess) {
         this.sendThinkingMessage(`🔄 Translated to English: "${translatedQuery}"`);
       } else {
         this.sendThinkingMessage(`✓ No translation needed`);
@@ -1182,8 +1260,9 @@ Return only the concise version:`;
         );
         
         // CHECKPOINT 4: Analyze final response security (use passed phase)
+        let finalResponseToReturn = processedResponse;
         if (shouldUsePrismaAIRS(phase)) {
-          const finalSecurity = await this.analyzeFinalResponse(query, processedResponse, language);
+          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language);
           if (!finalSecurity.approved) {
             return {
               response: finalSecurity.message,
@@ -1192,10 +1271,16 @@ Return only the concise version:`;
               reportId: finalSecurity.reportId
             };
           }
+          
+          // If sensitive data was detected and masked in the response, use the masked response
+          if (finalSecurity.hasMasking) {
+            finalResponseToReturn = finalSecurity.maskedResponse;
+            console.log(`🔒 [Coordinator] Using masked response in final output (sensitive data detected)`);
+          }
         }
         
         return {
-          response: processedResponse,
+          response: finalResponseToReturn,
           agentUsed: selectedAgent.name,
           translatedQuery: translatedQuery !== query ? translatedQuery : null
         };
@@ -1215,8 +1300,9 @@ Return only the concise version:`;
         );
         
         // CHECKPOINT 4: Analyze final response security (use passed phase)
+        let finalResponseToReturn = processedResponse;
         if (shouldUsePrismaAIRS(phase)) {
-          const finalSecurity = await this.analyzeFinalResponse(query, processedResponse, language);
+          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language);
           if (!finalSecurity.approved) {
             return {
               response: finalSecurity.message,
@@ -1225,10 +1311,16 @@ Return only the concise version:`;
               reportId: finalSecurity.reportId
             };
           }
+          
+          // If sensitive data was detected and masked in the response, use the masked response
+          if (finalSecurity.hasMasking) {
+            finalResponseToReturn = finalSecurity.maskedResponse;
+            console.log(`🔒 [Coordinator] Using masked response in final output (sensitive data detected)`);
+          }
         }
         
         return {
-          response: processedResponse,
+          response: finalResponseToReturn,
           agentUsed: 'multi-agent-coordinator',
           translatedQuery: translatedQuery !== query ? translatedQuery : null
         };
