@@ -50,8 +50,6 @@ class GeneralAgent extends MCPAgentBase {
       },
       async (uri, params) => {
         try {
-          console.log(`🔍 [${this.agentName}] Query resource handler called with URI: ${uri.href}`);
-          console.log(`🔍 [${this.agentName}] Resource params:`, params);
           
           // Parse query from URI
           const urlObj = new URL(uri.href);

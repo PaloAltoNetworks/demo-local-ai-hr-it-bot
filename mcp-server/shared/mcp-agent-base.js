@@ -470,15 +470,6 @@ class MCPAgentBase {
 
     // Handle POST requests for client-to-server communication
     app.post('/mcp', async (req, res) => {
-      console.log(`🔍 [${this.agentName}] ============ MCP POST REQUEST START ============`);
-      console.log(`🔍 [${this.agentName}] Request received from: ${req.ip || req.connection.remoteAddress}`);
-      console.log(`🔍 [${this.agentName}] User-Agent: ${req.headers['user-agent'] || 'N/A'}`);
-      console.log(`🔍 [${this.agentName}] Content-Type: ${req.headers['content-type'] || 'N/A'}`);
-      console.log(`🔍 [${this.agentName}] Session ID: ${req.headers['mcp-session-id'] || 'None'}`);
-      console.log(`🔍 [${this.agentName}] Request method: ${req.body?.method || 'N/A'}`);
-      console.log(`🔍 [${this.agentName}] Request ID: ${req.body?.id || 'N/A'}`);
-      console.log(`🔍 [${this.agentName}] Full request body:`, JSON.stringify(req.body, null, 2));
-      console.log(`🔍 [${this.agentName}] All headers:`, JSON.stringify(req.headers, null, 2));
 
       const sessionId = req.headers['mcp-session-id'];
       let transport;
@@ -559,14 +550,6 @@ class MCPAgentBase {
         });
         return;
       }
-
-      // Handle the request
-      console.log(`🔄 [${this.agentName}] ============ PROCESSING REQUEST ============`);
-      console.log(`🔄 [${this.agentName}] About to handle request with transport`);
-      console.log(`🔄 [${this.agentName}] Transport session ID: ${transport.sessionId || 'Not set yet'}`);
-      console.log(`� [${this.agentName}] Request method: ${req.body.method}`);
-      console.log(`� [${this.agentName}] Request ID: ${req.body.id}`);
-      console.log(`🔄 [${this.agentName}] Request params:`, JSON.stringify(req.body.params, null, 2));
       
       try {
         // BYPASS: Handle tools/call and resources/list directly since MCP SDK transport isn't calling registered handlers properly
@@ -651,7 +634,6 @@ class MCPAgentBase {
           return;
         }
         
-        console.log(`⚡ [${this.agentName}] Calling transport.handleRequest...`);
         await transport.handleRequest(req, res, req.body);
         console.log(`✅ [${this.agentName}] ============ REQUEST COMPLETED SUCCESSFULLY ============`);
       } catch (error) {
