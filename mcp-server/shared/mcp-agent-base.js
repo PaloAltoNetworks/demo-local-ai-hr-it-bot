@@ -456,12 +456,7 @@ class MCPAgentBase {
     
     // Log all incoming requests
     app.use((req, res, next) => {
-      console.log(`🌐 [${this.agentName}] ============ INCOMING REQUEST ============`);
-      console.log(`🌐 [${this.agentName}] ${req.method} ${req.url}`);
-      console.log(`🌐 [${this.agentName}] From: ${req.ip || req.connection.remoteAddress}`);
-      console.log(`🌐 [${this.agentName}] User-Agent: ${req.headers['user-agent'] || 'N/A'}`);
-      console.log(`🌐 [${this.agentName}] Content-Length: ${req.headers['content-length'] || 'N/A'}`);
-      console.log(`🌐 [${this.agentName}] Timestamp: ${new Date().toISOString()}`);
+      console.log(`🌐 [${this.agentName}] INCOMING REQUEST: ${req.method} ${req.url}`);
       next();
     });
 
@@ -634,6 +629,7 @@ class MCPAgentBase {
           return;
         }
         
+        console.log(`⏳ [${this.agentName}] Calling transport.handleRequest()...`);
         await transport.handleRequest(req, res, req.body);
         console.log(`✅ [${this.agentName}] ============ REQUEST COMPLETED SUCCESSFULLY ============`);
       } catch (error) {

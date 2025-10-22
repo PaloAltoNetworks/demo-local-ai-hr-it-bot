@@ -186,8 +186,6 @@ class MCPServerRegistry {
    * Parse Server-Sent Events format
    */
   parseSSEResponse(text) {
-    console.log(`🔍 [MCPServerRegistry] Parsing SSE response...`);
-    
     const lines = text.split('\n');
     let eventData = '';
     let event = '';
