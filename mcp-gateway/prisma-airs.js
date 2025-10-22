@@ -140,7 +140,8 @@ class PrismaAIRSIntercept {
             console.log('🔒 Prisma AIRS analysis result:', {
                 action: result.action,
                 category: result.category,
-                reportId: result.report_id
+                reportId: result.report_id,
+                result: result
             });
 
             // Check the action field to determine if content is approved
