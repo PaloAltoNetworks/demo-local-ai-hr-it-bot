@@ -21,7 +21,7 @@ console.log('🔗 [ChatbotHost] MCP Gateway URL:', MCP_GATEWAY_URL);
 // Static user identity for this demo
 const STATIC_USER_IDENTITY = {
     name: 'Aurélien Delamarre',
-    email: 'aurelien.delamarre@enterprise.com',
+    email: 'aurelien.delamarre@company.com',
     role: 'Pre-Sales Engineer',
     department: 'Sales Department',
     employeeId: 'EMP-2025-001'
@@ -242,7 +242,7 @@ app.post('/api/process-prompt', async (req, res) => {
                 language: language || 'en',
                 phase: phase || 'phase1',
                 userContext: {
-                    ...STATIC_USER_IDENTITY,
+                    email: STATIC_USER_IDENTITY.email,
                     history: session.messageHistory.slice(-5),
                     sessionId: session.sessionId
                 },
