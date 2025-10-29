@@ -864,19 +864,20 @@ Original user question: "${originalQuery}"
 ${translatedQuery !== originalQuery ? `Translated question: "${translatedQuery}"` : ''}
 Agent response: "${agentResponse}"
 
-Your tasks:
-1. Verify if the response answers the user's question
-2. Extract the most relevant and concise information
-3. Remove unnecessary explanations, thinking processes, or verbose details
-4. Ignore any <think> tags or technical markup
-5. Keep only the essential facts that directly answer the question
+RESPOND WITH VALID JSON ONLY - NO OTHER TEXT.
 
-Respond with JSON only:
+Extract:
+1. If response answers the question (true/false)
+2. The most relevant and concise information 
+3. Remove unnecessary explanations or thinking processes
+4. Keep only essential facts answering the question
+
+RESPOND ONLY WITH THIS JSON FORMAT:
 {
-  "isRelevant": true/false,
-  "keyInformation": "concise answer with only essential facts (no technical tags or markup)",
-  "confidence": "high/medium/low",
-  "reasoning": "brief explanation of relevance assessment"
+  "isRelevant": true,
+  "keyInformation": "concise answer",
+  "confidence": "high",
+  "reasoning": "brief explanation"
 }`;
 
       const validationResponse = await this.ollama.generate({
@@ -900,9 +901,14 @@ Respond with JSON only:
         if (jsonMatch) {
           jsonText = jsonMatch[0];
         }
+        
+        // Remove any control characters that might interfere with JSON parsing
+        jsonText = jsonText.replace(/[\x00-\x1F\x7F]/g, ' ').trim();
+        
         validation = JSON.parse(jsonText);
       } catch (parseError) {
-        console.warn(`⚠️ [Coordinator] Validation parsing failed, using original response`);
+        console.warn(`⚠️ [Coordinator] Validation parsing failed:`, parseError.message);
+        console.log(`🔍 [Coordinator] Raw validation response:`, validationResponse.response.substring(0, 200));
         validation = {
           isRelevant: true,
           keyInformation: agentResponse,
