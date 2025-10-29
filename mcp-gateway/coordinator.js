@@ -303,6 +303,20 @@ Query: "${query}"`;
   async routeQuery(query, language = 'en', phase = 'phase2', userContext = null) {
     console.log(`🧭 [Coordinator] Routing query: "${query}"`);
     
+    // Log received user identity
+    if (userContext) {
+      const identityInfo = [];
+      if (userContext.name) identityInfo.push(`name: ${userContext.name}`);
+      if (userContext.email) identityInfo.push(`email: ${userContext.email}`);
+      if (userContext.role) identityInfo.push(`role: ${userContext.role}`);
+      if (userContext.department) identityInfo.push(`dept: ${userContext.department}`);
+      if (userContext.employeeId) identityInfo.push(`empId: ${userContext.employeeId}`);
+      
+      if (identityInfo.length > 0) {
+        console.log(`👤 [Coordinator] User identity received: ${identityInfo.join(', ')}`);
+      }
+    }
+    
     try {
       // Log all registered agents
       const allAgents = this.registry.getAllAgents();
@@ -779,6 +793,7 @@ SYNTHESIZED RESPONSE:`;
         
         if (contextInfo.length > 0) {
           enrichedQuery = `${query} [User context: ${contextInfo.join(', ')}]`;
+          console.log(`📝 [Coordinator] Enriched query for ${agent.name}: ${enrichedQuery}`);
         }
       }
       
