@@ -174,9 +174,9 @@ app.post('/api/language', (req, res) => {
     }
 });
 
-// Chat endpoint with MCP integration
+// Server-Sent Events endpoint for streaming (Chrome-compatible)
 app.post('/api/process-prompt', async (req, res) => {
-    const { messages, language = 'en', streamThinking = false, phase } = req.body;
+    const { messages, language = 'en', phase } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'Messages are required and must be a non-empty array.' });
@@ -197,227 +197,128 @@ app.post('/api/process-prompt', async (req, res) => {
             language: language
         });
 
-        console.log('💬 [ChatbotHost] Processing messages via MCP Client (Session: ' + session.sessionId + ', Streaming: ' + streamThinking + ')');
-
         // Add messages to session history
         messages.forEach(msg => sessionManager.addMessageToHistory(session.sessionId, msg));
 
         // Get the latest user message
         const userMessage = messages[messages.length - 1];
         
-        // Helper function to send streaming updates
-        const sendThinkingUpdate = (message) => {
-            if (streamThinking) {
-                res.write(JSON.stringify({ type: 'thinking', message: message }) + '\n');
-            }
-        };
-
-        const sendThinkingComplete = () => {
-            if (streamThinking) {
-                res.write(JSON.stringify({ type: 'thinking', complete: true }) + '\n');
-            }
-        };
-
-        const sendFinalResponse = (content, messages) => {
-            const responseData = {
-                type: 'response',
-                messages: messages,
-                sessionId: session.sessionId,
-                source: 'mcp-gateway'
-            };
-            
-            if (streamThinking) {
-                res.write(JSON.stringify(responseData) + '\n');
-                res.end();
-            } else {
-                res.json({
-                    response: content,
-                    sessionId: session.sessionId,
-                    source: 'mcp-gateway'
-                });
-            }
-        };
-
-        // Set streaming headers if needed
-        if (streamThinking) {
-            res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Cache-Control', 'no-cache');
-            res.setHeader('Connection', 'keep-alive');
-        }
+        // Set SSE headers - these force Chrome to NOT buffer
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.setHeader('Transfer-Encoding', 'chunked');
 
         // Send initial thinking message
-        sendThinkingUpdate('🔍 Analyzing your request...');
+        res.write('data: ' + JSON.stringify({ type: 'thinking', message: '🔍 Analyzing your request...' }) + '\n\n');
         
-        // Try to process the query using MCP Gateway's /api/query endpoint
-        let mcpResponse = null;
-        let mcpUnavailable = false;
-        
+        const MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || 'http://mcp-gateway:3001';
+
         try {
-            sendThinkingUpdate('📡 Connecting to MCP Gateway...');
+            res.write('data: ' + JSON.stringify({ type: 'thinking', message: '📡 Connecting to MCP Gateway...' }) + '\n\n');
             
-            // Use the /api/query endpoint to process the user message
-            // This uses the Intelligent Coordinator, not MCP tools
-            const queryEndpoint = `${MCP_GATEWAY_URL}/api/query`;
+            // Create a queue for thinking messages
+            const messageQueue = [];
+            let isProcessing = false;
             
-            // If streaming is enabled, use streaming response handling
-            if (streamThinking) {
-                try {
-                    const response = await axios.post(queryEndpoint, {
-                        query: userMessage.content,
-                        language: language || 'en',
-                        phase: phase || 'phase1', // Pass security phase from frontend
-                        userContext: {
-                            ...STATIC_USER_IDENTITY,
-                            history: session.messageHistory.slice(-5),
-                            sessionId: session.sessionId
-                        },
-                        streamThinking: true // Request streaming from coordinator
-                    }, {
-                        timeout: 1200000,
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        responseType: 'stream'
-                    });
-
-                    // Process streamed response
-                    await new Promise((resolve, reject) => {
-                        response.data.on('data', (chunk) => {
-                            const lines = chunk.toString().split('\n');
-                            lines.forEach(line => {
-                                if (line.trim()) {
-                                    try {
-                                        const data = JSON.parse(line);
-                                        if (data.type === 'thinking') {
-                                            // Forward thinking messages to client
-                                            sendThinkingUpdate(data.message);
-                                        } else if (data.type === 'response' && data.success) {
-                                            // Extract final response
-                                            sendThinkingUpdate('✅ Response received from MCP Gateway');
-                                            mcpResponse = {
-                                                role: 'assistant',
-                                                content: data.response
-                                            };
-                                        }
-                                    } catch (e) {
-                                        console.warn('⚠️ [ChatbotHost] Error parsing streamed response:', e);
-                                    }
-                                }
-                            });
-                        });
-
-                        response.data.on('error', reject);
-                        response.data.on('end', resolve);
-                    });
-                } catch (streamError) {
-                    console.warn('⚠️ [ChatbotHost] Streaming error, falling back to non-streaming mode:', streamError.message);
-                    // Fall back to non-streaming mode
-                    const analysisResult = await axios.post(queryEndpoint, {
-                        query: userMessage.content,
-                        language: language || 'en',
-                        phase: phase || 'phase1',
-                        userContext: {
-                            ...STATIC_USER_IDENTITY,
-                            history: session.messageHistory.slice(-5),
-                            sessionId: session.sessionId
-                        },
-                        streamThinking: false
-                    }, {
-                        timeout: 1200000,
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (analysisResult.data && analysisResult.data.success && analysisResult.data.response) {
-                        sendThinkingUpdate('✅ Response received from MCP Gateway');
-                        mcpResponse = {
-                            role: 'assistant',
-                            content: analysisResult.data.response
-                        };
-                    }
-                }
-            } else {
-                // Non-streaming mode (original behavior)
-                const analysisResult = await axios.post(queryEndpoint, {
-                    query: userMessage.content,
-                    language: language || 'en',
-                    phase: phase || 'phase2', // Pass security phase from frontend
-                    userContext: {
-                        ...STATIC_USER_IDENTITY,
-                        history: session.messageHistory.slice(-5),
-                        sessionId: session.sessionId
-                    },
-                    streamThinking: false
-                }, {
-                    timeout: 1200000,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+            const processQueue = async () => {
+                if (isProcessing || messageQueue.length === 0) return;
                 
-                if (analysisResult.data && analysisResult.data.success && analysisResult.data.response) {
-                    sendThinkingUpdate('✅ Response received from MCP Gateway');
-                    mcpResponse = {
-                        role: 'assistant',
-                        content: analysisResult.data.response
-                    };
+                isProcessing = true;
+                while (messageQueue.length > 0) {
+                    const message = messageQueue.shift();
+                    const eventData = JSON.stringify({ type: 'thinking', message: message });
+                    res.write('data: ' + eventData + '\n\n');
+                    
+                    // Small delay to ensure browser processes the chunk
+                    await new Promise(resolve => setTimeout(resolve, 5));
                 }
-            }
-        } catch (mcpError) {
-            console.warn('⚠️ [ChatbotHost] MCP Gateway query failed:', mcpError.message);
-            mcpUnavailable = true;
-            sendThinkingUpdate('⚠️ MCP services unavailable...');
-        }
-
-        // Handle MCP response or unavailability
-        if (mcpResponse) {
-            // Success: Use the MCP response
-            sessionManager.addMessageToHistory(session.sessionId, mcpResponse);
-            sendThinkingComplete();
-            
-            const updatedMessages = [...messages, mcpResponse];
-            sendFinalResponse(mcpResponse.content, updatedMessages);
-            return;
-        } else if (mcpUnavailable || !mcpClient.isInitialized) {
-            // Failure: MCP is unavailable, inform the user
-            console.log('🚫 [ChatbotHost] MCP services unavailable - stopping processing');
-            
-            // Change backend language to match user's language
-            changeLanguage(language);
-            
-            sendThinkingUpdate('❌ ' + t('status.mcpServicesUnavailable'));
-            
-            // Provide clear message when MCP is down - no fallback connection
-            const unavailableMessage = {
-                role: 'assistant',
-                content: t('mcp.unavailableMessage')
+                isProcessing = false;
             };
 
-            sessionManager.addMessageToHistory(session.sessionId, unavailableMessage);
-            sendThinkingComplete();
-
-            const updatedMessages = [...messages, unavailableMessage];
-            sendFinalResponse(unavailableMessage.content, updatedMessages);
-            return;
-        }
-
-    } catch (error) {
-        console.error('❌ [ChatbotHost] Error processing prompt:', error);
-        
-        if (streamThinking) {
-            res.write(JSON.stringify({ 
-                type: 'error', 
-                error: 'Failed to process prompt',
-                details: process.env.NODE_ENV === 'development' ? error.message : undefined
-            }) + '\n');
-            res.end();
-        } else {
-            res.status(500).json({ 
-                error: 'Failed to process prompt',
-                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            const response = await axios.post(`${MCP_GATEWAY_URL}/api/query`, {
+                query: userMessage.content,
+                language: language || 'en',
+                phase: phase || 'phase1',
+                userContext: {
+                    ...STATIC_USER_IDENTITY,
+                    history: session.messageHistory.slice(-5),
+                    sessionId: session.sessionId
+                },
+                streamThinking: true
+            }, {
+                timeout: 1200000,
+                headers: { 'Content-Type': 'application/json' },
+                responseType: 'stream'
             });
+
+            let mcpResponse = null;
+
+            // Process streamed response
+            await new Promise((resolve, reject) => {
+                response.data.on('data', async (chunk) => {
+                    const lines = chunk.toString().split('\n');
+                    lines.forEach(line => {
+                        if (line.trim()) {
+                            try {
+                                const data = JSON.parse(line);
+                                if (data.type === 'thinking') {
+                                    messageQueue.push(data.message);
+                                } else if (data.type === 'response' && data.success) {
+                                    messageQueue.push('✅ Response received from MCP Gateway');
+                                    mcpResponse = {
+                                        role: 'assistant',
+                                        content: data.response
+                                    };
+                                }
+                            } catch (e) {
+                                console.warn('⚠️ [ChatbotHost] Error parsing streamed response:', e);
+                            }
+                        }
+                    });
+                    
+                    await processQueue();
+                });
+
+                response.data.on('end', () => {
+                    resolve();
+                });
+
+                response.data.on('error', (err) => {
+                    reject(err);
+                });
+            });
+
+            // Process any remaining queued messages
+            await processQueue();
+
+            // Send final response
+            if (mcpResponse) {
+                sessionManager.addMessageToHistory(session.sessionId, mcpResponse);
+                res.write('data: ' + JSON.stringify({
+                    type: 'response',
+                    messages: session.messageHistory,
+                    sessionId: session.sessionId,
+                    source: 'mcp-gateway'
+                }) + '\n\n');
+            }
+
+        } catch (error) {
+            console.error('❌ [ChatbotHost] Error processing query:', error.message);
+            res.write('data: ' + JSON.stringify({
+                type: 'error',
+                error: 'Failed to process query',
+                message: error.message
+            }) + '\n\n');
         }
+
+        res.write('data: [DONE]\n\n');
+        res.end();
+
+        } catch (error) {
+        console.error('❌ [ChatbotHost] Error in SSE endpoint:', error);
+        res.status(500).json({ error: 'Internal server error', message: error.message });
     }
 });
 

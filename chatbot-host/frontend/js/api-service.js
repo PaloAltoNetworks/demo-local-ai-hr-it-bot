@@ -19,47 +19,7 @@ export class ApiService {
     }
 
     /**
-     * Send chat history to backend with retry logic
-     */
-    async sendMessage(chatHistory, currentPhase, language, retryCount = 0) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
-
-            const response = await fetch(`${API_BASE_URL}/api/process-prompt`, {
-                method: 'POST',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-language': language,
-                },
-                body: JSON.stringify({ 
-                    messages: chatHistory, 
-                    phase: currentPhase,
-                    streamThinking: false, // Use old non-streaming method by default
-                    language: language
-                }),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            // Mark as online if request succeeds
-            this.updateConnectionStatus(true);
-            this.retryAttempts.clear();
-
-            return await response.json();
-        } catch (error) {
-            return this.handleApiError(error, chatHistory, currentPhase, language, retryCount, false);
-        }
-    }
-
-    /**
-     * Send message with streaming thinking updates
+     * Send message with streaming thinking updates using Server-Sent Events
      */
     async sendMessageWithThinking(chatHistory, currentPhase, language, onThinking, onComplete, retryCount = 0) {
         try {
@@ -76,13 +36,10 @@ export class ApiService {
                 body: JSON.stringify({ 
                     messages: chatHistory, 
                     phase: currentPhase,
-                    streamThinking: true,
                     language: language
                 }),
                 signal: controller.signal
             });
-
-            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -92,7 +49,7 @@ export class ApiService {
             this.updateConnectionStatus(true);
             this.retryAttempts.clear();
 
-            // Process streaming response
+            // Process Server-Sent Events
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
@@ -100,35 +57,43 @@ export class ApiService {
             while (true) {
                 const { done, value } = await reader.read();
                 
-                if (done) break;
+                if (done) {
+                    clearTimeout(timeoutId);
+                    break;
+                }
                 
                 buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop(); // Keep incomplete line in buffer
+                const events = buffer.split('\n\n');
+                buffer = events.pop(); // Keep incomplete event in buffer
                 
-                for (const line of lines) {
-                    if (line.trim()) {
+                for (const event of events) {
+                    if (event.trim()) {
                         try {
-                            const data = JSON.parse(line);
-                            
-                            if (data.type === 'thinking') {
-                                if (data.complete) {
-                                    // Thinking is complete
-                                    if (onThinking) onThinking(null, true);
-                                } else if (data.message) {
-                                    // New thinking message
-                                    if (onThinking) onThinking(data.message, false);
+                            // Parse SSE format: "data: {...}"
+                            const lines = event.trim().split('\n');
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const jsonStr = line.substring(6);
+                                    if (jsonStr === '[DONE]') {
+                                        continue;
+                                    }
+                                    
+                                    const data = JSON.parse(jsonStr);
+                                    
+                                    if (data.type === 'thinking') {
+                                        if (data.message) {
+                                            if (onThinking) onThinking(data.message, false);
+                                        }
+                                    } else if (data.type === 'response') {
+                                        if (onComplete) onComplete(data);
+                                        return data;
+                                    } else if (data.type === 'error') {
+                                        throw new Error(data.error || 'Unknown error occurred');
+                                    }
                                 }
-                            } else if (data.type === 'response') {
-                                // Final response received
-                                if (onComplete) onComplete(data);
-                                return data;
-                            } else if (data.type === 'error') {
-                                // Error response
-                                throw new Error(data.error || 'Unknown error occurred');
                             }
                         } catch (e) {
-                            console.error('Error parsing JSON:', e, line);
+                            console.error('Error parsing SSE event:', e);
                         }
                     }
                 }
@@ -136,6 +101,14 @@ export class ApiService {
         } catch (error) {
             return this.handleApiError(error, chatHistory, currentPhase, language, retryCount, true, onThinking, onComplete);
         }
+    }
+
+    /**
+     * Send chat history to backend with retry logic (kept for non-streaming fallback)
+     */
+    async sendMessage(chatHistory, currentPhase, language, retryCount = 0) {
+        // Use streaming version for all requests
+        return this.sendMessageWithThinking(chatHistory, currentPhase, language, null, null, retryCount);
     }
 
     /**
