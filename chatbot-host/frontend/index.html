@@ -10,7 +10,7 @@
 </head>
 
 <body>
-    <!-- Header with phase selector -->
+    <!-- Header with phase selector and user menu -->
     <header class="main-header">
         <div class="container">
             <div class="header-brand">
@@ -22,18 +22,60 @@
                 <button class="phase-btn active phase1-active" data-phase="phase1">
                     <span class="phase-number">1</span>
                     <span class="phase-label" data-i18n="phases.phase1.label">Normal Usage</span>
-                    <span class="phase-status status-safe" data-i18n="phases.phase1.status">NORMAL</span>
                 </button>
                 <button class="phase-btn phase2-active" data-phase="phase2">
                     <span class="phase-number">2</span>
                     <span class="phase-label" data-i18n="phases.phase2.label">Risky Usage</span>
-                    <span class="phase-status status-danger" data-i18n="phases.phase2.status">RISK</span>
                 </button>
                 <button class="phase-btn phase3-active" data-phase="phase3">
                     <span class="phase-number">3</span>
                     <span class="phase-label" data-i18n="phases.phase3.label">Protected Mode</span>
-                    <span class="phase-status status-protected" data-i18n="phases.phase3.status">PROTECTED</span>
                 </button>
+            </div>
+
+            <!-- User Menu -->
+            <div class="user-menu-container">
+                <button class="user-menu-trigger" id="userMenuTrigger" title="User Menu">
+                    <i class="fas fa-user-circle"></i>
+                    <span class="user-menu-label" id="userMenuLabel">User</span>
+                </button>
+
+                <!-- Dropdown Menu -->
+                <div class="user-menu-dropdown" id="userMenuDropdown">
+                    <!-- Profile Section -->
+                    <div class="user-menu-profile">
+                        <div class="user-menu-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="user-menu-info">
+                            <p class="user-menu-name" id="userMenuName">Aurélien Delamarre</p>
+                            <p class="user-menu-email" id="userMenuEmail">aurelien.delamarre@enterprise.com</p>
+                            <p class="user-menu-role" id="userMenuRole">Pre-Sales Engineer</p>
+                            <p class="user-menu-department" id="userMenuDepartment">Sales Department</p>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="user-menu-divider"></div>
+
+                    <!-- Language Selection -->
+                    <div class="user-menu-section">
+                        <label class="user-menu-section-label" data-i18n="userMenu.language">Language</label>
+                        <select id="userMenuLanguageSelect" class="user-menu-language-select">
+                            <option value="en">English</option>
+                            <option value="fr">Français</option>
+                        </select>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="user-menu-divider"></div>
+
+                    <!-- Logout Button -->
+                    <button class="user-menu-logout" id="userMenuLogout">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span data-i18n="userMenu.logout">Logout</span>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -49,30 +91,6 @@
 
             <div class="demo-layout">
                 <div class="info-panel">
-                    <!-- User Profile -->
-                    <section class="user-profile-section">
-                        <div class="card">
-                            <div class="card__header">
-                                <h2><i class="fas fa-user"></i> <span data-i18n="userProfile.title">Connected
-                                        User</span></h2>
-                            </div>
-                            <div class="card__body">
-                                <div class="user-info">
-                                    <div class="user-avatar">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                    <div class="user-details">
-                                        <h3 id="userName" data-i18n="userProfile.name">Aurélien Delamarre</h3>
-                                        <p id="userRole" data-i18n="userProfile.role">Pre-Sales Engineer</p>
-                                        <p id="userDepartment" data-i18n="userProfile.department">Sales Department</p>
-                                        <p id="userEmail" data-i18n="userProfile.email">
-                                            aurelien.delamarre@enterprise.com</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
                     <!-- Quick Questions Section -->
                     <section class="quick-questions">
                         <div class="card">
@@ -133,37 +151,6 @@
             </div>
         </div>
     </main>
-
-    <!-- Footer -->
-    <footer class="main-footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4 data-i18n="footer.title">Bot Enterprise</h4>
-                    <p data-i18n="footer.description">Intelligent HR/IT Assistant</p>
-                    <p data-i18n="footer.version">Version 2.1 Enterprise</p>
-                </div>
-                <div class="footer-section">
-                    <h4 data-i18n="footer.support.title">Support</h4>
-                    <p data-i18n="footer.support.itHelpdesk">IT Helpdesk: ext. 1234</p>
-                    <p data-i18n="footer.support.hr">HR: ext. 5678</p>
-                </div>
-                <div class="footer-section">
-                    <h4 data-i18n="footer.security.title">Security</h4>
-                    <p data-i18n="footer.security.gdpr">GDPR Compliance</p>
-                    <p data-i18n="footer.security.audit">Automated Audit</p>
-                </div>
-                <div class="footer-section">
-                    <h4 data-i18n="footer.language.title">Language</h4>
-                    <div class="language-switcher">
-                        <select id="languageSelect" class="lang-select">
-                            <option value="en">English</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </footer>
 
     <!-- Loading indicator -->
     <div id="loading-indicator" class="loading-indicator">

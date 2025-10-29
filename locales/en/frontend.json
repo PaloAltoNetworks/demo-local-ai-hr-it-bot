@@ -26,6 +26,12 @@
     "department": "Sales Department",
     "email": "aurelien.delamarre@enterprise.com"
   },
+  "userMenu": {
+    "label": "User",
+    "language": "Language",
+    "logout": "Logout",
+    "logoutSuccess": "Logged out successfully"
+  },
   "questions": {
     "title": "Example Questions",
     "phase1": [

@@ -18,6 +18,15 @@ const PORT = process.env.CHATBOT_HOST_PORT || 3002;
 const MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || 'http://mcp-gateway:3001';
 console.log('🔗 [ChatbotHost] MCP Gateway URL:', MCP_GATEWAY_URL);
 
+// Static user identity for this demo
+const STATIC_USER_IDENTITY = {
+    name: 'Aurélien Delamarre',
+    email: 'aurelien.delamarre@enterprise.com',
+    role: 'Pre-Sales Engineer',
+    department: 'Sales Department',
+    employeeId: 'EMP-2025-001'
+};
+
 // Initialize Session Manager
 const sessionManager = new SessionManager();
 
@@ -258,6 +267,7 @@ app.post('/api/process-prompt', async (req, res) => {
                         language: language || 'en',
                         phase: phase || 'phase1', // Pass security phase from frontend
                         userContext: {
+                            ...STATIC_USER_IDENTITY,
                             history: session.messageHistory.slice(-5),
                             sessionId: session.sessionId
                         },
@@ -307,6 +317,7 @@ app.post('/api/process-prompt', async (req, res) => {
                         language: language || 'en',
                         phase: phase || 'phase1',
                         userContext: {
+                            ...STATIC_USER_IDENTITY,
                             history: session.messageHistory.slice(-5),
                             sessionId: session.sessionId
                         },
@@ -333,6 +344,7 @@ app.post('/api/process-prompt', async (req, res) => {
                     language: language || 'en',
                     phase: phase || 'phase2', // Pass security phase from frontend
                     userContext: {
+                        ...STATIC_USER_IDENTITY,
                         history: session.messageHistory.slice(-5),
                         sessionId: session.sessionId
                     },

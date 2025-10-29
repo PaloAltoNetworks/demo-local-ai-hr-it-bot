@@ -26,6 +26,12 @@
     "department": "Service Commercial",
     "email": "aurelien.delamarre@entreprise.com"
   },
+  "userMenu": {
+    "label": "Utilisateur",
+    "language": "Langue",
+    "logout": "Se déconnecter",
+    "logoutSuccess": "Déconnexion réussie"
+  },
   "questions": {
     "title": "Questions d'Exemple",
     "phase1": [

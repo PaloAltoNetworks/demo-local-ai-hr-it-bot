@@ -55,7 +55,6 @@ class ChatBotApp {
             this.connectionMonitor = new ConnectionMonitor(this.apiService, this.uiManager);
 
             // Setup UI and event listeners
-            await this.populateLanguageSelect();
             await this.updateUI();
             this.setupEventListeners();
             this.switchPhase(this.currentPhase, true); // Force render questions on initialization
@@ -116,76 +115,14 @@ class ChatBotApp {
             const userName = i18n.t('userProfile.name');
             welcomeMessage.textContent = i18n.t('chat.greeting', { name: userName });
         }
-
-        // Update language select
-        this.updateLanguageSelect();
-    }
-
-    /**
-     * Populate language select dropdown with available languages
-     */
-    async populateLanguageSelect() {
-        const languageSelect = document.getElementById('languageSelect');
-        if (!languageSelect) return;
-
-        try {
-            const availableLanguages = await i18n.getAvailableLanguages();
-
-            // Clear existing options
-            languageSelect.innerHTML = '';
-
-            // Save current language
-            const currentLang = this.currentLanguage;
-
-            // Add options for each available language
-            for (const langCode of availableLanguages) {
-                const option = document.createElement('option');
-                option.value = langCode;
-
-                // Get native name using i18n service
-                const nativeName = await i18n.getLanguageNativeName(langCode);
-
-                option.textContent = nativeName;
-                languageSelect.appendChild(option);
-            }
-
-            // Restore current language selection
-            languageSelect.value = currentLang;
-
-        } catch (error) {
-            console.error('Error populating language select:', error);
-            // Fallback to hardcoded options - English only
-            languageSelect.innerHTML = `
-                <option value="en">English</option>
-            `;
-            languageSelect.value = this.currentLanguage;
-        }
-    }
-
-    /**
-     * Update language select state
-     */
-    updateLanguageSelect() {
-        const languageSelect = document.getElementById('languageSelect');
-        if (languageSelect) {
-            languageSelect.value = this.currentLanguage;
-        }
     }
 
     /**
      * Setup all event listeners
      */
     setupEventListeners() {
-        // Language switcher
-        const languageSelect = document.getElementById('languageSelect');
-        if (languageSelect) {
-            languageSelect.addEventListener('change', async (e) => {
-                const newLang = e.target.value;
-                if (newLang && newLang !== this.currentLanguage) {
-                    await this.changeLanguage(newLang);
-                }
-            });
-        }
+        // User Menu Setup
+        this.setupUserMenu();
 
         // Phase selector buttons
         document.querySelectorAll('.phase-btn').forEach(btn => {
@@ -473,6 +410,103 @@ class ChatBotApp {
         }
 
         console.log(`Switched to phase: ${newPhase}`);
+    }
+
+    /**
+     * Setup user menu functionality
+     */
+    setupUserMenu() {
+        const trigger = document.getElementById('userMenuTrigger');
+        const dropdown = document.getElementById('userMenuDropdown');
+        const languageSelect = document.getElementById('userMenuLanguageSelect');
+        const logoutBtn = document.getElementById('userMenuLogout');
+
+        if (!trigger || !dropdown) return;
+
+        // Toggle dropdown on trigger click
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('active');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        // Close dropdown when clicking inside it
+        dropdown.addEventListener('click', (e) => {
+            if (e.target !== languageSelect) {
+                // Keep open for language select changes
+            }
+        });
+
+        // Language selection from user menu
+        if (languageSelect) {
+            languageSelect.addEventListener('change', async (e) => {
+                const newLang = e.target.value;
+                if (newLang && newLang !== this.currentLanguage) {
+                    await this.changeLanguage(newLang);
+                    // Keep dropdown open
+                }
+            });
+        }
+
+        // Logout button
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                this.handleLogout();
+            });
+        }
+
+        // Update user menu with user info
+        this.updateUserMenu();
+    }
+
+    /**
+     * Update user menu with current user information
+     */
+    updateUserMenu() {
+        const userName = document.getElementById('userMenuName');
+        const userEmail = document.getElementById('userMenuEmail');
+        const userMenuLabel = document.getElementById('userMenuLabel');
+        const languageSelect = document.getElementById('userMenuLanguageSelect');
+
+        if (userName) {
+            userName.textContent = i18n.t('userProfile.name');
+        }
+        if (userEmail) {
+            userEmail.textContent = i18n.t('userProfile.email');
+        }
+        if (userMenuLabel) {
+            userMenuLabel.textContent = i18n.t('userMenu.label') || 'User';
+        }
+        if (languageSelect) {
+            languageSelect.value = this.currentLanguage;
+        }
+    }
+
+    /**
+     * Handle logout action
+     */
+    handleLogout() {
+        // Show confirmation or just log out
+        console.log('🚪 Logout initiated');
+        
+        // Clear user session data if any
+        localStorage.removeItem('chatbot-session');
+        
+        // Show confirmation message
+        this.uiManager?.showSuccess(i18n.t('userMenu.logoutSuccess') || 'Logged out successfully');
+        
+        // Optional: Reload page or redirect
+        setTimeout(() => {
+            // Uncomment to redirect to login page
+            // window.location.href = '/login';
+            console.log('Logout complete');
+        }, 1000);
     }
 
     /**
