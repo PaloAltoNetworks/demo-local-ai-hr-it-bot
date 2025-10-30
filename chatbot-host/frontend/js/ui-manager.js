@@ -13,6 +13,7 @@ export class UIManager {
         this.isOnlineStatus = true;
         this.thinkingChain = []; // Store thinking chain
         this.currentThinkingContainer = null; // Current thinking message container
+        this.tokenMetadata = {}; // Store token usage metadata
     }
 
     /**
@@ -110,6 +111,8 @@ export class UIManager {
         
         // Create message with thinking chain button if there are thoughts
         const hasThinkingChain = this.thinkingChain.length > 0;
+        const hasTokens = this.tokenMetadata && (this.tokenMetadata.total_tokens || this.tokenMetadata.coordinator_tokens);
+        
         let messageHTML = `
             <div class="message-avatar">
                 <i class="fas fa-otter"></i>
@@ -118,6 +121,45 @@ export class UIManager {
                 <div class="message-text">${displayContent}</div>
                 <div class="message-timestamp">${timestamp}</div>
         `;
+
+        // Add token information if available
+        if (hasTokens) {
+            const totalTokens = this.tokenMetadata.total_tokens || 0;
+            const coordinatorTokens = this.tokenMetadata.coordinator_tokens || 0;
+            const agentTokens = this.tokenMetadata.agent_tokens || 0;
+            
+            messageHTML += `
+                <div class="token-info">
+                    <div class="token-info-row">
+                        <span class="token-label">
+                            <i class="fas fa-microchip"></i> ${this.i18n.t('chat.totalTokens')}:
+                        </span>
+                        <span class="token-count">${totalTokens}</span>
+                    </div>
+            `;
+            
+            if (coordinatorTokens > 0) {
+                messageHTML += `
+                    <div class="token-info-row token-info-detail">
+                        <span class="token-label-detail">Coordinator:</span>
+                        <span class="token-count-detail">${coordinatorTokens}</span>
+                    </div>
+                `;
+            }
+            
+            if (agentTokens > 0) {
+                messageHTML += `
+                    <div class="token-info-row token-info-detail">
+                        <span class="token-label-detail">Agents:</span>
+                        <span class="token-count-detail">${agentTokens}</span>
+                    </div>
+                `;
+            }
+            
+            messageHTML += `
+                </div>
+            `;
+        }
 
         if (hasThinkingChain) {
             const thinkingId = `thinking-${Date.now()}`;
@@ -170,7 +212,7 @@ export class UIManager {
         }
 
         this.scrollToBottom();
-        this.clearThinkingChain();
+        this.clearThinkingData();
     }
 
     /**
@@ -305,6 +347,28 @@ export class UIManager {
      */
     getThinkingChain() {
         return this.thinkingChain;
+    }
+
+    /**
+     * Set token metadata
+     */
+    setTokenMetadata(metadata) {
+        this.tokenMetadata = metadata;
+    }
+
+    /**
+     * Get token metadata
+     */
+    getTokenMetadata() {
+        return this.tokenMetadata;
+    }
+
+    /**
+     * Clear all thinking data (chain + metadata)
+     */
+    clearThinkingData() {
+        this.thinkingChain = [];
+        this.tokenMetadata = {};
     }
 
     /**

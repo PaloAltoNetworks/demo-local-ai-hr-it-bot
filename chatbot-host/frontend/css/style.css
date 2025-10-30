@@ -1325,6 +1325,69 @@ body {
   margin-right: var(--space-4);
 }
 
+/* Token Information Styles */
+.token-info {
+  margin-top: var(--space-12);
+  padding: var(--space-10) var(--space-12);
+  background: rgba(var(--color-teal-500-rgb), 0.08);
+  border-radius: var(--radius-base);
+  border-left: 3px solid var(--color-primary);
+  font-size: var(--font-size-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.token-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.token-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.token-label i {
+  color: var(--color-primary);
+  font-size: var(--font-size-md);
+}
+
+.token-count {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.token-info-detail {
+  padding-left: var(--space-12);
+  opacity: 0.8;
+}
+
+.token-label-detail {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.token-count-detail {
+  background: rgba(var(--color-teal-500-rgb), 0.15);
+  color: var(--color-primary);
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
 /* Thinking Chain Styles */
 .thinking-toggle {
   display: flex;

@@ -56,6 +56,7 @@
     "clear": "Clear Chat",
     "thinking": "Thinking...",
     "viewThinking": "View thinking chain",
+    "totalTokens": "Total tokens used",
     "errorSending": "Error sending message",
     "connectionLost": "Connection lost",
     "reconnecting": "Reconnecting...",

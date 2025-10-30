@@ -56,6 +56,7 @@
     "clear": "Effacer le Chat",
     "thinking": "Réflexion...",
     "viewThinking": "Voir la chaîne de pensée",
+    "totalTokens": "Total de tokens utilisés",
     "errorSending": "Erreur lors de l'envoi du message",
     "connectionLost": "Connexion perdue",
     "reconnecting": "Reconnexion...",

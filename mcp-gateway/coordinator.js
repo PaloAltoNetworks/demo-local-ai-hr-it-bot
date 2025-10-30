@@ -149,6 +149,13 @@ class IntelligentCoordinator {
     this.streamThinkingCallback = null;
     this.initialized = false;
     
+    // Token usage tracking
+    this.tokenUsage = {
+      coordinator_tokens: 0,
+      agent_tokens: 0,
+      total_tokens: 0
+    };
+    
     // LLM Models
     this.coordinatorModel = process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b';
     this.translationModel = process.env.TRANSLATION_MODEL || 'qwen2.5-translator';
@@ -184,6 +191,48 @@ class IntelligentCoordinator {
   sendThinkingMessage(message) {
     if (this.streamThinkingCallback) {
       this.streamThinkingCallback(`[COORDINATOR] ${message}`);
+    }
+  }
+
+  /**
+   * Estimate tokens from text (approximation: 1 token ≈ 4 characters)
+   */
+  estimateTokens(text) {
+    if (!text) return 0;
+    // Remove extra whitespace and estimate
+    const cleanText = text.trim();
+    return Math.ceil(cleanText.length / 4);
+  }
+
+  /**
+   * Track coordinator tokens used
+   */
+  trackCoordinatorTokens(text) {
+    const tokens = this.estimateTokens(text);
+    this.tokenUsage.coordinator_tokens += tokens;
+    this.tokenUsage.total_tokens += tokens;
+  }
+
+  /**
+   * Track agent tokens used
+   */
+  trackAgentTokens(text) {
+    const tokens = this.estimateTokens(text);
+    this.tokenUsage.agent_tokens += tokens;
+    this.tokenUsage.total_tokens += tokens;
+  }
+
+  /**
+   * Track real tokens from Ollama response
+   */
+  trackOllamaTokens(response, operationType = 'Operation') {
+    const promptTokens = response.prompt_eval_count || 0;
+    const completionTokens = response.eval_count || 0;
+    const totalTokens = promptTokens + completionTokens;
+    if (totalTokens > 0) {
+      this.tokenUsage.coordinator_tokens += totalTokens;
+      this.tokenUsage.total_tokens += totalTokens;
+      console.log(`📊 [Coordinator] ${operationType} tokens: ${promptTokens} (prompt) + ${completionTokens} (completion) = ${totalTokens}`);
     }
   }
 
@@ -280,6 +329,9 @@ Query: "${query}"`;
       });
 
       let translatedQuery = response.response?.trim() || query;
+      
+      // Track actual tokens from Ollama response
+      this.trackOllamaTokens(response, 'Translation');
       
       // Remove surrounding quotes if present (LLM sometimes adds them)
       if (translatedQuery.startsWith('"') && translatedQuery.endsWith('"')) {
@@ -407,6 +459,9 @@ Required format:
         }
       });
 
+      // Track routing analysis tokens
+      this.trackOllamaTokens(response, 'Routing analysis');
+
       try {
         // Clean the response - remove thinking tags and extract JSON
         let jsonText = response.response.trim();
@@ -510,6 +565,9 @@ Output JSON immediately`,
           stop: [],
         }
       });
+
+      // Track routing strategy tokens
+      this.trackOllamaTokens(response, 'Routing strategy');
 
       try {
         // Validate response structure
@@ -737,6 +795,9 @@ SYNTHESIZED RESPONSE:`;
         }
       });
 
+      // Track synthesis tokens
+      this.trackOllamaTokens(response, 'Response synthesis');
+
       return response.response;
     } catch (error) {
       console.error('❌ [Coordinator] Response synthesis failed:', error);
@@ -797,6 +858,9 @@ SYNTHESIZED RESPONSE:`;
         }
       }
       
+      // Track outbound request tokens (after enrichment)
+      this.trackAgentTokens(enrichedQuery);
+      
       const queryUri = `${agent.name}://query?q=${encodeURIComponent(enrichedQuery)}`;
       
       // Make MCP resource request via MCPServerRegistry
@@ -826,6 +890,9 @@ SYNTHESIZED RESPONSE:`;
 
       if (response.result?.contents?.[0]?.text) {
         const responseText = response.result.contents[0].text;
+        
+        // Track agent tokens from the response
+        this.trackAgentTokens(responseText);
         
         // CHECKPOINT 3: Analyze inbound response security (use passed phase)
         let responseToReturn = responseText;
@@ -905,6 +972,9 @@ RESPOND ONLY WITH THIS JSON FORMAT:
           num_predict: 300
         }
       });
+
+      // Track validation tokens
+      this.trackOllamaTokens(validationResponse, 'Response validation');
 
       let validation;
       try {
@@ -991,6 +1061,9 @@ Response to translate: "${response}"`;
 
       let translatedResponse = translationResponse.response?.trim() || response;
       
+      // Track response translation tokens
+      this.trackOllamaTokens(translationResponse, 'Response translation');
+      
       // Remove surrounding quotes if present
       if (translatedResponse.startsWith('"') && translatedResponse.endsWith('"')) {
         translatedResponse = translatedResponse.slice(1, -1);
@@ -1032,6 +1105,9 @@ Return only the concise version:`;
         system: 'You are a text optimization assistant. Make responses concise while preserving all essential information.',
         options: { temperature: 0.1 }
       });
+
+      // Track conciseness optimization tokens
+      this.trackOllamaTokens(conciseResponse, 'Conciseness optimization');
 
       const conciseText = conciseResponse.response?.trim() || response;
       console.log(`📝 [Coordinator] Made response more concise`);
@@ -1202,6 +1278,13 @@ Return only the concise version:`;
       throw new Error('IntelligentCoordinator not initialized');
     }
 
+    // Reset token usage for this query
+    this.tokenUsage = {
+      coordinator_tokens: 0,
+      agent_tokens: 0,
+      total_tokens: 0
+    };
+
     console.log(`🎬 [Coordinator] Processing query: "${query}" (${language}, Phase: ${phase})`);
     this.sendThinkingMessage(`🔍 Analyzing your question...`);
     
@@ -1238,12 +1321,17 @@ Return only the concise version:`;
       const translatedQuery = await this.translateQuery(queryToProcess, language);
       if (translatedQuery !== queryToProcess) {
         this.sendThinkingMessage(`🔄 Translated to English: "${translatedQuery}"`);
+        // Track translation work as coordinator tokens
+        this.trackCoordinatorTokens(queryToProcess + translatedQuery);
       } else {
         this.sendThinkingMessage(`✓ No translation needed`);
       }
 
       // Step 2: Route to appropriate agent(s) using registry
       this.sendThinkingMessage(`🎯 Determining the best routing strategy for your query...`);
+      // Track routing analysis as coordinator work
+      this.trackCoordinatorTokens("Analyzing query semantics and determining best routing strategy");
+      
       const routingResult = await this.routeQuery(translatedQuery, language, phase, userContext);
       
       // routingResult is now always an object with type field
@@ -1300,10 +1388,21 @@ Return only the concise version:`;
           }
         }
         
+        // NOTE: Don't re-track agent response here - it was already tracked in queryAgent()
+        // The coordinator's work here (validation, masking) is part of operational overhead
+        
+        const resultMetadata = {
+          total_tokens: this.tokenUsage.total_tokens,
+          coordinator_tokens: this.tokenUsage.coordinator_tokens,
+          agent_tokens: this.tokenUsage.agent_tokens,
+          timestamp: new Date().toISOString()
+        };
+        
         return {
           response: finalResponseToReturn,
           agentUsed: selectedAgent.name,
-          translatedQuery: translatedQuery !== query ? translatedQuery : null
+          translatedQuery: translatedQuery !== query ? translatedQuery : null,
+          metadata: resultMetadata
         };
       } else {
         // Multi-agent response - routingResult contains the final synthesized response
@@ -1340,10 +1439,21 @@ Return only the concise version:`;
           }
         }
         
+        // Track multi-agent synthesis work as coordinator tokens
+        this.trackCoordinatorTokens(finalResponseToReturn);
+        
+        const resultMetadata = {
+          total_tokens: this.tokenUsage.total_tokens,
+          coordinator_tokens: this.tokenUsage.coordinator_tokens,
+          agent_tokens: this.tokenUsage.agent_tokens,
+          timestamp: new Date().toISOString()
+        };
+        
         return {
           response: finalResponseToReturn,
           agentUsed: 'multi-agent-coordinator',
-          translatedQuery: translatedQuery !== query ? translatedQuery : null
+          translatedQuery: translatedQuery !== query ? translatedQuery : null,
+          metadata: resultMetadata
         };
       }
     } catch (error) {

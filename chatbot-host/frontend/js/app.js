@@ -301,6 +301,11 @@ class ChatBotApp {
                         // Update chat history
                         this.chatHistory = response.messages;
 
+                        // Set token metadata if available
+                        if (response.metadata) {
+                            this.uiManager?.setTokenMetadata(response.metadata);
+                        }
+
                         // Display assistant response
                         const lastMessage = response.messages[response.messages.length - 1];
                         if (lastMessage && lastMessage.role === 'assistant') {

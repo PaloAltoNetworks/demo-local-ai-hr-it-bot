@@ -254,6 +254,7 @@ app.post('/api/process-prompt', async (req, res) => {
             });
 
             let mcpResponse = null;
+            let tokenMetadata = null;
 
             // Process streamed response
             await new Promise((resolve, reject) => {
@@ -271,6 +272,10 @@ app.post('/api/process-prompt', async (req, res) => {
                                         role: 'assistant',
                                         content: data.response
                                     };
+                                    // Capture token metadata if available
+                                    if (data.metadata) {
+                                        tokenMetadata = data.metadata;
+                                    }
                                 }
                             } catch (e) {
                                 console.warn('⚠️ [ChatbotHost] Error parsing streamed response:', e);
@@ -296,12 +301,19 @@ app.post('/api/process-prompt', async (req, res) => {
             // Send final response
             if (mcpResponse) {
                 sessionManager.addMessageToHistory(session.sessionId, mcpResponse);
-                res.write('data: ' + JSON.stringify({
+                const finalResponse = {
                     type: 'response',
                     messages: session.messageHistory,
                     sessionId: session.sessionId,
                     source: 'mcp-gateway'
-                }) + '\n\n');
+                };
+                
+                // Include token metadata if available
+                if (tokenMetadata) {
+                    finalResponse.metadata = tokenMetadata;
+                }
+                
+                res.write('data: ' + JSON.stringify(finalResponse) + '\n\n');
             }
 
         } catch (error) {
