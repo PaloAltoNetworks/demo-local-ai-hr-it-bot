@@ -11,6 +11,8 @@ export class UIManager {
         this.connectionStatusCallbacks = [];
         this.thinkingMessageElement = null;
         this.isOnlineStatus = true;
+        this.thinkingChain = []; // Store thinking chain
+        this.currentThinkingContainer = null; // Current thinking message container
     }
 
     /**
@@ -91,6 +93,112 @@ export class UIManager {
     }
 
     /**
+     * Display a bot message with thinking chain
+     */
+    displayBotMessageWithThinking(content, phase = null) {
+        if (!this.elements.chatMessages) return;
+
+        const messageDiv = document.createElement('div');
+        let className = `message bot-message`;
+        if (phase) {
+            className += ` ${phase}-message`;
+        }
+        messageDiv.className = className;
+
+        const displayContent = Utils.formatBotResponse(content);
+        const timestamp = Utils.getTimestamp(this.language);
+        
+        // Create message with thinking chain button if there are thoughts
+        const hasThinkingChain = this.thinkingChain.length > 0;
+        let messageHTML = `
+            <div class="message-avatar">
+                <i class="fas fa-otter"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-text">${displayContent}</div>
+                <div class="message-timestamp">${timestamp}</div>
+        `;
+
+        if (hasThinkingChain) {
+            const thinkingId = `thinking-${Date.now()}`;
+            messageHTML += `
+                <button class="thinking-toggle" data-thinking-id="${thinkingId}" title="View thinking chain">
+                    <i class="fas fa-chevron-down"></i>
+                    <span class="thinking-toggle-text">${this.i18n.t('chat.viewThinking')}</span>
+                </button>
+                <div class="thinking-chain" id="${thinkingId}" style="display: none;">
+            `;
+            
+            // Add each thinking step
+            this.thinkingChain.forEach((thought, index) => {
+                const formattedIcon = this.getThinkingIcon(thought.text);
+                messageHTML += `
+                    <div class="thinking-step" style="animation-delay: ${index * 0.05}s;">
+                        <div class="thinking-step-header">
+                            <span class="thinking-step-time">${thought.timestamp}</span>
+                        </div>
+                        <div class="thinking-step-content">
+                            ${formattedIcon} ${Utils.escapeHtml(thought.text)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            messageHTML += `
+                </div>
+            `;
+        }
+
+        messageHTML += `
+            </div>
+        `;
+
+        messageDiv.innerHTML = messageHTML;
+        this.elements.chatMessages.appendChild(messageDiv);
+
+        // Add event listener to toggle button
+        if (hasThinkingChain) {
+            const toggleBtn = messageDiv.querySelector('.thinking-toggle');
+            const thinkingChain = messageDiv.querySelector('.thinking-chain');
+            
+            toggleBtn.addEventListener('click', () => {
+                const isVisible = thinkingChain.style.display !== 'none';
+                thinkingChain.style.display = isVisible ? 'none' : 'flex';
+                toggleBtn.classList.toggle('expanded', !isVisible);
+                this.scrollToBottom();
+            });
+        }
+
+        this.scrollToBottom();
+        this.clearThinkingChain();
+    }
+
+    /**
+     * Get thinking icon HTML based on content
+     */
+    getThinkingIcon(text) {
+        if (text.includes('Analyzing') || text.includes('🔍')) {
+            return `<i class="fas fa-search thinking-icon"></i>`;
+        } else if (text.includes('Checking language') || text.includes('🌐')) {
+            return `<i class="fas fa-globe thinking-icon"></i>`;
+        } else if (text.includes('Translated') || text.includes('🔄')) {
+            return `<i class="fas fa-language thinking-icon"></i>`;
+        } else if (text.includes('Determining') || text.includes('🎯')) {
+            return `<i class="fas fa-crosshairs thinking-icon"></i>`;
+        } else if (text.includes('Connecting') || text.includes('📡')) {
+            return `<i class="fas fa-wifi thinking-icon"></i>`;
+        } else if (text.includes('processing') || text.includes('⏳')) {
+            return `<i class="fas fa-cog fa-spin thinking-icon"></i>`;
+        } else if (text.includes('Response received') || text.includes('✅')) {
+            return `<i class="fas fa-check-circle thinking-icon success"></i>`;
+        } else if (text.includes('Error') || text.includes('❌')) {
+            return `<i class="fas fa-exclamation-circle thinking-icon error"></i>`;
+        } else {
+            return `<i class="fas fa-comment-dots thinking-icon"></i>`;
+        }
+    }
+
+    /**
      * Show thinking animation in chat
      */
     showThinkingAnimation() {
@@ -147,8 +255,12 @@ export class UIManager {
 
     /**
      * Update thinking message text with enhanced formatting
+     * Also accumulates thinking chain for later display
      */
     updateThinkingMessage(text) {
+        // Store thinking in chain
+        this.addToThinkingChain(text);
+
         if (this.thinkingMessageElement) {
             const textElement = this.thinkingMessageElement.querySelector('.thinking-text');
             if (textElement) {
@@ -166,6 +278,33 @@ export class UIManager {
             // Create thinking message if it doesn't exist
             this.showThinkingMessage(text);
         }
+    }
+
+    /**
+     * Add thinking message to chain
+     */
+    addToThinkingChain(text) {
+        const cleanText = text.replace(/^\[COORDINATOR\]\s*/, '');
+        const timestamp = new Date().toLocaleTimeString(this.language);
+        this.thinkingChain.push({
+            text: cleanText,
+            timestamp: timestamp,
+            timestamp_ms: Date.now()
+        });
+    }
+
+    /**
+     * Clear thinking chain
+     */
+    clearThinkingChain() {
+        this.thinkingChain = [];
+    }
+
+    /**
+     * Get thinking chain
+     */
+    getThinkingChain() {
+        return this.thinkingChain;
     }
 
     /**

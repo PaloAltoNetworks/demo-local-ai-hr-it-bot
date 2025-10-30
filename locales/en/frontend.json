@@ -55,6 +55,7 @@
     "send": "Send",
     "clear": "Clear Chat",
     "thinking": "Thinking...",
+    "viewThinking": "View thinking chain",
     "errorSending": "Error sending message",
     "connectionLost": "Connection lost",
     "reconnecting": "Reconnecting...",

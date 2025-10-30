@@ -318,7 +318,8 @@ class ChatBotApp {
                                 contentToDisplay = contentToDisplay.text;
                             }
                             
-                            this.uiManager?.displayMessage('assistant', contentToDisplay, this.currentPhase);
+                            // Display with thinking chain if available
+                            this.uiManager?.displayBotMessageWithThinking(contentToDisplay, this.currentPhase);
                         }
                     }
                 }

@@ -55,6 +55,7 @@
     "send": "Envoyer",
     "clear": "Effacer le Chat",
     "thinking": "Réflexion...",
+    "viewThinking": "Voir la chaîne de pensée",
     "errorSending": "Erreur lors de l'envoi du message",
     "connectionLost": "Connexion perdue",
     "reconnecting": "Reconnexion...",

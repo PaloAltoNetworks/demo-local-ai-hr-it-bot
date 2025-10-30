@@ -1325,6 +1325,107 @@ body {
   margin-right: var(--space-4);
 }
 
+/* Thinking Chain Styles */
+.thinking-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+  padding: var(--space-8) var(--space-12);
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-base);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  white-space: nowrap;
+}
+
+.thinking-toggle:hover {
+  background: rgba(var(--color-teal-500-rgb), 0.1);
+  border-color: var(--color-primary-hover);
+  color: var(--color-primary-hover);
+}
+
+.thinking-toggle i {
+  transition: transform var(--duration-fast) var(--ease-standard);
+  font-size: var(--font-size-sm);
+}
+
+.thinking-toggle.expanded i {
+  transform: rotate(180deg);
+}
+
+.thinking-chain {
+  margin-top: var(--space-12);
+  padding: var(--space-12);
+  background: rgba(var(--color-teal-500-rgb), 0.05);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-base);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.thinking-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(var(--color-teal-500-rgb), 0.15);
+  animation: slideInThinking 0.3s var(--ease-standard) both;
+}
+
+.thinking-step-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.thinking-step-time {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+}
+
+.thinking-step-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  line-height: var(--line-height-tight);
+}
+
+@keyframes slideInThinking {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes thinkingDotPulse {
+  0%, 80%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
 /* Interface de saisie */
 .chat-input-container {
   border-top: 1px solid var(--color-border);
