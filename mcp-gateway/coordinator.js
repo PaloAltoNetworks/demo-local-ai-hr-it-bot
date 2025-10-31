@@ -837,7 +837,7 @@ SYNTHESIZED RESPONSE:`;
       // CHECKPOINT 2: Analyze outbound request security (use passed phase)
       if (shouldUsePrismaAIRS(phase)) {
         console.log(`🔒 [Coordinator] Phase 3 active - Running Security Checkpoint 2: Outbound Request to ${agent.name}`);
-        securityCheckResult = await this.analyzeOutboundRequest(query, agent.name, language);
+        securityCheckResult = await this.analyzeOutboundRequest(query, agent.name, language, userContext?.email, agent.name);
         if (!securityCheckResult.approved) {
           console.log(`🚫 [Coordinator] Security Checkpoint 2 BLOCKED: ${securityCheckResult.category}`);
           throw new Error(`Security blocked outbound request to ${agent.name}: ${securityCheckResult.message}`);
@@ -912,7 +912,7 @@ SYNTHESIZED RESPONSE:`;
         let responseToReturn = responseText;
         if (shouldUsePrismaAIRS(phase)) {
           console.log(`🔒 [Coordinator] Phase 3 active - Running Security Checkpoint 3: Inbound Response from ${agent.name}`);
-          const inboundSecurity = await this.analyzeInboundResponse(query, responseText, agent.name, language);
+          const inboundSecurity = await this.analyzeInboundResponse(query, responseText, agent.name, language, userContext?.email, agent.name);
           if (!inboundSecurity.approved) {
             console.log(`🚫 [Coordinator] Security Checkpoint 3 BLOCKED: ${inboundSecurity.category}`);
             // Return the security block info - don't throw, let processQuery handle it
@@ -1126,155 +1126,218 @@ Return only the concise version:`;
   }
 
   /**
-   * Prisma AIRS Security Analysis - Checkpoint 1: Initial User Input
+   * Helper method to send Prisma AIRS checkpoint thinking message with latency
+   * @private
    */
-  async analyzeUserInput(query, language = 'en') {
+  _sendSecurityCheckpointMessage(checkpointNumber, result, startTime, context = {}) {
+    const latency = Date.now() - startTime;
+    const detectionField = context.detectionField || 'promptDetected';
+    const detections = result[detectionField] ? Object.keys(result[detectionField]).filter(k => result[detectionField][k]).join(', ') : 'policy violation';
+    
+    if (result.approved) {
+      const contextStr = context.contextStr ? ` - ${context.contextStr}` : '';
+      this.sendThinkingMessage(`🔓 UNLOCKED - Checkpoint ${checkpointNumber}: ${context.message || 'passed security checks'}${contextStr} (${latency}ms)`);
+    } else {
+      const contextStr = context.contextStr ? ` - ${context.contextStr}` : '';
+      this.sendThinkingMessage(`🔒 LOCKED - Checkpoint ${checkpointNumber}: ${result.category || 'security'} detected (${detections})${contextStr} - ${latency}ms`);
+      if (context.blockLogMessage) {
+        console.log(context.blockLogMessage);
+      }
+    }
+  }
+
+  /**
+   * Generic Prisma AIRS security checkpoint analyzer
+   * @private
+   */
+  async _analyzeSecurityCheckpoint(config) {
+    const {
+      checkpointNumber,
+      checkpointLabel,
+      appName,
+      appUser,
+      userEmail,
+      agentName,
+      analyzeMethod,
+      input,
+      secondaryInput,
+      detectionField,
+      maskingField,
+      trId,
+      successMessage,
+      blockMessage,
+      originalKey,
+      maskedKey
+    } = config;
+
     if (!this.prismaAIRS || !this.prismaAIRS.isConfigured()) {
-      return { approved: true, message: 'Security not configured', originalQuery: query };
+      const returnObj = { approved: true, message: 'Security not configured' };
+      returnObj[originalKey] = input;
+      return returnObj;
     }
 
-    console.log('🔒 [Coordinator] Security Checkpoint 1: Analyzing user input');
+    const agentInfo = agentName ? ` (${agentName})` : '';
+    console.log(`🔒 [Coordinator] Security Checkpoint ${checkpointNumber}: ${checkpointLabel}${agentInfo}`);
+
+    const startTime = Date.now();
     
-    const result = await this.prismaAIRS.analyzePrompt(query, {
-      language,
-      appName: 'mcp-gateway',
-      appUser: 'user',
-      aiModel: this.coordinatorModel,
-      trId: `user-input-${Date.now()}`
+    // Build appName with agent info if available
+    const appNameWithAgent = agentName ? `${appName}-${agentName}` : appName;
+    
+    // Call appropriate Prisma AIRS method
+    let result;
+    if (analyzeMethod === 'prompt') {
+      result = await this.prismaAIRS.analyzePrompt(input, {
+        language: config.language,
+        appName: appNameWithAgent,
+        appUser: userEmail || appUser,
+        aiModel: this.coordinatorModel,
+        trId
+      });
+    } else if (analyzeMethod === 'promptAndResponse') {
+      result = await this.prismaAIRS.analyzePromptAndResponse(input, secondaryInput, {
+        language: config.language,
+        appName: appNameWithAgent,
+        appUser: userEmail || appUser,
+        aiModel: this.coordinatorModel,
+        trId
+      });
+    }
+
+    // Send thinking messages for visibility
+    this._sendSecurityCheckpointMessage(checkpointNumber, result, startTime, {
+      message: successMessage,
+      detectionField,
+      blockLogMessage: blockMessage
     });
 
-    if (!result.approved) {
-      console.log('🚫 [Coordinator] User input BLOCKED by security');
-    }
-
-    // Extract masked prompt if sensitive data was detected
-    let maskedQuery = query;
-    if (result.maskedData?.prompt?.data) {
-      maskedQuery = result.maskedData.prompt.data;
-      console.log(`🔒 [Coordinator] Sensitive data detected in user input - using masked query`);
+    // Extract masked data if sensitive data was detected
+    let maskedInput = input;
+    let maskedSecondaryInput = secondaryInput;
+    
+    if (maskingField === 'prompt' && result.maskedData?.prompt?.data) {
+      maskedInput = result.maskedData.prompt.data;
+      console.log(`🔒 [Coordinator] Sensitive data detected - using masked prompt${agentInfo}`);
       console.log(`🔒 Detections:`, result.maskedData.prompt.pattern_detections || []);
+    } else if (maskingField === 'response' && result.maskedData?.response?.data) {
+      maskedSecondaryInput = result.maskedData.response.data;
+      console.log(`🔒 [Coordinator] Sensitive data detected - using masked response${agentInfo}`);
+      console.log(`🔒 Detections:`, result.maskedData.response.pattern_detections || []);
     }
 
-    return {
+    // Return appropriate structure based on checkpoint type
+    const returnObj = {
       ...result,
-      originalQuery: query,
-      maskedQuery: maskedQuery,
-      hasMasking: maskedQuery !== query
+      [originalKey]: input
     };
+    
+    if (analyzeMethod === 'prompt') {
+      returnObj[maskedKey] = maskedInput;
+      returnObj.hasMasking = maskedInput !== input;
+    } else {
+      returnObj[maskedKey] = maskedSecondaryInput;
+      returnObj.hasMasking = maskedSecondaryInput !== secondaryInput;
+    }
+
+    return returnObj;
+  }
+
+  /**
+   * Prisma AIRS Security Analysis - Checkpoint 1: Initial User Input
+   */
+  async analyzeUserInput(query, language = 'en', userEmail = null, agentName = null) {
+    return this._analyzeSecurityCheckpoint({
+      checkpointNumber: 1,
+      checkpointLabel: 'Analyzing user input',
+      appName: 'mcp-coordinator',
+      appUser: 'user',
+      userEmail,
+      agentName,
+      language,
+      analyzeMethod: 'prompt',
+      input: query,
+      detectionField: 'promptDetected',
+      maskingField: 'prompt',
+      trId: `user-input-${Date.now()}`,
+      successMessage: 'User input passed security checks',
+      blockMessage: '🚫 [Coordinator] User input BLOCKED by security',
+      originalKey: 'originalQuery',
+      maskedKey: 'maskedQuery'
+    });
   }
 
   /**
    * Prisma AIRS Security Analysis - Checkpoint 2: Outbound Request to MCP Server
    */
-  async analyzeOutboundRequest(subQuery, serverName, language = 'en') {
-    if (!this.prismaAIRS || !this.prismaAIRS.isConfigured()) {
-      return { approved: true, message: 'Security not configured', originalQuery: subQuery };
-    }
-
-    console.log(`🔒 [Coordinator] Security Checkpoint 2: Analyzing outbound request to ${serverName}`);
-    
-    const result = await this.prismaAIRS.analyzePrompt(subQuery, {
+  async analyzeOutboundRequest(subQuery, serverName, language = 'en', userEmail = null, agentName = null) {
+    return this._analyzeSecurityCheckpoint({
+      checkpointNumber: 2,
+      checkpointLabel: `Analyzing outbound request to ${serverName}`,
+      appName: 'mcp-coordinator',
+      appUser: 'user',
+      userEmail,
+      agentName,
       language,
-      appName: 'mcp-gateway',
-      appUser: serverName,
-      aiModel: this.coordinatorModel,
-      trId: `outbound-${serverName}-${Date.now()}`
+      analyzeMethod: 'prompt',
+      input: subQuery,
+      detectionField: 'promptDetected',
+      maskingField: 'prompt',
+      trId: `outbound-${serverName}-${Date.now()}`,
+      successMessage: `Request to ${serverName} passed security checks`,
+      blockMessage: `🚫 [Coordinator] Outbound request to ${serverName} BLOCKED by security`,
+      originalKey: 'originalQuery',
+      maskedKey: 'maskedQuery'
     });
-
-    if (!result.approved) {
-      console.log(`🚫 [Coordinator] Outbound request to ${serverName} BLOCKED by security`);
-    }
-
-    // Extract masked prompt if sensitive data was detected
-    let maskedQuery = subQuery;
-    if (result.maskedData?.prompt?.data) {
-      maskedQuery = result.maskedData.prompt.data;
-      console.log(`🔒 [Coordinator] Sensitive data detected - using masked prompt for outbound request`);
-      console.log(`🔒 Detections:`, result.maskedData.prompt.pattern_detections || []);
-    }
-
-    return {
-      ...result,
-      originalQuery: subQuery,
-      maskedQuery: maskedQuery,
-      hasMasking: maskedQuery !== subQuery
-    };
   }
 
   /**
    * Prisma AIRS Security Analysis - Checkpoint 3: Inbound Response from MCP Server
    */
-  async analyzeInboundResponse(prompt, response, serverName, language = 'en') {
-    if (!this.prismaAIRS || !this.prismaAIRS.isConfigured()) {
-      return { approved: true, message: 'Security not configured', originalResponse: response };
-    }
-
-    console.log(`🔒 [Coordinator] Security Checkpoint 3: Analyzing inbound response from ${serverName}`);
-    
-    const result = await this.prismaAIRS.analyzePromptAndResponse(prompt, response, {
+  async analyzeInboundResponse(prompt, response, serverName, language = 'en', userEmail = null, agentName = null) {
+    return this._analyzeSecurityCheckpoint({
+      checkpointNumber: 3,
+      checkpointLabel: `Analyzing inbound response from ${serverName}`,
+      appName: 'mcp-agent',
+      appUser: 'agent',
+      userEmail,
+      agentName,
       language,
-      appName: 'mcp-gateway',
-      appUser: serverName,
-      aiModel: this.coordinatorModel,
-      trId: `inbound-${serverName}-${Date.now()}`
+      analyzeMethod: 'promptAndResponse',
+      input: prompt,
+      secondaryInput: response,
+      detectionField: 'responseDetected',
+      maskingField: 'response',
+      trId: `inbound-${serverName}-${Date.now()}`,
+      successMessage: `Response from ${serverName} passed security checks`,
+      blockMessage: `🚫 [Coordinator] Inbound response from ${serverName} BLOCKED by security`,
+      originalKey: 'originalResponse',
+      maskedKey: 'maskedResponse'
     });
-
-    if (!result.approved) {
-      console.log(`🚫 [Coordinator] Inbound response from ${serverName} BLOCKED by security`);
-    }
-
-    // Extract masked response if sensitive data was detected
-    let maskedResponse = response;
-    if (result.maskedData?.response?.data) {
-      maskedResponse = result.maskedData.response.data;
-      console.log(`🔒 [Coordinator] Sensitive data detected in response - using masked response`);
-      console.log(`🔒 Detections:`, result.maskedData.response.pattern_detections || []);
-    }
-
-    return {
-      ...result,
-      originalResponse: response,
-      maskedResponse: maskedResponse,
-      hasMasking: maskedResponse !== response
-    };
   }
 
   /**
    * Prisma AIRS Security Analysis - Checkpoint 4: Final Coordinated Response
    */
-  async analyzeFinalResponse(prompt, response, language = 'en') {
-    if (!this.prismaAIRS || !this.prismaAIRS.isConfigured()) {
-      return { approved: true, message: 'Security not configured', originalResponse: response };
-    }
-
-    console.log('🔒 [Coordinator] Security Checkpoint 4: Analyzing final coordinated response');
-    
-    const result = await this.prismaAIRS.analyzePromptAndResponse(prompt, response, {
+  async analyzeFinalResponse(prompt, response, language = 'en', userEmail = null, agentName = null) {
+    return this._analyzeSecurityCheckpoint({
+      checkpointNumber: 4,
+      checkpointLabel: 'Analyzing final coordinated response',
+      appName: 'mcp-agent',
+      appUser: 'agent',
+      userEmail,
+      agentName,
       language,
-      appName: 'mcp-gateway',
-      appUser: 'final-output',
-      aiModel: this.coordinatorModel,
-      trId: `final-output-${Date.now()}`
+      analyzeMethod: 'promptAndResponse',
+      input: prompt,
+      secondaryInput: response,
+      detectionField: 'responseDetected',
+      maskingField: 'response',
+      trId: `final-output-${Date.now()}`,
+      successMessage: 'Final response passed security checks',
+      blockMessage: '� [Coordinator] Final response BLOCKED by security',
+      originalKey: 'originalResponse',
+      maskedKey: 'maskedResponse'
     });
-
-    if (!result.approved) {
-      console.log('🚫 [Coordinator] Final response BLOCKED by security');
-    }
-
-    // Extract masked response if sensitive data was detected
-    let maskedResponse = response;
-    if (result.maskedData?.response?.data) {
-      maskedResponse = result.maskedData.response.data;
-      console.log(`🔒 [Coordinator] Sensitive data detected in final response - using masked response`);
-      console.log(`🔒 Detections:`, result.maskedData.response.pattern_detections || []);
-    }
-
-    return {
-      ...result,
-      originalResponse: response,
-      maskedResponse: maskedResponse,
-      hasMasking: maskedResponse !== response
-    };
   }
 
   /**
@@ -1301,7 +1364,7 @@ Return only the concise version:`;
       // CHECKPOINT 1: Analyze user input security (use passed phase, not instance variable)
       if (shouldUsePrismaAIRS(phase)) {
         console.log(`🔒 [Coordinator] Phase 3 active - Running Security Checkpoint 1: User Input Analysis`);
-        const inputSecurity = await this.analyzeUserInput(query, language);
+        const inputSecurity = await this.analyzeUserInput(query, language, userContext?.email);
         if (!inputSecurity.approved) {
           console.log(`🚫 [Coordinator] Security Checkpoint 1 BLOCKED: ${inputSecurity.category}`);
           // Return security block message
@@ -1399,7 +1462,7 @@ Return only the concise version:`;
         // CHECKPOINT 4: Analyze final response security (use passed phase)
         let finalResponseToReturn = processedResponse;
         if (shouldUsePrismaAIRS(phase)) {
-          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language);
+          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, selectedAgent.name);
           if (!finalSecurity.approved) {
             return {
               response: finalSecurity.message,
@@ -1469,7 +1532,7 @@ Return only the concise version:`;
         // CHECKPOINT 4: Analyze final response security (use passed phase)
         let finalResponseToReturn = processedResponse;
         if (shouldUsePrismaAIRS(phase)) {
-          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language);
+          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, 'multi-agent-coordinator');
           if (!finalSecurity.approved) {
             return {
               response: finalSecurity.message,
