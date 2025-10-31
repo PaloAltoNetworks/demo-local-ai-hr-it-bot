@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "cannotFulfillRequest": "このリクエストを処理することができません。"
+  },
+  "status": {
+    "healthy": "サービスは正常に動作しています",
+    "unhealthy": "サービスは利用できません",
+    "allServicesOperational": "すべてのサービスが正常に動作しています",
+    "mcpServicesUnavailable": "MCPサービスは利用できません"
+  },
+  "mcp": {
+    "unavailableMessage": "申し訳ございませんが、現在AIサービスは利用できません。以下の理由が考えられます:\n\n• システムメンテナンス\n• ネットワーク接続の問題\n• サーバーの過負荷\n\n数分後に再度お試しください。すぐにサポートが必要な場合は:\n• ITヘルプデスク: 内線 1234\n• HR: 内線 5678\n\nご利用ありがとうございました。"
+  },
+  "security": {
+    "detections": {
+      "injection": "インジェクション攻撃の試み",
+      "toxicContent": "有害なコンテンツ",
+      "maliciousCode": "悪意のあるコード",
+      "dataLeak": "機密データの漏洩",
+      "topicViolation": "トピックポリシー違反",
+      "urlCategory": "許可されていないURLカテゴリーのコンテンツ",
+      "suspiciousAgent": "疑わしいエージェントの動作",
+      "ungrounded": "根拠のない回答",
+      "dbSecurity": "データベースセキュリティの問題"
+    },
+    "messages": {
+      "contentApproved": "コンテンツは承認されました",
+      "cannotProcessRequest": "このリクエストを処理できません",
+      "cannotProvideResponse": "この回答を提供できません",
+      "containsIssues": "次の理由です: {{issues}}。",
+      "policyViolation": "セキュリティポリシーに準拠していないためです。",
+      "rephraseRequest": "質問を適切に言い換えてください。",
+      "helpWithElse": "他にお手伝いできることはありますか?"
+    },
+    "errors": {
+      "notConfigured": "申し訳ございませんが、セキュリティシステムはまだ設定されていません。管理者に連絡してこの機能を有効にしてください。",
+      "serviceUnavailable": "申し訳ございませんが、セキュリティ検証システムは一時的に利用できません。数分後に再度お試しください。"
+    }
+  }
+}
