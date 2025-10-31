@@ -508,7 +508,7 @@ class ChatBotApp {
         localStorage.removeItem('chatbot-session');
         
         // Show confirmation message
-        this.uiManager?.showSuccess(i18n.t('userMenu.logoutSuccess') || 'Logged out successfully');
+        this.uiManager?.showNotification(i18n.t('userMenu.logoutSuccess') || 'Logged out successfully', 'success');
         
         // Optional: Reload page or redirect
         setTimeout(() => {
