@@ -421,13 +421,16 @@ class ChatBotApp {
     /**
      * Setup user menu functionality
      */
-    setupUserMenu() {
+    async setupUserMenu() {
         const trigger = document.getElementById('userMenuTrigger');
         const dropdown = document.getElementById('userMenuDropdown');
         const languageSelect = document.getElementById('userMenuLanguageSelect');
         const logoutBtn = document.getElementById('userMenuLogout');
 
         if (!trigger || !dropdown) return;
+
+        // Populate language options dynamically from backend using i18n service
+        await i18n.populateLanguageSelect(languageSelect);
 
         // Toggle dropdown on trigger click
         trigger.addEventListener('click', (e) => {

@@ -226,37 +226,31 @@ export class I18nService {
     }
 
     /**
-     * Get available languages from backend
-     * @return {Promise<Array>}
+     * Fetch and populate language options in a select element
+     * @param {HTMLSelectElement} selectElement - The select element to populate
+     * @return {Promise<void>}
      */
-    async getAvailableLanguages() {
+    async populateLanguageSelect(selectElement) {
+        if (!selectElement) return;
+
         try {
             const response = await fetch(`${API_BASE_URL}/api/languages`);
             const data = await response.json();
-            return data.languages?.map(lang => lang.code) || ['en']; // Extract language codes
+            
+            if (data.languages && Array.isArray(data.languages)) {
+                // Clear existing options
+                selectElement.innerHTML = '';
+                
+                // Add options for each language
+                data.languages.forEach(lang => {
+                    const option = document.createElement('option');
+                    option.value = lang.code;
+                    option.textContent = lang.nativeName || lang.name || lang.code;
+                    selectElement.appendChild(option);
+                });
+            }
         } catch (error) {
             console.error('Error fetching available languages:', error);
-            return ['en']; // fallback to English only
-        }
-    }
-
-    /**
-     * Get native name for a language without affecting current language state
-     * @param {string} langCode - Language code
-     * @return {Promise<string>}
-     */
-    async getLanguageNativeName(langCode) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/languages`);
-            if (!response.ok) {
-                return langCode; // fallback to code itself
-            }
-            const data = await response.json();
-            const language = data.languages?.find(lang => lang.code === langCode);
-            return language?.nativeName || langCode;
-        } catch (error) {
-            console.error(`Error getting native name for ${langCode}:`, error);
-            return langCode; // fallback to code itself
         }
     }
 }
