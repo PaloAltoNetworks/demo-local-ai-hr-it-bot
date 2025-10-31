@@ -102,7 +102,7 @@ class BedrockProvider extends LLMProvider {
   constructor(config = {}) {
     super();
     this.region = config.region || process.env.AWS_REGION || 'us-east-1';
-    this.modelId = config.modelId || process.env.BEDROCK_MODEL_ID || 'anthropic.claude-3-sonnet-20240229-v1:0';
+    this.modelId = config.modelId || process.env.BEDROCK_AGENT_MODEL || 'anthropic.claude-3-sonnet-20240229-v1:0';
     this.temperature = config.temperature || 0.3;
 
     this.client = new BedrockRuntimeClient({ region: this.region });
@@ -512,7 +512,7 @@ class LLMProviderFactory {
       case 'bedrock':
         return new BedrockProvider({
           region: process.env.AWS_REGION,
-          modelId: process.env.BEDROCK_MODEL_ID,
+          modelId: process.env.BEDROCK_AGENT_MODEL,
           temperature: 0.3,
           ...config
         });
