@@ -261,7 +261,7 @@ app.post('/api/process-prompt', async (req, res) => {
                 response.data.on('data', async (chunk) => {
                     const lines = chunk.toString().split('\n');
                     lines.forEach(line => {
-                        if (line.trim()) {
+                        if (line.trim() && line.trim() !== '[DONE]') {
                             try {
                                 const data = JSON.parse(line);
                                 if (data.type === 'thinking') {
