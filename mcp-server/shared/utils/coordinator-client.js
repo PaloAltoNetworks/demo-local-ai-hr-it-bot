@@ -160,8 +160,9 @@ class CoordinatorClient {
     this.logger.info('Unregistering from coordinator...');
 
     try {
-      const response = await axios.delete(
-        `${this.config.coordinator.url}/api/agents/${this.agentId}`,
+      const response = await axios.post(
+        `${this.config.coordinator.url}/api/agents/${this.agentId}/unregister`,
+        {},
         {
           timeout: 5000
         }
