@@ -1,114 +1,120 @@
-# Chatbot2 - Intelligent MCP Gateway System
+# AI HR/IT Chatbot - MCP Gateway System
 
-An enterprise-grade chatbot system built on the Model Context Protocol (MCP) with intelligent routing, multilingual support, and advanced security integration.
+An intelligent chatbot system using the Model Context Protocol (MCP) with automatic LLM provider switching (Ollama/AWS Bedrock), multi-agent routing, and multilingual support.
 
-## 🌟 Features
+## � What It Does
 
-- **MCP Protocol Compliant**: Follows MCP specification 2025-06-18
-- **Intelligent Routing**: LLM-based query analysis and agent selection
-- **Multilingual Support**: Automatic translation for 10+ languages
-- **Multi-Agent Coordination**: Seamlessly combines responses from multiple specialized agents
-- **Enterprise Security**: Prisma AIRS integration with 4-layer security checkpoints
-- **Clean Architecture**: Separated protocol, intelligence, and security concerns
+- **Intelligent Query Routing**: Analyzes questions and routes to HR, IT, or General agents
+- **Multi-Agent Coordination**: Combines responses from multiple agents when needed
+- **Flexible LLM Providers**: Switch between Ollama (local, $0) and AWS Bedrock (cloud, ~$0.0045/query) with env vars only
+- **Multilingual**: Automatic translation (English, French, and more)
+- **Enterprise Security**: Optional Prisma AIRS integration (4 security checkpoints)
 
-## 🏗️ Architecture
+## 🏗️ System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    CHATBOT HOST                             │
-│                  (User Interface)                           │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│                   MCP GATEWAY                               │
-│  ┌──────────────┐  ┌───────────────┐  ┌──────────────┐      │
-│  │ MCP Server   │  │ Coordinator   │  │ Prisma AIRS  │      │
-│  │ (Protocol)   │→ │ (Intelligence)│→ │ (Security)   │      │
-│  └──────────────┘  └───────────────┘  └──────────────┘      │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-        ┌────────────────┼────────────────┐
-        ▼                ▼                ▼
-┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-│   HR MCP     │ │   IT MCP     │ │  General MCP │
-│   Server     │ │   Server     │ │   Server     │
-└──────────────┘ └──────────────┘ └──────────────┘
+Frontend UI
+    ↓
+Backend API (Session Management)
+    ↓
+MCP Gateway (Routing & LLM Selection)
+    ↓
+┌─────────────┬──────────────┬──────────────┐
+│  HR Server  │  IT Server   │ General Server
+│             │              │
 ```
 
 ## 📚 Documentation
 
-Comprehensive documentation is available in the [`docs/`](./docs/) directory:
+**→ [Complete Documentation](./docs/README.md)**
 
-### Getting Started
-- **[Documentation Index](./docs/README.md)** - Start here for complete documentation overview
-
-### System Design
-- **[MCP Architecture](./docs/MCP-ARCHITECTURE.md)** - Overall MCP standard compliance
-- **[Intelligent Coordinator Plan](./docs/INTELLIGENT-MCP-COORDINATOR-PLAN.md)** - High-level design
-
-### Gateway Implementation
-- **[Gateway Architecture](./docs/gateway/architecture.md)** - Component separation and design
-- **[Implementation Guide](./docs/gateway/implementation.md)** - Refactoring and migration details
-- **[API Reference](./docs/gateway/api-reference.md)** - Complete API documentation
+All information in one place:
+- Quick start (Ollama or Bedrock)
+- Configuration reference
+- API endpoints
+- Architecture details
+- Troubleshooting
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### With Ollama (Local)
+```bash
+# Set provider
+export LLM_PROVIDER=ollama
+export OLLAMA_SERVER_URL=http://localhost:11434
+export COORDINATOR_MODEL=qwen2.5:1.5b
 
-- Node.js 22+
-- Docker and Docker Compose
-- Ollama (for LLM models)
+# Start
+docker compose up -d
+```
 
-### Installation
+### With AWS Bedrock (Cloud)
+```bash
+# Set provider
+export LLM_PROVIDER=bedrock
+export AWS_REGION=us-east-1
+export AWS_ACCESS_KEY_ID=your_key
+export AWS_SECRET_ACCESS_KEY=your_secret
+export BEDROCK_MODEL_ID=anthropic.claude-3-sonnet-20240229-v1:0
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd chatbot2
-   ```
+# Start
+docker compose up -d
+```
 
-2. **Install Ollama models**
-   ```bash
-   ollama pull qwen2.5:1.5b
-   ollama pull gemma3:1b
-   ```
+### Verify
+```bash
+curl http://localhost:3001/health
+```
 
-3. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+## � Agents
 
-4. **Start with Docker Compose**
-   ```bash
-   docker-compose up -d
-   ```
+- **HR Agent**: Employee info, manager lookup, policies
+- **IT Agent**: Ticket management, IT systems
+- **General Agent**: Knowledge base, Q&A
 
-5. **Verify deployment**
-   ```bash
-   curl http://localhost:3001/health
-   ```
+## 🔄 Provider Comparison
 
-## 🤝 Contributing
+| Feature | Ollama | Bedrock |
+|---------|--------|---------|
+| Cost | Free | ~$0.0045/query |
+| Setup | Download & run | AWS account |
+| Latency | 500ms-2s | 1-3s |
+| Best For | Development | Production |
 
-1. Read the [Implementation Guide](./docs/gateway/implementation.md)
-2. Follow the existing code structure
-3. Add tests for new features
-4. Update documentation
+## �️ Stack
+
+- **Frontend**: HTML/CSS/JavaScript
+- **Backend**: Node.js
+- **Gateway**: MCP protocol
+- **LLM**: Ollama (local) or AWS Bedrock (cloud)
+- **Deployment**: Docker Compose
+
+## � Project Structure
+
+```
+chatbot-host/     - Web interface and backend API
+mcp-gateway/      - Intelligent routing and LLM provider abstraction
+mcp-server/       - HR, IT, and General agents
+docs/             - Complete documentation
+docker-compose.yml - Container orchestration
+```
+
+## 🚀 Features
+
+✅ Seamless Ollama ↔ Bedrock switching  
+✅ Multi-language support (en, fr, etc)  
+✅ Session management  
+✅ Multi-agent coordination  
+✅ LLM token tracking  
+✅ Error handling & recovery  
+✅ i18n built-in  
+
+## 📞 Getting Help
+
+1. Check [docs/README.md](./docs/README.md) for detailed documentation
+2. Review API reference for endpoint details
+3. See troubleshooting section for common issues
 
 ## 📝 License
 
-[Your License Here]
-
-## 🔗 Links
-
-- [MCP Specification](https://spec.modelcontextprotocol.io/)
-- [Prisma AIRS Documentation](https://docs.paloaltonetworks.com/prisma/airs)
-- [Ollama](https://ollama.ai/)
-
-## 📞 Support
-
-For issues and questions:
-- Check the [Documentation](./docs/)
-- Review [Implementation Guide](./docs/gateway/implementation.md)
-- See [API Reference](./docs/gateway/api-reference.md)
+See LICENSE file
