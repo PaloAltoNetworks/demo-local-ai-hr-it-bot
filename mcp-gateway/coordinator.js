@@ -1,7 +1,7 @@
-const { Ollama } = require('ollama');
 const axios = require('axios');
 const { randomUUID } = require('crypto');
 const { PrismaAIRSIntercept, shouldUsePrismaAIRS } = require('./prisma-airs');
+const { LLMProviderFactory } = require('./llm-provider');
 
 /**
  * Intelligent Coordinator for MCP Gateway
@@ -142,7 +142,8 @@ class AgentRegistry {
  */
 class IntelligentCoordinator {
   constructor(ollamaUrl, mcpServerRegistry) {
-    this.ollama = new Ollama({ host: ollamaUrl });
+    // Initialize LLM provider (supports both Ollama and AWS Bedrock)
+    this.llmProvider = LLMProviderFactory.create();
     this.mcpServerRegistry = mcpServerRegistry; // Reference to MCPServerRegistry for forwarding
     this.registry = new AgentRegistry();
     this.requestCounter = 0;
@@ -223,17 +224,22 @@ class IntelligentCoordinator {
   }
 
   /**
-   * Track real tokens from Ollama response
+   * Track real tokens from LLM response (works with both Ollama and Bedrock)
    */
-  trackOllamaTokens(response, operationType = 'Operation') {
-    const promptTokens = response.prompt_eval_count || 0;
-    const completionTokens = response.eval_count || 0;
-    const totalTokens = promptTokens + completionTokens;
+  trackTokens(response, operationType = 'Operation') {
+    const promptTokens = response.usage?.prompt_tokens || response.prompt_eval_count || 0;
+    const completionTokens = response.usage?.completion_tokens || response.eval_count || 0;
+    const totalTokens = response.usage?.total_tokens || promptTokens + completionTokens;
     if (totalTokens > 0) {
       this.tokenUsage.coordinator_tokens += totalTokens;
       this.tokenUsage.total_tokens += totalTokens;
       console.log(`📊 [Coordinator] ${operationType} tokens: ${promptTokens} (prompt) + ${completionTokens} (completion) = ${totalTokens}`);
     }
+  }
+
+  // Keep legacy method name for backward compatibility
+  trackOllamaTokens(response, operationType = 'Operation') {
+    this.trackTokens(response, operationType);
   }
 
   /**
@@ -321,17 +327,16 @@ class IntelligentCoordinator {
 
 Query: "${query}"`;
 
-      const response = await this.ollama.generate({
-        model: this.coordinatorModel,
-        prompt: translationPrompt,
+      const response = await this.llmProvider.generate(translationPrompt, {
         system: 'You are a precise translation assistant. Only return the English translation with no additional text or explanation.',
-        options: { temperature: 0.1 }
+        temperature: 0.1,
+        maxTokens: 1000
       });
 
       let translatedQuery = response.response?.trim() || query;
       
-      // Track actual tokens from Ollama response
-      this.trackOllamaTokens(response, 'Translation');
+      // Track actual tokens from LLM response
+      this.trackTokens(response, 'Translation');
       
       // Remove surrounding quotes if present (LLM sometimes adds them)
       if (translatedQuery.startsWith('"') && translatedQuery.endsWith('"')) {
@@ -448,19 +453,14 @@ Required format:
   "reasoning": "brief explanation"
 }`;
 
-      const response = await this.ollama.generate({
-        model: this.coordinatorModel,
-        prompt: complexityPrompt,
+      const response = await this.llmProvider.generate(complexityPrompt, {
         system: 'You are a JSON-only query analyzer. NEVER include <think> tags or explanations. Respond with raw JSON only.',
-        options: { 
-          temperature: 0.0,
-          format: 'json',
-          stop: ['\n\n', '<think>', '<thinking>']
-        }
+        temperature: 0.0,
+        maxTokens: 500
       });
 
       // Track routing analysis tokens
-      this.trackOllamaTokens(response, 'Routing analysis');
+      this.trackTokens(response, 'Routing analysis');
 
       try {
         // Clean the response - remove thinking tags and extract JSON
@@ -551,23 +551,18 @@ Now output the JSON:
 
       this.sendThinkingMessage(`🤖 Analyzing query routing strategy...`);
 
-      const response = await this.ollama.generate({
-        model: this.coordinatorModel,
-        prompt: strategyPrompt,
+      const response = await this.llmProvider.generate(strategyPrompt, {
         system: `You are a JSON output formatter. You output ONLY valid JSON.
 Start with { and end with }
 Do not include any text before { or after }
 Do not think or reason
 Output JSON immediately`,
-        options: { 
-          temperature: 0.0,
-          num_predict: 200,
-          stop: [],
-        }
+        temperature: 0.0,
+        maxTokens: 200
       });
 
       // Track routing strategy tokens
-      this.trackOllamaTokens(response, 'Routing strategy');
+      this.trackTokens(response, 'Routing strategy');
 
       try {
         // Validate response structure
@@ -785,18 +780,14 @@ GUIDELINES:
 SYNTHESIZED RESPONSE:`;
 
     try {
-      const response = await this.ollama.generate({
-        model: this.coordinatorModel,
-        prompt: synthesisPrompt,
+      const response = await this.llmProvider.generate(synthesisPrompt, {
         system: 'You are an expert at synthesizing information from multiple sources into clear, comprehensive responses.',
-        options: { 
-          temperature: 0.3,
-          top_p: 0.9
-        }
+        temperature: 0.3,
+        maxTokens: 2000
       });
 
       // Track synthesis tokens
-      this.trackOllamaTokens(response, 'Response synthesis');
+      this.trackTokens(response, 'Response synthesis');
 
       return response.response;
     } catch (error) {
@@ -962,19 +953,14 @@ RESPOND ONLY WITH THIS JSON FORMAT:
   "reasoning": "brief explanation"
 }`;
 
-      const validationResponse = await this.ollama.generate({
-        model: this.coordinatorModel,
-        prompt: validationPrompt,
+      const validationResponse = await this.llmProvider.generate(validationPrompt, {
         system: 'You are a response quality validator. You MUST respond with valid JSON only. Focus on extracting the most concise and relevant information.',
-        options: { 
-          temperature: 0.1,
-          format: 'json',
-          num_predict: 300
-        }
+        temperature: 0.1,
+        maxTokens: 300
       });
 
       // Track validation tokens
-      this.trackOllamaTokens(validationResponse, 'Response validation');
+      this.trackTokens(validationResponse, 'Response validation');
 
       let validation;
       try {
@@ -1052,17 +1038,16 @@ IMPORTANT INSTRUCTIONS:
 
 Response to translate: "${response}"`;
 
-      const translationResponse = await this.ollama.generate({
-        model: this.coordinatorModel,
-        prompt: translationPrompt,
+      const translationResponse = await this.llmProvider.generate(translationPrompt, {
         system: `You are a precise translation assistant. Translate only the meaningful content, ignore technical markup. Return ONLY the ${targetLanguage} translation with no additional text, tags, or explanation.`,
-        options: { temperature: 0.1 }
+        temperature: 0.1,
+        maxTokens: 2000
       });
 
       let translatedResponse = translationResponse.response?.trim() || response;
       
       // Track response translation tokens
-      this.trackOllamaTokens(translationResponse, 'Response translation');
+      this.trackTokens(translationResponse, 'Response translation');
       
       // Remove surrounding quotes if present
       if (translatedResponse.startsWith('"') && translatedResponse.endsWith('"')) {
@@ -1099,15 +1084,14 @@ Requirements:
 
 Return only the concise version:`;
 
-      const conciseResponse = await this.ollama.generate({
-        model: this.coordinatorModel,
-        prompt: concisePrompt,
+      const conciseResponse = await this.llmProvider.generate(concisePrompt, {
         system: 'You are a text optimization assistant. Make responses concise while preserving all essential information.',
-        options: { temperature: 0.1 }
+        temperature: 0.1,
+        maxTokens: 1000
       });
 
       // Track conciseness optimization tokens
-      this.trackOllamaTokens(conciseResponse, 'Conciseness optimization');
+      this.trackTokens(conciseResponse, 'Conciseness optimization');
 
       const conciseText = conciseResponse.response?.trim() || response;
       console.log(`📝 [Coordinator] Made response more concise`);

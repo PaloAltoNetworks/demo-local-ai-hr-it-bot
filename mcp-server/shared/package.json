@@ -11,13 +11,15 @@
     "./coordinator": "./utils/coordinator-client.js",
     "./transport": "./utils/transport-manager.js",
     "./query": "./utils/query-processor.js",
-    "./resources": "./utils/resource-manager.js"
+    "./resources": "./utils/resource-manager.js",
+    "./llm": "./utils/llm-provider.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.20.1",
+    "@aws-sdk/client-bedrock-runtime": "^3.921.0",
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "axios": "^1.13.1",
     "express": "^5.1.0",
-    "ollama": "^0.6.0",
-    "axios": "^1.12.2"
+    "openai": "^6.7.0"
   },
   "keywords": [
     "mcp",
