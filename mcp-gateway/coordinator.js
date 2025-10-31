@@ -403,7 +403,15 @@ Query: "${query}"`;
         throw strategyError;
       }
       
-      if (routingStrategy.requiresMultiple) {
+      if (routingStrategy.strategy === "declined") {
+        console.log(`🚫 [Coordinator] Query declined by LLM for security/policy reasons`);
+        // Return a declined response indicating the request was refused
+        return { 
+          type: 'declined', 
+          reasoning: routingStrategy.reasoning || 'This request cannot be processed.',
+          response: routingStrategy.reasoning || 'I cannot assist with this request as it falls outside the scope of available services.'
+        };
+      } else if (routingStrategy.requiresMultiple) {
         console.log(`🔀 [Coordinator] Multi-agent query detected, splitting across: ${routingStrategy.agents.map(a => a.agent).join(', ')}`);
         const multiAgentResponse = await this.handleMultiAgentQuery(query, routingStrategy, phase, userContext);
         // Return a special object to indicate this is a multi-agent final response
@@ -632,8 +640,17 @@ Output JSON immediately`,
         const strategy = JSON.parse(jsonText);
         
         // Validate the strategy structure
-        if (!strategy.agents || !Array.isArray(strategy.agents) || strategy.agents.length === 0) {
-          throw new Error('Invalid strategy structure: missing or empty agents array');
+        if (!strategy.agents || !Array.isArray(strategy.agents)) {
+          throw new Error('Invalid strategy structure: agents must be an array');
+        }
+        
+        // Handle cases where LLM refuses to route (empty agents array = security refusal)
+        if (strategy.agents.length === 0) {
+          console.log(`⚠️  [Coordinator] LLM declined to route query. Reasoning: ${strategy.reasoning || 'No explanation provided'}`);
+          strategy.requiresMultiple = false;
+          strategy.strategy = "declined";
+          console.log(`🧠 [Coordinator] Routing strategy: DECLINED`, strategy);
+          return strategy;
         }
         
         // Automatically determine if multiple agents are needed based on array length
@@ -1412,6 +1429,25 @@ Return only the concise version:`;
         return {
           response: finalResponseToReturn,
           agentUsed: selectedAgent.name,
+          translatedQuery: translatedQuery !== query ? translatedQuery : null,
+          metadata: resultMetadata
+        };
+      } else if (routingResult.type === 'declined') {
+        // Query was declined by LLM for security/policy reasons
+        console.log(`🚫 [Coordinator] Query declined - Reasoning: ${routingResult.reasoning}`);
+        this.sendThinkingMessage(`🚫 Request cannot be processed: ${routingResult.reasoning}`);
+        
+        const resultMetadata = {
+          total_tokens: this.tokenUsage.total_tokens,
+          coordinator_tokens: this.tokenUsage.coordinator_tokens,
+          agent_tokens: this.tokenUsage.agent_tokens,
+          timestamp: new Date().toISOString()
+        };
+        
+        return {
+          response: routingResult.response,
+          declined: true,
+          reason: routingResult.reasoning,
           translatedQuery: translatedQuery !== query ? translatedQuery : null,
           metadata: resultMetadata
         };
