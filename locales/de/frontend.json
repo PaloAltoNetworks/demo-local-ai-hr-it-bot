@@ -1,8 +1,8 @@
 {
   "app": {
-    "title": "The Otter - Enterprise HR/IT-Assistent",
-    "brand": "The Otter",
-    "welcome": "Willkommen bei The Otter",
+    "title": "Der Otter - Enterprise HR/IT-Assistent",
+    "brand": "Der Otter",
+    "welcome": "Willkommen bei Der Otter",
     "selectLanguage": "Wählen Sie Ihre Sprache:"
   },
   "phases": {
@@ -65,7 +65,7 @@
     "offline": "Offline",
     "connectionRestored": "Verbindung wiederhergestellt",
     "ollamaServersDown": "KI-Server nicht verfügbar: {servers}",
-    "greeting": "Hallo {{name}}! Ich bin The Otter, dein intelligenter HR/IT-Assistent. Ich kann dir bei deinen administrativen und technischen Fragen helfen. Frag mich einfach!"
+    "greeting": "Hallo {{name}}! Ich bin Der Otter, dein intelligenter HR/IT-Assistent. Ich kann dir bei deinen administrativen und technischen Fragen helfen. Frag mich einfach!"
   },
   "buttons": {
     "regenerate": "Erneut generieren",

@@ -1,8 +1,8 @@
 {
   "app": {
-    "title": "The Otter - Asistente Empresarial de RRHH/IT",
-    "brand": "The Otter",
-    "welcome": "Bienvenido a The Otter",
+    "title": "La Nutria - Asistente Empresarial de RRHH/IT",
+    "brand": "La Nutria",
+    "welcome": "Bienvenido a La Nutria",
     "selectLanguage": "Elige tu idioma:"
   },
   "phases": {
@@ -65,7 +65,7 @@
     "offline": "Sin conexión",
     "connectionRestored": "Conexión restaurada",
     "ollamaServersDown": "Servidores de IA no disponibles: {servers}",
-    "greeting": "¡Hola {{name}}! Soy The Otter, tu asistente inteligente de RRHH/IT. Puedo ayudarte con tus preguntas administrativas y técnicas. ¡Pregúntame lo que necesites!"
+    "greeting": "¡Hola {{name}}! Soy La Nutria, tu asistente inteligente de RRHH/IT. Puedo ayudarte con tus preguntas administrativas y técnicas. ¡Pregúntame lo que necesites!"
   },
   "buttons": {
     "regenerate": "Regenerar",

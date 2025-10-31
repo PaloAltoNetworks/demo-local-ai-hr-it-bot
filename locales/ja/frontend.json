@@ -1,8 +1,8 @@
 {
   "app": {
-    "title": "The Otter - エンタープライズ HR/IT アシスタント",
-    "brand": "The Otter",
-    "welcome": "The Otter へようこそ",
+    "title": "カワウソ - エンタープライズ HR/IT アシスタント",
+    "brand": "カワウソ",
+    "welcome": "カワウソ へようこそ",
     "selectLanguage": "言語を選択してください:"
   },
   "phases": {
@@ -65,7 +65,7 @@
     "offline": "オフライン",
     "connectionRestored": "接続が復旧しました",
     "ollamaServersDown": "AIサーバーは利用できません: {servers}",
-    "greeting": "こんにちは {{name}}! 私は The Otter、あなたのインテリジェント HR/IT アシスタントです。管理およびテクニカルな質問でお手伝いできます。何でもお聞きください!"
+    "greeting": "こんにちは {{name}}! 私はカワウソ、あなたのインテリジェント HR/IT アシスタントです。管理およびテクニカルな質問でお手伝いできます。何でもお聞きください!"
   },
   "buttons": {
     "regenerate": "再生成",
