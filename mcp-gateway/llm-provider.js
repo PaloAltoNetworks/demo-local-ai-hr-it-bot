@@ -5,6 +5,10 @@
  */
 
 const { OpenAI } = require('openai');
+const {
+  BedrockRuntimeClient,
+  InvokeModelCommand,
+} = require('@aws-sdk/client-bedrock-runtime');
 
 /**
  * Base LLM Provider Interface
@@ -81,12 +85,10 @@ class OllamaOpenAIProvider extends LLMProvider {
 class BedrockProvider extends LLMProvider {
   constructor(config = {}) {
     super();
-    const { BedrockRuntime } = require('@aws-sdk/client-bedrock-runtime');
-    
     this.region = config.region || process.env.AWS_REGION || 'us-east-1';
     this.modelId = config.modelId || process.env.BEDROCK_MODEL_ID || 'anthropic.claude-3-sonnet-20240229-v1:0';
     
-    this.client = new BedrockRuntime({ region: this.region });
+    this.client = new BedrockRuntimeClient({ region: this.region });
     console.log(`✅ [LLMProvider] Initialized AWS Bedrock provider: ${this.modelId} in ${this.region}`);
   }
 
@@ -97,38 +99,41 @@ class BedrockProvider extends LLMProvider {
       maxTokens = 1000,
     } = options;
 
-    // For Anthropic Claude (most common Bedrock model)
     if (this.modelId.includes('claude')) {
       return this._generateClaude(prompt, system, temperature, maxTokens);
+    } else if (this.modelId.includes('mistral')) {
+      return this._generateMistral(prompt, system, temperature, maxTokens);
+    } else if (this.modelId.includes('llama')) {
+      return this._generateLlama(prompt, system, temperature, maxTokens);
+    } else if (this.modelId.includes('gpt-')) {
+      return this._generateGPT(prompt, system, temperature, maxTokens);
+    } else if (this.modelId.includes('qwen')) {
+      return this._generateQwen(prompt, system, temperature, maxTokens);
     }
     
-    // Add support for other Bedrock models as needed
     throw new Error(`Unsupported Bedrock model: ${this.modelId}`);
   }
 
   async _generateClaude(prompt, system, temperature, maxTokens) {
-    const messages = [{ role: 'user', content: prompt }];
-
-    const body = {
-      model: this.modelId,
+    const payload = {
+      anthropic_version: 'bedrock-2023-05-31',
       max_tokens: maxTokens,
       temperature: temperature,
-      system: system || undefined,
-      messages: messages,
+      messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
+      ...(system && { system }),
     };
 
-    const response = await this.client.invoke({
-      modelId: this.modelId,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify(body),
-    });
+    const response = await this.client.send(
+      new InvokeModelCommand({
+        modelId: this.modelId,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify(payload),
+      })
+    );
 
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-
-    // Extract content from Claude's response
     const content = responseBody.content?.[0]?.text || '';
-    const stopReason = responseBody.stop_reason;
 
     return {
       response: content,
@@ -138,7 +143,147 @@ class BedrockProvider extends LLMProvider {
         total_tokens: (responseBody.usage?.input_tokens || 0) + (responseBody.usage?.output_tokens || 0),
       },
       model: this.modelId,
-      stopReason: stopReason,
+    };
+  }
+
+  async _generateMistral(prompt, system, temperature, maxTokens) {
+    // Mistral uses special prompt format
+    const instruction = `<s>[INST] ${system ? `${system}\n\n` : ''}${prompt} [/INST]`;
+
+    const payload = {
+      prompt: instruction,
+      max_tokens: maxTokens,
+      temperature: temperature,
+    };
+
+    const response = await this.client.send(
+      new InvokeModelCommand({
+        modelId: this.modelId,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify(payload),
+      })
+    );
+
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    const content = responseBody.outputs?.[0]?.text || '';
+
+    return {
+      response: content,
+      usage: {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+      },
+      model: this.modelId,
+    };
+  }
+
+  async _generateLlama(prompt, system, temperature, maxTokens) {
+    // Llama uses special prompt format with tags
+    const instruction = `
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+${system || 'You are a helpful assistant.'}
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+${prompt}
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+`;
+
+    const payload = {
+      prompt: instruction,
+      max_gen_len: maxTokens,
+      temperature: temperature,
+      top_p: 0.9,
+    };
+
+    const response = await this.client.send(
+      new InvokeModelCommand({
+        modelId: this.modelId,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify(payload),
+      })
+    );
+
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    const content = responseBody.generation || '';
+
+    return {
+      response: content,
+      usage: {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+      },
+      model: this.modelId,
+    };
+  }
+
+  async _generateGPT(prompt, system, temperature, maxTokens) {
+    // GPT models via Bedrock - need to verify payload format
+    const payload = {
+      messages: [
+        ...(system ? [{ role: 'system', content: system }] : []),
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: maxTokens,
+      temperature: temperature,
+    };
+
+    const response = await this.client.send(
+      new InvokeModelCommand({
+        modelId: this.modelId,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify(payload),
+      })
+    );
+
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    const content = responseBody.choices?.[0]?.message?.content || '';
+
+    return {
+      response: content,
+      usage: {
+        prompt_tokens: responseBody.usage?.prompt_tokens || 0,
+        completion_tokens: responseBody.usage?.completion_tokens || 0,
+        total_tokens: responseBody.usage?.total_tokens || 0,
+      },
+      model: this.modelId,
+    };
+  }
+
+  async _generateQwen(prompt, system, temperature, maxTokens) {
+    // Qwen format - need to verify
+    const payload = {
+      messages: [
+        ...(system ? [{ role: 'system', content: system }] : []),
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: maxTokens,
+      temperature: temperature,
+    };
+
+    const response = await this.client.send(
+      new InvokeModelCommand({
+        modelId: this.modelId,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify(payload),
+      })
+    );
+
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    const content = responseBody.output?.text || responseBody.choices?.[0]?.message?.content || '';
+
+    return {
+      response: content,
+      usage: {
+        prompt_tokens: responseBody.usage?.prompt_tokens || 0,
+        completion_tokens: responseBody.usage?.completion_tokens || 0,
+        total_tokens: responseBody.usage?.total_tokens || 0,
+      },
+      model: this.modelId,
     };
   }
 }

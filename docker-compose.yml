@@ -35,11 +35,6 @@ services:
     environment:
       - NODE_ENV=production
       - MCP_GATEWAY_PORT=3001
-      - COORDINATOR_MODEL=qwen3:1.7b
-      - OLLAMA_HOST=http://host.docker.internal:11434
-      - HR_MCP_SERVER_URL=http://hr-mcp-server:3000
-      - IT_MCP_SERVER_URL=http://it-mcp-server:3000
-      - GENERAL_MCP_SERVER_URL=http://general-mcp-server:3000
     restart: unless-stopped
     networks:
       - mcp-network
@@ -54,11 +49,10 @@ services:
     hostname: hr-mcp-server
     ports:
       - "3003:3000"
+    env_file:
+      - ./.env
     environment:
       - NODE_ENV=production
-      - AGENT_MODEL=gemma3:1b
-      - OLLAMA_URL=http://host.docker.internal:11434
-      - COORDINATOR_URL=http://mcp-gateway:3001
     depends_on:
       - mcp-gateway
     restart: unless-stopped
@@ -75,11 +69,10 @@ services:
     hostname: it-mcp-server
     ports:
       - "3004:3000"
+    env_file:
+      - ./.env
     environment:
       - NODE_ENV=production
-      - AGENT_MODEL=gemma3:1b
-      - OLLAMA_URL=http://host.docker.internal:11434
-      - COORDINATOR_URL=http://mcp-gateway:3001
     depends_on:
       - mcp-gateway
     restart: unless-stopped
@@ -96,11 +89,10 @@ services:
     hostname: general-mcp-server
     ports:
       - "3005:3000"
+    env_file:
+      - ./.env
     environment:
       - NODE_ENV=production
-      - AGENT_MODEL=llama2-uncensored
-      - OLLAMA_URL=http://host.docker.internal:11434
-      - COORDINATOR_URL=http://mcp-gateway:3001
     depends_on:
       - mcp-gateway
     restart: unless-stopped

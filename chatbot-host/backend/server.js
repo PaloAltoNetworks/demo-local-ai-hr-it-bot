@@ -15,8 +15,8 @@ const app = express();
 const PORT = process.env.CHATBOT_HOST_PORT || 3002;
 
 // Configuration
-const MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || 'http://mcp-gateway:3001';
-console.log('🔗 [ChatbotHost] MCP Gateway URL:', MCP_GATEWAY_URL);
+const COORDINATOR_URL = process.env.COORDINATOR_URL || 'http://mcp-gateway:3001';
+console.log('🔗 [ChatbotHost] Coordinator URL:', COORDINATOR_URL);
 
 // Static user identity for this demo
 const STATIC_USER_IDENTITY = {
@@ -31,7 +31,7 @@ const STATIC_USER_IDENTITY = {
 const sessionManager = new SessionManager();
 
 // Initialize MCP Client
-const mcpClient = new MCPClient(MCP_GATEWAY_URL, {
+const mcpClient = new MCPClient(COORDINATOR_URL, {
     timeout: 120000, // 2 minutes timeout
     maxReconnectAttempts: 3
 });
@@ -213,10 +213,10 @@ app.post('/api/process-prompt', async (req, res) => {
         // Send initial thinking message
         res.write('data: ' + JSON.stringify({ type: 'thinking', message: '🔍 Analyzing your request...' }) + '\n\n');
         
-        const MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || 'http://mcp-gateway:3001';
+        const COORDINATOR_URL = process.env.COORDINATOR_URL || 'http://mcp-gateway:3001';
 
         try {
-            res.write('data: ' + JSON.stringify({ type: 'thinking', message: '📡 Connecting to MCP Gateway...' }) + '\n\n');
+            res.write('data: ' + JSON.stringify({ type: 'thinking', message: '📡 Connecting to Coordinator...' }) + '\n\n');
             
             // Create a queue for thinking messages
             const messageQueue = [];
@@ -237,7 +237,7 @@ app.post('/api/process-prompt', async (req, res) => {
                 isProcessing = false;
             };
 
-            const response = await axios.post(`${MCP_GATEWAY_URL}/api/query`, {
+            const response = await axios.post(`${COORDINATOR_URL}/api/query`, {
                 query: userMessage.content,
                 language: language || 'en',
                 phase: phase || 'phase1',
