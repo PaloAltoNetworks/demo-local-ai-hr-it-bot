@@ -266,15 +266,24 @@ app.post('/api/process-prompt', async (req, res) => {
                                 const data = JSON.parse(line);
                                 if (data.type === 'thinking') {
                                     messageQueue.push(data.message);
-                                } else if (data.type === 'response' && data.success) {
-                                    messageQueue.push('✅ Response received from MCP Gateway');
-                                    mcpResponse = {
-                                        role: 'assistant',
-                                        content: data.response
-                                    };
-                                    // Capture token metadata if available
-                                    if (data.metadata) {
-                                        tokenMetadata = data.metadata;
+                                } else if (data.type === 'response') {
+                                    if (data.success) {
+                                        messageQueue.push('✅ Response received from MCP Gateway');
+                                        mcpResponse = {
+                                            role: 'assistant',
+                                            content: data.response
+                                        };
+                                        // Capture token metadata if available
+                                        if (data.metadata) {
+                                            tokenMetadata = data.metadata;
+                                        }
+                                    } else if (data.success === false) {
+                                        // Handle error response from coordinator
+                                        messageQueue.push('❌ Error from MCP Gateway');
+                                        mcpResponse = {
+                                            role: 'assistant',
+                                            content: data.message || 'An error occurred while processing your request.'
+                                        };
                                     }
                                 }
                             } catch (e) {

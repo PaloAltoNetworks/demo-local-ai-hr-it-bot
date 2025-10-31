@@ -395,7 +395,13 @@ Query: "${query}"`;
       }).join(', ')}`);
 
       // Let LLM coordinator decide routing strategy and potential query splitting
-      const routingStrategy = await this.analyzeRoutingStrategy(query, candidateAgentIds);
+      let routingStrategy;
+      try {
+        routingStrategy = await this.analyzeRoutingStrategy(query, candidateAgentIds);
+      } catch (strategyError) {
+        console.error('❌ [Coordinator] Strategy analysis failed:', strategyError.message);
+        throw strategyError;
+      }
       
       if (routingStrategy.requiresMultiple) {
         console.log(`🔀 [Coordinator] Multi-agent query detected, splitting across: ${routingStrategy.agents.map(a => a.agent).join(', ')}`);
@@ -1316,7 +1322,28 @@ Return only the concise version:`;
       // Track routing analysis as coordinator work
       this.trackCoordinatorTokens("Analyzing query semantics and determining best routing strategy");
       
-      const routingResult = await this.routeQuery(translatedQuery, language, phase, userContext);
+      let routingResult;
+      try {
+        routingResult = await this.routeQuery(translatedQuery, language, phase, userContext);
+      } catch (routingError) {
+        console.error('❌ [Coordinator] Routing failed:', routingError.message);
+        
+        // Determine if this is a model/configuration error vs a processing error
+        let userMessage = routingError.message;
+        if (routingError.message && routingError.message.includes('Unsupported Bedrock model')) {
+          userMessage = `I encountered a configuration issue: ${routingError.message}. Please contact your administrator to configure a supported model.`;
+        }
+        
+        this.sendThinkingMessage(`❌ Error: ${userMessage}`);
+        
+        // Return error response instead of throwing
+        return {
+          response: userMessage,
+          error: true,
+          errorType: routingError.message,
+          success: false
+        };
+      }
       
       // routingResult is now always an object with type field
       if (routingResult.type === 'agent-id') {
@@ -1442,8 +1469,24 @@ Return only the concise version:`;
       }
     } catch (error) {
       console.error('❌ [Coordinator] Query processing failed:', error);
-      this.sendThinkingMessage(`❌ Error: ${error.message}`);
-      throw error;
+      
+      // Determine if this is a model/configuration error vs a processing error
+      let userMessage = error.message;
+      if (error.message && error.message.includes('Unsupported Bedrock model')) {
+        userMessage = `I encountered a configuration issue: ${error.message}. Please contact your administrator to configure a supported model.`;
+      } else if (error.message && error.message.includes('No registered agents')) {
+        userMessage = 'No AI agents are currently available. Please contact your administrator.';
+      }
+      
+      this.sendThinkingMessage(`❌ Error: ${userMessage}`);
+      
+      // Return error response instead of throwing to allow graceful user notification
+      return {
+        response: userMessage,
+        error: true,
+        errorType: error.message,
+        success: false
+      };
     }
   }
 

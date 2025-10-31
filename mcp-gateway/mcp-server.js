@@ -611,12 +611,23 @@ app.post('/api/query', async (req, res) => {
       // ROUTING DECISION: Coordinator handles this
       const result = await coordinator.processQuery(query, language, phase, userContext);
       
-      // Send final response
-      res.write(JSON.stringify({ 
-        type: 'response', 
-        success: true, 
-        ...result 
-      }) + '\n');
+      // Check if the coordinator returned an error response
+      if (result.error || result.success === false) {
+        res.write(JSON.stringify({ 
+          type: 'response', 
+          success: false, 
+          message: result.response,
+          error: true 
+        }) + '\n');
+      } else {
+        // Send final response
+        res.write(JSON.stringify({ 
+          type: 'response', 
+          success: true, 
+          ...result 
+        }) + '\n');
+      }
+      res.write('[DONE]\n');
       res.end();
 
       // Clear callback
@@ -625,10 +636,19 @@ app.post('/api/query', async (req, res) => {
       // Non-streaming mode (original behavior)
       const result = await coordinator.processQuery(query, language, phase, userContext);
       
-      res.json({
-        success: true,
-        ...result
-      });
+      // Check if the coordinator returned an error response
+      if (result.error || result.success === false) {
+        res.status(200).json({
+          success: false,
+          message: result.response,
+          error: true
+        });
+      } else {
+        res.json({
+          success: true,
+          ...result
+        });
+      }
     }
   } catch (error) {
     console.error('❌ [MCPGateway] Query processing error:', error);
@@ -638,13 +658,16 @@ app.post('/api/query', async (req, res) => {
       res.write(JSON.stringify({ 
         type: 'error', 
         success: false, 
-        message: error.message || 'Internal server error during query processing' 
+        message: error.message || 'Internal server error during query processing',
+        error: true 
       }) + '\n');
+      res.write('[DONE]\n');
       res.end();
     } else {
       res.status(500).json({
         success: false,
-        message: error.message || 'Internal server error during query processing'
+        message: error.message || 'Internal server error during query processing',
+        error: true
       });
     }
   }
