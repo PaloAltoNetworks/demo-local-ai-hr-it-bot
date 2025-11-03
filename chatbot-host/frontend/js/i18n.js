@@ -144,40 +144,6 @@ export class I18nService {
         return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
             return params[key] !== undefined ? params[key] : match;
         });
-    }    /**
-     * Update UI text based on current language
-     */
-    async updateUI() {
-        const translations = this.translations[this.currentLanguage];
-        if (!translations) return;
-
-        // Update page title
-        document.title = this.t('app.title');
-        
-        // Update brand text
-        const brandText = document.getElementById('brand-text');
-        if (brandText) {
-            brandText.textContent = this.t('app.brand');
-        }
-        
-        // Update all elements with data-i18n attributes
-        document.querySelectorAll('[data-i18n]').forEach(el => {
-            const key = el.getAttribute('data-i18n');
-            el.textContent = this.t(key);
-        });
-        
-        // Update placeholders
-        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-            const key = el.getAttribute('data-i18n-placeholder');
-            el.placeholder = this.t(key);
-        });
-        
-        // Update welcome message with user name interpolation
-        const welcomeMessage = document.getElementById('welcome-message');
-        if (welcomeMessage) {
-            const userName = this.t('userProfile.name');
-            welcomeMessage.textContent = this.t('chat.greeting', { name: userName });
-        }
     }
 
     /**
@@ -223,6 +189,56 @@ export class I18nService {
      */
     getCurrentLanguage() {
         return this.currentLanguage;
+    }
+
+    /**
+     * Update all UI elements based on current language
+     * Single entry point for all UI translations
+     * Supports both textContent and placeholder attributes via data-i18n-target
+     * @return {void}
+     */
+    updateUI() {
+        // Update page title
+        document.title = this.t('app.title');
+
+        // Update brand text
+        const brandText = document.getElementById('brand-text');
+        if (brandText) {
+            brandText.textContent = this.t('app.brand');
+        }
+
+        // Update all elements with data-i18n attribute
+        // Each element can specify target: 'text' (default), 'placeholder', or 'value'
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            const target = el.getAttribute('data-i18n-target') || 'text'; // Default to text
+            const translation = this.t(key);
+            
+            if (target === 'placeholder') {
+                el.placeholder = translation;
+            } else if (target === 'value') {
+                el.value = translation;
+            } else {
+                // target === 'text' or default
+                // Check if element contains an icon (for token labels)
+                const existingIcon = el.querySelector('i');
+                if (existingIcon && el.classList.contains('token-label')) {
+                    // Preserve the icon, update text
+                    const iconHTML = existingIcon.outerHTML;
+                    el.innerHTML = iconHTML + ' ' + translation + ':';
+                } else {
+                    // Regular text update
+                    el.textContent = translation;
+                }
+            }
+        });
+
+        // Update welcome message with user name interpolation
+        const welcomeMessage = document.getElementById('welcome-message');
+        if (welcomeMessage) {
+            const userName = this.t('userProfile.name');
+            welcomeMessage.textContent = this.t('chat.greeting', { name: userName });
+        }
     }
 
     /**

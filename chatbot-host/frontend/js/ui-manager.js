@@ -131,7 +131,7 @@ export class UIManager {
             messageHTML += `
                 <div class="token-info">
                     <div class="token-info-row">
-                        <span class="token-label">
+                        <span class="token-label" data-i18n="chat.totalTokens">
                             <i class="fas fa-microchip"></i> ${this.i18n.t('chat.totalTokens')}:
                         </span>
                         <span class="token-count">${totalTokens}</span>
@@ -141,7 +141,7 @@ export class UIManager {
             if (coordinatorTokens > 0) {
                 messageHTML += `
                     <div class="token-info-row token-info-detail">
-                        <span class="token-label-detail">Coordinator:</span>
+                        <span class="token-label-detail" data-i18n="chat.coordinator">${this.i18n.t('chat.coordinator')}:</span>
                         <span class="token-count-detail">${coordinatorTokens}</span>
                     </div>
                 `;
@@ -150,7 +150,7 @@ export class UIManager {
             if (agentTokens > 0) {
                 messageHTML += `
                     <div class="token-info-row token-info-detail">
-                        <span class="token-label-detail">Agents:</span>
+                        <span class="token-label-detail" data-i18n="chat.agents">${this.i18n.t('chat.agents')}:</span>
                         <span class="token-count-detail">${agentTokens}</span>
                     </div>
                 `;

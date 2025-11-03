@@ -88,33 +88,8 @@ class ChatBotApp {
      * Update UI text based on current language
      */
     async updateUI() {
-        // Update page title
-        document.title = i18n.t('app.title');
-
-        // Update brand text
-        const brandText = document.getElementById('brand-text');
-        if (brandText) {
-            brandText.textContent = i18n.t('app.brand');
-        }
-
-        // Update all elements with data-i18n attributes
-        document.querySelectorAll('[data-i18n]').forEach(el => {
-            const key = el.getAttribute('data-i18n');
-            el.textContent = i18n.t(key);
-        });
-
-        // Update placeholders
-        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-            const key = el.getAttribute('data-i18n-placeholder');
-            el.placeholder = i18n.t(key);
-        });
-
-        // Update welcome message with user name interpolation
-        const welcomeMessage = document.getElementById('welcome-message');
-        if (welcomeMessage) {
-            const userName = i18n.t('userProfile.name');
-            welcomeMessage.textContent = i18n.t('chat.greeting', { name: userName });
-        }
+        // Delegate all UI translation updates to i18n service
+        i18n.updateUI();
     }
 
     /**
@@ -177,7 +152,6 @@ class ChatBotApp {
             }
 
             this.showLoading(false);
-            console.log(`🌐 Language changed to: ${language}`);
 
         } catch (error) {
             this.showLoading(false);
