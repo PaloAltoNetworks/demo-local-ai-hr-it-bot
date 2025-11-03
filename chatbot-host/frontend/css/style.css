@@ -1001,7 +1001,7 @@ body {
 
 /* Contenu principal */
 .main-content {
-  padding: var(--space-32) 0;
+  padding: var(--space-32) 0 0 0;
   min-height: calc(100vh - var(--header-height) - 200px);
 }
 
@@ -1135,7 +1135,7 @@ body {
 
 /* Section de chat */
 .chat-section {
-  margin-bottom: var(--space-32);
+  /* margin-bottom: var(--space-32); */
 }
 
 /* Panneau de chat */
