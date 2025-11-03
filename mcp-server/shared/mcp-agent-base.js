@@ -46,9 +46,9 @@ class MCPAgentBase {
   /**
    * Setup base handlers (resources and tools)
    */
-  setupBaseHandlers() {
+  async setupBaseHandlers() {
     this.logger.info('Setting up base handlers');
-    this.setupResources();
+    await this.setupResources();
     this.setupMCPHandlers();
   }
 
@@ -92,7 +92,7 @@ class MCPAgentBase {
   /**
    * Setup MCP resources - to be implemented by each agent
    */
-  setupResources() {
+  async setupResources() {
     this.logger.debug('Setting up base resources');
   }
 
@@ -264,7 +264,7 @@ class MCPAgentBase {
 
     try {
       // Setup base handlers
-      this.setupBaseHandlers();
+      await this.setupBaseHandlers();
       this.initialized = true;
 
       // Create transport manager
