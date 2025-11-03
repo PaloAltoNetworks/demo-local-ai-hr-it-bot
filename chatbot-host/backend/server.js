@@ -243,7 +243,7 @@ app.post('/api/process-prompt', async (req, res) => {
                 phase: phase || 'phase1',
                 userContext: {
                     email: STATIC_USER_IDENTITY.email,
-                    history: session.messageHistory.slice(-5),
+                    history: session.messageHistory,
                     sessionId: session.sessionId
                 },
                 streamThinking: true

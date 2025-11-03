@@ -372,6 +372,11 @@ Query: "${query}"`;
       if (identityInfo.length > 0) {
         console.log(`👤 [Coordinator] User identity received: ${identityInfo.join(', ')}`);
       }
+      
+      // Log conversation history if available
+      if (userContext.history && Array.isArray(userContext.history) && userContext.history.length > 0) {
+        console.log(`📜 [Coordinator] Conversation history available: ${userContext.history.length} messages`);
+      }
     }
     
     try {
@@ -397,7 +402,7 @@ Query: "${query}"`;
       // Let LLM coordinator decide routing strategy and potential query splitting
       let routingStrategy;
       try {
-        routingStrategy = await this.analyzeRoutingStrategy(query, candidateAgentIds);
+        routingStrategy = await this.analyzeRoutingStrategy(query, candidateAgentIds, userContext?.history || []);
       } catch (strategyError) {
         console.error('❌ [Coordinator] Strategy analysis failed:', strategyError.message);
         throw strategyError;
@@ -515,7 +520,7 @@ Required format:
   /**
    * Analyze routing strategy and determine if query splitting is needed
    */
-  async analyzeRoutingStrategy(query, candidateAgentIds) {
+  async analyzeRoutingStrategy(query, candidateAgentIds, conversationHistory = []) {
     try {
       // Build detailed agent profiles for LLM analysis
       const agentProfiles = candidateAgentIds.map(id => {
@@ -537,22 +542,38 @@ ${capabilities}`;
         return `${agent.name} (${id})`;
       }).join(', '));
 
+      // Build conversation context from history
+      let conversationContext = '';
+      if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+        console.log(`📜 [Coordinator] Including ${conversationHistory.length} messages from conversation history in routing analysis`);
+        const historyLines = conversationHistory
+          .map(msg => {
+            const role = msg.role === 'user' ? 'User' : 'Assistant';
+            return `${role}: ${msg.content}`;
+          })
+          .join('\n');
+        
+        conversationContext = `\n\nCONVERSATION HISTORY:
+${historyLines}\n`;
+      }
+
       const strategyPrompt = `You are a JSON-only router. Output ONLY the JSON object below. No thinking, no explanation.
 
 AVAILABLE AGENTS:
-${agentProfiles}
+${agentProfiles}${conversationContext}
 
-USER QUERY: "${query}"
+CURRENT USER QUERY: "${query}"
 
 CRITICAL INSTRUCTIONS:
 1. Review each agent's description and specialties carefully
-2. Determine if the query requires information from MULTIPLE agents
-3. If the query has distinct parts that belong to different specialties, route to MULTIPLE agents
-4. For example:
+2. Consider the conversation history context to understand the full context of what the user is asking
+3. Determine if the query requires information from MULTIPLE agents
+4. If the query has distinct parts that belong to different specialties, route to MULTIPLE agents
+5. For example:
    - "Who is my manager and which tickets require his approval?" → ["hr", "it"] (manager info from HR, tickets from IT)
    - "What's my salary and computer status?" → ["hr", "it"] (salary from HR, computer from IT)
    - "Show me my projects" → ["general"] (single agent)
-5. If routing to multiple agents, split the query into appropriate sub-queries for each
+6. If routing to multiple agents, split the query into appropriate sub-queries for each
 
 Output this JSON format exactly (replace values in quotes):
 {"agents": [{"agent": "agent_name", "subQuery": "specific query for this agent"}], "reasoning": "brief"}
@@ -857,6 +878,19 @@ SYNTHESIZED RESPONSE:`;
       const queryToSend = securityCheckResult.maskedQuery || query;
       let enrichedQuery = queryToSend;
       
+      // Add conversation history context if available
+      if (userContext?.history && Array.isArray(userContext.history) && userContext.history.length > 0) {
+        const conversationSummary = userContext.history
+          .map(msg => {
+            const role = msg.role === 'user' ? 'User' : 'Assistant';
+            return `${role}: ${msg.content}`;
+          })
+          .join('\n');
+        
+        enrichedQuery = `[Conversation context]\n${conversationSummary}\n\n[Current query]\n${enrichedQuery}`;
+        console.log(`📜 [Coordinator] Added conversation history (${userContext.history.length} messages) to query for ${agent.name}`);
+      }
+      
       // Add user context to the query as natural language if provided
       if (userContext) {
         const contextInfo = [];
@@ -867,8 +901,8 @@ SYNTHESIZED RESPONSE:`;
         if (userContext.employeeId) contextInfo.push(`employee ID: ${userContext.employeeId}`);
         
         if (contextInfo.length > 0) {
-          enrichedQuery = `${query} [User context: ${contextInfo.join(', ')}]`;
-          console.log(`📝 [Coordinator] Enriched query for ${agent.name}: ${enrichedQuery}`);
+          enrichedQuery = `${enrichedQuery}\n[User context: ${contextInfo.join(', ')}]`;
+          console.log(`📝 [Coordinator] Enriched query for ${agent.name} with user context`);
         }
       }
       
