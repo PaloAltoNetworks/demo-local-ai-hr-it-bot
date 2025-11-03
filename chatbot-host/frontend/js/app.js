@@ -235,20 +235,7 @@ class ChatBotApp {
      */
     async clearServerSession() {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/clear-session`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-user-id': 'anonymous-user'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ Server session cleared:', data.message);
-            } else {
-                console.warn('⚠️ Failed to clear server session');
-            }
+            await this.apiService.clearSession();
         } catch (error) {
             console.warn('⚠️ Error clearing server session:', error);
             // Don't fail the app initialization if clear fails
@@ -423,13 +410,6 @@ class ChatBotApp {
     }
 
     /**
-     * Add message to chat history
-     */
-    addMessageToHistory(role, content) {
-        this.chatHistory.push({ role, content });
-    }
-
-    /**
      * Switch to a different phase
      */
     switchPhase(newPhase, forceRender = false) {
@@ -528,12 +508,14 @@ class ChatBotApp {
     /**
      * Handle logout action
      */
-    handleLogout() {
-        // Show confirmation or just log out
+    async handleLogout() {
         console.log('🚪 Logout initiated');
         
-        // Clear user session data if any
+        // Clear user session data from localStorage
         localStorage.removeItem('chatbot-session');
+        
+        // Clear server-side session
+        await this.clearServerSession();
         
         // Show confirmation message
         this.uiManager?.showNotification(i18n.t('userMenu.logoutSuccess') || 'Logged out successfully', 'success');

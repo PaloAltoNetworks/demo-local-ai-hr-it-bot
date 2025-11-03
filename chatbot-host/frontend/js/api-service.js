@@ -285,6 +285,33 @@ export class ApiService {
     }
 
     /**
+     * Clear session on the backend
+     */
+    async clearSession() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/clear-session`, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-language': this.currentLanguage || 'en'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('✅ Session cleared successfully:', data.message);
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to clear session:', error);
+            return false;
+        }
+    }
+
+    /**
      * Utility delay function
      */
     delay(ms) {
