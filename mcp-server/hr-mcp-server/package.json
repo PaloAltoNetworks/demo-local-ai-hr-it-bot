@@ -9,8 +9,6 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.21.0",
-    "ollama": "^0.6.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
