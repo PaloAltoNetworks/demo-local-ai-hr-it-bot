@@ -57,6 +57,8 @@
     "thinking": "考え中...",
     "viewThinking": "思考チェーンを表示",
     "totalTokens": "使用されたトークンの合計",
+    "coordinator": "コーディネーター",
+    "agents": "エージェント",
     "errorSending": "メッセージ送信エラー",
     "connectionLost": "接続が失われました",
     "reconnecting": "再接続中...",

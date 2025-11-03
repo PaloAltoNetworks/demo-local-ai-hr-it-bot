@@ -57,6 +57,8 @@
     "thinking": "Überlegung läuft...",
     "viewThinking": "Denkprozess anzeigen",
     "totalTokens": "Verwendete Token insgesamt",
+    "coordinator": "Koordinator",
+    "agents": "Agenten",
     "errorSending": "Fehler beim Senden der Nachricht",
     "connectionLost": "Verbindung unterbrochen",
     "reconnecting": "Wiederverbindung wird hergestellt...",

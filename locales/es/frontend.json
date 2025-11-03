@@ -57,6 +57,8 @@
     "thinking": "Pensando...",
     "viewThinking": "Ver cadena de pensamiento",
     "totalTokens": "Tokens totales utilizados",
+    "coordinator": "Coordinador",
+    "agents": "Agentes",
     "errorSending": "Error al enviar mensaje",
     "connectionLost": "Conexión perdida",
     "reconnecting": "Reconectando...",

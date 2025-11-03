@@ -57,6 +57,8 @@
     "thinking": "Thinking...",
     "viewThinking": "View thinking chain",
     "totalTokens": "Total tokens used",
+    "coordinator": "Coordinator",
+    "agents": "Agents",
     "errorSending": "Error sending message",
     "connectionLost": "Connection lost",
     "reconnecting": "Reconnecting...",
