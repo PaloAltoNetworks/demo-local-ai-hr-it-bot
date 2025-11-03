@@ -25,6 +25,7 @@ class HRAgent extends MCPAgentBase {
     this.queryProcessor = new QueryProcessor(this.agentName);
     this.resourceManager = null;
     this.employeeData = null;
+    this.rawCsvData = null; // Store raw CSV separately for database lookups
   }
 
   /**
@@ -211,7 +212,7 @@ class HRAgent extends MCPAgentBase {
    * Query format: "original question [User context: user: Name, role: Role, ...]"
    */
   _extractUserContext(query) {
-    const contextMatch = query.match(/\[User context: ([^\]]+)\]/);
+    const contextMatch = query.match(/\[User context: ([^\]]+)\]/s);
     if (!contextMatch) {
       return { userContext: null, userDetails: null, cleanQuery: query };
     }
@@ -221,11 +222,11 @@ class HRAgent extends MCPAgentBase {
     
     // Parse user context fields
     const patterns = {
-      user: /user:\s*([^,\]]+)/i,
-      email: /email:\s*([^,\]]+)/i,
-      role: /role:\s*([^,\]]+)/i,
-      department: /department:\s*([^,\]]+)/i,
-      employeeId: /employee ID:\s*([^,\]]+)/i
+      user: /user:\s*([^,\]]+)/is,
+      email: /email:\s*([^,\]]+)/is,
+      role: /role:\s*([^,\]]+)/is,
+      department: /department:\s*([^,\]]+)/is,
+      employeeId: /employee ID:\s*([^,\]]+)/is
     };
     
     for (const [key, pattern] of Object.entries(patterns)) {
@@ -269,13 +270,28 @@ class HRAgent extends MCPAgentBase {
    */
   _findUserInDatabaseByEmail(userEmail) {
     try {
-      const rawEmployeeData = this.employeeData || '';
-      const lines = rawEmployeeData.split('\n');
+      // Use raw CSV data for lookups (not the formatted version with prefix)
+      const rawCsvData = this.rawCsvData || '';
+      if (!rawCsvData) {
+        console.log(`❌ [HR Agent] Raw CSV data not loaded for email lookup`);
+        this.logger.warn('Raw CSV data not loaded for email lookup');
+        return null;
+      }
       
-      if (lines.length < 2) return null;
+      console.log(`🔍 [HR Agent] Searching for email: ${userEmail}`);
+      console.log(`🔍 [HR Agent] Raw CSV data length: ${rawCsvData.length} chars`);
+      
+      const lines = rawCsvData.split('\n');
+      console.log(`🔍 [HR Agent] Total lines: ${lines.length}`);
+      
+      if (lines.length < 2) {
+        console.log(`❌ [HR Agent] Not enough lines in CSV data`);
+        return null;
+      }
       
       const header = lines[0].split(',');
       const emailIndex = header.findIndex(h => h.toLowerCase().includes('email'));
+      console.log(`🔍 [HR Agent] Email column index: ${emailIndex}, first header: ${header[0]}`);
       
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -286,6 +302,7 @@ class HRAgent extends MCPAgentBase {
         if (fields[emailIndex]) {
           const emailInDB = fields[emailIndex].replace(/"/g, '');
           if (emailInDB.toLowerCase() === userEmail.toLowerCase()) {
+            console.log(`✅ [HR Agent] Found matching email at line ${i}: ${emailInDB}`);
             // Build user details object from all fields
             const userDetails = {};
             header.forEach((h, idx) => {
@@ -298,7 +315,9 @@ class HRAgent extends MCPAgentBase {
           }
         }
       }
+      console.log(`❌ [HR Agent] No matching email found for: ${userEmail}`);
     } catch (error) {
+      console.log(`❌ [HR Agent] Error in email lookup:`, error);
       this.logger.error('Error finding user by email in database:', error);
     }
     return null;
@@ -309,8 +328,14 @@ class HRAgent extends MCPAgentBase {
    */
   _findUserInDatabaseByName(userName) {
     try {
-      const rawEmployeeData = this.employeeData || '';
-      const lines = rawEmployeeData.split('\n');
+      // Use raw CSV data for lookups
+      const rawCsvData = this.rawCsvData || '';
+      if (!rawCsvData) {
+        this.logger.warn('Raw CSV data not loaded for name lookup');
+        return null;
+      }
+      
+      const lines = rawCsvData.split('\n');
       
       if (lines.length < 2) return null;
       
@@ -562,6 +587,9 @@ class HRAgent extends MCPAgentBase {
 
       this.logger.debug(`Loaded employee database: ${employeeCount} employees`);
 
+      // Cache raw CSV data for database lookups
+      this.rawCsvData = csvData;
+      
       this.employeeData = `EMPLOYEE DATABASE (${employeeCount} employees):
 ${csvData}
 
@@ -591,10 +619,25 @@ DATABASE FIELDS:
     this.sendThinkingMessage('Analyzing HR request...');
 
     try {
+      // Ensure employee data is loaded FIRST
+      if (!this.employeeData) {
+        await this._fetchEmployeeData();
+      }
+      
       const queryAnalysis = this._analyzeQuery(query);
       
       // Extract clean query and user details from database
       const { userContext, userDetails, cleanQuery } = this._extractUserContext(query);
+      
+      // Log debugging information
+      console.log(`🔍 [HR Agent] Query: "${query.substring(0, 100)}..."`);
+      console.log(`🔍 [HR Agent] UserContext found:`, userContext);
+      console.log(`🔍 [HR Agent] UserDetails found:`, userDetails ? {
+        name: userDetails.name,
+        email: userDetails.email,
+        manager: userDetails.manager
+      } : null);
+      console.log(`🔍 [HR Agent] Query type: ${queryAnalysis.type}`);
       
       this.sendThinkingMessage(
         `Query type: ${queryAnalysis.type} (confidence: ${queryAnalysis.confidence}%)`

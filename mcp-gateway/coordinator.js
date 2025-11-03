@@ -1395,6 +1395,21 @@ Return only the concise version:`;
     let queryToProcess = query;
     
     try {
+      // Validate user context for personal queries
+      const personalKeywords = /\bmy\b|\bi\b|\bme\b|\bours\b|\bwe\b/i;
+      if (personalKeywords.test(query) && !userContext?.email) {
+        console.log(`⚠️ [Coordinator] Personal query detected but no user context provided`);
+        this.sendThinkingMessage(`❌ User identification required for personal queries`);
+        
+        return {
+          response: 'I need to know who you are to answer personal questions like that. Please provide your email or user identity in the request.',
+          error: true,
+          success: false,
+          requiresUserContext: true,
+          originalQuery: query
+        };
+      }
+
       // CHECKPOINT 1: Analyze user input security (use passed phase, not instance variable)
       if (shouldUsePrismaAIRS(phase)) {
         console.log(`🔒 [Coordinator] Phase 3 active - Running Security Checkpoint 1: User Input Analysis`);
