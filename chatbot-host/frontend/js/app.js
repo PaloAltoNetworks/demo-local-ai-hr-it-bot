@@ -223,10 +223,10 @@ class ChatBotApp {
             console.log('🔄 Page refreshed or new session detected, clearing server-side session');
         }
         
-        // Also listen for unload events to mark session for cleanup if needed
+        // Listen for unload events to clear session ID so it fires on every page refresh
         window.addEventListener('beforeunload', () => {
-            // Optional: Could clear session ID here if desired
-            // sessionStorage.removeItem('chatbot-session-id');
+            // Clear session ID so the next page load will trigger clear-session
+            sessionStorage.removeItem('chatbot-session-id');
         });
     }
 
