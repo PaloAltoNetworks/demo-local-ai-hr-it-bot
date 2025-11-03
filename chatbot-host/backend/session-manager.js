@@ -76,6 +76,13 @@ class SessionManager extends EventEmitter {
   }
 
   /**
+   * Get session ID for a user
+   */
+  getSessionIdForUser(userId) {
+    return this.userSessions.get(userId);
+  }
+
+  /**
    * Update session context
    */
   updateSessionContext(sessionId, contextUpdates) {

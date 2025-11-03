@@ -54,6 +54,9 @@ class ChatBotApp {
             this.questionsManager = new QuestionsManager(i18n, this.uiManager);
             this.connectionMonitor = new ConnectionMonitor(this.apiService, this.uiManager);
 
+            // Setup page lifecycle events to handle refresh
+            this.setupPageLifecycleEvents();
+
             // Setup UI and event listeners
             await this.updateUI();
             this.setupEventListeners();
@@ -199,6 +202,57 @@ class ChatBotApp {
         // Clear chat button
         const clearBtn = document.getElementById('clearChatBtn');
         clearBtn?.addEventListener('click', () => this.clearChat());
+    }
+
+    /**
+     * Setup page lifecycle events to detect and handle page refresh
+     */
+    setupPageLifecycleEvents() {
+        // Detect if this is a new page load (not a simple state change)
+        // We use sessionStorage to track if the page was refreshed
+        
+        // Check if this is a fresh page load (new session)
+        if (!sessionStorage.getItem('chatbot-session-id')) {
+            // This is a fresh page load, set a session ID in sessionStorage
+            const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            sessionStorage.setItem('chatbot-session-id', sessionId);
+            
+            // Clear the server-side session by calling the clear-session endpoint
+            this.clearServerSession();
+            
+            console.log('🔄 Page refreshed or new session detected, clearing server-side session');
+        }
+        
+        // Also listen for unload events to mark session for cleanup if needed
+        window.addEventListener('beforeunload', () => {
+            // Optional: Could clear session ID here if desired
+            // sessionStorage.removeItem('chatbot-session-id');
+        });
+    }
+
+    /**
+     * Clear server-side session to ensure fresh start after page refresh
+     */
+    async clearServerSession() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/clear-session`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': 'anonymous-user'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Server session cleared:', data.message);
+            } else {
+                console.warn('⚠️ Failed to clear server session');
+            }
+        } catch (error) {
+            console.warn('⚠️ Error clearing server session:', error);
+            // Don't fail the app initialization if clear fails
+        }
     }
 
     /**

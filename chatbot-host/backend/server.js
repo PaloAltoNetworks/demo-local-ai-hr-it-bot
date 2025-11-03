@@ -343,6 +343,29 @@ app.post('/api/process-prompt', async (req, res) => {
     }
 });
 
+// Endpoint to clear session and chat history
+app.post('/api/clear-session', (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'] || 'anonymous-user';
+        
+        // Get the user's session ID
+        const sessionId = sessionManager.getSessionIdForUser(userId);
+        
+        if (sessionId) {
+            // Terminate the session, which will remove it from the sessions map
+            sessionManager.terminateSession(sessionId, 'user_refresh');
+            console.log(`🧹 [ChatbotHost] Session cleared for user ${userId}`);
+            res.json({ success: true, message: 'Session cleared successfully' });
+        } else {
+            // No session to clear
+            res.json({ success: true, message: 'No session to clear' });
+        }
+    } catch (error) {
+        console.error('❌ [ChatbotHost] Error clearing session:', error);
+        res.status(500).json({ error: 'Failed to clear session', message: error.message });
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log('🚀 [ChatbotHost] Server running on http://localhost:' + PORT);
