@@ -21,7 +21,7 @@ RUN npm install && \
 
 # Copy source files
 COPY mcp-server/shared ./shared
-COPY mcp-server/${AGENT_NAME}-mcp-server/server.js ./server.js
+COPY mcp-server/${AGENT_NAME}-mcp-server/ ./
 
 # Copy data files (CSV) for agents that need them
 COPY mcp-server/${AGENT_NAME}-mcp-server/*.csv ./
