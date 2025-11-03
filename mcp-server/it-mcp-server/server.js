@@ -10,6 +10,8 @@ import { dirname } from 'path';
 import { MCPAgentBase } from './shared/mcp-agent-base.js';
 import { ResourceManager } from './shared/utils/resource-manager.js';
 import { QueryProcessor } from './shared/utils/query-processor.js';
+import { initializeDatabase } from './db-init.js';
+import { getTicketService, initializeTicketService } from './ticket-db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,131 +26,157 @@ class ITAgent extends MCPAgentBase {
     this.dataTypes = ['tickets', 'systems', 'hardware', 'software'];
     this.queryProcessor = new QueryProcessor(this.agentName);
     this.resourceManager = null;
-    this.ticketData = null;
+    this.ticketService = null;
+    this.db = null;
   }
 
   /**
    * Setup MCP resources for IT data
    */
-  setupResources() {
-    this.resourceManager = new ResourceManager(this.agentName, this.server);
+  async setupResources() {
+    // Initialize database
+    try {
+      await initializeDatabase();
+      this.ticketService = await initializeTicketService();
+      this.resourceManager = new ResourceManager(this.agentName, this.server);
 
-    // IT tickets database resource
-    this.resourceManager.registerStaticResource(
-      'tickets',
-      'it://tickets',
-      {
-        title: 'IT Tickets Database',
-        description: 'Complete IT support tickets database with ticket details',
-        mimeType: 'text/csv'
-      },
-      async (uri) => ({
-        contents: [
-          {
-            uri: uri.href,
-            text: await this._fetchITData()
+      // IT tickets database resource
+      this.resourceManager.registerStaticResource(
+        'tickets',
+        'it://tickets',
+        {
+          title: 'IT Tickets Database',
+          description: 'Complete IT support tickets database with ticket details',
+          mimeType: 'text/csv'
+        },
+        async (uri) => ({
+          contents: [
+            {
+              uri: uri.href,
+              text: this.ticketService.getTicketsAsCSV()
+            }
+          ]
+        })
+      );
+
+      // Dynamic ticket resource
+      this.resourceManager.registerTemplateResource(
+        'ticket',
+        {
+          uri: 'it://tickets/{ticketId}',
+          params: {}
+        },
+        {
+          title: 'IT Ticket Details',
+          description: 'Individual IT ticket information and status',
+          mimeType: 'text/plain'
+        },
+        async (uri, { ticketId }) => {
+          try {
+            const ticket = this.ticketService.getTicketById(ticketId);
+
+            if (!ticket) {
+              return {
+                contents: [
+                  {
+                    uri: uri.href,
+                    text: `Ticket ${ticketId} not found`
+                  }
+                ]
+              };
+            }
+
+            const ticketDetails = `
+TICKET DETAILS
+==============
+ID: ${ticket.ticket_id}
+Employee: ${ticket.employee_name} (${ticket.employee_email})
+Date: ${ticket.date}
+Status: ${ticket.status}
+Priority: ${ticket.priority}
+Category: ${ticket.category}
+Assigned To: ${ticket.assigned_to} (${ticket.assigned_to_email})
+Resolution Time: ${ticket.resolution_time || 'N/A'}
+Tags: ${ticket.tags || 'N/A'}
+
+DESCRIPTION:
+${ticket.description}
+            `.trim();
+
+            return {
+              contents: [
+                {
+                  uri: uri.href,
+                  text: ticketDetails
+                }
+              ]
+            };
+          } catch (error) {
+            this.logger.error('Failed to fetch ticket', error);
+            return {
+              contents: [
+                {
+                  uri: uri.href,
+                  text: `Error fetching ticket: ${error.message}`
+                }
+              ]
+            };
           }
-        ]
-      })
-    );
-
-    // Dynamic ticket resource
-    this.resourceManager.registerTemplateResource(
-      'ticket',
-      {
-        uri: 'it://tickets/{ticketId}',
-        params: {}
-      },
-      {
-        title: 'IT Ticket Details',
-        description: 'Individual IT ticket information and status',
-        mimeType: 'text/plain'
-      },
-      async (uri, { ticketId }) => {
-        try {
-          const ticketData = await this._fetchITData();
-          const lines = ticketData.split('\n');
-          const header = lines[0];
-          const ticketRow = lines.find(
-            (line) =>
-              line.toLowerCase().includes(ticketId.toLowerCase()) ||
-              line.startsWith(ticketId)
-          );
-
-          const result = ticketRow
-            ? `${header}\n${ticketRow}`
-            : `Ticket ${ticketId} not found`;
-
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                text: result
-              }
-            ]
-          };
-        } catch (error) {
-          this.logger.error('Failed to fetch ticket', error);
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                text: `Error fetching ticket: ${error.message}`
-              }
-            ]
-          };
         }
-      }
-    );
+      );
 
-    // Query resource for processing IT queries
-    this.resourceManager.registerTemplateResource(
-      'query',
-      {
-        uri: 'it://query{?q*}',
-        params: {}
-      },
-      {
-        title: 'IT Query with User Context',
-        description: 'Handle IT queries with user context information',
-        mimeType: 'text/plain'
-      },
-      async (uri) => {
-        try {
-          const urlObj = new URL(uri.href);
-          const query = urlObj.searchParams.get('q');
+      // Query resource for processing IT queries
+      this.resourceManager.registerTemplateResource(
+        'query',
+        {
+          uri: 'it://query{?q*}',
+          params: {}
+        },
+        {
+          title: 'IT Query with User Context',
+          description: 'Handle IT queries with user context information',
+          mimeType: 'text/plain'
+        },
+        async (uri) => {
+          try {
+            const urlObj = new URL(uri.href);
+            const query = urlObj.searchParams.get('q');
 
-          this.logger.debug(`Processing IT query: "${query}"`);
+            this.logger.debug(`Processing IT query: "${query}"`);
 
-          if (!query) {
-            throw new Error('No query parameter provided');
+            if (!query) {
+              throw new Error('No query parameter provided');
+            }
+
+            const response = await this.processQuery(query);
+
+            return {
+              contents: [
+                {
+                  uri: uri.href,
+                  text: response
+                }
+              ]
+            };
+          } catch (error) {
+            this.logger.error('Query processing error', error);
+            return {
+              contents: [
+                {
+                  uri: uri.href,
+                  text: `Error processing query: ${error.message}`
+                }
+              ]
+            };
           }
-
-          const response = await this.processQuery(query);
-
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                text: response
-              }
-            ]
-          };
-        } catch (error) {
-          this.logger.error('Query processing error', error);
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                text: `Error processing query: ${error.message}`
-              }
-            ]
-          };
         }
-      }
-    );
+      );
 
-    this.resourceManager.logResourceSummary();
+      this.resourceManager.logResourceSummary();
+    } catch (error) {
+      this.logger.error('Failed to setup resources', error);
+      throw error;
+    }
   }
 
   /**
@@ -250,73 +278,64 @@ class ITAgent extends MCPAgentBase {
   /**
    * Preprocess ticket data
    */
-  _preprocessTicketData(rawData, queryAnalysis) {
-    const lines = rawData.split('\n');
-    const header = lines[0];
-    const tickets = lines.slice(1).filter((line) => line.trim());
+  _preprocessTicketData(queryAnalysis) {
+    const tickets = this.ticketService.getAllTickets();
+    const stats = this.ticketService.getStatistics();
 
     const processedData = {
-      header,
       tickets,
-      ticketCount: tickets.length,
-      statuses: new Set(),
-      priorities: new Set(),
-      assignees: new Set(),
-      rawData
+      ticketCount: stats.total,
+      statuses: stats.byStatus.map(s => s.status),
+      priorities: stats.byPriority.map(p => p.priority),
+      assignees: stats.byAssignee.map(a => a.assigned_to),
+      stats
     };
-
-    tickets.forEach((ticket) => {
-      const fields = this._parseCSVLine(ticket);
-      if (fields.length >= 6) {
-        processedData.statuses.add(fields[3]); // status
-        processedData.priorities.add(fields[4]); // priority
-        processedData.assignees.add(fields[5]); // assigned_to
-      }
-    });
 
     return processedData;
   }
 
   /**
-   * Parse CSV line
-   */
-  _parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current.trim());
-    return result;
-  }
-
-  /**
    * Build contextual prompt for query
    */
-  _buildContextualPrompt(analysis, processedData) {
-    let prompt = `IT Tickets Database (${processedData.ticketCount} tickets):\n${processedData.rawData}`;
+    _buildContextualPrompt(analysis, processedData) {
+    const tickets = this.ticketService.getAllTickets();
+    const csv = this.ticketService.getTicketsAsCSV();
+    
+    // Build explicit summary of what's in the database
+    let summary = `EXPLICIT TICKET SUMMARY FOR YOUR REFERENCE:\n`;
+    summary += `✓ Total tickets in database: ${processedData.ticketCount}\n`;
+    
+    if (processedData.stats.byPriority) {
+      summary += `\nTickets by Priority:\n`;
+      processedData.stats.byPriority.forEach(p => {
+        const ticketsWithPriority = tickets.filter(t => t.priority === p.priority);
+        summary += `  • ${p.priority}: ${p.count} ticket(s)\n`;
+        if (p.count <= 5) {
+          ticketsWithPriority.forEach(t => {
+            summary += `    - ${t.ticket_id}: ${t.description.substring(0, 50)}...\n`;
+          });
+        }
+      });
+    }
+    
+    if (processedData.stats.byStatus) {
+      summary += `\nTickets by Status:\n`;
+      processedData.stats.byStatus.forEach(s => {
+        summary += `  • ${s.status}: ${s.count} ticket(s)\n`;
+      });
+    }
+
+    let prompt = summary + `\n\n═══════════════════════════════════\nFULL TICKET DATABASE (CSV FORMAT):\n═══════════════════════════════════\n${csv}`;
 
     if (analysis.type.includes('status') || analysis.type.includes('ticket')) {
       prompt += `\n\nTICKET SUMMARY:\n`;
-      prompt += `Statuses: ${Array.from(processedData.statuses).join(', ')}\n`;
-      prompt += `Priorities: ${Array.from(processedData.priorities).join(', ')}\n`;
+      prompt += `Statuses: ${processedData.statuses.join(', ')}\n`;
+      prompt += `Priorities: ${processedData.priorities.join(', ')}\n`;
     }
 
     if (analysis.type.includes('assigned') || analysis.type.includes('ticket')) {
       prompt += `\n\nASSIGNMENT INFO:\n`;
-      prompt += `Assigned To: ${Array.from(processedData.assignees).join(', ')}\n`;
+      prompt += `Assigned To: ${processedData.assignees.join(', ')}\n`;
     }
 
     return prompt;
@@ -326,81 +345,58 @@ class ITAgent extends MCPAgentBase {
    * Get system prompt
    */
   _getSystemPrompt() {
-    return `You are an IT support specialist AI assistant with access to the IT ticketing system.
+    return `You are an IT support specialist AI assistant with DIRECT access to the IT ticketing database.
+
+⚠️ CRITICAL INSTRUCTIONS:
+1. You MUST use ONLY data from the ticket database provided
+2. Parse the CSV data carefully - each line is a ticket
+3. When asked about tickets, COUNT and LIST them explicitly from the CSV
+4. If asked "how many high priority tickets", COUNT all rows where priority='High'
+5. NEVER say "no tickets available" if tickets exist in the CSV data
 
 ## DATABASE STRUCTURE:
-- ticket_id: Unique ticket identifier (TKT-XXXX)
-- title: Short description of the issue
+The ticket database is provided in CSV format with these fields:
+- ticket_id: Unique ticket identifier (INC-XXXX-XXXX format)
+- employee_email: Email of employee reporting issue
+- employee_name: Name of employee reporting issue
+- date: Date ticket was created
+- status: Current status (Open, In Progress, Resolved, Closed)
 - description: Detailed issue description
-- status: Current ticket status (Open, In Progress, Resolved, Closed)
-- priority: Issue priority (Critical, High, Medium, Low)
-- assigned_to: Technician handling the ticket
-- created_date: When the ticket was created
-- resolution: How the issue was resolved
-- notes: Additional notes or comments
+- priority: Priority level (Critical, High, Medium, Low)
+- category: Issue category (Application, Hardware, Security, Network, Software, etc.)
+- assigned_to_email: Email of assigned technician
+- assigned_to: Name of assigned technician
+- resolution_time: Time to resolution
+- tags: Issue tags
 
-## CORE CAPABILITIES:
-✅ Ticket Lookup & Status Checking
-✅ Issue Diagnosis & Troubleshooting
-✅ Assignment & Responsibility Information
-✅ Priority & Urgency Assessment
-✅ Resolution & Closure Tracking
-✅ Technical Support Guidance
+## YOUR RESPONSIBILITIES:
+✅ Parse CSV data from the database
+✅ Filter by priority, status, category, or employee
+✅ Count and list tickets matching criteria
+✅ Provide specific ticket IDs from the CSV
+✅ Format results clearly
 
 ## CRITICAL RULES:
-🔒 NEVER invent or assume ticket information
-🔒 Only use data explicitly present in the ticket database
-🔒 All ticket IDs and assignments must match database exactly
-🔒 When accessing sensitive systems, recommend official IT channels
-🔒 If query is outside IT domain, respond with "OUTSIDE_SCOPE"
+🔒 ALWAYS search the CSV for data before saying "no tickets available"
+🔒 Count all matching rows from the CSV data
+🔒 Only respond with data explicitly in the CSV
+🔒 If a query asks for "high priority tickets", COUNT rows where priority=High
+🔒 Never invent or assume ticket information
+🔒 Always cite ticket IDs from the CSV
 
-## RESPONSE GUIDELINES:
-- Precise Data: Only use information from the tickets database
-- Clear Formatting: Present ticket information in organized format
-- Complete Context: Include ticket status, priority, and assignment
-- Professional Tone: Maintain security and confidentiality standards
-- Error Handling: Clearly state when ticket information is not available
-
-## TROUBLESHOOTING APPROACH:
-1. Identify the specific issue or device affected
-2. Check if a related ticket already exists
-3. Provide basic troubleshooting steps if available
-4. Escalate to appropriate technician if needed
-5. Follow up with ticket status updates`;
+## RESPONSE FORMAT:
+When answering queries, always:
+1. State total count of matching tickets
+2. List each ticket ID with key details
+3. Group by priority/status if relevant`;
   }
 
   /**
-   * Fetch IT ticket data from CSV
+   * Fetch IT ticket data
    */
   async _fetchITData() {
-    if (this.ticketData) {
-      return this.ticketData;
-    }
-
     try {
-      const csvPath = path.join(__dirname, 'tickets.csv');
-      const csvData = await fs.readFile(csvPath, 'utf8');
-
-      const lines = csvData.split('\n').filter((line) => line.trim());
-      const ticketCount = Math.max(0, lines.length - 1);
-
-      this.logger.debug(`Loaded IT tickets database: ${ticketCount} tickets`);
-
-      this.ticketData = `IT TICKETS DATABASE (${ticketCount} tickets):
-${csvData}
-
-DATABASE FIELDS:
-- ticket_id: Unique ticket identifier (TKT-XXXX)
-- title: Short issue description
-- description: Detailed issue description
-- status: Current status (Open, In Progress, Resolved, Closed)
-- priority: Priority level (Critical, High, Medium, Low)
-- assigned_to: Assigned technician
-- created_date: Ticket creation date
-- resolution: Resolution details
-- notes: Additional notes`;
-
-      return this.ticketData;
+      return this.ticketService.getTicketsAsCSV();
     } catch (error) {
       this.logger.error('Failed to fetch IT data', error);
       throw new Error('IT tickets database is not available. Please contact IT support.');
@@ -419,8 +415,7 @@ DATABASE FIELDS:
         `Query type: ${queryAnalysis.type} (confidence: ${queryAnalysis.confidence}%)`
       );
 
-      const rawTicketData = await this._fetchITData();
-      const processedData = this._preprocessTicketData(rawTicketData, queryAnalysis);
+      const processedData = this._preprocessTicketData(queryAnalysis);
       this.sendThinkingMessage(
         `Accessing ticket database (${processedData.ticketCount} tickets)...`
       );
@@ -429,6 +424,14 @@ DATABASE FIELDS:
 
       const systemPrompt = this._getSystemPrompt();
       const fullPrompt = `${systemPrompt}\n\n## QUERY ANALYSIS:\nType: ${queryAnalysis.type}\nKeywords: ${queryAnalysis.keywords.join(', ')}\n\n## TICKET DATABASE CONTEXT:\n${contextualPrompt}`;
+
+      // DEBUG: Log what we're sending to LLM
+      this.logger.debug(`Full prompt length: ${fullPrompt.length} characters`);
+      this.logger.debug(`Ticket count in processed data: ${processedData.ticketCount}`);
+      
+      // Log first 500 chars of contextual prompt to verify data
+      const contextPreview = contextualPrompt.substring(0, 500);
+      this.logger.debug(`Context preview: ${contextPreview}...`);
 
       this.sendThinkingMessage('Preparing IT support analysis...');
 

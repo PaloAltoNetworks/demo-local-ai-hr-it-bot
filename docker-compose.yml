@@ -73,6 +73,8 @@ services:
       - ./.env
     environment:
       - NODE_ENV=production
+    volumes:
+      - it-db:/app
     depends_on:
       - mcp-gateway
     restart: unless-stopped
@@ -110,6 +112,9 @@ services:
 networks:
   mcp-network:
     driver: bridge
+
+volumes:
+  it-db:
 
 # Uncomment if using Ollama service
 # volumes:
