@@ -1067,6 +1067,8 @@ body {
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-standard);
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .example-question:hover {
@@ -1078,8 +1080,9 @@ body {
 
 .example-question i {
   color: var(--koala-primary);
-  margin-bottom: var(--space-8);
   font-size: var(--font-size-lg);
+  margin-right: var(--space-8);
+  flex-shrink: 0;
 }
 
 .example-question h4 {
@@ -1087,6 +1090,9 @@ body {
   font-size: var(--font-size-md);
   margin-bottom: var(--space-6);
   font-weight: var(--font-weight-medium);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
 }
 
 .example-question p {
@@ -1094,6 +1100,57 @@ body {
   font-size: var(--font-size-sm);
   margin: 0;
   line-height: var(--line-height-normal);
+}
+
+/* Action question styles (e.g., refresh) */
+.example-question.action-question {
+  background: var(--color-secondary);
+  border: 2px dashed var(--color-border);
+  opacity: 0.8;
+}
+
+.example-question.action-question:hover {
+  background: var(--color-secondary);
+  border-color: var(--color-text-secondary);
+  opacity: 1;
+}
+
+.example-question.action-question i {
+  color: var(--color-text);
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Subgroup styles */
+.questions-subgroup {
+  margin-bottom: var(--space-12);
+  border-radius: 0;
+  overflow: hidden;
+  border: none;
+}
+
+.subgroup-header {
+  background: transparent;
+  padding: var(--space-8) 0;
+  border-bottom: none;
+}
+
+.subgroup-header h3 {
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+}
+
+.subgroup-questions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-12);
+  padding: var(--space-8) 0;
 }
 
 /* Section informations de phase */
@@ -1135,7 +1192,7 @@ body {
 
 /* Section de chat */
 .chat-section {
-  /* margin-bottom: var(--space-32); */
+  display: block;
 }
 
 /* Panneau de chat */

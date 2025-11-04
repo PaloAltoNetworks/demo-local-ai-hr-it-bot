@@ -13,6 +13,14 @@ class ChatBotApp {
         // Default to English, but detect from URL params or localStorage
         this.currentLanguage = this.detectLanguage();
         this.currentPhase = 'phase1';
+        
+        // Check if we need to restore a phase after refresh
+        const returnToPhase = sessionStorage.getItem('returnToPhase');
+        if (returnToPhase) {
+            this.currentPhase = returnToPhase;
+            sessionStorage.removeItem('returnToPhase');
+        }
+        
         this.chatHistory = [];
 
         console.log(`🌐 Initial language detected: ${this.currentLanguage}`);

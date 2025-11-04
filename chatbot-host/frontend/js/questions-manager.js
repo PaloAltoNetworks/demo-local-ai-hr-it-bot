@@ -6,6 +6,7 @@ export class QuestionsManager {
         this.i18n = i18n;
         this.uiManager = uiManager;
         this.language = i18n.currentLanguage;
+        this.currentPhase = 'phase1'; // Track current phase for refresh action
     }
 
     /**
@@ -30,6 +31,7 @@ export class QuestionsManager {
      * Render example questions
      */
     renderQuestions(phase) {
+        this.currentPhase = phase; // Store current phase
         const questionsContainer = this.uiManager.elements.questionsContainer;
         if (!questionsContainer) return;
 
@@ -46,11 +48,43 @@ export class QuestionsManager {
         // Create question elements
         const fragment = document.createDocumentFragment();
         questions.forEach(question => {
-            const questionElement = this.createQuestionElement(question);
-            fragment.appendChild(questionElement);
+            // Check if this is a subgroup (has a 'questions' property)
+            if (question.questions && Array.isArray(question.questions)) {
+                const subgroupElement = this.createSubgroupElement(question);
+                fragment.appendChild(subgroupElement);
+            } else {
+                const questionElement = this.createQuestionElement(question);
+                fragment.appendChild(questionElement);
+            }
         });
         
         questionsContainer.appendChild(fragment);
+    }
+
+    /**
+     * Create a subgroup element with nested questions
+     */
+    createSubgroupElement(subgroup) {
+        const subgroupDiv = document.createElement('div');
+        subgroupDiv.className = 'questions-subgroup';
+        
+        // Create subgroup header
+        const header = document.createElement('div');
+        header.className = 'subgroup-header';
+        header.innerHTML = `<h3>${subgroup.title}</h3>`;
+        subgroupDiv.appendChild(header);
+        
+        // Create nested questions container
+        const questionsContainer = document.createElement('div');
+        questionsContainer.className = 'subgroup-questions';
+        
+        subgroup.questions.forEach(question => {
+            const questionElement = this.createQuestionElement(question);
+            questionsContainer.appendChild(questionElement);
+        });
+        
+        subgroupDiv.appendChild(questionsContainer);
+        return subgroupDiv;
     }
 
     /**
@@ -59,16 +93,29 @@ export class QuestionsManager {
     createQuestionElement(question) {
         const questionDiv = document.createElement('div');
         questionDiv.className = 'example-question';
-        questionDiv.setAttribute('data-question', question.text);
+        
+        // Check if this is an action question (like refresh)
+        if (question.action === 'refresh') {
+            questionDiv.classList.add('action-question');
+            questionDiv.setAttribute('data-action', 'refresh');
+        } else {
+            questionDiv.setAttribute('data-question', question.text);
+        }
         
         questionDiv.innerHTML = `
-            <i class="${question.icon}"></i>
-            <h4>${question.title}</h4>
+            <h4><i class="${question.icon}"></i>${question.title}</h4>
             <p>${question.text}</p>
         `;
 
         questionDiv.addEventListener('click', () => {
-            this.uiManager.setUserInput(question.text);
+            if (question.action === 'refresh') {
+                // Save current phase to sessionStorage before refreshing
+                sessionStorage.setItem('returnToPhase', this.currentPhase);
+                // Refresh the page instead of sending a message
+                window.location.reload();
+            } else {
+                this.uiManager.setUserInput(question.text);
+            }
         });
 
         return questionDiv;
