@@ -265,30 +265,6 @@ class TicketService {
   }
 
   /**
-   * Get all discussions as formatted text (for AI context)
-   */
-  getDiscussionsAsText(ticketId) {
-    const discussions = this.getTicketDiscussions(ticketId);
-    
-    if (discussions.length === 0) {
-      return 'No discussions yet';
-    }
-
-    const lines = [
-      `=== TICKET DISCUSSIONS (${discussions.length} comments) ===\n`,
-      ...discussions.map(d => {
-        const internalLabel = d.is_internal ? '[INTERNAL]' : '[CUSTOMER]';
-        return `${internalLabel} ${d.author_name} (${d.author_email}) - ${d.created_at}
-Type: ${d.comment_type}
-${d.content}
-`;
-      })
-    ];
-
-    return lines.join('\n');
-  }
-
-  /**
    * Build dynamic query based on filters
    */
   _buildQuery(filters = {}) {

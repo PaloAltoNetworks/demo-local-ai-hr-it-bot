@@ -2,19 +2,11 @@
  * IT Agent MCP Server (Refactored)
  * Specialized agent for IT support and technical issues
  */
-import path from 'path';
-import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
 import { MCPAgentBase } from './shared/mcp-agent-base.js';
 import { ResourceManager } from './shared/utils/resource-manager.js';
 import { QueryProcessor } from './shared/utils/query-processor.js';
 import { initializeDatabase } from './database-manager.js';
-import { getTicketService, initializeTicketService } from './ticket-db.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { initializeTicketService } from './ticket-db.js';
 
 class ITAgent extends MCPAgentBase {
   constructor() {
@@ -134,7 +126,7 @@ ${ticket.description}
             }
 
             const discussions = this.ticketService.getTicketDiscussions(ticketId);
-            const discussionsText = this.ticketService.getDiscussionsAsText(ticketId);
+            const discussionsText = this._formatDiscussionsAsText(ticketId);
 
             const ticketWithDiscussions = `
 TICKET: ${ticket.ticket_id}
@@ -394,6 +386,30 @@ ${discussionsText}
   }
 
   /**
+   * Format discussions as text for display
+   * @private
+   */
+  _formatDiscussionsAsText(ticketId) {
+    const discussions = this.ticketService.getTicketDiscussions(ticketId);
+    
+    if (discussions.length === 0) {
+      return 'No discussions yet';
+    }
+
+    const lines = [
+      `=== TICKET DISCUSSIONS (${discussions.length} comments) ===\n`,
+      ...discussions.map(d => {
+        const internalLabel = d.is_internal ? '[INTERNAL]' : '[CUSTOMER]';
+        return `${internalLabel} ${d.author_name} (${d.author_email}) - ${d.created_at}
+Type: ${d.comment_type}
+${d.content}`;
+      })
+    ];
+
+    return lines.join('\n');
+  }
+
+  /**
    * Get system prompt
    */
   _getSystemPrompt() {
@@ -450,18 +466,6 @@ When answering queries:
   }
 
   /**
-   * Fetch IT ticket data
-   */
-  async _fetchITData() {
-    try {
-      return this.ticketService.getTickets();
-    } catch (error) {
-      this.logger.error('Failed to fetch IT data', error);
-      throw new Error('IT tickets database is not available. Please contact IT support.');
-    }
-  }
-
-  /**
    * Process IT query
    */
   async processQuery(query) {
@@ -491,63 +495,6 @@ When answering queries:
     } catch (error) {
       this.logger.error('IT Agent processing error', error);
       return 'I encountered an error while accessing IT support information. Please try again or contact IT support directly.';
-    }
-  }
-
-  /**
-   * Add a discussion comment to a ticket
-   */
-  async addTicketDiscussion(ticketId, authorEmail, authorName, content, commentType = 'comment', isInternal = false) {
-    try {
-      const success = this.ticketService.addDiscussion(
-        ticketId,
-        authorEmail,
-        authorName,
-        content,
-        commentType,
-        isInternal
-      );
-
-      if (success) {
-        this.logger.info(`Discussion added to ticket ${ticketId}`);
-        return {
-          success: true,
-          message: `Comment added to ticket ${ticketId}`,
-          discussionCount: this.ticketService.getDiscussionCount(ticketId)
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Failed to add discussion'
-        };
-      }
-    } catch (error) {
-      this.logger.error('Failed to add ticket discussion', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all discussions for a ticket
-   */
-  getTicketDiscussions(ticketId) {
-    try {
-      return this.ticketService.getTicketDiscussions(ticketId);
-    } catch (error) {
-      this.logger.error('Failed to fetch ticket discussions', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get internal notes only for a ticket
-   */
-  getTicketInternalNotes(ticketId) {
-    try {
-      return this.ticketService.getTicketInternalNotes(ticketId);
-    } catch (error) {
-      this.logger.error('Failed to fetch internal notes', error);
-      throw error;
     }
   }
 
