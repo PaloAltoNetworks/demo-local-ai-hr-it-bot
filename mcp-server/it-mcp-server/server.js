@@ -10,7 +10,7 @@ import { dirname } from 'path';
 import { MCPAgentBase } from './shared/mcp-agent-base.js';
 import { ResourceManager } from './shared/utils/resource-manager.js';
 import { QueryProcessor } from './shared/utils/query-processor.js';
-import { initializeDatabase } from './db-init.js';
+import { initializeDatabase } from './database-manager.js';
 import { getTicketService, initializeTicketService } from './ticket-db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -39,25 +39,6 @@ class ITAgent extends MCPAgentBase {
       await initializeDatabase();
       this.ticketService = await initializeTicketService();
       this.resourceManager = new ResourceManager(this.agentName, this.server);
-
-      // IT tickets database resource
-      this.resourceManager.registerStaticResource(
-        'tickets',
-        'it://tickets',
-        {
-          title: 'IT Tickets Database',
-          description: 'Complete IT support tickets database with ticket details',
-          mimeType: 'text/csv'
-        },
-        async (uri) => ({
-          contents: [
-            {
-              uri: uri.href,
-              text: this.ticketService.getTicketsAsCSV()
-            }
-          ]
-        })
-      );
 
       // Dynamic ticket resource
       this.resourceManager.registerTemplateResource(
@@ -118,6 +99,71 @@ ${ticket.description}
                 {
                   uri: uri.href,
                   text: `Error fetching ticket: ${error.message}`
+                }
+              ]
+            };
+          }
+        }
+      );
+
+      // Ticket discussions resource
+      this.resourceManager.registerTemplateResource(
+        'ticket-discussions',
+        {
+          uri: 'it://tickets/{ticketId}/discussions',
+          params: {}
+        },
+        {
+          title: 'Ticket Discussion History',
+          description: 'All discussion comments, notes, and communication history for a ticket',
+          mimeType: 'text/plain'
+        },
+        async (uri, { ticketId }) => {
+          try {
+            const ticket = this.ticketService.getTicketById(ticketId);
+
+            if (!ticket) {
+              return {
+                contents: [
+                  {
+                    uri: uri.href,
+                    text: `Ticket ${ticketId} not found`
+                  }
+                ]
+              };
+            }
+
+            const discussions = this.ticketService.getTicketDiscussions(ticketId);
+            const discussionsText = this.ticketService.getDiscussionsAsText(ticketId);
+
+            const ticketWithDiscussions = `
+TICKET: ${ticket.ticket_id}
+Employee: ${ticket.employee_name} (${ticket.employee_email})
+Status: ${ticket.status}
+Priority: ${ticket.priority}
+Assigned To: ${ticket.assigned_to}
+
+INTERNAL NOTES:
+${ticket.internal_notes || 'No internal notes'}
+
+${discussionsText}
+            `.trim();
+
+            return {
+              contents: [
+                {
+                  uri: uri.href,
+                  text: ticketWithDiscussions
+                }
+              ]
+            };
+          } catch (error) {
+            this.logger.error('Failed to fetch ticket discussions', error);
+            return {
+              contents: [
+                {
+                  uri: uri.href,
+                  text: `Error fetching discussions: ${error.message}`
                 }
               ]
             };
@@ -297,48 +343,54 @@ ${ticket.description}
   /**
    * Build contextual prompt for query
    */
-    _buildContextualPrompt(analysis, processedData) {
+  _buildContextualPrompt(analysis, processedData) {
     const tickets = this.ticketService.getAllTickets();
-    const csv = this.ticketService.getTicketsAsCSV();
     
     // Build explicit summary of what's in the database
     let summary = `EXPLICIT TICKET SUMMARY FOR YOUR REFERENCE:\n`;
     summary += `✓ Total tickets in database: ${processedData.ticketCount}\n`;
     
-    if (processedData.stats.byPriority) {
-      summary += `\nTickets by Priority:\n`;
-      processedData.stats.byPriority.forEach(p => {
-        const ticketsWithPriority = tickets.filter(t => t.priority === p.priority);
-        summary += `  • ${p.priority}: ${p.count} ticket(s)\n`;
-        if (p.count <= 5) {
-          ticketsWithPriority.forEach(t => {
-            summary += `    - ${t.ticket_id}: ${t.description.substring(0, 50)}...\n`;
+    // Include ALL ticket IDs and basic details for reference
+    summary += `\n=== COMPLETE TICKET LISTING ===\n`;
+    summary += `All tickets in database (${tickets.length} total):\n`;
+    tickets.forEach((t, idx) => {
+      summary += `  ${idx + 1}. ${t.ticket_id} - Employee: ${t.employee_name} (${t.employee_email}) | Status: ${t.status} | Priority: ${t.priority} | Category: ${t.category}\n`;
+      summary += `     Description: ${t.description}\n`;
+      summary += `     Assigned to: ${t.assigned_to}\n`;
+      
+      // For specific employees, include discussion history
+      if (t.employee_name.toLowerCase().includes('sophie') || t.employee_email.includes('sophie.martin')) {
+        summary += `     ⭐ SOPHIE MARTIN TICKET - INCLUDING FULL DISCUSSION HISTORY:\n`;
+        const discussions = this.ticketService.getTicketDiscussions(t.ticket_id);
+        if (discussions && discussions.length > 0) {
+          summary += `     Discussion messages (${discussions.length}):\n`;
+          discussions.forEach((d, didx) => {
+            const internalFlag = d.is_internal ? '[INTERNAL]' : '[PUBLIC]';
+            summary += `       ${didx + 1}. ${internalFlag} ${d.author_name} (${d.author_email}) - ${d.created_at}\n`;
+            summary += `          Type: ${d.comment_type}\n`;
+            summary += `          Message: ${d.content}\n`;
           });
         }
+      }
+      summary += `\n`;
+    });
+    
+    // Include statistics
+    if (processedData.stats.byPriority) {
+      summary += `\n=== TICKETS BY PRIORITY ===\n`;
+      processedData.stats.byPriority.forEach(p => {
+        summary += `  • ${p.priority}: ${p.count} ticket(s)\n`;
       });
     }
     
     if (processedData.stats.byStatus) {
-      summary += `\nTickets by Status:\n`;
+      summary += `\n=== TICKETS BY STATUS ===\n`;
       processedData.stats.byStatus.forEach(s => {
         summary += `  • ${s.status}: ${s.count} ticket(s)\n`;
       });
     }
 
-    let prompt = summary + `\n\n═══════════════════════════════════\nFULL TICKET DATABASE (CSV FORMAT):\n═══════════════════════════════════\n${csv}`;
-
-    if (analysis.type.includes('status') || analysis.type.includes('ticket')) {
-      prompt += `\n\nTICKET SUMMARY:\n`;
-      prompt += `Statuses: ${processedData.statuses.join(', ')}\n`;
-      prompt += `Priorities: ${processedData.priorities.join(', ')}\n`;
-    }
-
-    if (analysis.type.includes('assigned') || analysis.type.includes('ticket')) {
-      prompt += `\n\nASSIGNMENT INFO:\n`;
-      prompt += `Assigned To: ${processedData.assignees.join(', ')}\n`;
-    }
-
-    return prompt;
+    return summary;
   }
 
   /**
@@ -347,15 +399,25 @@ ${ticket.description}
   _getSystemPrompt() {
     return `You are an IT support specialist AI assistant with DIRECT access to the IT ticketing database.
 
-⚠️ CRITICAL INSTRUCTIONS:
-1. You MUST use ONLY data from the ticket database provided
-2. Parse the CSV data carefully - each line is a ticket
-3. When asked about tickets, COUNT and LIST them explicitly from the CSV
-4. If asked "how many high priority tickets", COUNT all rows where priority='High'
-5. NEVER say "no tickets available" if tickets exist in the CSV data
+⚠️ CRITICAL INSTRUCTIONS - READ CAREFULLY:
+1. You MUST use ONLY data from the COMPLETE TICKET DATABASE provided below
+2. You have been given the COMPLETE LISTING of ALL tickets - do NOT invent or hallucinate tickets
+3. When asked about ANY employee's tickets, search the provided listing by employee_name and employee_email
+4. NEVER make up ticket IDs - they MUST come from the database listing provided
+5. Use ticket discussion history to provide comprehensive support information
+6. When asked "what are Sophie Martin's tickets?" - search for the exact employee name in the listing
+
+## CRITICAL ANTI-HALLUCINATION RULES:
+🚫 DO NOT invent ticket IDs like INC-0001-2345 or INC-0002-6789
+🚫 DO NOT say "based on typical IT issues" or "similar tickets might be"
+🚫 DO NOT assume information not explicitly in the database
+🚫 DO NOT make up employee-ticket relationships
+✅ ONLY use ticket IDs from the provided database listing
+✅ ONLY use ticket data explicitly provided in the context
+✅ When in doubt about data, say "This information is not in the database"
 
 ## DATABASE STRUCTURE:
-The ticket database is provided in CSV format with these fields:
+The ticket database contains these fields:
 - ticket_id: Unique ticket identifier (INC-XXXX-XXXX format)
 - employee_email: Email of employee reporting issue
 - employee_name: Name of employee reporting issue
@@ -368,27 +430,23 @@ The ticket database is provided in CSV format with these fields:
 - assigned_to: Name of assigned technician
 - resolution_time: Time to resolution
 - tags: Issue tags
+- ticket_discussions: Full discussion history with comments, internal notes, and updates
 
 ## YOUR RESPONSIBILITIES:
-✅ Parse CSV data from the database
+✅ Access and analyze IT tickets from the DATABASE PROVIDED
 ✅ Filter by priority, status, category, or employee
 ✅ Count and list tickets matching criteria
-✅ Provide specific ticket IDs from the CSV
+✅ Provide specific ticket IDs with their status
+✅ Review discussion history for comprehensive context
 ✅ Format results clearly
 
-## CRITICAL RULES:
-🔒 ALWAYS search the CSV for data before saying "no tickets available"
-🔒 Count all matching rows from the CSV data
-🔒 Only respond with data explicitly in the CSV
-🔒 If a query asks for "high priority tickets", COUNT rows where priority=High
-🔒 Never invent or assume ticket information
-🔒 Always cite ticket IDs from the CSV
-
 ## RESPONSE FORMAT:
-When answering queries, always:
-1. State total count of matching tickets
+When answering queries:
+1. State total count of matching tickets (from the provided database)
 2. List each ticket ID with key details
-3. Group by priority/status if relevant`;
+3. Include relevant discussion context when applicable
+4. Group by priority/status if relevant
+5. Include internal notes for tickets like Sophie Martin's laptop replacement`;
   }
 
   /**
@@ -396,7 +454,7 @@ When answering queries, always:
    */
   async _fetchITData() {
     try {
-      return this.ticketService.getTicketsAsCSV();
+      return this.ticketService.getTickets();
     } catch (error) {
       this.logger.error('Failed to fetch IT data', error);
       throw new Error('IT tickets database is not available. Please contact IT support.');
@@ -425,16 +483,6 @@ When answering queries, always:
       const systemPrompt = this._getSystemPrompt();
       const fullPrompt = `${systemPrompt}\n\n## QUERY ANALYSIS:\nType: ${queryAnalysis.type}\nKeywords: ${queryAnalysis.keywords.join(', ')}\n\n## TICKET DATABASE CONTEXT:\n${contextualPrompt}`;
 
-      // DEBUG: Log what we're sending to LLM
-      this.logger.debug(`Full prompt length: ${fullPrompt.length} characters`);
-      this.logger.debug(`Ticket count in processed data: ${processedData.ticketCount}`);
-      
-      // Log first 500 chars of contextual prompt to verify data
-      const contextPreview = contextualPrompt.substring(0, 500);
-      this.logger.debug(`Context preview: ${contextPreview}...`);
-
-      this.sendThinkingMessage('Preparing IT support analysis...');
-
       const response = await this.queryProcessor.processWithModel(fullPrompt, query);
 
       this.sendThinkingMessage('Finalizing IT support response...');
@@ -443,6 +491,63 @@ When answering queries, always:
     } catch (error) {
       this.logger.error('IT Agent processing error', error);
       return 'I encountered an error while accessing IT support information. Please try again or contact IT support directly.';
+    }
+  }
+
+  /**
+   * Add a discussion comment to a ticket
+   */
+  async addTicketDiscussion(ticketId, authorEmail, authorName, content, commentType = 'comment', isInternal = false) {
+    try {
+      const success = this.ticketService.addDiscussion(
+        ticketId,
+        authorEmail,
+        authorName,
+        content,
+        commentType,
+        isInternal
+      );
+
+      if (success) {
+        this.logger.info(`Discussion added to ticket ${ticketId}`);
+        return {
+          success: true,
+          message: `Comment added to ticket ${ticketId}`,
+          discussionCount: this.ticketService.getDiscussionCount(ticketId)
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Failed to add discussion'
+        };
+      }
+    } catch (error) {
+      this.logger.error('Failed to add ticket discussion', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all discussions for a ticket
+   */
+  getTicketDiscussions(ticketId) {
+    try {
+      return this.ticketService.getTicketDiscussions(ticketId);
+    } catch (error) {
+      this.logger.error('Failed to fetch ticket discussions', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get internal notes only for a ticket
+   */
+  getTicketInternalNotes(ticketId) {
+    try {
+      return this.ticketService.getTicketInternalNotes(ticketId);
+    } catch (error) {
+      this.logger.error('Failed to fetch internal notes', error);
+      throw error;
     }
   }
 

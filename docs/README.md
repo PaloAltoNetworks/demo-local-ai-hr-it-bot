@@ -87,7 +87,7 @@ The chatbot system follows the **MCP (Model Context Protocol) standard** with en
 │ • create_report│  │ • it_query        │  │ • general_qa     │
 │                │  │                   │  │ • knowledge_base │
 │ Data:          │  │ Data:             │  │                  │
-│ • employees.csv│  │ • tickets.csv     │  │ Data:            │
+│ • employees.csv│  │ • tickets.db      │  │ Data:            │
 │ • HR policies  │  │ • IT systems      │  │ • Knowledge base │
 └────────────────┘  └───────────────────┘  └──────────────────┘
 ```
@@ -367,7 +367,7 @@ Tracking works consistently across both providers.
 - IT system queries
 - Technical support
 
-**Data Source**: `tickets.csv`
+**Data Source**: SQLite Database (`tickets.db`)
 
 ### General Agent
 **Purpose**: General knowledge and questions

@@ -73,8 +73,6 @@ services:
       - ./.env
     environment:
       - NODE_ENV=production
-    volumes:
-      - it-db:/app
     depends_on:
       - mcp-gateway
     restart: unless-stopped

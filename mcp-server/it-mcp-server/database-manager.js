@@ -1,6 +1,6 @@
 /**
- * Database Initialization Module
- * Sets up SQLite database schema for IT ticketing system
+ * Database Manager
+ * Loads pre-seeded SQLite database
  * Uses sql.js - pure JavaScript SQLite (no compilation needed)
  */
 import initSqlJs from 'sql.js';
@@ -21,94 +21,26 @@ class DatabaseManager {
   }
 
   /**
-   * Initialize database and create schema
+   * Load database from disk
    */
   async init() {
     try {
       // Initialize sql.js
       this.SQL = await initSqlJs();
 
-      // Load existing database or create new one
-      const dbExists = fs.existsSync(this.dbPath);
-      if (dbExists) {
-        const buffer = fs.readFileSync(this.dbPath);
-        this.db = new this.SQL.Database(buffer);
-        console.log('✅ Loaded existing database');
-      } else {
-        this.db = new this.SQL.Database();
-        console.log('✅ Created new database');
+      // Load database from file
+      if (!fs.existsSync(this.dbPath)) {
+        throw new Error(`Database file not found at ${this.dbPath}. Please run seed-discussions.js first.`);
       }
 
-      // Create schema
-      await this._createSchema();
-
+      const buffer = fs.readFileSync(this.dbPath);
+      this.db = new this.SQL.Database(buffer);
       this.initialized = true;
       
-      // Only save if this is a new database (no file existed before)
-      if (!dbExists) {
-        this._saveDatabase();
-      }
-      
-      console.log('✅ Database initialized successfully');
+      console.log('✅ Database loaded successfully');
       return this;
     } catch (error) {
-      console.error('❌ Failed to initialize database:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Create database schema
-   */
-  async _createSchema() {
-    try {
-      // Check if table exists to avoid re-creating
-      const tables = this.db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='tickets'");
-      if (tables.length > 0) {
-        console.log('✅ Database schema already exists');
-        return;
-      }
-
-      // Main tickets table
-      this.db.run(`
-        CREATE TABLE tickets (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          ticket_id TEXT UNIQUE NOT NULL,
-          employee_email TEXT NOT NULL,
-          employee_name TEXT NOT NULL,
-          date TEXT NOT NULL,
-          status TEXT NOT NULL CHECK(status IN ('Open', 'In progress', 'Resolved', 'Closed')),
-          description TEXT NOT NULL,
-          priority TEXT NOT NULL CHECK(priority IN ('Critical', 'High', 'Medium', 'Low')),
-          category TEXT NOT NULL,
-          assigned_to_email TEXT NOT NULL,
-          assigned_to TEXT NOT NULL,
-          resolution_time TEXT,
-          tags TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-      // Create indexes for better query performance
-      const indexes = [
-        'CREATE INDEX idx_ticket_id ON tickets(ticket_id)',
-        'CREATE INDEX idx_status ON tickets(status)',
-        'CREATE INDEX idx_priority ON tickets(priority)',
-        'CREATE INDEX idx_employee_email ON tickets(employee_email)',
-        'CREATE INDEX idx_assigned_to_email ON tickets(assigned_to_email)',
-        'CREATE INDEX idx_category ON tickets(category)',
-        'CREATE INDEX idx_employee_name ON tickets(employee_name)',
-        'CREATE INDEX idx_date ON tickets(date)'
-      ];
-
-      for (const indexSql of indexes) {
-        this.db.run(indexSql);
-      }
-
-      console.log('✅ Database schema created successfully');
-    } catch (error) {
-      console.error('❌ Failed to create schema:', error);
+      console.error('❌ Failed to load database:', error);
       throw error;
     }
   }

@@ -2,7 +2,7 @@
  * Ticket Database Service
  * Handles all database operations for IT tickets
  */
-import { getDatabase } from './db-init.js';
+import { getDatabase } from './database-manager.js';
 
 class TicketService {
   constructor() {
@@ -197,34 +197,95 @@ class TicketService {
   }
 
   /**
-   * Get tickets as CSV format (for backward compatibility)
+   * Add a discussion comment to a ticket
    */
-  getTicketsAsCSV() {
-    const tickets = this.getAllTickets();
+  addDiscussion(ticketId, authorEmail, authorName, content, commentType = 'comment', isInternal = false) {
+    const result = this.db.run(`
+      INSERT INTO ticket_discussions (ticket_id, author_email, author_name, comment_type, content, is_internal)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [ticketId, authorEmail, authorName, commentType, content, isInternal ? 1 : 0]);
+
+    return result.changes > 0;
+  }
+
+  /**
+   * Get all discussions for a ticket
+   */
+  getTicketDiscussions(ticketId) {
+    return this.db.all(`
+      SELECT * FROM ticket_discussions 
+      WHERE ticket_id = ? 
+      ORDER BY created_at ASC
+    `, [ticketId]);
+  }
+
+  /**
+   * Get internal notes for a ticket (only internal discussions)
+   */
+  getTicketInternalNotes(ticketId) {
+    return this.db.all(`
+      SELECT * FROM ticket_discussions 
+      WHERE ticket_id = ? AND is_internal = 1
+      ORDER BY created_at ASC
+    `, [ticketId]);
+  }
+
+  /**
+   * Get discussion count for a ticket
+   */
+  getDiscussionCount(ticketId) {
+    const result = this.db.get(`
+      SELECT COUNT(*) as count FROM ticket_discussions WHERE ticket_id = ?
+    `, [ticketId]);
+    return result?.count || 0;
+  }
+
+  /**
+   * Update a discussion comment
+   */
+  updateDiscussion(discussionId, content) {
+    const result = this.db.run(`
+      UPDATE ticket_discussions 
+      SET content = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [content, discussionId]);
+
+    return result.changes > 0;
+  }
+
+  /**
+   * Delete a discussion comment
+   */
+  deleteDiscussion(discussionId) {
+    const result = this.db.run(`
+      DELETE FROM ticket_discussions WHERE id = ?
+    `, [discussionId]);
+
+    return result.changes > 0;
+  }
+
+  /**
+   * Get all discussions as formatted text (for AI context)
+   */
+  getDiscussionsAsText(ticketId) {
+    const discussions = this.getTicketDiscussions(ticketId);
     
-    if (tickets.length === 0) {
-      return 'ticket_id,employee_email,employee_name,date,status,description,priority,category,assigned_to_email,assigned_to,resolution_time,tags';
+    if (discussions.length === 0) {
+      return 'No discussions yet';
     }
 
-    // CSV header
-    const headers = [
-      'ticket_id', 'employee_email', 'employee_name', 'date', 'status', 'description', 
-      'priority', 'category', 'assigned_to_email', 'assigned_to', 'resolution_time', 'tags'
+    const lines = [
+      `=== TICKET DISCUSSIONS (${discussions.length} comments) ===\n`,
+      ...discussions.map(d => {
+        const internalLabel = d.is_internal ? '[INTERNAL]' : '[CUSTOMER]';
+        return `${internalLabel} ${d.author_name} (${d.author_email}) - ${d.created_at}
+Type: ${d.comment_type}
+${d.content}
+`;
+      })
     ];
 
-    // CSV rows
-    const rows = tickets.map(ticket => 
-      headers.map(field => {
-        const value = ticket[field] || '';
-        // Escape quotes and wrap in quotes if contains comma
-        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        return value;
-      }).join(',')
-    );
-
-    return [headers.join(','), ...rows].join('\n');
+    return lines.join('\n');
   }
 
   /**
