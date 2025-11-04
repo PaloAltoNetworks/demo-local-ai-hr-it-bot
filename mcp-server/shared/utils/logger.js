@@ -16,7 +16,7 @@ class Logger {
   }
 
   debug(message, data = null) {
-    console.log(`🔍 ${this._formatMessage(message)}`, data || '');
+    console.log(`${this._formatMessage(message)}`, data || '');
   }
 
   info(message, data = null) {
@@ -24,7 +24,7 @@ class Logger {
   }
 
   success(message, data = null) {
-    console.log(`✅ ${this._formatMessage(message)}`, data || '');
+    console.log(`${this._formatMessage(message)}`, data || '');
   }
 
   warn(message, data = null) {
@@ -43,7 +43,7 @@ class Logger {
   }
 
   request(method, url) {
-    console.log(`🌐 ${this._formatMessage(`${method} ${url}`)}`);
+    console.log(`${this._formatMessage(`${method} ${url}`)}`);
   }
 
   divider(title) {

@@ -26,9 +26,9 @@ export class UIManager {
             sendButton: document.getElementById('sendMessage'),
             questionsContainer: document.getElementById('questions-container'),
             phaseButtons: document.querySelectorAll('.phase-btn'),
-            statusIndicator: document.querySelector('.chat-status .status'),
-            statusIcon: document.querySelector('.chat-status .status i'),
-            statusText: document.querySelector('.chat-status .status')
+            statusIndicator: document.getElementById('statusIndicator'),
+            statusIcon: document.getElementById('statusIcon'),
+            statusText: document.getElementById('statusText')
         };
     }
 
@@ -60,17 +60,17 @@ export class UIManager {
         let icon, displayContent;
 
         if (role === 'system') {
-            icon = 'fas fa-exclamation-triangle';
+            icon = 'warning';
             displayContent = Utils.escapeHtml(content);
         } else {
             const isUser = role === 'user';
-            icon = isUser ? 'fas fa-user-circle' : 'fas fa-otter';
+            icon = isUser ? 'account_circle' : 'otter-icon';
             displayContent = isUser ? Utils.escapeHtml(content) : Utils.formatBotResponse(content);
         }
 
         messageDiv.innerHTML = `
             <div class="message-avatar">
-                <i class="${icon}"></i>
+                <span class="material-symbols-outlined">${icon}</span>
             </div>
             <div class="message-content">
                 <div class="message-text">${displayContent}</div>
@@ -115,7 +115,7 @@ export class UIManager {
         
         let messageHTML = `
             <div class="message-avatar">
-                <i class="fas fa-otter"></i>
+                <i class="otter-icon"></i>
             </div>
             <div class="message-content">
                 <div class="message-text">${displayContent}</div>
@@ -132,7 +132,7 @@ export class UIManager {
                 <div class="token-info">
                     <div class="token-info-row">
                         <span class="token-label" data-i18n="chat.totalTokens">
-                            <i class="fas fa-microchip"></i> ${this.i18n.t('chat.totalTokens')}:
+                            <span class="material-symbols-outlined">memory</span> ${this.i18n.t('chat.totalTokens')}:
                         </span>
                         <span class="token-count">${totalTokens}</span>
                     </div>
@@ -165,7 +165,7 @@ export class UIManager {
             const thinkingId = `thinking-${Date.now()}`;
             messageHTML += `
                 <button class="thinking-toggle" data-thinking-id="${thinkingId}" title="View thinking chain">
-                    <i class="fas fa-chevron-down"></i>
+                    <span class="material-symbols-outlined">expand_more</span>
                     <span class="thinking-toggle-text">${this.i18n.t('chat.viewThinking')}</span>
                 </button>
                 <div class="thinking-chain" id="${thinkingId}" style="display: none;">
@@ -220,23 +220,23 @@ export class UIManager {
      */
     getThinkingIcon(text) {
         if (text.includes('Analyzing') || text.includes('🔍')) {
-            return `<i class="fas fa-search thinking-icon"></i>`;
+            return `<span class="material-symbols-outlined thinking-icon">search</span>`;
         } else if (text.includes('Checking language') || text.includes('🌐')) {
-            return `<i class="fas fa-globe thinking-icon"></i>`;
+            return `<span class="material-symbols-outlined thinking-icon">public</span>`;
         } else if (text.includes('Translated') || text.includes('🔄')) {
-            return `<i class="fas fa-language thinking-icon"></i>`;
+            return `<span class="material-symbols-outlined thinking-icon">language</span>`;
         } else if (text.includes('Determining') || text.includes('🎯')) {
-            return `<i class="fas fa-crosshairs thinking-icon"></i>`;
+            return `<span class="material-symbols-outlined thinking-icon">center_focus_strong</span>`;
         } else if (text.includes('Connecting') || text.includes('📡')) {
-            return `<i class="fas fa-wifi thinking-icon"></i>`;
+            return `<span class="material-symbols-outlined thinking-icon">cloud_queue</span>`;
         } else if (text.includes('processing') || text.includes('⏳')) {
-            return `<i class="fas fa-cog fa-spin thinking-icon"></i>`;
+            return `<span class="material-symbols-outlined thinking-icon spinning">settings</span>`;
         } else if (text.includes('Response received') || text.includes('✅')) {
-            return `<i class="fas fa-check-circle thinking-icon success"></i>`;
+            return `<span class="material-symbols-outlined thinking-icon success">check_circle</span>`;
         } else if (text.includes('Error') || text.includes('❌')) {
-            return `<i class="fas fa-exclamation-circle thinking-icon error"></i>`;
+            return `<span class="material-symbols-outlined thinking-icon error">cancel</span>`;
         } else {
-            return `<i class="fas fa-comment-dots thinking-icon"></i>`;
+            return `<span class="material-symbols-outlined thinking-icon">chat</span>`;
         }
     }
 
@@ -251,7 +251,7 @@ export class UIManager {
 
         this.thinkingMessageElement.innerHTML = `
             <div class="message-avatar">
-                <i class="fas fa-otter"></i>
+                <i class="otter-icon"></i>
             </div>
             <div class="message-content">
                 <div class="message-text">
@@ -282,7 +282,7 @@ export class UIManager {
 
         this.thinkingMessageElement.innerHTML = `
             <div class="message-avatar">
-                <i class="fas fa-otter"></i>
+                <i class="otter-icon"></i>
             </div>
             <div class="message-content">
                 <div class="message-text thinking-text">
@@ -380,23 +380,23 @@ export class UIManager {
         
         // Add appropriate styling based on content
         if (cleanText.includes('Analyzing') || cleanText.includes('🔍')) {
-            return `<i class="fas fa-search thinking-icon"></i> ${cleanText}`;
+            return `<span class="material-symbols-outlined thinking-icon">search</span> ${cleanText}`;
         } else if (cleanText.includes('Checking language') || cleanText.includes('🌐')) {
-            return `<i class="fas fa-globe thinking-icon"></i> ${cleanText}`;
+            return `<span class="material-symbols-outlined thinking-icon">public</span> ${cleanText}`;
         } else if (cleanText.includes('Translated') || cleanText.includes('🔄')) {
-            return `<i class="fas fa-language thinking-icon"></i> ${cleanText}`;
+            return `<span class="material-symbols-outlined thinking-icon">language</span> ${cleanText}`;
         } else if (cleanText.includes('Determining') || cleanText.includes('🎯')) {
-            return `<i class="fas fa-crosshairs thinking-icon"></i> ${cleanText}`;
+            return `<span class="material-symbols-outlined thinking-icon">center_focus_strong</span> ${cleanText}`;
         } else if (cleanText.includes('Connecting') || cleanText.includes('📡')) {
-            return `<i class="fas fa-wifi thinking-icon"></i> ${cleanText}`;
+            return `<span class="material-symbols-outlined thinking-icon">cloud_queue</span> ${cleanText}`;
         } else if (cleanText.includes('processing') || cleanText.includes('⏳')) {
-            return `<i class="fas fa-cog fa-spin thinking-icon"></i> ${cleanText}`;
+            return `<span class="material-symbols-outlined thinking-icon spinning">settings</span> ${cleanText}`;
         } else if (cleanText.includes('Response received') || cleanText.includes('✅')) {
-            return `<i class="fas fa-check-circle thinking-icon success"></i> ${cleanText}`;
+            return `<span class="material-symbols-outlined thinking-icon success">check_circle</span> ${cleanText}`;
         } else if (cleanText.includes('Error') || cleanText.includes('❌')) {
-            return `<i class="fas fa-exclamation-circle thinking-icon error"></i> ${cleanText}`;
+            return `<span class="material-symbols-outlined thinking-icon error">cancel</span> ${cleanText}`;
         } else {
-            return `<i class="fas fa-comment-dots thinking-icon"></i> ${cleanText}`;
+            return `<span class="material-symbols-outlined thinking-icon">chat</span> ${cleanText}`;
         }
     }
 
@@ -451,7 +451,7 @@ export class UIManager {
 
         // Determine status based on health data
         let statusClass = 'status--error';
-        let statusIcon = 'fas fa-exclamation-triangle';
+        let statusIcon = 'warning';
         let statusText = this.i18n.t('chat.offline');
         let customPlaceholder = null;
 
@@ -459,35 +459,28 @@ export class UIManager {
             if (healthData && healthData.status === 'degraded' && !healthData.serviceAvailable) {
                 // Service degraded - MCP unavailable but basic functionality works
                 statusClass = 'status--warning';
-                statusIcon = 'fas fa-exclamation-triangle';
+                statusIcon = 'warning';
                 statusText = this.i18n.t('chat.online') + ' (Limited)';
                 customPlaceholder = this.i18n.t('errors.mcpUnavailable');
             } else {
                 // Fully operational
                 statusClass = 'status--success';
-                statusIcon = 'fas fa-circle';
+                statusIcon = 'check_circle';
                 statusText = this.i18n.t('chat.online');
             }
         }
 
-        // Update status indicator classes
+        // Update status indicator class (for styling based on state)
         this.elements.statusIndicator.className = `status ${statusClass}`;
 
-        // Update icon
+        // Update icon only
         if (this.elements.statusIcon) {
-            this.elements.statusIcon.className = statusIcon;
+            this.elements.statusIcon.textContent = statusIcon;
         }
 
-        // Update the text content while preserving the icon
+        // Update text only
         if (this.elements.statusText) {
-            const icon = this.elements.statusText.querySelector('i');
-            this.elements.statusText.innerHTML = '';
-            if (icon) {
-                this.elements.statusText.appendChild(icon);
-            }
-            this.elements.statusText.innerHTML += `&nbsp;&nbsp;${statusText}`;
-
-            this.elements.statusText.removeAttribute('title');
+            this.elements.statusText.textContent = statusText;
         }
 
         // Update chat availability with custom placeholder if needed
@@ -540,15 +533,15 @@ export class UIManager {
         // Choose appropriate icon
         let icon;
         switch(type) {
-            case 'success': icon = 'fa-check-circle'; break;
-            case 'error': icon = 'fa-exclamation-circle'; break;
-            case 'warning': icon = 'fa-exclamation-triangle'; break;
-            default: icon = 'fa-info-circle'; break;
+            case 'success': icon = 'check_circle'; break;
+            case 'error': icon = 'cancel'; break;
+            case 'warning': icon = 'warning'; break;
+            default: icon = 'info'; break;
         }
         
         notification.innerHTML = `
             <div class="notification__content">
-                <i class="fas ${icon}"></i>
+                <span class="material-symbols-outlined">${icon}</span>
                 <span>${message}</span>
             </div>
         `;

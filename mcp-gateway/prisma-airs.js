@@ -91,7 +91,7 @@ class PrismaAIRSIntercept {
             }
 
             const analysisType = response ? 'prompt and response' : 'prompt only';
-            console.log(`🔒 Prisma AIRS intercept - analyzing ${analysisType}`);
+            console.log(`Prisma AIRS intercept - analyzing ${analysisType}`);
 
             // Prepare the request payload for Prisma AIRS API
             const payload = {
@@ -132,12 +132,12 @@ class PrismaAIRSIntercept {
                 timeout: 15000 // 15 second timeout
             };
 
-            console.log('🔒 Sending request to Prisma AIRS API:', JSON.stringify(payload, null, 2));
+            console.log('Sending request to Prisma AIRS API:', JSON.stringify(payload, null, 2));
 
             const apiResponse = await axios.request(axiosConfig);
             const result = apiResponse.data;
             
-            console.log('🔒 Prisma AIRS analysis result:', {
+            console.log('Prisma AIRS analysis result:', {
                 action: result.action,
                 category: result.category,
                 reportId: result.report_id,

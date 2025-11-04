@@ -37,7 +37,7 @@ class DatabaseManager {
       this.db = new this.SQL.Database(buffer);
       this.initialized = true;
       
-      console.log('✅ Database loaded successfully');
+      console.log('Database loaded successfully');
       return this;
     } catch (error) {
       console.error('❌ Failed to load database:', error);
@@ -121,7 +121,7 @@ class DatabaseManager {
         this.db.close();
         this.db = null;
         this.initialized = false;
-        console.log('✅ Database connection closed');
+        console.log('Database connection closed');
       }
     } catch (error) {
       console.error('Error closing database:', error);

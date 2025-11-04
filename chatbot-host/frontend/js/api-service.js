@@ -303,7 +303,7 @@ export class ApiService {
             }
 
             const data = await response.json();
-            console.log('✅ Session cleared successfully:', data.message);
+            console.log('Session cleared successfully:', data.message);
             return true;
         } catch (error) {
             console.error('❌ Failed to clear session:', error);

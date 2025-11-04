@@ -29,7 +29,7 @@ function getAvailableLanguagesFromFs() {
 
 // Initialize i18next with promise-based approach
 const initI18n = async () => {
-  console.log('🌍 Initializing i18next with available languages:', getAvailableLanguagesFromFs());
+  console.log('Initializing i18next with available languages:', getAvailableLanguagesFromFs());
   
   return i18next
     .use(Backend)
@@ -61,7 +61,7 @@ let i18nInitialized = false;
 initI18n()
   .then(() => {
     i18nInitialized = true;
-    console.log('✅ i18next initialized successfully with languages:', Object.keys(i18next.store.data));
+    console.log('i18next initialized successfully with languages:', Object.keys(i18next.store.data));
   })
   .catch((error) => {
     console.error('❌ Failed to initialize i18next:', error);

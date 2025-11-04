@@ -52,13 +52,13 @@ logger.thinking('Analyzing query...');
 ```
 
 **Log Levels:**
-- `debug()` - 🔍 Debug information
+- `debug()` - Debug information
 - `info()` - ℹ️ Informational messages
-- `success()` - ✅ Success messages
+- `success()` - Success messages
 - `warn()` - ⚠️ Warning messages
 - `error()` - ❌ Error messages
 - `thinking()` - 💭 AI thinking process
-- `request()` - 🌐 HTTP requests
+- `request()` - HTTP requests
 
 ### 2. ConfigManager (`utils/config.js`)
 
@@ -479,13 +479,13 @@ class MyAgent extends MCPAgentBase {
 ```
 
 **Key Improvements:**
-- ✅ Separated concerns (logging, config, coordinator, transport, query, resources)
-- ✅ Dependency injection pattern
-- ✅ Cleaner, more testable code
-- ✅ Better error handling
-- ✅ Improved logging and debugging
-- ✅ Easier to add new agents
-- ✅ Backward compatible (old files kept)
+- Separated concerns (logging, config, coordinator, transport, query, resources)
+- Dependency injection pattern
+- Cleaner, more testable code
+- Better error handling
+- Improved logging and debugging
+- Easier to add new agents
+- Backward compatible (old files kept)
 
 ## Configuration & Environment Variables
 

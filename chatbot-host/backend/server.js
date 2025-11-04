@@ -16,7 +16,7 @@ const PORT = process.env.CHATBOT_HOST_PORT || 3002;
 
 // Configuration
 const COORDINATOR_URL = process.env.COORDINATOR_URL || 'http://mcp-gateway:3001';
-console.log('🔗 [ChatbotHost] Coordinator URL:', COORDINATOR_URL);
+console.log('[ChatbotHost] Coordinator URL:', COORDINATOR_URL);
 
 // Static user identity for this demo
 const STATIC_USER_IDENTITY = {
@@ -54,7 +54,7 @@ app.use(express.static(path.join(__dirname, '../frontend')));
     try {
         console.log('�� [ChatbotHost] Starting server...');
         await mcpClient.initialize();
-        console.log('✅ [ChatbotHost] MCP Client initialized successfully');
+        console.log('[ChatbotHost] MCP Client initialized successfully');
         
         // Log available capabilities
         const capabilities = mcpClient.getClientCapabilities();
@@ -163,7 +163,7 @@ app.post('/api/language', (req, res) => {
         // Change the backend language
         changeLanguage(language);
         
-        console.log(`🌍 [ChatbotHost] Language changed to: ${language}`);
+        console.log(`[ChatbotHost] Language changed to: ${language}`);
         
         res.json({ 
             success: true,
@@ -216,12 +216,12 @@ app.post('/api/process-prompt', async (req, res) => {
         res.setHeader('Transfer-Encoding', 'chunked');
 
         // Send initial thinking message
-        res.write('data: ' + JSON.stringify({ type: 'thinking', message: '🔍 Analyzing your request...' }) + '\n\n');
+        res.write('data: ' + JSON.stringify({ type: 'thinking', message: 'Analyzing your request...' }) + '\n\n');
         
         const COORDINATOR_URL = process.env.COORDINATOR_URL || 'http://mcp-gateway:3001';
 
         try {
-            res.write('data: ' + JSON.stringify({ type: 'thinking', message: '📡 Connecting to Coordinator...' }) + '\n\n');
+            res.write('data: ' + JSON.stringify({ type: 'thinking', message: 'Connecting to Coordinator...' }) + '\n\n');
             
             // Create a queue for thinking messages
             const messageQueue = [];
@@ -273,7 +273,7 @@ app.post('/api/process-prompt', async (req, res) => {
                                     messageQueue.push(data.message);
                                 } else if (data.type === 'response') {
                                     if (data.success) {
-                                        messageQueue.push('✅ Response received from MCP Gateway');
+                                        messageQueue.push('Response received from MCP Gateway');
                                         mcpResponse = {
                                             role: 'assistant',
                                             content: data.response
@@ -373,7 +373,7 @@ app.post('/api/clear-session', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log('🚀 [ChatbotHost] Server running on http://localhost:' + PORT);
+    console.log('[ChatbotHost] Server running on http://localhost:' + PORT);
 });
 
 // Graceful shutdown

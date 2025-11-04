@@ -53,7 +53,7 @@ class MCPServer {
       createdAt: Date.now(),
       lastAccess: Date.now()
     });
-    console.log(`🔐 [MCPServer] Created session ${sessionId} for client: ${clientInfo?.name}`);
+    console.log(`[MCPServer] Created session ${sessionId} for client: ${clientInfo?.name}`);
     return sessionId;
   }
 
@@ -114,7 +114,7 @@ class MCPServer {
 
   async handleInitialize(params) {
     const { protocolVersion, capabilities, clientInfo } = params;
-    console.log(`🤝 [MCPServer] Initialize from client: ${clientInfo?.name} v${clientInfo?.version}`);
+    console.log(`[MCPServer] Initialize from client: ${clientInfo?.name} v${clientInfo?.version}`);
     
     const sessionId = this.createSession(clientInfo);
     
@@ -130,7 +130,7 @@ class MCPServer {
     // MCP Server doesn't define tools - Coordinator does
     // This is just protocol compliance
     const tools = [];
-    console.log(`🔧 [MCPServer] Listed ${tools.length} tools (delegated to coordinator)`);
+    console.log(`[MCPServer] Listed ${tools.length} tools (delegated to coordinator)`);
     return { tools };
   }
 
@@ -236,7 +236,7 @@ class MCPServerRegistry {
     };
 
     this.registeredServers.set(agentId, serverInfo);
-    console.log(`✅ [MCPServerRegistry] Registered: ${name} (${agentId})`);
+    console.log(`[MCPServerRegistry] Registered: ${name} (${agentId})`);
     
     return { 
       success: true, 
@@ -253,7 +253,7 @@ class MCPServerRegistry {
       const server = this.registeredServers.get(agentId);
       this.registeredServers.delete(agentId);
       this.initializedSessions.delete(agentId);
-      console.log(`📤 [MCPServerRegistry] Unregistered: ${server.name} (${agentId})`);
+      console.log(`[MCPServerRegistry] Unregistered: ${server.name} (${agentId})`);
       return { success: true, message: 'MCP server unregistered successfully' };
     }
     return { success: false, message: 'MCP server not found' };
@@ -308,7 +308,7 @@ class MCPServerRegistry {
     }
 
     try {
-      console.log(`🔄 [MCPServerRegistry] Initializing session with ${server.name}`);
+      console.log(`[MCPServerRegistry] Initializing session with ${server.name}`);
       
       const initRequest = {
         jsonrpc: '2.0',
@@ -357,7 +357,7 @@ class MCPServerRegistry {
       const sessionId = result.result?.sessionId || response.headers.get('mcp-session-id') || randomUUID();
       
       this.initializedSessions.set(serverId, sessionId);
-      console.log(`✅ [MCPServerRegistry] Session initialized with ${server.name}: ${sessionId}`);
+      console.log(`[MCPServerRegistry] Session initialized with ${server.name}: ${sessionId}`);
       
       return sessionId;
     } catch (error) {
@@ -380,7 +380,7 @@ class MCPServerRegistry {
       // Initialize session if needed
       const sessionId = await this.initializeSession(serverId);
 
-      console.log(`🚀 [MCPServerRegistry] Forwarding ${jsonRpcRequest.method} to ${server.name}`);
+      console.log(`[MCPServerRegistry] Forwarding ${jsonRpcRequest.method} to ${server.name}`);
       
       const response = await fetch(`${server.url}/mcp`, {
         method: 'POST',
@@ -409,7 +409,7 @@ class MCPServerRegistry {
         result = await response.json();
       }
       
-      console.log(`✅ [MCPServerRegistry] Response from ${server.name}`);
+      console.log(`[MCPServerRegistry] Response from ${server.name}`);
       
       return result;
       
@@ -683,9 +683,9 @@ setInterval(() => {
 
 // Start server
 app.listen(PORT, async () => {
-  console.log(`🚀 [MCPGateway] MCP Gateway running on http://localhost:${PORT}`);
+  console.log(`[MCPGateway] MCP Gateway running on http://localhost:${PORT}`);
   console.log(`📋 [MCPGateway] Protocol: MCP ${mcpServer.protocolVersion} (JSON-RPC 2.0)`);
-  console.log(`🎯 [MCPGateway] Ready to register MCP servers`);
+  console.log(`[MCPGateway] Ready to register MCP servers`);
   
   // Initialize coordinator
   await coordinator.initialize();

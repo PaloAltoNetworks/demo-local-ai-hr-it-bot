@@ -32,7 +32,7 @@ class SessionManager extends EventEmitter {
       // Update last activity
       session.lastActivity = Date.now();
       
-      console.log(`🔄 [SessionManager] Retrieved existing session for user ${userId}: ${existingSessionId}`);
+      console.log(`[SessionManager] Retrieved existing session for user ${userId}: ${existingSessionId}`);
       return session;
     }
 
@@ -101,7 +101,7 @@ class SessionManager extends EventEmitter {
 
     session.lastActivity = Date.now();
     
-    console.log(`🔄 [SessionManager] Updated context for session ${sessionId}`);
+    console.log(`[SessionManager] Updated context for session ${sessionId}`);
     this.emit('sessionUpdated', { sessionId, updates: contextUpdates });
     
     return true;
@@ -298,7 +298,7 @@ class SessionManager extends EventEmitter {
     }
 
     if (terminatedCount > 0) {
-      console.log(`🔒 [SessionManager] Enforced session limit for user ${userId}: terminated ${terminatedCount} old session(s)`);
+      console.log(`[SessionManager] Enforced session limit for user ${userId}: terminated ${terminatedCount} old session(s)`);
       this.emit('sessionLimitEnforced', { 
         userId, 
         terminatedCount, 
@@ -377,7 +377,7 @@ class SessionManager extends EventEmitter {
     // Remove all event listeners to prevent memory leaks
     this.removeAllListeners();
 
-    console.log('✅ [SessionManager] Shutdown complete');
+    console.log('[SessionManager] Shutdown complete');
   }
 }
 

@@ -23,7 +23,7 @@ class ChatBotApp {
         
         this.chatHistory = [];
 
-        console.log(`🌐 Initial language detected: ${this.currentLanguage}`);
+        console.log(`Initial language detected: ${this.currentLanguage}`);
     }
 
     /**
@@ -74,7 +74,7 @@ class ChatBotApp {
             this.connectionMonitor.start();
 
             this.showLoading(false);
-            console.log(`✅ ChatBot app initialized successfully`);
+            console.log(`ChatBot app initialized successfully`);
         } catch (error) {
             this.showLoading(false);
             console.error(`❌ Failed to initialize ChatBot app:`, error);
@@ -228,7 +228,7 @@ class ChatBotApp {
             // Clear the server-side session by calling the clear-session endpoint
             this.clearServerSession();
             
-            console.log('🔄 Page refreshed or new session detected, clearing server-side session');
+            console.log('Page refreshed or new session detected, clearing server-side session');
         }
         
         // Listen for unload events to clear session ID so it fires on every page refresh

@@ -362,7 +362,7 @@ async function initializeDatabase() {
     const buffer = Buffer.from(data);
     fs.writeFileSync(DB_PATH, buffer);
 
-    console.log('✅ Database initialized successfully');
+    console.log('Database initialized successfully');
 
     db.close();
 

@@ -14,7 +14,7 @@ Welcome to the comprehensive documentation for the AI-powered chatbot system wit
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+
@@ -252,7 +252,7 @@ Returns:
 
 ---
 
-## 🔐 Security Features
+## Security Features
 
 ### Access Control
 - RBAC (Role-Based Access Control) support
@@ -345,7 +345,7 @@ Tracking works consistently across both providers.
 
 ---
 
-## 🧠 Agent Types
+## Agent Types
 
 ### HR Agent
 **Purpose**: Employee information and HR queries
@@ -410,7 +410,7 @@ Track LLM token consumption:
 
 ---
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -475,7 +475,7 @@ LLM Routing → Agent Selection → Response Synthesis → User
 
 ---
 
-## 🔗 Complete API Reference
+## Complete API Reference
 
 ### Base URL
 ```
@@ -570,7 +570,7 @@ POST /api/agents/register
 
 ---
 
-## ✅ System Quality
+## System Quality
 
 The system has undergone comprehensive improvements including:
 
@@ -583,20 +583,20 @@ The system has undergone comprehensive improvements including:
 
 ### Known Enhancements
 
-- ✅ Removed unreachable code paths
-- ✅ Fixed memory leaks in event listeners
-- ✅ Enforced session limits correctly
-- ✅ Implemented proper request cancellation
-- ✅ Added security checkpoints
-- ✅ Standardized error handling
+- Removed unreachable code paths
+- Fixed memory leaks in event listeners
+- Enforced session limits correctly
+- Implemented proper request cancellation
+- Added security checkpoints
+- Standardized error handling
 
 ### Architectural Strengths
 
-- ✅ Clean modular architecture
-- ✅ Separation of concerns (protocol, routing, security)
-- ✅ Comprehensive i18n support
-- ✅ Enterprise security integration
-- ✅ Well-documented components
+- Clean modular architecture
+- Separation of concerns (protocol, routing, security)
+- Comprehensive i18n support
+- Enterprise security integration
+- Well-documented components
 
 ---
 
@@ -650,7 +650,7 @@ curl -X POST http://localhost:3001/api/query \
 
 ---
 
-## 📝 License
+## License
 
 See LICENSE file in the project root.
 

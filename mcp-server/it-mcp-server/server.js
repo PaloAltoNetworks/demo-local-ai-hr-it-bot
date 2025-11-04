@@ -340,7 +340,7 @@ ${discussionsText}
     
     // Build explicit summary of what's in the database
     let summary = `EXPLICIT TICKET SUMMARY FOR YOUR REFERENCE:\n`;
-    summary += `✓ Total tickets in database: ${processedData.ticketCount}\n`;
+    summary += `Total tickets in database: ${processedData.ticketCount}\n`;
     
     // Include ALL ticket IDs and basic details for reference
     summary += `\n=== COMPLETE TICKET LISTING ===\n`;
@@ -428,9 +428,9 @@ ${d.content}`;
 🚫 DO NOT say "based on typical IT issues" or "similar tickets might be"
 🚫 DO NOT assume information not explicitly in the database
 🚫 DO NOT make up employee-ticket relationships
-✅ ONLY use ticket IDs from the provided database listing
-✅ ONLY use ticket data explicitly provided in the context
-✅ When in doubt about data, say "This information is not in the database"
+ONLY use ticket IDs from the provided database listing
+ONLY use ticket data explicitly provided in the context
+When in doubt about data, say "This information is not in the database"
 
 ## DATABASE STRUCTURE:
 The ticket database contains these fields:
@@ -449,12 +449,12 @@ The ticket database contains these fields:
 - ticket_discussions: Full discussion history with comments, internal notes, and updates
 
 ## YOUR RESPONSIBILITIES:
-✅ Access and analyze IT tickets from the DATABASE PROVIDED
-✅ Filter by priority, status, category, or employee
-✅ Count and list tickets matching criteria
-✅ Provide specific ticket IDs with their status
-✅ Review discussion history for comprehensive context
-✅ Format results clearly
+Access and analyze IT tickets from the DATABASE PROVIDED
+Filter by priority, status, category, or employee
+Count and list tickets matching criteria
+Provide specific ticket IDs with their status
+Review discussion history for comprehensive context
+Format results clearly
 
 ## RESPONSE FORMAT:
 When answering queries:

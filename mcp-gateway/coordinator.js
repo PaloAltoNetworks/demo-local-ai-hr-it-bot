@@ -49,7 +49,7 @@ class AgentRegistry {
       this.capabilities.get(capability).add(agentId);
     });
     
-    console.log(`✅ [AgentRegistry] Agent ${name} (${agentId}) registered with capabilities:`, agentCapabilities);
+    console.log(`[AgentRegistry] Agent ${name} (${agentId}) registered with capabilities:`, agentCapabilities);
   }
 
   unregisterAgent(agentId) {
@@ -173,7 +173,7 @@ class IntelligentCoordinator {
         profileId: process.env.PRISMA_AIRS_PROFILE_ID,
         profileName: process.env.PRISMA_AIRS_PROFILE_NAME
       });
-      console.log('🔒 [Coordinator] Prisma AIRS security module loaded (available for phase3 requests)');
+      console.log('[Coordinator] Prisma AIRS security module loaded (available for phase3 requests)');
     } else {
       console.log('⚠️ [Coordinator] Prisma AIRS not configured - phase3 security unavailable');
     }
@@ -262,13 +262,13 @@ class IntelligentCoordinator {
    * Initialize the coordinator
    */
   async initialize() {
-    console.log('🔧 [Coordinator] Initializing Intelligent Coordinator...');
+    console.log('[Coordinator] Initializing Intelligent Coordinator...');
     
     try {
       this.initialized = true;
-      console.log(`✅ [Coordinator] Initialized - waiting for agent registrations...`);
-      console.log(`🤖 [Coordinator] Using coordinator model: ${this.coordinatorModel}`);
-      console.log(`🌍 [Coordinator] Using translation model: ${this.translationModel}`);
+      console.log(`[Coordinator] Initialized - waiting for agent registrations...`);
+      console.log(`[Coordinator] Using coordinator model: ${this.coordinatorModel}`);
+      console.log(`[Coordinator] Using translation model: ${this.translationModel}`);
       
       // Warn if using extended thinking model
       if (this.coordinatorModel.includes('qwen3') || this.coordinatorModel.includes('deepseek')) {
@@ -278,7 +278,7 @@ class IntelligentCoordinator {
       }
       
       if (this.prismaAIRS && this.prismaAIRS.isConfigured()) {
-        console.log(`🔒 [Coordinator] Prisma AIRS security active`);
+        console.log(`[Coordinator] Prisma AIRS security active`);
       }
       
       // Start periodic health checks for registered agents
@@ -320,7 +320,7 @@ class IntelligentCoordinator {
       return query; // No translation needed
     }
 
-    console.log(`🌍 [Coordinator] Translating "${query}" from ${language} to English`);
+    console.log(`[Coordinator] Translating "${query}" from ${language} to English`);
     
     try {
       const translationPrompt = `Translate this query from ${language} to English. Only return the English translation, nothing else.
@@ -346,7 +346,7 @@ Query: "${query}"`;
         translatedQuery = translatedQuery.slice(1, -1);
       }
       
-      console.log(`🌍 [Coordinator] Translated: "${translatedQuery}"`);
+      console.log(`[Coordinator] Translated: "${translatedQuery}"`);
       return translatedQuery;
     } catch (error) {
       console.error('❌ [Coordinator] Translation failed:', error.message);
@@ -375,7 +375,7 @@ Query: "${query}"`;
       
       // Log conversation history if available
       if (userContext.history && Array.isArray(userContext.history) && userContext.history.length > 0) {
-        console.log(`📜 [Coordinator] Conversation history available: ${userContext.history.length} messages`);
+        console.log(`[Coordinator] Conversation history available: ${userContext.history.length} messages`);
       }
     }
     
@@ -394,7 +394,7 @@ Query: "${query}"`;
         throw new Error('No registered agents available');
       }
       
-      console.log(`✅ [Coordinator] Candidate agents for this query: ${candidateAgentIds.map(id => {
+      console.log(`[Coordinator] Candidate agents for this query: ${candidateAgentIds.map(id => {
         const agent = this.registry.getAgent(id);
         return `${agent.name}`;
       }).join(', ')}`);
@@ -431,7 +431,7 @@ Query: "${query}"`;
         }
         
         const selectedAgent = this.registry.getAgent(selectedAgentId);
-        console.log(`🎯 [Coordinator] Routed to: ${selectedAgent.name} agent (${selectedAgentId})`);
+        console.log(`[Coordinator] Routed to: ${selectedAgent.name} agent (${selectedAgentId})`);
         return { type: 'agent-id', agentId: selectedAgentId };
       }
     } catch (error) {
@@ -545,7 +545,7 @@ ${capabilities}`;
       // Build conversation context from history
       let conversationContext = '';
       if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-        console.log(`📜 [Coordinator] Including ${conversationHistory.length} messages from conversation history in routing analysis`);
+        console.log(`[Coordinator] Including ${conversationHistory.length} messages from conversation history in routing analysis`);
         const historyLines = conversationHistory
           .map(msg => {
             const role = msg.role === 'user' ? 'User' : 'Assistant';
@@ -584,7 +584,7 @@ For multiple agents:
 Now output the JSON:
 {`;
 
-      this.sendThinkingMessage(`🤖 Analyzing query routing strategy...`);
+      this.sendThinkingMessage(`Analyzing query routing strategy...`);
 
       const response = await this.llmProvider.generate(strategyPrompt, {
         system: `You are a JSON output formatter. You output ONLY valid JSON.
@@ -609,7 +609,7 @@ Output JSON immediately`,
         // Handle extended thinking models (qwen3, etc.) where content is in 'thinking' field
         let responseContent = response.response;
         if (!responseContent && response.thinking) {
-          console.log(`🧠 [Coordinator] Extended thinking detected, extracting from thinking field`);
+          console.log(`[Coordinator] Extended thinking detected, extracting from thinking field`);
           responseContent = response.thinking;
         }
 
@@ -623,7 +623,7 @@ Output JSON immediately`,
           throw new Error('LLM returned empty response and thinking');
         }
 
-        console.log(`🧠 [Coordinator] Extracted Raw:`, responseContent.substring(0, 500)); // Log first 500 chars
+        console.log(`[Coordinator] Extracted Raw:`, responseContent.substring(0, 500)); // Log first 500 chars
 
         // Clean the response - remove any markdown code blocks
         let jsonText = responseContent.trim();
@@ -670,7 +670,7 @@ Output JSON immediately`,
           console.log(`⚠️  [Coordinator] LLM declined to route query. Reasoning: ${strategy.reasoning || 'No explanation provided'}`);
           strategy.requiresMultiple = false;
           strategy.strategy = "declined";
-          console.log(`🧠 [Coordinator] Routing strategy: DECLINED`, strategy);
+          console.log(`[Coordinator] Routing strategy: DECLINED`, strategy);
           return strategy;
         }
         
@@ -678,7 +678,7 @@ Output JSON immediately`,
         strategy.requiresMultiple = strategy.agents.length > 1;
         strategy.strategy = strategy.agents.length > 1 ? "parallel" : "single";
         
-        console.log(`🧠 [Coordinator] Routing strategy:`, strategy);
+        console.log(`[Coordinator] Routing strategy:`, strategy);
         return strategy;
       } catch (parseError) {
         console.error(`❌ [Coordinator] Strategy JSON parsing failed:`, parseError.message);
@@ -712,7 +712,7 @@ Output JSON immediately`,
             throw new Error(`Agent ${agentTask.agent} not found`);
           }
           
-          this.sendThinkingMessage(`📤 Querying ${agentTask.agent} specialist: "${agentTask.subQuery}"`);
+          this.sendThinkingMessage(`Querying ${agentTask.agent} specialist: "${agentTask.subQuery}"`);
           const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase);
           
           // Check if security blocked this agent's response
@@ -744,7 +744,7 @@ Output JSON immediately`,
             throw new Error(`Agent ${agentTask.agent} not found`);
           }
           
-          this.sendThinkingMessage(`📤 Querying ${agentTask.agent} specialist: "${agentTask.subQuery}"`);
+          this.sendThinkingMessage(`Querying ${agentTask.agent} specialist: "${agentTask.subQuery}"`);
           const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase);
           
           // Check if security blocked this agent's response
@@ -768,7 +768,7 @@ Output JSON immediately`,
       }
       
       // Combine responses using LLM
-      this.sendThinkingMessage(`🔄 Synthesizing responses from all specialists...`);
+      this.sendThinkingMessage(`Synthesizing responses from all specialists...`);
       const combinedResponse = await this.synthesizeMultiAgentResponses(originalQuery, agentResponses);
       
       return combinedResponse;
@@ -857,21 +857,21 @@ SYNTHESIZED RESPONSE:`;
       
       // CHECKPOINT 2: Analyze outbound request security (use passed phase)
       if (shouldUsePrismaAIRS(phase)) {
-        console.log(`🔒 [Coordinator] Phase 3 active - Running Security Checkpoint 2: Outbound Request to ${agent.name}`);
+        console.log(`[Coordinator] Phase 3 active - Running Security Checkpoint 2: Outbound Request to ${agent.name}`);
         securityCheckResult = await this.analyzeOutboundRequest(query, agent.name, language, userContext?.email, agent.name);
         if (!securityCheckResult.approved) {
           console.log(`🚫 [Coordinator] Security Checkpoint 2 BLOCKED: ${securityCheckResult.category}`);
           throw new Error(`Security blocked outbound request to ${agent.name}: ${securityCheckResult.message}`);
         }
-        console.log(`✅ [Coordinator] Security Checkpoint 2 PASSED`);
+        console.log(`[Coordinator] Security Checkpoint 2 PASSED`);
         
         // If sensitive data was detected and masked, use the masked query instead
         if (securityCheckResult.hasMasking) {
-          console.log(`🔒 [Coordinator] Using masked query for agent (sensitive data detected)`);
+          console.log(`[Coordinator] Using masked query for agent (sensitive data detected)`);
         }
       }
 
-      this.sendThinkingMessage(`🔗 Establishing connection with ${agent.name}...`);
+      this.sendThinkingMessage(`Establishing connection with ${agent.name}...`);
       
       // Build enriched query with user context embedded naturally
       // Use masked query if sensitive data was detected, otherwise use original query
@@ -888,7 +888,7 @@ SYNTHESIZED RESPONSE:`;
           .join('\n');
         
         enrichedQuery = `[Conversation context]\n${conversationSummary}\n\n[Current query]\n${enrichedQuery}`;
-        console.log(`📜 [Coordinator] Added conversation history (${userContext.history.length} messages) to query for ${agent.name}`);
+        console.log(`[Coordinator] Added conversation history (${userContext.history.length} messages) to query for ${agent.name}`);
       }
       
       // Add user context to the query as natural language if provided
@@ -902,7 +902,7 @@ SYNTHESIZED RESPONSE:`;
         
         if (contextInfo.length > 0) {
           enrichedQuery = `${enrichedQuery}\n[User context: ${contextInfo.join(', ')}]`;
-          console.log(`📝 [Coordinator] Enriched query for ${agent.name} with user context`);
+          console.log(`[Coordinator] Enriched query for ${agent.name} with user context`);
         }
       }
       
@@ -921,13 +921,13 @@ SYNTHESIZED RESPONSE:`;
         }
       };
 
-      console.log(`🔍 [Coordinator] Sending resource request to ${agent.name}`);
-      this.sendThinkingMessage(`📤 Sending request to ${agent.name} specialist...`);
+      console.log(`[Coordinator] Sending resource request to ${agent.name}`);
+      this.sendThinkingMessage(`Sending request to ${agent.name} specialist...`);
 
       // Use MCPServerRegistry to forward the request
       const response = await this.mcpServerRegistry.forwardRequest(agentId, resourceRequest);
 
-      console.log(`🔍 [Coordinator] Response from ${agent.name}:`, {
+      console.log(`[Coordinator] Response from ${agent.name}:`, {
         hasResult: !!response.result,
         hasError: !!response.error
       });
@@ -945,7 +945,7 @@ SYNTHESIZED RESPONSE:`;
         // CHECKPOINT 3: Analyze inbound response security (use passed phase)
         let responseToReturn = responseText;
         if (shouldUsePrismaAIRS(phase)) {
-          console.log(`🔒 [Coordinator] Phase 3 active - Running Security Checkpoint 3: Inbound Response from ${agent.name}`);
+          console.log(`[Coordinator] Phase 3 active - Running Security Checkpoint 3: Inbound Response from ${agent.name}`);
           const inboundSecurity = await this.analyzeInboundResponse(query, responseText, agent.name, language, userContext?.email, agent.name);
           if (!inboundSecurity.approved) {
             console.log(`🚫 [Coordinator] Security Checkpoint 3 BLOCKED: ${inboundSecurity.category}`);
@@ -957,12 +957,12 @@ SYNTHESIZED RESPONSE:`;
               reportId: inboundSecurity.reportId
             };
           }
-          console.log(`✅ [Coordinator] Security Checkpoint 3 PASSED`);
+          console.log(`[Coordinator] Security Checkpoint 3 PASSED`);
           
           // If sensitive data was detected and masked in the response, use the masked response
           if (inboundSecurity.hasMasking) {
             responseToReturn = inboundSecurity.maskedResponse;
-            console.log(`🔒 [Coordinator] Using masked response (sensitive data detected)`);
+            console.log(`[Coordinator] Using masked response (sensitive data detected)`);
           }
         }
         
@@ -985,7 +985,7 @@ SYNTHESIZED RESPONSE:`;
    */
   async processAgentResponse(agentResponse, originalQuery, translatedQuery, targetLanguage = 'en', agentName) {
     try {
-      console.log(`🔍 [Coordinator] Processing response from ${agentName}...`);
+      console.log(`[Coordinator] Processing response from ${agentName}...`);
       
       // Step 1: Verify response relevance and extract key information
       const validationPrompt = `You are a response quality validator. Analyze if the agent response properly answers the user's question and extract the key information.
@@ -1036,7 +1036,7 @@ RESPOND ONLY WITH THIS JSON FORMAT:
         validation = JSON.parse(jsonText);
       } catch (parseError) {
         console.warn(`⚠️ [Coordinator] Validation parsing failed:`, parseError.message);
-        console.log(`🔍 [Coordinator] Raw validation response:`, validationResponse.response.substring(0, 200));
+        console.log(`[Coordinator] Raw validation response:`, validationResponse.response.substring(0, 200));
         validation = {
           isRelevant: true,
           keyInformation: agentResponse,
@@ -1045,7 +1045,7 @@ RESPOND ONLY WITH THIS JSON FORMAT:
         };
       }
 
-      console.log(`🔍 [Coordinator] Response validation:`, {
+      console.log(`[Coordinator] Response validation:`, {
         isRelevant: validation.isRelevant,
         confidence: validation.confidence,
         reasoning: validation.reasoning
@@ -1056,17 +1056,17 @@ RESPOND ONLY WITH THIS JSON FORMAT:
 
       // Step 3: Translate back to target language if needed
       if (targetLanguage !== 'en') {
-        console.log(`🌍 [Coordinator] Translating response to ${targetLanguage}`);
+        console.log(`[Coordinator] Translating response to ${targetLanguage}`);
         processedResponse = await this.translateResponse(processedResponse, targetLanguage);
       }
 
       // // Step 4: Final quality check - ensure response is concise and clear
       // if (processedResponse.length > 500) {
-      //   console.log(`📝 [Coordinator] Response is lengthy, making it more concise...`);
+      //   console.log(`[Coordinator] Response is lengthy, making it more concise...`);
       //   processedResponse = await this.makeConcise(processedResponse, originalQuery);
       // }
 
-      console.log(`✅ [Coordinator] Response processing completed`);
+      console.log(`[Coordinator] Response processing completed`);
       return processedResponse;
 
     } catch (error) {
@@ -1114,7 +1114,7 @@ Response to translate: "${response}"`;
         translatedResponse = translatedResponse.slice(1, -1);
       }
       
-      console.log(`🌍 [Coordinator] Translated response to ${targetLanguage}`);
+      console.log(`[Coordinator] Translated response to ${targetLanguage}`);
       return translatedResponse;
     } catch (error) {
       console.error(`❌ [Coordinator] Response translation failed:`, error);
@@ -1151,7 +1151,7 @@ Return only the concise version:`;
       this.trackTokens(conciseResponse, 'Conciseness optimization');
 
       const conciseText = conciseResponse.response?.trim() || response;
-      console.log(`📝 [Coordinator] Made response more concise`);
+      console.log(`[Coordinator] Made response more concise`);
       return conciseText;
     } catch (error) {
       console.error(`❌ [Coordinator] Concise processing failed:`, error);
@@ -1173,7 +1173,7 @@ Return only the concise version:`;
       this.sendThinkingMessage(`🔓 UNLOCKED - Checkpoint ${checkpointNumber}: ${context.message || 'passed security checks'}${contextStr} (${latency}ms)`);
     } else {
       const contextStr = context.contextStr ? ` - ${context.contextStr}` : '';
-      this.sendThinkingMessage(`🔒 LOCKED - Checkpoint ${checkpointNumber}: ${result.category || 'security'} detected (${detections})${contextStr} - ${latency}ms`);
+      this.sendThinkingMessage(`LOCKED - Checkpoint ${checkpointNumber}: ${result.category || 'security'} detected (${detections})${contextStr} - ${latency}ms`);
       if (context.blockLogMessage) {
         console.log(context.blockLogMessage);
       }
@@ -1211,7 +1211,7 @@ Return only the concise version:`;
     }
 
     const agentInfo = agentName ? ` (${agentName})` : '';
-    console.log(`🔒 [Coordinator] Security Checkpoint ${checkpointNumber}: ${checkpointLabel}${agentInfo}`);
+    console.log(`[Coordinator] Security Checkpoint ${checkpointNumber}: ${checkpointLabel}${agentInfo}`);
 
     const startTime = Date.now();
     
@@ -1251,12 +1251,12 @@ Return only the concise version:`;
     
     if (maskingField === 'prompt' && result.maskedData?.prompt?.data) {
       maskedInput = result.maskedData.prompt.data;
-      console.log(`🔒 [Coordinator] Sensitive data detected - using masked prompt${agentInfo}`);
-      console.log(`🔒 Detections:`, result.maskedData.prompt.pattern_detections || []);
+      console.log(`[Coordinator] Sensitive data detected - using masked prompt${agentInfo}`);
+      console.log(`Detections:`, result.maskedData.prompt.pattern_detections || []);
     } else if (maskingField === 'response' && result.maskedData?.response?.data) {
       maskedSecondaryInput = result.maskedData.response.data;
-      console.log(`🔒 [Coordinator] Sensitive data detected - using masked response${agentInfo}`);
-      console.log(`🔒 Detections:`, result.maskedData.response.pattern_detections || []);
+      console.log(`[Coordinator] Sensitive data detected - using masked response${agentInfo}`);
+      console.log(`Detections:`, result.maskedData.response.pattern_detections || []);
     }
 
     // Return appropriate structure based on checkpoint type
@@ -1390,7 +1390,7 @@ Return only the concise version:`;
     };
 
     console.log(`🎬 [Coordinator] Processing query: "${query}" (${language}, Phase: ${phase})`);
-    this.sendThinkingMessage(`🔍 Analyzing your question...`);
+    this.sendThinkingMessage(`Analyzing your question...`);
     
     let queryToProcess = query;
     
@@ -1412,7 +1412,7 @@ Return only the concise version:`;
 
       // CHECKPOINT 1: Analyze user input security (use passed phase, not instance variable)
       if (shouldUsePrismaAIRS(phase)) {
-        console.log(`🔒 [Coordinator] Phase 3 active - Running Security Checkpoint 1: User Input Analysis`);
+        console.log(`[Coordinator] Phase 3 active - Running Security Checkpoint 1: User Input Analysis`);
         const inputSecurity = await this.analyzeUserInput(query, language, userContext?.email);
         if (!inputSecurity.approved) {
           console.log(`🚫 [Coordinator] Security Checkpoint 1 BLOCKED: ${inputSecurity.category}`);
@@ -1424,30 +1424,30 @@ Return only the concise version:`;
             reportId: inputSecurity.reportId
           };
         }
-        console.log(`✅ [Coordinator] Security Checkpoint 1 PASSED`);
+        console.log(`[Coordinator] Security Checkpoint 1 PASSED`);
         
         // If sensitive data was detected and masked, use the masked query for all downstream processing
         if (inputSecurity.hasMasking) {
           queryToProcess = inputSecurity.maskedQuery;
-          console.log(`🔒 [Coordinator] Using masked query for all downstream processing`);
+          console.log(`[Coordinator] Using masked query for all downstream processing`);
           console.log(`   Original: "${query}"`);
           console.log(`   Masked:   "${queryToProcess}"`);
         }
       }
     
       // Step 1: Translate if needed
-      this.sendThinkingMessage(`🌐 Checking language requirements...`);
+      this.sendThinkingMessage(`Checking language requirements...`);
       const translatedQuery = await this.translateQuery(queryToProcess, language);
       if (translatedQuery !== queryToProcess) {
-        this.sendThinkingMessage(`🔄 Translated to English: "${translatedQuery}"`);
+        this.sendThinkingMessage(`Translated to English: "${translatedQuery}"`);
         // Track translation work as coordinator tokens
         this.trackCoordinatorTokens(queryToProcess + translatedQuery);
       } else {
-        this.sendThinkingMessage(`✓ No translation needed`);
+        this.sendThinkingMessage(`No translation needed`);
       }
 
       // Step 2: Route to appropriate agent(s) using registry
-      this.sendThinkingMessage(`🎯 Determining the best routing strategy for your query...`);
+      this.sendThinkingMessage(`Determining the best routing strategy for your query...`);
       // Track routing analysis as coordinator work
       this.trackCoordinatorTokens("Analyzing query semantics and determining best routing strategy");
       
@@ -1478,10 +1478,10 @@ Return only the concise version:`;
       if (routingResult.type === 'agent-id') {
         // Single agent routing
         const selectedAgent = this.registry.getAgent(routingResult.agentId);
-        this.sendThinkingMessage(`📡 Connecting to ${selectedAgent.name} specialist...`);
+        this.sendThinkingMessage(`Connecting to ${selectedAgent.name} specialist...`);
 
         // Step 3: Query the selected agent
-        this.sendThinkingMessage(`⏳ ${selectedAgent.name} specialist is processing your request...`);
+        this.sendThinkingMessage(`${selectedAgent.name} specialist is processing your request...`);
         const agentResponse = await this.queryAgent(routingResult.agentId, translatedQuery, userContext, language, phase);
         
         // Check if security blocked the response at Checkpoint 3
@@ -1495,11 +1495,11 @@ Return only the concise version:`;
           };
         }
         
-        this.sendThinkingMessage(`✅ Response received from ${selectedAgent.name} specialist`);
-        console.log(`✅ [Coordinator] Response from ${selectedAgent.name} agent received`);
+        this.sendThinkingMessage(`Response received from ${selectedAgent.name} specialist`);
+        console.log(`[Coordinator] Response from ${selectedAgent.name} agent received`);
         
         // Step 4: Process and validate the agent response
-        this.sendThinkingMessage(`🔍 Processing and validating response...`);
+        this.sendThinkingMessage(`Processing and validating response...`);
         const processedResponse = await this.processAgentResponse(
           agentResponse, 
           query, 
@@ -1524,7 +1524,7 @@ Return only the concise version:`;
           // If sensitive data was detected and masked in the response, use the masked response
           if (finalSecurity.hasMasking) {
             finalResponseToReturn = finalSecurity.maskedResponse;
-            console.log(`🔒 [Coordinator] Using masked response in final output (sensitive data detected)`);
+            console.log(`[Coordinator] Using masked response in final output (sensitive data detected)`);
           }
         }
         
@@ -1565,11 +1565,11 @@ Return only the concise version:`;
         };
       } else {
         // Multi-agent response - routingResult contains the final synthesized response
-        this.sendThinkingMessage(`✅ Multi-agent coordination completed`);
-        console.log(`✅ [Coordinator] Multi-agent response completed`);
+        this.sendThinkingMessage(`Multi-agent coordination completed`);
+        console.log(`[Coordinator] Multi-agent response completed`);
         
         // Process multi-agent response
-        this.sendThinkingMessage(`🔍 Processing and validating multi-agent response...`);
+        this.sendThinkingMessage(`Processing and validating multi-agent response...`);
         const processedResponse = await this.processAgentResponse(
           routingResult.response, 
           query, 
@@ -1594,7 +1594,7 @@ Return only the concise version:`;
           // If sensitive data was detected and masked in the response, use the masked response
           if (finalSecurity.hasMasking) {
             finalResponseToReturn = finalSecurity.maskedResponse;
-            console.log(`🔒 [Coordinator] Using masked response in final output (sensitive data detected)`);
+            console.log(`[Coordinator] Using masked response in final output (sensitive data detected)`);
           }
         }
         
@@ -1785,7 +1785,7 @@ Return only the concise version:`;
     }
     
     this.initialized = false;
-    console.log('✅ [Coordinator] Cleanup completed');
+    console.log('[Coordinator] Cleanup completed');
   }
 }
 

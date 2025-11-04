@@ -278,11 +278,11 @@ class HRAgent extends MCPAgentBase {
         return null;
       }
       
-      console.log(`🔍 [HR Agent] Searching for email: ${userEmail}`);
-      console.log(`🔍 [HR Agent] Raw CSV data length: ${rawCsvData.length} chars`);
+      console.log(`[HR Agent] Searching for email: ${userEmail}`);
+      console.log(`[HR Agent] Raw CSV data length: ${rawCsvData.length} chars`);
       
       const lines = rawCsvData.split('\n');
-      console.log(`🔍 [HR Agent] Total lines: ${lines.length}`);
+      console.log(`[HR Agent] Total lines: ${lines.length}`);
       
       if (lines.length < 2) {
         console.log(`❌ [HR Agent] Not enough lines in CSV data`);
@@ -291,7 +291,7 @@ class HRAgent extends MCPAgentBase {
       
       const header = lines[0].split(',');
       const emailIndex = header.findIndex(h => h.toLowerCase().includes('email'));
-      console.log(`🔍 [HR Agent] Email column index: ${emailIndex}, first header: ${header[0]}`);
+      console.log(`[HR Agent] Email column index: ${emailIndex}, first header: ${header[0]}`);
       
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -302,7 +302,7 @@ class HRAgent extends MCPAgentBase {
         if (fields[emailIndex]) {
           const emailInDB = fields[emailIndex].replace(/"/g, '');
           if (emailInDB.toLowerCase() === userEmail.toLowerCase()) {
-            console.log(`✅ [HR Agent] Found matching email at line ${i}: ${emailInDB}`);
+            console.log(`[HR Agent] Found matching email at line ${i}: ${emailInDB}`);
             // Build user details object from all fields
             const userDetails = {};
             header.forEach((h, idx) => {
@@ -310,7 +310,7 @@ class HRAgent extends MCPAgentBase {
               const cleanValue = fields[idx] ? fields[idx].replace(/"/g, '') : '';
               userDetails[cleanHeader] = cleanValue;
             });
-            this.logger.debug(`✅ Found user by email: ${emailInDB}`);
+            this.logger.debug(`Found user by email: ${emailInDB}`);
             return userDetails;
           }
         }
@@ -358,7 +358,7 @@ class HRAgent extends MCPAgentBase {
               const cleanValue = fields[idx] ? fields[idx].replace(/"/g, '') : '';
               userDetails[cleanHeader] = cleanValue;
             });
-            this.logger.debug(`✅ Found user by name: ${nameInDB}`);
+            this.logger.debug(`Found user by name: ${nameInDB}`);
             return userDetails;
           }
         }
@@ -537,20 +537,20 @@ class HRAgent extends MCPAgentBase {
 - manager_comments: Performance feedback and manager assessments (positive and negative feedback)
 
 ## CORE CAPABILITIES:
-✅ Employee Directory & Contact Information
-✅ Organizational Structure & Reporting Lines
-✅ Leave Management & PTO Tracking
-✅ Salary & Compensation Analysis
-✅ Department Structure & Team Composition
-✅ Manager Performance Feedback & Assessments
+Employee Directory & Contact Information
+Organizational Structure & Reporting Lines
+Leave Management & PTO Tracking
+Salary & Compensation Analysis
+Department Structure & Team Composition
+Manager Performance Feedback & Assessments
 
 ## CRITICAL RULES:
-🔒 NEVER invent or assume any employee information
-🔒 Only use data explicitly present in the employee database
-🔒 All names, emails, phone numbers must match database exactly
-🔒 Handle salary information with appropriate discretion
-🔒 Manager comments should be shared appropriately in context (don't publicly shame)
-🔒 If query is outside HR domain, respond with "OUTSIDE_SCOPE"
+NEVER invent or assume any employee information
+Only use data explicitly present in the employee database
+All names, emails, phone numbers must match database exactly
+Handle salary information with appropriate discretion
+Manager comments should be shared appropriately in context (don't publicly shame)
+If query is outside HR domain, respond with "OUTSIDE_SCOPE"
 
 ## USER CONTEXT USAGE:
 ⚠️ IMPORTANT: If "CURRENT USER COMPLETE PROFILE" section is provided above, use it to resolve queries containing "my", "me", "I":
@@ -630,14 +630,14 @@ DATABASE FIELDS:
       const { userContext, userDetails, cleanQuery } = this._extractUserContext(query);
       
       // Log debugging information
-      console.log(`🔍 [HR Agent] Query: "${query.substring(0, 100)}..."`);
-      console.log(`🔍 [HR Agent] UserContext found:`, userContext);
-      console.log(`🔍 [HR Agent] UserDetails found:`, userDetails ? {
+      console.log(`[HR Agent] Query: "${query.substring(0, 100)}..."`);
+      console.log(`[HR Agent] UserContext found:`, userContext);
+      console.log(`[HR Agent] UserDetails found:`, userDetails ? {
         name: userDetails.name,
         email: userDetails.email,
         manager: userDetails.manager
       } : null);
-      console.log(`🔍 [HR Agent] Query type: ${queryAnalysis.type}`);
+      console.log(`[HR Agent] Query type: ${queryAnalysis.type}`);
       
       this.sendThinkingMessage(
         `Query type: ${queryAnalysis.type} (confidence: ${queryAnalysis.confidence}%)`

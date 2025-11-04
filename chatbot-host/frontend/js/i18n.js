@@ -22,7 +22,7 @@ export class I18nService {
         // Set the HTML lang attribute
         document.documentElement.lang = language;
         
-        console.log(`🌐 I18n initialized with language: ${language}`);
+        console.log(`I18n initialized with language: ${language}`);
         return this;
     }
 
@@ -180,7 +180,7 @@ export class I18nService {
             detail: { language, translations: this.translations[language] }
         }));
 
-        console.log(`🌐 Language changed to: ${language}`);
+        console.log(`Language changed to: ${language}`);
     }
 
     /**
