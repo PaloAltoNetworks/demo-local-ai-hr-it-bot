@@ -42,6 +42,11 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+
+// Serve Material Symbols from node_modules
+app.use('/fonts/material-symbols', express.static(path.join(__dirname, '../node_modules/material-symbols')));
+
+// Serve frontend static files
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Initialize MCP client on startup

@@ -5,9 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Otter - Enterprise HR/IT Assistant</title>
-    <link rel="icon" type="image/svg+xml" href="./otter-favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="./otter.svg">
+    <link href="./fonts/material-symbols/index.css" rel="stylesheet">
     <link rel="stylesheet" href="./css/style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 
 <body>
@@ -15,7 +15,7 @@
     <header class="main-header">
         <div class="container">
             <div class="header-brand">
-                <i class="fas fa-otter"></i>
+                <i class="otter-icon"></i>
                 <span id="brand-text">The Otter</span>
             </div>
 
@@ -37,7 +37,7 @@
             <!-- User Menu -->
             <div class="user-menu-container">
                 <button class="user-menu-trigger" id="userMenuTrigger" title="User Menu">
-                    <i class="fas fa-user-circle"></i>
+                    <span class="material-symbols-outlined">account_circle</span>
                     <span class="user-menu-label" id="userMenuLabel">User</span>
                 </button>
 
@@ -46,7 +46,7 @@
                     <!-- Profile Section -->
                     <div class="user-menu-profile">
                         <div class="user-menu-avatar">
-                            <i class="fas fa-user-circle"></i>
+                            <span class="material-symbols-outlined">account_circle</span>
                         </div>
                         <div class="user-menu-info">
                             <p class="user-menu-name" id="userMenuName">Aurélien Delamarre</p>
@@ -72,7 +72,7 @@
 
                     <!-- Logout Button -->
                     <button class="user-menu-logout" id="userMenuLogout">
-                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="material-symbols-outlined">logout</span>
                         <span data-i18n="userMenu.logout">Logout</span>
                     </button>
                 </div>
@@ -89,7 +89,8 @@
                     <section class="quick-questions">
                         <div class="card">
                             <div class="card__header">
-                                <h2><i class="fas fa-lightbulb"></i> <span data-i18n="questions.title">Example
+                                <h2><span class="material-symbols-outlined">lightbulb</span> <span
+                                        data-i18n="questions.title">Example
                                         Questions</span></h2>
                             </div>
                             <div class="card__body">
@@ -106,12 +107,13 @@
                     <section class="chat-section">
                         <div class="card chat-container">
                             <div class="card__header">
-                                <h2><i class="fas fa-comments"></i> <span data-i18n="app.brand">The Otter</span>
+                                <h2><span class="material-symbols-outlined">chat</span> <span data-i18n="app.brand">The
+                                        Otter</span>
                                     Assistant</h2>
                                 <div class="chat-status">
                                     <span class="status status--success">
-                                        <i class="fas fa-circle"></i>&nbsp;&nbsp;<span
-                                            data-i18n="chat.online">Online</span>
+                                        <span id="statusIcon" class="material-symbols-outlined">check_circle</span>&nbsp;&nbsp;
+                                        <span data-i18n="chat.online">Online</span>
                                     </span>
                                 </div>
                             </div>
@@ -119,7 +121,7 @@
                             <div id="chat-container" class="chat-messages">
                                 <div class="message bot-message">
                                     <div class="message-avatar">
-                                        <i class="fas fa-otter"></i>
+                                        <i class="otter-icon"></i>
                                     </div>
                                     <div class="message-content">
                                         <div class="message-text" id="welcome-message">
@@ -132,9 +134,10 @@
 
                             <div class="chat-input-container">
                                 <div class="chat-input-wrapper">
-                                    <input type="text" id="chatInput" class="chat-input" data-i18n="chat.placeholder" data-i18n-target="placeholder" maxlength="500">
+                                    <input type="text" id="chatInput" class="chat-input" data-i18n="chat.placeholder"
+                                        data-i18n-target="placeholder" maxlength="500">
                                     <button id="sendMessage" class="send-button">
-                                        <i class="fas fa-paper-plane"></i>
+                                        <span class="material-symbols-outlined">send</span>
                                     </button>
                                 </div>
                             </div>

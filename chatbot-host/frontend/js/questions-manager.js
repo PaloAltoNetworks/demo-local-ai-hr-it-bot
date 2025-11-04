@@ -62,6 +62,21 @@ export class QuestionsManager {
     }
 
     /**
+     * Parse icon string and return HTML
+     * Format: "iconName" or "className:iconName"
+     */
+    getIconHTML(iconString) {
+        if (!iconString) return '';
+        
+        if (iconString.includes(':')) {
+            const [className, iconName] = iconString.split(':');
+            return `<span class="${className}">${iconName}</span>`;
+        }
+        
+        return `<span class="material-symbols-outlined">${iconString}</span>`;
+    }
+
+    /**
      * Create a subgroup element with nested questions
      */
     createSubgroupElement(subgroup) {
@@ -71,7 +86,7 @@ export class QuestionsManager {
         // Create subgroup header
         const header = document.createElement('div');
         header.className = 'subgroup-header';
-        header.innerHTML = `<h3><i class="${subgroup.icon}"></i>${subgroup.title}</h3>`;
+        header.innerHTML = `<h3>${this.getIconHTML(subgroup.icon)}${subgroup.title}</h3>`;
         subgroupDiv.appendChild(header);
         
         // Create nested questions container
@@ -103,7 +118,7 @@ export class QuestionsManager {
         }
         
         questionDiv.innerHTML = `
-            <h4><i class="${question.icon}"></i>${question.title}</h4>
+            <h4>${this.getIconHTML(question.icon)}${question.title}</h4>
             <p>${question.text}</p>
         `;
 
