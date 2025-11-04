@@ -1116,13 +1116,7 @@ body {
 }
 
 .example-question.action-question i {
-  color: var(--color-text);
-  animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  color: var(--koala-primary);
 }
 
 /* Subgroup styles */
@@ -1144,6 +1138,14 @@ body {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.subgroup-header h3 i {
+  font-size: var(--font-size-lg);
+  color: var(--koala-primary);
 }
 
 .subgroup-questions {

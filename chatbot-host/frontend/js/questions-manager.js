@@ -71,7 +71,7 @@ export class QuestionsManager {
         // Create subgroup header
         const header = document.createElement('div');
         header.className = 'subgroup-header';
-        header.innerHTML = `<h3>${subgroup.title}</h3>`;
+        header.innerHTML = `<h3><i class="${subgroup.icon}"></i>${subgroup.title}</h3>`;
         subgroupDiv.appendChild(header);
         
         // Create nested questions container

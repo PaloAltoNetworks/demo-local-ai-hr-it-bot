@@ -24,16 +24,16 @@ function generateTickets() {
   const priorities = ['Critical', 'High', 'Medium', 'Low'];
 
   const employees = [
-    { email: 'aurelien.delamarre@company.com', name: 'Aurelien Delamarre' },
-    { email: 'sophie.martin@company.com', name: 'Sophie Martin' },
-    { email: 'michael.johnson@company.com', name: 'Michael Johnson' },
-    { email: 'lisa.wang@company.com', name: 'Lisa Wang' },
-    { email: 'fatima.alrashid@company.com', name: 'Fatima Al-Rashid' },
-    { email: 'marco.rossi@company.com', name: 'Marco Rossi' },
-    { email: 'jean.dupont@company.com', name: 'Jean Dupont' },
-    { email: 'emma.schmidt@company.com', name: 'Emma Schmidt' },
-    { email: 'carlos.mendez@company.com', name: 'Carlos Mendez' },
-    { email: 'yuki.tanaka@company.com', name: 'Yuki Tanaka' }
+    { email: 'aurelien.delamarre@company.com', name: 'Aurelien Delamarre', profile: 'neutral' },
+    { email: 'sophie.martin@company.com', name: 'Sophie Martin', profile: 'negative' },
+    { email: 'michael.johnson@company.com', name: 'Michael Johnson', profile: 'positive' },
+    { email: 'lisa.wang@company.com', name: 'Lisa Wang', profile: 'positive' },
+    { email: 'fatima.alrashid@company.com', name: 'Fatima Al-Rashid', profile: 'negative' },
+    { email: 'marco.rossi@company.com', name: 'Marco Rossi', profile: 'positive' },
+    { email: 'jean.dupont@company.com', name: 'Jean Dupont', profile: 'neutral' },
+    { email: 'emma.schmidt@company.com', name: 'Emma Schmidt', profile: 'positive' },
+    { email: 'carlos.mendez@company.com', name: 'Carlos Mendez', profile: 'negative' },
+    { email: 'yuki.tanaka@company.com', name: 'Yuki Tanaka', profile: 'positive' }
   ];
 
   const technicians = [
@@ -43,46 +43,69 @@ function generateTickets() {
     { email: 'david.lee@company.com', name: 'David Lee' }
   ];
 
+  // Internal notes for various scenarios
+  const positiveNotes = [
+    'Great team player, always cooperative',
+    'Professional and respectful in all interactions',
+    'Follows policies and procedures correctly',
+    'Excellent communication skills',
+    'Always appreciative of IT support',
+    'Proactive in resolving issues',
+    'Great attitude towards IT team'
+  ];
+
+  const negativeNotes = [
+    'Employee repeatedly requesting exceptions to policy - declined',
+    'Frequent requests for unauthorized access - against company policy',
+    'Employee asking for non-standard setup again - declined per policy',
+    'Requesting exceptions to security protocols - not permitted',
+    'Repeatedly asking for policy exceptions - management consulted',
+    'Employee demanding special treatment - declined per IT policy',
+    'Requesting unauthorized software installation - policy does not allow',
+    'Asking for policy exceptions again - this is the 8th request this month',
+    'Employee continues to request policy violations - this is becoming problematic'
+  ];
+
   const ticketData = [
     { desc: 'Cannot access Salesforce - permission denied error', cat: 'Application', pri: 'High' },
     { desc: 'Laptop replacement - old unit with performance issues', cat: 'Hardware', pri: 'High' },
-    { desc: 'Printer not connecting to network', cat: 'Hardware', pri: 'Medium' },
+    { desc: 'Printer not connecting to network', cat: 'Printer', pri: 'Medium' },
     { desc: 'VPN connection keeps dropping during calls', cat: 'Network', pri: 'High' },
     { desc: 'Outlook keeps crashing with large files', cat: 'Email', pri: 'High' },
-    { desc: 'Monitor flickering - display issues', cat: 'Hardware', pri: 'Medium' },
+    { desc: 'Font rendering issue in documents', cat: 'Software', pri: 'Medium' },
     { desc: 'WiFi intermittently disconnects', cat: 'Network', pri: 'Medium' },
     { desc: 'Slack notifications not working', cat: 'Application', pri: 'Low' },
     { desc: 'Microsoft Teams camera not detected', cat: 'Software', pri: 'High' },
     { desc: 'Password reset requested - locked account', cat: 'Security', pri: 'Critical' },
-    { desc: 'External monitor not recognized by laptop', cat: 'Hardware', pri: 'Medium' },
+    { desc: 'Cannot view PDF files in browser', cat: 'Software', pri: 'Medium' },
     { desc: 'Adobe Creative Suite license expired', cat: 'Software', pri: 'Medium' },
     { desc: 'OneDrive sync issues - files not uploading', cat: 'Application', pri: 'High' },
     { desc: 'Keyboard shortcuts not working in Excel', cat: 'Software', pri: 'Low' },
-    { desc: 'Webcam driver needs update', cat: 'Hardware', pri: 'Low' },
+    { desc: 'Need to update browser to latest version', cat: 'Software', pri: 'Low' },
     { desc: 'Cannot connect to company VPN from home', cat: 'Network', pri: 'High' },
     { desc: 'Jira login fails - authentication error', cat: 'Application', pri: 'High' },
-    { desc: 'Disk space critically low on C drive', cat: 'Hardware', pri: 'Critical' },
+    { desc: 'Disk space issue - needs cleanup and optimization', cat: 'Software', pri: 'Critical' },
     { desc: 'Printer paper jam - needs service', cat: 'Printer', pri: 'Medium' },
     { desc: 'GitHub SSH key configuration needed', cat: 'Security', pri: 'Medium' },
     { desc: 'Thunderbird email client crashing', cat: 'Email', pri: 'High' },
-    { desc: 'Laptop battery not charging properly', cat: 'Hardware', pri: 'High' },
+    { desc: 'Laptop battery indicator shows error', cat: 'Software', pri: 'High' },
     { desc: 'Cannot install required Python packages', cat: 'Software', pri: 'Medium' },
     { desc: 'Document sharing permissions need adjustment', cat: 'Security', pri: 'Medium' },
     { desc: 'Antivirus quarantined safe file - need exception', cat: 'Security', pri: 'High' },
     { desc: 'Internet speed very slow - speed test needed', cat: 'Network', pri: 'Medium' },
     { desc: 'Desktop icons disappearing randomly', cat: 'Software', pri: 'Low' },
-    { desc: 'Company phone not receiving calls', cat: 'Hardware', pri: 'Critical' },
+    { desc: 'Company phone not receiving calls', cat: 'Communication', pri: 'Critical' },
     { desc: 'Database connection timeout issues', cat: 'Application', pri: 'Critical' },
-    { desc: 'USB 3 ports not working on docking station', cat: 'Hardware', pri: 'Medium' },
+    { desc: 'Need configuration help for docking station', cat: 'Software', pri: 'Medium' },
     { desc: 'Zoom audio cuts out during meetings', cat: 'Software', pri: 'High' },
-    { desc: 'Employee needs new office chair ergonomic setup', cat: 'Hardware', pri: 'Low' },
+    { desc: 'Request new ergonomic accessories', cat: 'Request', pri: 'Low' },
     { desc: 'Confluence page editing issues', cat: 'Application', pri: 'Medium' },
     { desc: 'Need access to restricted shared drive', cat: 'Security', pri: 'Medium' },
     { desc: 'Browser cache needs clearing - pages loading slowly', cat: 'Software', pri: 'Low' },
-    { desc: 'New employee setup - hardware + accounts needed', cat: 'Hardware', pri: 'High' },
-    { desc: 'Backup drive failing - data recovery needed', cat: 'Hardware', pri: 'Critical' },
+    { desc: 'New employee setup - hardware + accounts needed', cat: 'Onboarding', pri: 'High' },
+    { desc: 'Need backup solution for external drive', cat: 'Software', pri: 'Critical' },
     { desc: 'SSL certificate expired on internal server', cat: 'Security', pri: 'Critical' },
-    { desc: 'Laptop screen resolution problem after update', cat: 'Hardware', pri: 'Medium' },
+    { desc: 'Display settings changed after update - needs reset', cat: 'Software', pri: 'Medium' },
     { desc: 'Cannot send large email attachments', cat: 'Email', pri: 'Medium' }
   ];
 
@@ -101,6 +124,33 @@ function generateTickets() {
     const status = statuses[Math.floor(Math.random() * statuses.length)];
     const resolutionTime = status === 'Closed' ? `${Math.floor(Math.random() * 14) + 1} days` : null;
 
+    // Generate internal notes based on employee profile
+    let internalNotes = null;
+    if (i === 0) {
+      internalNotes = 'SPECIAL: Aurelien Delamarre - Salesforce access permissions management';
+    } else if (i === 1) {
+      internalNotes = 'SPECIAL: Sophie Martin - Laptop shipping to 250 Park Avenue, Apt 3A, New York, NY 10169, USA';
+    } else {
+      const employeeProfile = employee.profile;
+      
+      if (employeeProfile === 'negative') {
+        // Negative profile: 85% negative notes, 15% positive
+        internalNotes = Math.random() > 0.15 ?
+          negativeNotes[Math.floor(Math.random() * negativeNotes.length)] :
+          positiveNotes[Math.floor(Math.random() * positiveNotes.length)];
+      } else if (employeeProfile === 'positive') {
+        // Positive profile: 85% positive notes, 15% negative
+        internalNotes = Math.random() > 0.15 ?
+          positiveNotes[Math.floor(Math.random() * positiveNotes.length)] :
+          negativeNotes[Math.floor(Math.random() * negativeNotes.length)];
+      } else {
+        // Neutral profile: 50/50 mix
+        internalNotes = Math.random() > 0.5 ?
+          positiveNotes[Math.floor(Math.random() * positiveNotes.length)] :
+          negativeNotes[Math.floor(Math.random() * negativeNotes.length)];
+      }
+    }
+
     tickets.push({
       ticket_id: ticketId,
       employee_email: employee.email,
@@ -114,8 +164,7 @@ function generateTickets() {
       assigned_to: technician.name,
       resolution_time: resolutionTime,
       tags: data.cat.toLowerCase(),
-      internal_notes: i === 0 ? 'SPECIAL: Aurelien Delamarre - Salesforce access permissions management' :
-        i === 1 ? 'SPECIAL: Sophie Martin - Laptop shipping to 45 Rue de la Paix, 75002 Paris, France, Apt 3A' : null
+      internal_notes: internalNotes
     });
   }
 
@@ -127,12 +176,6 @@ function generateTickets() {
  */
 function generateDiscussions(tickets) {
   const discussions = [];
-  const technicians = [
-    { email: 'robert.taylor@company.com', name: 'Robert Taylor' },
-    { email: 'james.wilson@company.com', name: 'James Wilson' },
-    { email: 'sandra.brown@company.com', name: 'Sandra Brown' },
-    { email: 'david.lee@company.com', name: 'David Lee' }
-  ];
 
   for (const ticket of tickets) {
     const discussionCount = Math.floor(Math.random() * 8) + 3;
@@ -146,17 +189,16 @@ function generateDiscussions(tickets) {
       // 3) Sophie requests shipment to personal address
       // 4) Technician confirms shipping labels/details
       // 5) Technician confirms shipment
-      const sophieTech1 = technicians.find(t => t.name === 'James Wilson') || technicians[0];
-      const sophieTech2 = technicians.find(t => t.name === 'Robert Taylor') || technicians[1];
+      const sophieTech = { email: ticket.assigned_to_email, name: ticket.assigned_to };
 
       const seq = [
         { offset: 0, author: { email: ticket.employee_email, name: ticket.employee_name }, comment_type: 'comment', is_internal: 0, content: `Hi, I'm experiencing an issue: ${ticket.description}. Can you help?` },
-        { offset: 4, author: sophieTech1, comment_type: 'comment', is_internal: 0, content: `It looks like this unit needs to be replaced. We can provide a replacement. Would you like it shipped to your personal address since you're remote?` },
-        { offset: 8, author: { email: ticket.employee_email, name: ticket.employee_name }, comment_type: 'comment', is_internal: 0, content: `Yes please, send the replacement to my personal address: 45 Rue de la Paix, 75002 Paris, France, Apt 3A` },
-        { offset: 12, author: sophieTech1, comment_type: 'comment', is_internal: 0, content: `Thanks — we'll prepare shipping labels and confirm the courier. Please allow 1-2 business days for packing.` },
-        { offset: 20, author: sophieTech2, comment_type: 'status_update', is_internal: 0, content: `Shipment confirmed. Replacement laptop has been dispatched with tracking number TRK123456789.` },
+        { offset: 4, author: sophieTech, comment_type: 'comment', is_internal: 0, content: `It looks like this unit needs to be replaced. We can provide a replacement. Would you like it shipped to your personal address since you're remote?` },
+        { offset: 8, author: { email: ticket.employee_email, name: ticket.employee_name }, comment_type: 'comment', is_internal: 0, content: `Yes please, send the replacement to my personal address: 250 Park Avenue, Apt 3A, New York, NY 10169, USA` },
+        { offset: 12, author: sophieTech, comment_type: 'comment', is_internal: 0, content: `Thanks — we'll prepare shipping labels and confirm the courier. Please allow 1-2 business days for packing.` },
+        { offset: 20, author: sophieTech, comment_type: 'status_update', is_internal: 0, content: `Shipment confirmed. Replacement laptop has been dispatched with tracking number TRK123456789.` },
         // add an internal note about address handling
-        { offset: 24, author: sophieTech1, comment_type: 'internal_note', is_internal: 1, content: `Confirmed personal address and printed shipping label. Address stored in internal notes.` }
+        { offset: 24, author: sophieTech, comment_type: 'internal_note', is_internal: 1, content: `Confirmed personal address and printed shipping label. Address stored in internal notes.` }
       ];
 
       for (const item of seq) {
@@ -188,7 +230,7 @@ function generateDiscussions(tickets) {
         author = { email: ticket.employee_email, name: ticket.employee_name };
         content = `Hi, I'm experiencing an issue: ${ticket.description.toLowerCase()}. Can you help?`;
       } else if (isInternal) {
-        author = technicians[Math.floor(Math.random() * technicians.length)];
+        author = { email: ticket.assigned_to_email, name: ticket.assigned_to };
         commentType = 'internal_note';
         const internalMessages = [
           'Found root cause. Applying fix.',
@@ -202,7 +244,7 @@ function generateDiscussions(tickets) {
         ];
         content = internalMessages[Math.floor(Math.random() * internalMessages.length)];
       } else {
-        author = technicians[Math.floor(Math.random() * technicians.length)];
+        author = { email: ticket.assigned_to_email, name: ticket.assigned_to };
         const responses = [
           `Thanks for reporting this. Let me investigate the ${ticket.category.toLowerCase()} issue for you.`,
           `I've made progress on your ${ticket.category.toLowerCase()} issue. Working on resolution.`,
