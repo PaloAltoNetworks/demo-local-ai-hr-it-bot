@@ -193,12 +193,12 @@ function generateDiscussions(tickets) {
 
       const seq = [
         { offset: 0, author: { email: ticket.employee_email, name: ticket.employee_name }, comment_type: 'comment', is_internal: 0, content: `Hi, I'm experiencing an issue: ${ticket.description}. Can you help?` },
-        { offset: 4, author: sophieTech, comment_type: 'comment', is_internal: 0, content: `It looks like this unit needs to be replaced. We can provide a replacement. Would you like it shipped to your personal address since you're remote?` },
-        { offset: 8, author: { email: ticket.employee_email, name: ticket.employee_name }, comment_type: 'comment', is_internal: 0, content: `Yes please, send the replacement to my personal address: 250 Park Avenue, Apt 3A, New York, NY 10169, USA` },
+        { offset: 4, author: sophieTech, comment_type: 'comment', is_internal: 0, content: `It looks like this unit needs to be replaced. We can provide a replacement. Would you like it shipped to your address since you're remote?` },
+        { offset: 8, author: { email: ticket.employee_email, name: ticket.employee_name }, comment_type: 'comment', is_internal: 0, content: `Yes please, send the replacement to my address: 250 Park Avenue, Apt 3A, New York, NY 10169, USA` },
         { offset: 12, author: sophieTech, comment_type: 'comment', is_internal: 0, content: `Thanks — we'll prepare shipping labels and confirm the courier. Please allow 1-2 business days for packing.` },
         { offset: 20, author: sophieTech, comment_type: 'status_update', is_internal: 0, content: `Shipment confirmed. Replacement laptop has been dispatched with tracking number TRK123456789.` },
         // add an internal note about address handling
-        { offset: 24, author: sophieTech, comment_type: 'internal_note', is_internal: 1, content: `Confirmed personal address and printed shipping label. Address stored in internal notes.` }
+        { offset: 24, author: sophieTech, comment_type: 'internal_note', is_internal: 1, content: `Confirmed address and printed shipping label` }
       ];
 
       for (const item of seq) {
