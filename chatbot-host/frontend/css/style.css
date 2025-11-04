@@ -867,29 +867,35 @@ body {
   vertical-align: middle;
   font-size: inherit;
   line-height: 1;
+  color: var(--koala-primary);
 }
 
 h2 .material-symbols-outlined {
   margin-right: var(--space-8);
   vertical-align: middle;
+  color: var(--koala-primary);
 }
 
 .message-avatar .material-symbols-outlined,
 .header-brand .material-symbols-outlined {
   font-size: 32px;
+  color: var(--koala-primary);
 }
 
 .user-menu-avatar .material-symbols-outlined {
   font-size: 32px;
+  color: var(--koala-primary);
 }
 
 .send-button .material-symbols-outlined {
-  font-size: 20px;
+  font-size: 32px;
+  color: white;
 }
 
 .status .material-symbols-outlined {
   font-size: 16px;
   margin-right: 4px;
+  color: inherit;
 }
 
 /* Brand Icon (SVG) - Same styling as Material Icons */
