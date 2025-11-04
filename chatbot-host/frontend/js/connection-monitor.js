@@ -9,6 +9,7 @@ export class ConnectionMonitor {
         this.uiManager = uiManager;
         this.connectionCheckInterval = null;
         this.wasOnline = true;
+        this.wasDegraded = false;
     }
 
     /**
@@ -40,11 +41,17 @@ export class ConnectionMonitor {
         const isOnline = await this.apiService.checkConnection();
         const healthData = this.apiService.getLastHealthData();
         
-        // Update UI if status changed
-        if (this.wasOnline !== isOnline) {
+        // Check if degraded state changed (MCP unavailable while service is running)
+        const isDegraded = isOnline && healthData && healthData.status === 'degraded' && !healthData.serviceAvailable;
+        
+        // Update UI if online status changed OR degradation status changed
+        if (this.wasOnline !== isOnline || this.wasDegraded !== isDegraded) {
             this.uiManager.updateConnectionStatus(isOnline, healthData);
-            this.uiManager.showConnectionStatusChange(isOnline, healthData);
+            if (this.wasOnline !== isOnline) {
+                this.uiManager.showConnectionStatusChange(isOnline, healthData);
+            }
             this.wasOnline = isOnline;
+            this.wasDegraded = isDegraded;
         }
         
         return isOnline;
