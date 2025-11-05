@@ -1,6 +1,7 @@
 const { EventEmitter } = require('events');
 const axios = require('axios');
 const { randomUUID } = require('crypto');
+const { getLogger } = require('./logger');
 
 /**
  * MCP Client Implementation - Following MCP Specification 2025-06-18
@@ -31,7 +32,7 @@ class MCPClient extends EventEmitter {
     // Request tracking
     this.pendingRequests = new Map();
     
-    console.log(`[MCPClient] Initialized for MCP server: ${serverUrl}`);
+    getLogger().info('Initialized for MCP server: ' + serverUrl);
   }
 
   /**
@@ -39,11 +40,11 @@ class MCPClient extends EventEmitter {
    */
   async initialize() {
     if (this.isInitialized) {
-      console.log('[MCPClient] Already initialized');
+      getLogger().info('Already initialized');
       return;
     }
 
-    console.log(`[MCPClient] Initializing MCP connection to: ${this.serverUrl}`);
+    getLogger().info('Initializing MCP connection to: ' + this.serverUrl);
     
     try {
       // Step 1: Send initialize request (JSON-RPC 2.0)
@@ -75,8 +76,8 @@ class MCPClient extends EventEmitter {
       this.serverInfo = initResponse.serverInfo;
       this.serverCapabilities = initResponse.capabilities;
       
-      console.log(`[MCPClient] Server: ${this.serverInfo.name} v${this.serverInfo.version}`);
-      console.log(`[MCPClient] Server capabilities:`, Object.keys(this.serverCapabilities));
+      getLogger().info('Server: ' + this.serverInfo.name + ' v' + this.serverInfo.version);
+      getLogger().info('Server capabilities: ' + Object.keys(this.serverCapabilities).join(', '));
       
       // Step 2: Send initialized notification
       await this.sendNotification({
@@ -90,14 +91,14 @@ class MCPClient extends EventEmitter {
       this.isInitialized = true;
       this.reconnectAttempts = 0;
       
-      console.log(`[MCPClient] MCP initialization complete`);
+      getLogger().info('MCP initialization complete');
       this.emit('initialized', { 
         serverInfo: this.serverInfo, 
         capabilities: this.serverCapabilities 
       });
       
     } catch (error) {
-      console.error('❌ [MCPClient] Initialization failed:', error.message);
+      getLogger().error('Initialization failed: ' + error.message);
       await this.handleConnectionError(error);
       throw error;
     }
@@ -129,7 +130,7 @@ class MCPClient extends EventEmitter {
       }, this.timeout);
       
       try {
-        console.log(`[MCPClient] Sending request: ${request.method} (ID: ${requestId})`);
+        getLogger().debug('Sending request: ' + request.method + ' (ID: ' + requestId + ')');
         
         const response = await axios.post(this.serverUrl, request, {
           headers: {
@@ -148,10 +149,10 @@ class MCPClient extends EventEmitter {
         this.pendingRequests.delete(requestId);
         
         if (jsonRpcResponse.error) {
-          console.error(`❌ [MCPClient] Request ${requestId} failed:`, jsonRpcResponse.error);
+          getLogger().error('Request ' + requestId + ' failed: ' + jsonRpcResponse.error.message);
           reject(new Error(`JSON-RPC Error ${jsonRpcResponse.error.code}: ${jsonRpcResponse.error.message}`));
         } else {
-          console.log(`[MCPClient] Request ${requestId} completed successfully`);
+          getLogger().debug('Request ' + requestId + ' completed successfully');
           resolve(jsonRpcResponse.result);
         }
         
@@ -161,9 +162,9 @@ class MCPClient extends EventEmitter {
         
         // Distinguish between abort and other errors
         if (error.name === 'AbortError' || error.name === 'CanceledError') {
-          console.log(`🚫 [MCPClient] Request ${requestId} was cancelled`);
+          getLogger().warn('Request ' + requestId + ' was cancelled');
         } else {
-          console.error(`❌ [MCPClient] Request ${requestId} failed:`, error.message);
+          getLogger().error('Request ' + requestId + ' failed: ' + error.message);
         }
         reject(error);
       }
@@ -175,7 +176,7 @@ class MCPClient extends EventEmitter {
    */
   async sendNotification(notification) {
     try {
-      console.log(`[MCPClient] Sending notification: ${notification.method}`);
+      getLogger().debug('Sending notification: ' + notification.method);
       
       await axios.post(this.serverUrl, notification, {
         headers: {
@@ -184,10 +185,10 @@ class MCPClient extends EventEmitter {
         timeout: this.timeout
       });
       
-      console.log(`[MCPClient] Notification sent: ${notification.method}`);
+      getLogger().debug('Notification sent: ' + notification.method);
       
     } catch (error) {
-      console.error(`❌ [MCPClient] Notification failed: ${notification.method}`, error.message);
+      getLogger().error('Notification failed: ' + notification.method + ' - ' + error.message);
       throw error;
     }
   }
@@ -196,7 +197,7 @@ class MCPClient extends EventEmitter {
    * Discover server features (tools, resources, prompts)
    */
   async discoverServerFeatures() {
-    console.log('[MCPClient] Discovering server features...');
+    getLogger().info('Discovering server features...');
     
     try {
       // Discover tools if supported
@@ -214,8 +215,8 @@ class MCPClient extends EventEmitter {
           toolsResult.tools.forEach(tool => {
             this.availableTools.set(tool.name, tool);
           });
-          console.log(`[MCPClient] Discovered ${this.availableTools.size} tools:`, 
-            Array.from(this.availableTools.keys()));
+          getLogger().info('Discovered ' + this.availableTools.size + ' tools: ' +
+            Array.from(this.availableTools.keys()).join(', '));
         }
       }
 
@@ -234,8 +235,8 @@ class MCPClient extends EventEmitter {
           resourcesResult.resources.forEach(resource => {
             this.availableResources.set(resource.uri, resource);
           });
-          console.log(`📄 [MCPClient] Discovered ${this.availableResources.size} resources:`, 
-            Array.from(this.availableResources.keys()));
+          getLogger().info('Discovered ' + this.availableResources.size + ' resources: ' +
+            Array.from(this.availableResources.keys()).join(', '));
         }
       }
 
@@ -254,13 +255,13 @@ class MCPClient extends EventEmitter {
           promptsResult.prompts.forEach(prompt => {
             this.availablePrompts.set(prompt.name, prompt);
           });
-          console.log(`💬 [MCPClient] Discovered ${this.availablePrompts.size} prompts:`, 
-            Array.from(this.availablePrompts.keys()));
+          getLogger().info('Discovered ' + this.availablePrompts.size + ' prompts: ' +
+            Array.from(this.availablePrompts.keys()).join(', '));
         }
       }
 
     } catch (error) {
-      console.warn('⚠️ [MCPClient] Feature discovery partially failed:', error.message);
+      getLogger().warn('Feature discovery partially failed: ' + error.message);
       // Don't throw - some features might not be available
     }
   }
@@ -277,7 +278,7 @@ class MCPClient extends EventEmitter {
       throw new Error(`Tool '${toolName}' not available. Available tools: ${Array.from(this.availableTools.keys()).join(', ')}`);
     }
 
-    console.log(`� [MCPClient] Calling tool: ${toolName}`);
+    getLogger().debug('Calling tool: ' + toolName);
 
     const toolRequest = {
       jsonrpc: '2.0',
@@ -291,10 +292,10 @@ class MCPClient extends EventEmitter {
 
     try {
       const result = await this.sendRequest(toolRequest);
-      console.log(`[MCPClient] Tool ${toolName} completed successfully`);
+      getLogger().info('Tool ' + toolName + ' completed successfully');
       return result;
     } catch (error) {
-      console.error(`❌ [MCPClient] Tool ${toolName} failed:`, error.message);
+      getLogger().error('Tool ' + toolName + ' failed: ' + error.message);
       throw error;
     }
   }
@@ -311,7 +312,7 @@ class MCPClient extends EventEmitter {
       throw new Error(`Resource '${uri}' not available. Available resources: ${Array.from(this.availableResources.keys()).join(', ')}`);
     }
 
-    console.log(`📄 [MCPClient] Reading resource: ${uri}`);
+    getLogger().debug('Reading resource: ' + uri);
 
     const resourceRequest = {
       jsonrpc: '2.0',
@@ -324,10 +325,10 @@ class MCPClient extends EventEmitter {
 
     try {
       const result = await this.sendRequest(resourceRequest);
-      console.log(`[MCPClient] Resource ${uri} read successfully`);
+      getLogger().info('Resource ' + uri + ' read successfully');
       return result;
     } catch (error) {
-      console.error(`❌ [MCPClient] Resource ${uri} read failed:`, error.message);
+      getLogger().error('Resource ' + uri + ' read failed: ' + error.message);
       throw error;
     }
   }
@@ -344,7 +345,7 @@ class MCPClient extends EventEmitter {
       throw new Error(`Prompt '${promptName}' not available. Available prompts: ${Array.from(this.availablePrompts.keys()).join(', ')}`);
     }
 
-    console.log(`💬 [MCPClient] Getting prompt: ${promptName}`);
+    getLogger().debug('Getting prompt: ' + promptName);
 
     const promptRequest = {
       jsonrpc: '2.0',
@@ -358,10 +359,10 @@ class MCPClient extends EventEmitter {
 
     try {
       const result = await this.sendRequest(promptRequest);
-      console.log(`[MCPClient] Prompt ${promptName} retrieved successfully`);
+      getLogger().info('Prompt ' + promptName + ' retrieved successfully');
       return result;
     } catch (error) {
-      console.error(`❌ [MCPClient] Prompt ${promptName} retrieval failed:`, error.message);
+      getLogger().error('Prompt ' + promptName + ' retrieval failed: ' + error.message);
       throw error;
     }
   }
@@ -389,10 +390,10 @@ class MCPClient extends EventEmitter {
 
     try {
       await this.sendRequest(pingRequest);
-      console.log(`🏓 [MCPClient] Ping successful`);
+      getLogger().info('Ping successful');
       return true;
     } catch (error) {
-      console.error(`🏓 [MCPClient] Ping failed:`, error.message);
+      getLogger().warn('Ping failed: ' + error.message);
       return false;
     }
   }
@@ -418,7 +419,7 @@ class MCPClient extends EventEmitter {
   async handleConnectionError(error) {
     this.isInitialized = false;
 
-    console.error(`💥 [MCPClient] Connection error: ${error.message}`);
+    getLogger().error('Connection error: ' + error.message);
     this.emit('error', { error: error.message });
 
     // Attempt reconnection
@@ -426,17 +427,17 @@ class MCPClient extends EventEmitter {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
       
-      console.log(`[MCPClient] Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms...`);
+      getLogger().info('Attempting reconnection ' + this.reconnectAttempts + '/' + this.maxReconnectAttempts + ' in ' + delay + 'ms...');
       
       setTimeout(async () => {
         try {
           await this.initialize();
         } catch (reconnectError) {
-          console.error(`❌ [MCPClient] Reconnection attempt ${this.reconnectAttempts} failed:`, reconnectError.message);
+          getLogger().error('Reconnection attempt ' + this.reconnectAttempts + ' failed: ' + reconnectError.message);
         }
       }, delay);
     } else {
-      console.error(`❌ [MCPClient] Max reconnection attempts reached. Connection abandoned.`);
+      getLogger().error('Max reconnection attempts reached. Connection abandoned.');
       this.emit('connectionFailed');
     }
   }
@@ -445,7 +446,7 @@ class MCPClient extends EventEmitter {
    * Graceful shutdown
    */
   async shutdown() {
-    console.log('[MCPClient] Shutting down...');
+    getLogger().info('Shutting down...');
     
     // Cancel and abort all pending requests
     for (const [requestId, pendingRequest] of this.pendingRequests.entries()) {
@@ -466,7 +467,7 @@ class MCPClient extends EventEmitter {
     this.availableResources.clear();
     this.availablePrompts.clear();
 
-    console.log('[MCPClient] Shutdown complete');
+    getLogger().info('Shutdown complete');
     this.emit('shutdown');
   }
 

@@ -4,8 +4,14 @@ const axios = require('axios');
 const path = require('path');
 require('dotenv').config();
 
+// Import logger
+const { initializeLogger, getLogger } = require('./logger');
+
+// Initialize logger
+initializeLogger('chatbot-host');
+
 // Import i18n module
-const { changeLanguage, t, getAvailableLanguages, getCurrentLanguage, loadFrontendTranslations } = require('./i18n');
+const { changeLanguage, t, getAvailableLanguages, loadFrontendTranslations } = require('./i18n');
 
 // Import MCP components
 const { MCPClient } = require('./mcp-client');
@@ -16,7 +22,7 @@ const PORT = process.env.CHATBOT_HOST_PORT || 3002;
 
 // Configuration
 const COORDINATOR_URL = process.env.COORDINATOR_URL || 'http://mcp-gateway:3001';
-console.log('[ChatbotHost] Coordinator URL:', COORDINATOR_URL);
+getLogger().info('Coordinator URL: ' + COORDINATOR_URL);
 
 // Static user identity for this demo
 const STATIC_USER_IDENTITY = {
@@ -49,19 +55,19 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // Initialize MCP client on startup
 (async () => {
     try {
-        console.log('�� [ChatbotHost] Starting server...');
+        getLogger().info('Starting server...');
         await mcpClient.initialize();
-        console.log('[ChatbotHost] MCP Client initialized successfully');
-        
+        getLogger().info('MCP Client initialized successfully');
+
         // Log available capabilities
         const capabilities = mcpClient.getClientCapabilities();
-        
-        console.log('[ChatbotHost] Available tools: ' + capabilities.availableTools.length);
-        console.log('[ChatbotHost] Available resources: ' + capabilities.availableResources.length);
-        console.log('[ChatbotHost] Available prompts: ' + capabilities.availablePrompts.length);
-        
+
+        getLogger().info('Available tools: ' + capabilities.availableTools.length);
+        getLogger().info('Available resources: ' + capabilities.availableResources.length);
+        getLogger().info('Available prompts: ' + capabilities.availablePrompts.length);
+
     } catch (error) {
-        console.error('❌ [ChatbotHost] Failed to initialize MCP Client:', error);
+        getLogger().error('Failed to initialize MCP Client: ' + error.message);
     }
 })();
 
@@ -74,13 +80,13 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
     const mcpStatus = mcpClient.isInitialized ? 'connected' : 'disconnected';
     const overallStatus = mcpClient.isInitialized ? 'ok' : 'degraded';
-    
+
     // Use language from header or default to English
     const requestLanguage = req.headers['x-language'] || 'en';
     changeLanguage(requestLanguage);
-    
-    res.json({ 
-        status: overallStatus, 
+
+    res.json({
+        status: overallStatus,
         service: 'chatbot-host',
         timestamp: new Date().toISOString(),
         mcpStatus: mcpStatus,
@@ -92,13 +98,13 @@ app.get('/health', (req, res) => {
 // Translations endpoint
 app.get('/api/translations/:language', (req, res) => {
     const { language } = req.params;
-    
+
     try {
         const translations = loadFrontendTranslations(language);
         res.json(translations);
     } catch (error) {
-        console.error('❌ [ChatbotHost] Error loading translations for', language, ':', error);
-        res.status(404).json({ 
+        getLogger().error('Error loading translations for ' + language + ': ' + error.message);
+        res.status(404).json({
             error: 'Translation not found',
             language: language,
             message: error.message
@@ -110,7 +116,7 @@ app.get('/api/translations/:language', (req, res) => {
 app.get('/api/languages', (req, res) => {
     try {
         const availableLanguages = getAvailableLanguages();
-        
+
         // Create a more detailed response with language metadata
         const languages = availableLanguages.map(lang => {
             const translations = loadFrontendTranslations(lang);
@@ -120,15 +126,15 @@ app.get('/api/languages', (req, res) => {
                 nativeName: translations.language?.nativeName || lang.toUpperCase()
             };
         });
-        
+
         res.json({
             languages: languages,
             defaultLanguage: 'en',
             totalLanguages: languages.length
         });
     } catch (error) {
-        console.error('❌ [ChatbotHost] Error loading available languages:', error);
-        res.status(500).json({ 
+        getLogger().error('Error loading available languages: ' + error.message);
+        res.status(500).json({
             error: 'Failed to load available languages',
             message: error.message
         });
@@ -138,38 +144,38 @@ app.get('/api/languages', (req, res) => {
 // Language change notification endpoint
 app.post('/api/language', (req, res) => {
     const { language } = req.body;
-    
+
     if (!language) {
-        return res.status(400).json({ 
+        return res.status(400).json({
             error: 'Language is required',
             message: 'Please provide a language code in the request body'
         });
     }
-    
+
     try {
         // Validate that the language is available
         const availableLanguages = getAvailableLanguages();
         if (!availableLanguages.includes(language)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Invalid language',
                 language: language,
                 availableLanguages: availableLanguages
             });
         }
-        
+
         // Change the backend language
         changeLanguage(language);
-        
-        console.log(`[ChatbotHost] Language changed to: ${language}`);
-        
-        res.json({ 
+
+        getLogger().info('Language changed to: ' + language);
+
+        res.json({
             success: true,
             language: language,
             message: `Language successfully changed to ${language}`
         });
     } catch (error) {
-        console.error('❌ [ChatbotHost] Error changing language:', error);
-        res.status(500).json({ 
+        getLogger().error('Error changing language: ' + error.message);
+        res.status(500).json({
             error: 'Failed to change language',
             message: error.message
         });
@@ -189,7 +195,7 @@ app.post('/api/process-prompt', async (req, res) => {
     try {
         // Ensure MCP Client is initialized
         if (!mcpClient.isInitialized) {
-            console.log('[ChatbotHost] MCP Client not initialized, attempting initialization...');
+            getLogger().info('MCP Client not initialized, attempting initialization...');
             await mcpClient.initialize();
         }
 
@@ -204,7 +210,7 @@ app.post('/api/process-prompt', async (req, res) => {
 
         // Get the latest user message
         const userMessage = messages[messages.length - 1];
-        
+
         // Set SSE headers - these force Chrome to NOT buffer
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
@@ -214,25 +220,25 @@ app.post('/api/process-prompt', async (req, res) => {
 
         // Send initial thinking message
         res.write('data: ' + JSON.stringify({ type: 'thinking', message: 'Analyzing your request...' }) + '\n\n');
-        
+
         const COORDINATOR_URL = process.env.COORDINATOR_URL || 'http://mcp-gateway:3001';
 
         try {
             res.write('data: ' + JSON.stringify({ type: 'thinking', message: 'Connecting to Coordinator...' }) + '\n\n');
-            
+
             // Create a queue for thinking messages
             const messageQueue = [];
             let isProcessing = false;
-            
+
             const processQueue = async () => {
                 if (isProcessing || messageQueue.length === 0) return;
-                
+
                 isProcessing = true;
                 while (messageQueue.length > 0) {
                     const message = messageQueue.shift();
                     const eventData = JSON.stringify({ type: 'thinking', message: message });
                     res.write('data: ' + eventData + '\n\n');
-                    
+
                     // Small delay to ensure browser processes the chunk
                     await new Promise(resolve => setTimeout(resolve, 5));
                 }
@@ -289,11 +295,11 @@ app.post('/api/process-prompt', async (req, res) => {
                                     }
                                 }
                             } catch (e) {
-                                console.warn('⚠️ [ChatbotHost] Error parsing streamed response:', e);
+                                getLogger().warn('Error parsing streamed response: ' + e.message);
                             }
                         }
                     });
-                    
+
                     await processQueue();
                 });
 
@@ -318,17 +324,17 @@ app.post('/api/process-prompt', async (req, res) => {
                     sessionId: session.sessionId,
                     source: 'mcp-gateway'
                 };
-                
+
                 // Include token metadata if available
                 if (tokenMetadata) {
                     finalResponse.metadata = tokenMetadata;
                 }
-                
+
                 res.write('data: ' + JSON.stringify(finalResponse) + '\n\n');
             }
 
         } catch (error) {
-            console.error('❌ [ChatbotHost] Error processing query:', error.message);
+            getLogger().error('Error processing query: ' + error.message);
             res.write('data: ' + JSON.stringify({
                 type: 'error',
                 error: 'Failed to process query',
@@ -339,8 +345,8 @@ app.post('/api/process-prompt', async (req, res) => {
         res.write('data: [DONE]\n\n');
         res.end();
 
-        } catch (error) {
-        console.error('❌ [ChatbotHost] Error in SSE endpoint:', error);
+    } catch (error) {
+        getLogger().error('Error in SSE endpoint: ' + error.message);
         res.status(500).json({ error: 'Internal server error', message: error.message });
     }
 });
@@ -349,39 +355,39 @@ app.post('/api/process-prompt', async (req, res) => {
 app.post('/api/clear-session', (req, res) => {
     try {
         const userId = req.headers['x-user-id'] || 'anonymous-user';
-        
+
         // Get the user's session ID
         const sessionId = sessionManager.getSessionIdForUser(userId);
-        
+
         if (sessionId) {
             // Terminate the session, which will remove it from the sessions map
             sessionManager.terminateSession(sessionId, 'user_refresh');
-            console.log(`🧹 [ChatbotHost] Session cleared for user ${userId}`);
+            getLogger().info('Session cleared for user ' + userId);
             res.json({ success: true, message: 'Session cleared successfully' });
         } else {
             // No session to clear
             res.json({ success: true, message: 'No session to clear' });
         }
     } catch (error) {
-        console.error('❌ [ChatbotHost] Error clearing session:', error);
+        getLogger().error('Error clearing session: ' + error.message);
         res.status(500).json({ error: 'Failed to clear session', message: error.message });
     }
 });
 
 // Start server
 app.listen(PORT, () => {
-    console.log('[ChatbotHost] Server running on http://localhost:' + PORT);
+    getLogger().info('Server running on http://localhost:' + PORT);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    console.log('📴 [ChatbotHost] Received SIGTERM, shutting down gracefully...');
+    getLogger().info('Received SIGTERM, shutting down gracefully...');
     sessionManager.cleanup();
     process.exit(0);
 });
 
 process.on('SIGINT', () => {
-    console.log('📴 [ChatbotHost] Received SIGINT, shutting down gracefully...');
+    getLogger().info('Received SIGINT, shutting down gracefully...');
     sessionManager.cleanup();
     process.exit(0);
 });

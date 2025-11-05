@@ -1,4 +1,5 @@
 const { EventEmitter } = require('events');
+const { getLogger } = require('./logger');
 
 /**
  * Session Manager for MCP Client
@@ -17,7 +18,7 @@ class SessionManager extends EventEmitter {
     // Start cleanup timer
     this.startCleanupTimer();
     
-    console.log('[SessionManager] Initialized');
+    getLogger().info('SessionManager Initialized');
   }
 
   /**
@@ -32,7 +33,7 @@ class SessionManager extends EventEmitter {
       // Update last activity
       session.lastActivity = Date.now();
       
-      console.log(`[SessionManager] Retrieved existing session for user ${userId}: ${existingSessionId}`);
+      getLogger().debug('Retrieved existing session for user ' + userId + ': ' + existingSessionId);
       return session;
     }
 
@@ -58,7 +59,7 @@ class SessionManager extends EventEmitter {
     // Enforce session limits per user
     this.enforceSessionLimits(userId);
 
-    console.log(`✨ [SessionManager] Created new session for user ${userId}: ${sessionId}`);
+    getLogger().info('Created new session for user ' + userId + ': ' + sessionId);
     this.emit('sessionCreated', { sessionId, userId });
 
     return session;
@@ -88,7 +89,7 @@ class SessionManager extends EventEmitter {
   updateSessionContext(sessionId, contextUpdates) {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      console.warn(`⚠️ [SessionManager] Attempt to update non-existent session: ${sessionId}`);
+      getLogger().warn('Attempt to update non-existent session: ' + sessionId);
       return false;
     }
 
@@ -101,7 +102,7 @@ class SessionManager extends EventEmitter {
 
     session.lastActivity = Date.now();
     
-    console.log(`[SessionManager] Updated context for session ${sessionId}`);
+    getLogger().debug('Updated context for session ' + sessionId);
     this.emit('sessionUpdated', { sessionId, updates: contextUpdates });
     
     return true;
@@ -247,7 +248,7 @@ class SessionManager extends EventEmitter {
     // Remove session
     this.sessions.delete(sessionId);
 
-    console.log(`🗑️ [SessionManager] Terminated session ${sessionId} (reason: ${reason})`);
+    getLogger().info('Terminated session ' + sessionId + ' (reason: ' + reason + ')');
     this.emit('sessionTerminated', { sessionId, userId: session.userId, reason });
 
     return true;
@@ -273,7 +274,7 @@ class SessionManager extends EventEmitter {
     });
 
     if (expiredSessions.length > 0) {
-      console.log(`🧹 [SessionManager] Cleaned up ${expiredSessions.length} expired sessions`);
+      getLogger().info('Cleaned up ' + expiredSessions.length + ' expired sessions');
     }
 
     return expiredSessions.length;
@@ -298,7 +299,7 @@ class SessionManager extends EventEmitter {
     }
 
     if (terminatedCount > 0) {
-      console.log(`[SessionManager] Enforced session limit for user ${userId}: terminated ${terminatedCount} old session(s)`);
+      getLogger().info('Enforced session limit for user ' + userId + ': terminated ' + terminatedCount + ' old session(s)');
       this.emit('sessionLimitEnforced', { 
         userId, 
         terminatedCount, 
@@ -318,7 +319,7 @@ class SessionManager extends EventEmitter {
       this.cleanupExpiredSessions();
     }, this.cleanupInterval);
 
-    console.log(`[SessionManager] Cleanup timer started (${this.cleanupInterval}ms interval)`);
+    getLogger().info('Cleanup timer started (' + this.cleanupInterval + 'ms interval)');
   }
 
   /**
@@ -362,7 +363,7 @@ class SessionManager extends EventEmitter {
    * Shutdown session manager
    */
   shutdown() {
-    console.log('🔚 [SessionManager] Shutting down...');
+    getLogger().info('Shutting down...');
     
     // Terminate all active sessions
     const sessionIds = Array.from(this.sessions.keys());
@@ -377,7 +378,7 @@ class SessionManager extends EventEmitter {
     // Remove all event listeners to prevent memory leaks
     this.removeAllListeners();
 
-    console.log('[SessionManager] Shutdown complete');
+    getLogger().info('Shutdown complete');
   }
 }
 

@@ -2,6 +2,7 @@ const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
 const path = require('path');
 const fs = require('fs');
+const { getLogger } = require('./logger');
 
 /**
  * Auto-detect available languages from locales directory
@@ -22,14 +23,14 @@ function getAvailableLanguagesFromFs() {
             })
             .sort();
     } catch (error) {
-        console.error('Error reading locales directory:', error);
+        getLogger().error('Error reading locales directory: ' + error.message);
         return ['en']; // fallback
     }
 }
 
 // Initialize i18next with promise-based approach
 const initI18n = async () => {
-  console.log('Initializing i18next with available languages:', getAvailableLanguagesFromFs());
+  getLogger().info('Initializing i18next with available languages: ' + getAvailableLanguagesFromFs().join(', '));
   
   return i18next
     .use(Backend)
@@ -61,10 +62,10 @@ let i18nInitialized = false;
 initI18n()
   .then(() => {
     i18nInitialized = true;
-    console.log('i18next initialized successfully with languages:', Object.keys(i18next.store.data));
+    getLogger().info('i18next initialized successfully with languages: ' + Object.keys(i18next.store.data).join(', '));
   })
   .catch((error) => {
-    console.error('❌ Failed to initialize i18next:', error);
+    getLogger().error('Failed to initialize i18next: ' + error.message);
     i18nInitialized = false;
   });
 
@@ -73,6 +74,11 @@ initI18n()
  * @param {string} language - The language code (e.g., 'en', 'es')
  */
 function changeLanguage(language) {
+  // Only change language if i18next is initialized
+  if (!i18nInitialized || !i18next.isInitialized) {
+    getLogger().warn('i18next not yet initialized, cannot change language to: ' + language);
+    return Promise.resolve();
+  }
   return i18next.changeLanguage(language);
 }
 
@@ -86,7 +92,7 @@ function t(key, options = null) {
   try {
     // Check if i18n is initialized
     if (!i18nInitialized || !i18next.isInitialized) {
-      console.warn(`⚠️ i18next not fully initialized, falling back to key: ${key}`);
+      getLogger().warn('i18next not fully initialized, falling back to key: ' + key);
       return key;
     }
     
@@ -107,7 +113,7 @@ function t(key, options = null) {
     if (targetLanguage && targetLanguage !== i18next.language) {
       // Ensure the language is available
       if (!i18next.hasResourceBundle(targetLanguage, 'translation')) {
-        console.warn(`Language '${targetLanguage}' not available, falling back to current language`);
+        getLogger().warn('Language ' + targetLanguage + ' not available, falling back to current language');
         return i18next.t(key, interpolationOptions);
       }
       return i18next.getFixedT(targetLanguage)(key, interpolationOptions);
@@ -115,7 +121,7 @@ function t(key, options = null) {
     
     return i18next.t(key, interpolationOptions);
   } catch (error) {
-    console.error(`Translation error for key '${key}':`, error);
+    getLogger().error('Translation error for key ' + key + ': ' + error.message);
     // Return the key itself as fallback
     return key;
   }
@@ -151,7 +157,7 @@ function loadFrontendTranslations(language) {
         }
         throw new Error(`Frontend translations not found for language: ${language}`);
     } catch (error) {
-        console.error(`Error loading frontend translations for ${language}:`, error);
+        getLogger().error('Error loading frontend translations for ' + language + ': ' + error.message);
         
         // Fallback to English if available
         if (language !== 'en') {
