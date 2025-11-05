@@ -378,6 +378,9 @@ h1 {
 }
 h2 {
   font-size: var(--font-size-3xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
 }
 h3 {
   font-size: var(--font-size-2xl);
