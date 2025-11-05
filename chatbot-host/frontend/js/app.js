@@ -280,9 +280,12 @@ class ChatBotApp {
         try {
             this.isProcessing = true;
 
+            // Store the phase when the message was sent (for later use in response)
+            const messagePhase = this.currentPhase;
+
             // Add user message to history and display
             this.addMessageToHistory('user', userMessage);
-            this.uiManager?.displayMessage('user', userMessage, this.currentPhase);
+            this.uiManager?.displayMessage('user', userMessage, messagePhase);
 
             // Clear input
             if (chatInput) chatInput.value = '';
@@ -346,8 +349,8 @@ class ChatBotApp {
                                 contentToDisplay = contentToDisplay.text;
                             }
                             
-                            // Display with thinking chain if available
-                            this.uiManager?.displayBotMessageWithThinking(contentToDisplay, this.currentPhase);
+                            // Display with thinking chain if available, using the phase when message was sent
+                            this.uiManager?.displayBotMessageWithThinking(contentToDisplay, messagePhase);
                         }
                     }
                 }
