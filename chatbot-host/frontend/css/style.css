@@ -1306,10 +1306,37 @@ body {
   margin-bottom: var(--space-32);
 }
 
+.quick-questions {
+  height: 100%;
+}
+
+.info-panel .card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.info-panel .card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.info-panel .card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .example-questions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--space-16);
+  overflow-y: auto;
+  padding-right: var(--space-8);
 }
 
 .example-question {
@@ -2042,7 +2069,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-20);
-  overflow-y: auto;
+  overflow-y: hidden;
   padding-right: var(--space-12);
   height: 100%;
   min-height: 0;
