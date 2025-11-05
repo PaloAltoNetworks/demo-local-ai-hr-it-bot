@@ -784,8 +784,34 @@ select.form-control {
 /* Variables supplémentaires */
 :root {
   --header-height: 110px;
-  --koala-primary: var(--color-primary);
-  --koala-secondary: var(--color-secondary);
+  --otter-primary: var(--color-primary);
+  --otter-secondary: var(--color-secondary);
+  
+  /* Phase color system - Centralized */
+  --phase-color: var(--otter-primary);
+  --phase-color-rgb: var(--color-teal-500-rgb);
+  --phase-border-color: var(--phase-color);
+  --phase-bg-opacity: 0.1;
+  --phase-transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  
+  /* Primary color RGB for opacity control */
+  --color-primary-rgb: 33, 128, 141;
+}
+
+/* Phase-specific color overrides */
+body.phase1-active {
+  --phase-color: #0F9347;
+  --phase-color-rgb: 15, 147, 71;
+}
+
+body.phase2-active {
+  --phase-color: #AA251B;
+  --phase-color-rgb: 170, 37, 27;
+}
+
+body.phase3-active {
+  --phase-color: #0196B3;
+  --phase-color-rgb: 1, 150, 179;
 }
 
 /* Layout principal */
@@ -819,7 +845,7 @@ body {
   gap: var(--space-12);
   font-size: var(--font-size-8xl);
   font-weight: var(--font-weight-bold);
-  color: var(--koala-primary);
+  color: var(--phase-color);
 }
 
 .header-brand i {
@@ -867,24 +893,24 @@ body {
   vertical-align: middle;
   font-size: inherit;
   line-height: 1;
-  color: var(--koala-primary);
+  color: var(--phase-color);
 }
 
 h2 .material-symbols-outlined {
   margin-right: var(--space-8);
   vertical-align: middle;
-  color: var(--koala-primary);
+  color: var(--phase-color);
 }
 
 .message-avatar .material-symbols-outlined,
 .header-brand .material-symbols-outlined {
   font-size: 32px;
-  color: var(--koala-primary);
+  color: var(--phase-color);
 }
 
 .user-menu-avatar .material-symbols-outlined {
   font-size: 32px;
-  color: var(--koala-primary);
+  color: var(--phase-color);
 }
 
 .send-button .material-symbols-outlined {
@@ -955,14 +981,14 @@ h2 .material-symbols-outlined {
   width: 32px;
   height: 32px;
   margin-right: var(--space-8);
-  color: var(--koala-primary);
+  color: var(--phase-color);
 }
 
 /* Message avatar - Use white */
 .message-avatar .otter-icon {
   width: 32px;
   height: 32px;
-  color: white;
+  color: var(--phase-color);
 }
 
 /* User menu avatar - Use text color (dark) */
@@ -1150,12 +1176,12 @@ h2 .material-symbols-outlined {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid var(--koala-primary);
+  border: 3px solid var(--phase-color);
 }
 
 .user-avatar i {
   font-size: var(--font-size-4xl);
-  color: var(--koala-primary);
+  color: var(--phase-color);
 }
 
 .user-details h3 {
@@ -1199,13 +1225,13 @@ h2 .material-symbols-outlined {
 
 .example-question:hover {
   background: var(--color-bg-1);
-  border-color: var(--koala-primary);
+  border-color: var(--phase-color);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
 .example-question i {
-  color: var(--koala-primary);
+  color: var(--phase-color);
   font-size: var(--font-size-lg);
   margin-right: var(--space-8);
   flex-shrink: 0;
@@ -1242,7 +1268,7 @@ h2 .material-symbols-outlined {
 }
 
 .example-question.action-question i {
-  color: var(--koala-primary);
+  color: var(--phase-color);
 }
 
 /* Subgroup styles */
@@ -1271,7 +1297,7 @@ h2 .material-symbols-outlined {
 
 .subgroup-header h3 i {
   font-size: var(--font-size-lg);
-  color: var(--koala-primary);
+  color: var(--phase-color);
 }
 
 .subgroup-questions {
@@ -1286,21 +1312,6 @@ h2 .material-symbols-outlined {
   margin-bottom: var(--space-32);
 }
 
-#phaseInfo {
-  transition: all var(--duration-normal) var(--ease-standard);
-}
-
-#phaseInfo[data-phase="phase1"] {
-  border-left: 4px solid #10B981;
-}
-
-#phaseInfo[data-phase="phase2"] {
-  border-left: 4px solid #EF4444;
-}
-
-#phaseInfo[data-phase="phase3"] {
-  border-left: 4px solid #3B82F6;
-}
 
 .phase-features {
   display: flex;
@@ -1414,7 +1425,7 @@ h2 .material-symbols-outlined {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--koala-primary);
+  background: var(--phase-color);
   animation: thinkingDotPulse 1.4s ease-in-out infinite both;
 }
 
@@ -1442,12 +1453,7 @@ h2 .material-symbols-outlined {
   flex-shrink: 0;
 }
 
-.bot-message .message-avatar, .assistant-message .message-avatar {
-  background: var(--koala-primary);
-  color: var(--color-btn-primary-text);
-}
-
-.user-message .message-avatar {
+.bot-message .message-avatar, .assistant-message .message-avatar, .user-message .message-avatar {
   background: var(--color-secondary);
   color: var(--color-text);
 }
@@ -1470,7 +1476,7 @@ h2 .material-symbols-outlined {
 }
 
 .user-message .message-text {
-  background: var(--koala-primary);
+  background: var(--phase-color);
   color: var(--color-btn-primary-text);
 }
 
@@ -1491,7 +1497,7 @@ h2 .material-symbols-outlined {
   padding: var(--space-12);
   background: var(--color-bg-4);
   border-radius: var(--radius-base);
-  border-left: 4px solid var(--koala-primary);
+  border-left: 4px solid var(--phase-color);
   font-size: var(--font-size-sm);
 }
 
@@ -1701,14 +1707,14 @@ h2 .material-symbols-outlined {
 }
 
 .chat-input:focus {
-  border-color: var(--koala-primary);
+  border-color: var(--phase-color);
 }
 
 .send-button {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: var(--koala-primary);
+  background: var(--phase-color);
   color: var(--color-btn-primary-text);
   border: none;
   cursor: pointer;
@@ -1833,19 +1839,7 @@ h2 .material-symbols-outlined {
   box-shadow: 0 4px 12px rgba(50, 184, 198, 0.2);
 }
 
-/* États de phase spéciaux */
-.phase1-active {
-  --koala-primary: #10B981;
-}
-
-.phase2-active {
-  --koala-primary: #EF4444;
-}
-
-.phase3-active {
-  --koala-primary: #3B82F6;
-}
-
+/* States and phase styling */
 .phase-btn {
   display: flex;
   flex-direction: column;
@@ -1866,7 +1860,7 @@ h2 .material-symbols-outlined {
 }
 
 .phase-btn.active {
-  background: var(--koala-primary) !important;
+  background: var(--phase-color) !important;
   color: var(--color-btn-primary-text);
   transform: scale(1.02);
 }
@@ -1887,7 +1881,7 @@ h2 .material-symbols-outlined {
 
 .phase-btn.active .phase-number {
   background: var(--color-btn-primary-text);
-  color: var(--koala-primary);
+  color: var(--phase-color);
   border-color: var(--color-btn-primary-text);
 }
 
@@ -1911,26 +1905,11 @@ h2 .material-symbols-outlined {
   letter-spacing: 0.5px;
 }
 
-.status-safe {
-  background: var(--alert-green);
-  color: white;
-}
-
-.status-danger {
-  background: var(--alert-red);
-  color: white;
-}
-
-.status-protected {
-  background: var(--alert-blue);
-  color: white;
-}
-
 .demo-layout {
   display: grid;
   grid-template-columns: 380px 1fr;
   gap: var(--space-32);
-  height: calc(100vh - var(--header-height) - var(--footer-height) - 120px);
+  height: calc(100vh - var(--header-height) - 120px);
 }
 
 /* Panneau d'informations */
@@ -2080,49 +2059,10 @@ h2 .material-symbols-outlined {
   }
 }
 
-/* Couleurs spécifiques par phase pour les messages */
-.message.phase1-message.user-message .message-text {
-  background: #10B981; /* Vert pour phase 1 */
-}
-
-.message.phase1-message.bot-message .message-avatar, 
-.message.phase1-message.assistant-message .message-avatar {
-  background: #10B981; /* Vert pour phase 1 */
-}
-
-.message.phase1-message.bot-message .message-text, 
-.message.phase1-message.assistant-message .message-text {
-  border-color: #10B981; /* Bordure verte pour phase 1 */
-  border-width: 2px;
-}
-
-.message.phase2-message.user-message .message-text {
-  background: #EF4444; /* Rouge pour phase 2 */
-}
-
-.message.phase2-message.bot-message .message-avatar, 
-.message.phase2-message.assistant-message .message-avatar {
-  background: #EF4444; /* Rouge pour phase 2 */
-}
-
-.message.phase2-message.bot-message .message-text, 
-.message.phase2-message.assistant-message .message-text {
-  border-color: #EF4444; /* Bordure rouge pour phase 2 */
-  border-width: 2px;
-}
-
-.message.phase3-message.user-message .message-text {
-  background: #3B82F6; /* Bleu pour phase 3 */
-}
-
-.message.phase3-message.bot-message .message-avatar, 
-.message.phase3-message.assistant-message .message-avatar {
-  background: #3B82F6; /* Bleu pour phase 3 */
-}
-
-.message.phase3-message.bot-message .message-text, 
-.message.phase3-message.assistant-message .message-text {
-  border-color: #3B82F6; /* Bordure bleue pour phase 3 */
+/* Message phase-specific styling - Use phase color from body */
+.message.bot-message .message-text, 
+.message.assistant-message .message-text {
+  border-color: var(--phase-color);
   border-width: 2px;
 }
 
@@ -2146,15 +2086,15 @@ h2 .material-symbols-outlined {
 }
 
 .lang-select:hover {
-  background: var(--color-bg-hover);
   border-color: var(--color-primary);
+  background: var(--color-bg-1);
 }
 
 .lang-select:focus {
   outline: none;
-  background: var(--color-bg-hover);
+  background: var(--color-bg-1);
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.1);
+  box-shadow: 0 0 0 2px rgba(var(--color-teal-500-rgb), 0.1);
 }
 
 /* Loading indicator */
