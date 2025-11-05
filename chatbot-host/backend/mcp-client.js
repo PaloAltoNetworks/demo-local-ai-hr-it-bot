@@ -43,7 +43,7 @@ class MCPClient extends EventEmitter {
       return;
     }
 
-    console.log(`🔌 [MCPClient] Initializing MCP connection to: ${this.serverUrl}`);
+    console.log(`[MCPClient] Initializing MCP connection to: ${this.serverUrl}`);
     
     try {
       // Step 1: Send initialize request (JSON-RPC 2.0)
@@ -151,7 +151,7 @@ class MCPClient extends EventEmitter {
           console.error(`❌ [MCPClient] Request ${requestId} failed:`, jsonRpcResponse.error);
           reject(new Error(`JSON-RPC Error ${jsonRpcResponse.error.code}: ${jsonRpcResponse.error.message}`));
         } else {
-          console.log(`📥 [MCPClient] Request ${requestId} completed successfully`);
+          console.log(`[MCPClient] Request ${requestId} completed successfully`);
           resolve(jsonRpcResponse.result);
         }
         
@@ -175,7 +175,7 @@ class MCPClient extends EventEmitter {
    */
   async sendNotification(notification) {
     try {
-      console.log(`📢 [MCPClient] Sending notification: ${notification.method}`);
+      console.log(`[MCPClient] Sending notification: ${notification.method}`);
       
       await axios.post(this.serverUrl, notification, {
         headers: {
@@ -445,7 +445,7 @@ class MCPClient extends EventEmitter {
    * Graceful shutdown
    */
   async shutdown() {
-    console.log('🔌 [MCPClient] Shutting down...');
+    console.log('[MCPClient] Shutting down...');
     
     // Cancel and abort all pending requests
     for (const [requestId, pendingRequest] of this.pendingRequests.entries()) {

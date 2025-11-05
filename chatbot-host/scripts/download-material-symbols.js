@@ -95,7 +95,7 @@ const FONT_FILENAME = FONT_FAMILY.toLowerCase().replace(/\s+/g, '-');
 const FONT_FILE = path.join(FONTS_DIR, `${FONT_FILENAME}.woff2`);
 const CSS_FILE = path.join(CSS_DIR, 'material-symbols.css');
 
-console.log('📥 Downloading Material Symbols font from Google Fonts...\n');
+console.log('Downloading Material Symbols font from Google Fonts...\n');
 
 // Create fonts directory
 if (!fs.existsSync(FONTS_DIR)) {

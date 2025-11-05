@@ -77,7 +77,7 @@ class MCPServer {
     const { id, method, params } = jsonRpcRequest;
 
     try {
-      console.log(`📥 [MCPServer] Handling request: ${method} (ID: ${id})`);
+      console.log(`[MCPServer] Handling request: ${method} (ID: ${id})`);
 
       // Session validation for non-initialize requests
       if (method !== 'initialize' && sessionId && !this.validateSession(sessionId)) {
@@ -506,7 +506,7 @@ app.post('/', async (req, res) => {
 
     // Handle notification (no response expected)
     if (jsonRpcRequest.id === undefined) {
-      console.log(`📢 [MCPGateway] Notification: ${jsonRpcRequest.method}`);
+      console.log(`[MCPGateway] Notification: ${jsonRpcRequest.method}`);
       res.status(204).end();
       return;
     }

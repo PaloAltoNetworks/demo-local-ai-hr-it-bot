@@ -17,7 +17,7 @@ class SessionManager extends EventEmitter {
     // Start cleanup timer
     this.startCleanupTimer();
     
-    console.log('🗂️ [SessionManager] Initialized');
+    console.log('[SessionManager] Initialized');
   }
 
   /**
@@ -318,7 +318,7 @@ class SessionManager extends EventEmitter {
       this.cleanupExpiredSessions();
     }, this.cleanupInterval);
 
-    console.log(`🕒 [SessionManager] Cleanup timer started (${this.cleanupInterval}ms interval)`);
+    console.log(`[SessionManager] Cleanup timer started (${this.cleanupInterval}ms interval)`);
   }
 
   /**

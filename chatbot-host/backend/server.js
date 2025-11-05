@@ -56,9 +56,9 @@ app.use(express.static(path.join(__dirname, '../frontend')));
         // Log available capabilities
         const capabilities = mcpClient.getClientCapabilities();
         
-        console.log('📚 [ChatbotHost] Available tools: ' + capabilities.availableTools.length);
-        console.log('📁 [ChatbotHost] Available resources: ' + capabilities.availableResources.length);
-        console.log('💡 [ChatbotHost] Available prompts: ' + capabilities.availablePrompts.length);
+        console.log('[ChatbotHost] Available tools: ' + capabilities.availableTools.length);
+        console.log('[ChatbotHost] Available resources: ' + capabilities.availableResources.length);
+        console.log('[ChatbotHost] Available prompts: ' + capabilities.availablePrompts.length);
         
     } catch (error) {
         console.error('❌ [ChatbotHost] Failed to initialize MCP Client:', error);
@@ -189,7 +189,7 @@ app.post('/api/process-prompt', async (req, res) => {
     try {
         // Ensure MCP Client is initialized
         if (!mcpClient.isInitialized) {
-            console.log('🔌 [ChatbotHost] MCP Client not initialized, attempting initialization...');
+            console.log('[ChatbotHost] MCP Client not initialized, attempting initialization...');
             await mcpClient.initialize();
         }
 
