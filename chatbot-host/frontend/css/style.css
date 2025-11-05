@@ -852,28 +852,6 @@ select.form-control {
   font-display: block;
 }
 
-/* Material Symbols Outlined - Downloaded from Google Fonts
- * Using icon_names parameter to load only the icons we need
- * Reduces font size from 295KB (all icons) to ~5KB (our icons only)
- * The font is loaded locally from frontend/fonts/material-symbols-outlined.css
- */
-
-.material-symbols-outlined {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
-}
-
 /* Otter Icon Font Utility Class */
 .otter-icon::before {
   content: "\e900";
@@ -1103,7 +1081,7 @@ body {
 }
 
 .user-menu-trigger i,
-.user-menu-trigger .material-symbols-outlined {
+.user-menu-trigger .material-symbols {
   font-size: var(--font-size-2xl);
 }
 
@@ -1531,6 +1509,10 @@ body {
   font-size: var(--font-size-lg);
   transition: all var(--duration-fast) var(--ease-standard);
   flex-shrink: 0;
+}
+
+.send-button .material-symbols {
+  font-size: var(--font-size-8xl);
 }
 
 .send-button:hover {
@@ -2234,7 +2216,7 @@ body {
 }
 
 /* Material Icons spinning animation */
-.material-symbols-outlined.spinning {
+.material-symbols.spinning {
   animation: spin 1s linear infinite;
 }
 

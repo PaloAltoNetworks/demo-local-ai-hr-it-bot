@@ -73,7 +73,7 @@ export class QuestionsManager {
             return `<span class="${className}">${iconName}</span>`;
         }
         
-        return `<span class="material-symbols-outlined">${iconString}</span>`;
+        return `<span class="material-symbols">${iconString}</span>`;
     }
 
     /**

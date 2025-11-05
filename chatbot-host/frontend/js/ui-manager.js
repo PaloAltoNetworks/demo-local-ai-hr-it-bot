@@ -70,7 +70,7 @@ export class UIManager {
 
         messageDiv.innerHTML = `
             <div class="message-avatar">
-                <span class="material-symbols-outlined">${icon}</span>
+                <span class="material-symbols">${icon}</span>
             </div>
             <div class="message-content">
                 <div class="message-text">${displayContent}</div>
@@ -132,7 +132,7 @@ export class UIManager {
                 <div class="token-info">
                     <div class="token-info-row">
                         <span class="token-label" data-i18n="chat.totalTokens">
-                            <span class="material-symbols-outlined">memory</span> ${this.i18n.t('chat.totalTokens')}:
+                            <span class="material-symbols">memory</span> ${this.i18n.t('chat.totalTokens')}:
                         </span>
                         <span class="token-count">${totalTokens}</span>
                     </div>
@@ -165,7 +165,7 @@ export class UIManager {
             const thinkingId = `thinking-${Date.now()}`;
             messageHTML += `
                 <button class="thinking-toggle" data-thinking-id="${thinkingId}" title="View thinking chain">
-                    <span class="material-symbols-outlined">expand_more</span>
+                    <span class="material-symbols">expand_more</span>
                     <span class="thinking-toggle-text">${this.i18n.t('chat.viewThinking')}</span>
                 </button>
                 <div class="thinking-chain" id="${thinkingId}" style="display: none;">
@@ -220,23 +220,23 @@ export class UIManager {
      */
     getThinkingIcon(text) {
         if (text.includes('Analyzing') || text.includes('🔍')) {
-            return `<span class="material-symbols-outlined thinking-icon">search</span>`;
+            return `<span class="material-symbols thinking-icon">search</span>`;
         } else if (text.includes('Checking language') || text.includes('🌐')) {
-            return `<span class="material-symbols-outlined thinking-icon">public</span>`;
+            return `<span class="material-symbols thinking-icon">public</span>`;
         } else if (text.includes('Translated') || text.includes('🔄')) {
-            return `<span class="material-symbols-outlined thinking-icon">language</span>`;
+            return `<span class="material-symbols thinking-icon">language</span>`;
         } else if (text.includes('Determining') || text.includes('🎯')) {
-            return `<span class="material-symbols-outlined thinking-icon">center_focus_strong</span>`;
+            return `<span class="material-symbols thinking-icon">center_focus_strong</span>`;
         } else if (text.includes('Connecting') || text.includes('📡')) {
-            return `<span class="material-symbols-outlined thinking-icon">cloud_queue</span>`;
+            return `<span class="material-symbols thinking-icon">cloud_queue</span>`;
         } else if (text.includes('processing') || text.includes('⏳')) {
-            return `<span class="material-symbols-outlined thinking-icon spinning">settings</span>`;
+            return `<span class="material-symbols thinking-icon spinning">settings</span>`;
         } else if (text.includes('Response received') || text.includes('✅')) {
-            return `<span class="material-symbols-outlined thinking-icon success">check_circle</span>`;
+            return `<span class="material-symbols thinking-icon success">check_circle</span>`;
         } else if (text.includes('Error') || text.includes('❌')) {
-            return `<span class="material-symbols-outlined thinking-icon error">cancel</span>`;
+            return `<span class="material-symbols thinking-icon error">cancel</span>`;
         } else {
-            return `<span class="material-symbols-outlined thinking-icon">chat</span>`;
+            return `<span class="material-symbols thinking-icon">chat</span>`;
         }
     }
 
@@ -380,23 +380,23 @@ export class UIManager {
         
         // Add appropriate styling based on content
         if (cleanText.includes('Analyzing') || cleanText.includes('🔍')) {
-            return `<span class="material-symbols-outlined thinking-icon">search</span> ${cleanText}`;
+            return `<span class="material-symbols thinking-icon">search</span> ${cleanText}`;
         } else if (cleanText.includes('Checking language') || cleanText.includes('🌐')) {
-            return `<span class="material-symbols-outlined thinking-icon">public</span> ${cleanText}`;
+            return `<span class="material-symbols thinking-icon">public</span> ${cleanText}`;
         } else if (cleanText.includes('Translated') || cleanText.includes('🔄')) {
-            return `<span class="material-symbols-outlined thinking-icon">language</span> ${cleanText}`;
+            return `<span class="material-symbols thinking-icon">language</span> ${cleanText}`;
         } else if (cleanText.includes('Determining') || cleanText.includes('🎯')) {
-            return `<span class="material-symbols-outlined thinking-icon">center_focus_strong</span> ${cleanText}`;
+            return `<span class="material-symbols thinking-icon">center_focus_strong</span> ${cleanText}`;
         } else if (cleanText.includes('Connecting') || cleanText.includes('📡')) {
-            return `<span class="material-symbols-outlined thinking-icon">cloud_queue</span> ${cleanText}`;
+            return `<span class="material-symbols thinking-icon">cloud_queue</span> ${cleanText}`;
         } else if (cleanText.includes('processing') || cleanText.includes('⏳')) {
-            return `<span class="material-symbols-outlined thinking-icon spinning">settings</span> ${cleanText}`;
+            return `<span class="material-symbols thinking-icon spinning">settings</span> ${cleanText}`;
         } else if (cleanText.includes('Response received') || cleanText.includes('✅')) {
-            return `<span class="material-symbols-outlined thinking-icon success">check_circle</span> ${cleanText}`;
+            return `<span class="material-symbols thinking-icon success">check_circle</span> ${cleanText}`;
         } else if (cleanText.includes('Error') || cleanText.includes('❌')) {
-            return `<span class="material-symbols-outlined thinking-icon error">cancel</span> ${cleanText}`;
+            return `<span class="material-symbols thinking-icon error">cancel</span> ${cleanText}`;
         } else {
-            return `<span class="material-symbols-outlined thinking-icon">chat</span> ${cleanText}`;
+            return `<span class="material-symbols thinking-icon">chat</span> ${cleanText}`;
         }
     }
 
@@ -541,7 +541,7 @@ export class UIManager {
         
         notification.innerHTML = `
             <div class="notification__content">
-                <span class="material-symbols-outlined">${icon}</span>
+                <span class="material-symbols">${icon}</span>
                 <span>${message}</span>
             </div>
         `;

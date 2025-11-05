@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Otter - Enterprise HR/IT Assistant</title>
     <link rel="icon" type="image/svg+xml" href="./otter.svg">
-    <link rel="stylesheet" href="./css/material-symbols-outlined.css">
+    <link rel="stylesheet" href="./css/material-symbols.css">
     <link rel="stylesheet" href="./css/style.css">
 </head>
 
@@ -37,7 +37,7 @@
             <!-- User Menu -->
             <div class="user-menu-container">
                 <button class="user-menu-trigger" id="userMenuTrigger" title="User Menu">
-                    <span class="material-symbols-outlined">account_circle</span>
+                    <span class="material-symbols">account_circle</span>
                     <span class="user-menu-label" id="userMenuLabel">User</span>
                 </button>
 
@@ -46,7 +46,7 @@
                     <!-- Profile Section -->
                     <div class="user-menu-profile">
                         <div class="user-menu-avatar">
-                            <span class="material-symbols-outlined">account_circle</span>
+                            <span class="material-symbols">account_circle</span>
                         </div>
                         <div class="user-menu-info">
                             <p class="user-menu-name" id="userMenuName">Aurélien Delamarre</p>
@@ -72,7 +72,7 @@
 
                     <!-- Logout Button -->
                     <button class="user-menu-logout" id="userMenuLogout">
-                        <span class="material-symbols-outlined">logout</span>
+                        <span class="material-symbols">logout</span>
                         <span data-i18n="userMenu.logout">Logout</span>
                     </button>
                 </div>
@@ -89,9 +89,8 @@
                     <section class="quick-questions">
                         <div class="card">
                             <div class="card__header">
-                                <h2><span class="material-symbols-outlined">lightbulb</span> <span
-                                        data-i18n="questions.title">Example
-                                        Questions</span></h2>
+                                <h2><span class="material-symbols">lightbulb</span> <span
+                                        data-i18n="questions.title">Example Questions</span></h2>
                             </div>
                             <div class="card__body">
                                 <div id="questions-container" class="example-questions-grid">
@@ -107,12 +106,13 @@
                     <section class="chat-section">
                         <div class="card chat-container">
                             <div class="card__header">
-                                <h2><span class="material-symbols-outlined">chat</span> <span data-i18n="app.brand">The
-                                        Otter</span>
-                                    Assistant</h2>
+                                <h2>
+                                    <span class="material-symbols">chat</span>
+                                    <span data-i18n="app.brand">The Otter Assistant</span>
+                                </h2>
                                 <div class="chat-status">
                                     <span id="statusIndicator" class="status status--success">
-                                        <span id="statusIcon" class="material-symbols-outlined">check_circle</span>
+                                        <span id="statusIcon" class="material-symbols">check_circle</span>
                                         <span id="statusText" data-i18n="chat.online">Online</span>
                                     </span>
                                 </div>
@@ -137,7 +137,7 @@
                                     <input type="text" id="chatInput" class="chat-input" data-i18n="chat.placeholder"
                                         data-i18n-target="placeholder" maxlength="1000">
                                     <button id="sendMessage" class="send-button">
-                                        <span class="material-symbols-outlined">send</span>
+                                        <span class="material-symbols">send</span>
                                     </button>
                                 </div>
                             </div>

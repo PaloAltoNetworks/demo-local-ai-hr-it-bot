@@ -18,6 +18,21 @@ const fs = require('fs');
 const path = require('path');
 
 // ============================================================================
+// MATERIAL SYMBOLS FONT CONFIGURATION
+// ============================================================================
+
+// Font family to use: 'Material Symbols Outlined', 'Material Symbols Rounded', or 'Material Symbols Sharp'
+const FONT_FAMILY = 'Material Symbols Rounded';
+
+// Font axes configuration - variable font with ranges
+const FONT_CONFIG = {
+    opticalSize: '20..48',      // Optical size range (20dp to 48dp)
+    fontWeight: '300',     // Font weight range (100 thin to 700 bold)
+    fill: '1',               // Fill style range (0 = outlined, 1 = filled)
+    grade: '-50..200',          // Grade/thickness adjustments (-50 to 200)
+};
+
+// ============================================================================
 // MATERIAL SYMBOLS ICONS - Add or remove icons here, they will be auto-sorted
 // ============================================================================
 const ICONS = [
@@ -61,14 +76,24 @@ SORTED_ICONS.forEach((icon, idx) => {
 });
 console.log('=====================================\n');
 
+console.log(`⚙️  Font Configuration (${FONT_FAMILY}):`);
+console.log(`  - Optical Size: ${FONT_CONFIG.opticalSize}`);
+console.log(`  - Font Weight: ${FONT_CONFIG.fontWeight}`);
+console.log(`  - Fill: ${FONT_CONFIG.fill}`);
+console.log(`  - Grade: ${FONT_CONFIG.grade}\n`);
+
 // ============================================================================
 // END OF ICONS CONFIGURATION
 // ============================================================================
 
 const FONTS_DIR = path.join(__dirname, '../frontend/fonts');
 const CSS_DIR = path.join(__dirname, '../frontend/css');
-const FONT_FILE = path.join(FONTS_DIR, 'material-symbols-outlined.woff2');
-const CSS_FILE = path.join(CSS_DIR, 'material-symbols-outlined.css');
+
+// Generate font filename based on font family (lowercase, with hyphens)
+// CSS file is generic "material-symbols.css"
+const FONT_FILENAME = FONT_FAMILY.toLowerCase().replace(/\s+/g, '-');
+const FONT_FILE = path.join(FONTS_DIR, `${FONT_FILENAME}.woff2`);
+const CSS_FILE = path.join(CSS_DIR, 'material-symbols.css');
 
 console.log('📥 Downloading Material Symbols font from Google Fonts...\n');
 
@@ -83,11 +108,22 @@ if (!fs.existsSync(CSS_DIR)) {
 }
 
 // Step 1: Fetch the Google Fonts CSS
-const googleFontsUrl = `https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=${ICON_NAMES}&display=swap`;
+// Construct URL with variable font axes ranges
+const googleFontsUrl = `https://fonts.googleapis.com/css2?family=${FONT_FAMILY.replace(/\s+/g, '+')}:opsz,wght,FILL,GRAD@${FONT_CONFIG.opticalSize},${FONT_CONFIG.fontWeight},${FONT_CONFIG.fill},${FONT_CONFIG.grade}&icon_names=${ICON_NAMES}&display=swap`;
 
 console.log('Step 1: Fetching Google Fonts CSS...');
 
-https.get(googleFontsUrl, (res) => {
+console.log('\n📋 Generated URL:');
+console.log(googleFontsUrl);
+console.log();
+
+const options = {
+    headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+};
+
+https.get(googleFontsUrl, options, (res) => {
     let cssData = '';
 
     res.on('data', (chunk) => {
@@ -128,39 +164,22 @@ https.get(googleFontsUrl, (res) => {
                 const fileSize = (fs.statSync(FONT_FILE).size / 1024).toFixed(2);
                 console.log(`✓ Downloaded font (${fileSize} KB)\n`);
 
-                // Step 4: Generate local CSS file
+                // Step 4: Transform Google's CSS to use local font file
                 console.log('Step 3: Generating local CSS file...');
-                const localCss = `/* Material Symbols Outlined - Downloaded from Google Fonts
- * Generated: ${new Date().toISOString()}
- * 
- * This CSS file points to the locally cached WOFF2 font.
- * Serves the same icons as Google Fonts but from your own server.
- */
+                
+                // Replace all Google Fonts URLs with local file reference
+                // Use relative path since CSS is in /css/ and fonts are in /fonts/
+                let localCss = cssData.replace(
+                    /src:\s*url\([^)]+\)\s*format\('[^']+'\)/g,
+                    `src: url('../fonts/${FONT_FILENAME}.woff2') format('woff2')`
+                );
 
-@font-face {
-  font-family: 'Material Symbols Outlined';
-  font-style: normal;
-  font-weight: 100 700;
-  font-display: swap;
-  src: url('/fonts/material-symbols-outlined.woff2') format('woff2');
-}
-
-.material-symbols-outlined {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
-}
-`;
+                // Replace Google's specific font class names with generic .material-symbols
+                // This handles .material-symbols-rounded, .material-symbols-outlined, .material-symbols-sharp
+                localCss = localCss.replace(
+                    /\.(material-symbols-\w+)\s*\{/g,
+                    '.material-symbols {'
+                );
 
                 fs.writeFileSync(CSS_FILE, localCss);
                 console.log('✓ Created local CSS file\n');
@@ -169,7 +188,7 @@ https.get(googleFontsUrl, (res) => {
                 console.log('📍 Files created:');
                 console.log(`   - ${FONT_FILE}`);
                 console.log(`   - ${CSS_FILE}\n`);
-                console.log('📝 Update your CSS to use: @import url(\'/fonts/material-symbols-outlined.css\');\n');
+                console.log(`📝 Update your CSS to use: @import url('/fonts/material-symbols.css');\n`);
             });
 
             fontStream.on('error', (err) => {
