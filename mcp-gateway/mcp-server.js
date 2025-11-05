@@ -438,9 +438,26 @@ const { IntelligentCoordinator } = require('./coordinator');
 const ollamaUrl = process.env.OLLAMA_HOST || 'http://localhost:11434';
 const coordinator = new IntelligentCoordinator(ollamaUrl, mcpRegistry);
 
-// Log incoming requests
+// Define endpoints to skip from logging
+const skipLoggingEndpoints = [
+  '/health',  // Health check - frequent and not informative
+  // '/api/agents/:agentId/heartbeat',  // Uncomment if heartbeats are too verbose
+];
+
+// Log incoming requests (skip specified endpoints)
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} [MCPGateway] ${req.method} ${req.url}`);
+  const shouldSkip = skipLoggingEndpoints.some(endpoint => {
+    if (endpoint.includes(':')) {
+      // Handle dynamic routes like /api/agents/:agentId/heartbeat
+      const pattern = endpoint.replace(/:[^/]+/g, '[^/]+');
+      return new RegExp(`^${pattern}$`).test(req.url);
+    }
+    return req.url === endpoint;
+  });
+
+  if (!shouldSkip) {
+    console.log(`${new Date().toISOString()} [MCPGateway] ${req.method} ${req.url}`);
+  }
   next();
 });
 
