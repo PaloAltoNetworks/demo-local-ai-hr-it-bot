@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { t } = require('./i18n');
+const { getLogger } = require('./logger');
 
 /**
  * Prisma AIRS API Intercept Module
@@ -76,7 +77,7 @@ class PrismaAIRSIntercept {
         try {
             // Check if Prisma AIRS is configured
             if (!this.isConfigured()) {
-                console.log('❌ Prisma AIRS not configured - missing API token or profile ID/name');
+                getLogger().info('❌ Prisma AIRS not configured - missing API token or profile ID/name');
                 
                 const configErrorMessage = t('security.errors.notConfigured', { lng: metadata.language || 'en' });
                 
@@ -91,7 +92,7 @@ class PrismaAIRSIntercept {
             }
 
             const analysisType = response ? 'prompt and response' : 'prompt only';
-            console.log(`Prisma AIRS intercept - analyzing ${analysisType}`);
+            getLogger().info(`Prisma AIRS intercept - analyzing ${analysisType}`);
 
             // Prepare the request payload for Prisma AIRS API
             const payload = {
@@ -132,12 +133,12 @@ class PrismaAIRSIntercept {
                 timeout: 15000 // 15 second timeout
             };
 
-            console.log('Sending request to Prisma AIRS API:', JSON.stringify(payload, null, 2));
+            getLogger().info('Sending request to Prisma AIRS API:', JSON.stringify(payload, null, 2));
 
             const apiResponse = await axios.request(axiosConfig);
             const result = apiResponse.data;
             
-            console.log('Prisma AIRS analysis result:', {
+            getLogger().info('Prisma AIRS analysis result:', {
                 action: result.action,
                 category: result.category,
                 reportId: result.report_id,
@@ -164,7 +165,7 @@ class PrismaAIRSIntercept {
             };
 
         } catch (error) {
-            console.error('❌ Prisma AIRS intercept error:', error.message);
+            getLogger().error('❌ Prisma AIRS intercept error:', error.message);
             
             const errorMessage = t('security.errors.serviceUnavailable', { lng: metadata.language || 'en' });
             

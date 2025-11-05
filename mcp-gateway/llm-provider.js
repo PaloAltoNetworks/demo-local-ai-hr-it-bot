@@ -9,6 +9,7 @@ const {
   BedrockRuntimeClient,
   InvokeModelCommand,
 } = require('@aws-sdk/client-bedrock-runtime');
+const { getLogger } = require('./logger');
 
 /**
  * Base LLM Provider Interface
@@ -43,7 +44,7 @@ class OllamaOpenAIProvider extends LLMProvider {
     });
     
     this.model = model;
-    console.log(`[LLMProvider] Initialized Ollama OpenAI provider: ${this.model} at ${ollamaUrl}`);
+    getLogger().info(`[LLMProvider] Initialized Ollama OpenAI provider: ${this.model} at ${ollamaUrl}`);
   }
 
   async generate(prompt, options = {}) {
@@ -89,7 +90,7 @@ class BedrockProvider extends LLMProvider {
     this.modelId = config.modelId || process.env.BEDROCK_COORDINATOR_MODEL || 'anthropic.claude-3-sonnet-20240229-v1:0';
     
     this.client = new BedrockRuntimeClient({ region: this.region });
-    console.log(`[LLMProvider] Initialized AWS Bedrock provider: ${this.modelId} in ${this.region}`);
+    getLogger().info(`[LLMProvider] Initialized AWS Bedrock provider: ${this.modelId} in ${this.region}`);
   }
 
   async generate(prompt, options = {}) {

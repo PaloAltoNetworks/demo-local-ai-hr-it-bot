@@ -3,6 +3,12 @@ const cors = require('cors');
 const { randomUUID } = require('crypto');
 require('dotenv').config();
 
+// Import logger
+const { initializeLogger, getLogger } = require('./logger');
+
+// Initialize logger
+initializeLogger('mcp-gateway');
+
 /**
  * MCP Server Implementation - Following MCP Specification 2025-06-18
  * Implements JSON-RPC 2.0 over HTTP transport
@@ -53,7 +59,7 @@ class MCPServer {
       createdAt: Date.now(),
       lastAccess: Date.now()
     });
-    console.log(`[MCPServer] Created session ${sessionId} for client: ${clientInfo?.name}`);
+    getLogger().info(`[MCPServer] Created session ${sessionId} for client: ${clientInfo?.name}`);
     return sessionId;
   }
 
@@ -77,7 +83,7 @@ class MCPServer {
     const { id, method, params } = jsonRpcRequest;
 
     try {
-      console.log(`[MCPServer] Handling request: ${method} (ID: ${id})`);
+      getLogger().info(`[MCPServer] Handling request: ${method} (ID: ${id})`);
 
       // Session validation for non-initialize requests
       if (method !== 'initialize' && sessionId && !this.validateSession(sessionId)) {
@@ -107,14 +113,14 @@ class MCPServer {
           };
       }
     } catch (error) {
-      console.error(`❌ [MCPServer] Request ${method} (${id}) failed:`, error);
+      getLogger().error(`❌ [MCPServer] Request ${method} (${id}) failed:`, error);
       throw error;
     }
   }
 
   async handleInitialize(params) {
     const { protocolVersion, capabilities, clientInfo } = params;
-    console.log(`[MCPServer] Initialize from client: ${clientInfo?.name} v${clientInfo?.version}`);
+    getLogger().info(`[MCPServer] Initialize from client: ${clientInfo?.name} v${clientInfo?.version}`);
     
     const sessionId = this.createSession(clientInfo);
     
@@ -130,21 +136,21 @@ class MCPServer {
     // MCP Server doesn't define tools - Coordinator does
     // This is just protocol compliance
     const tools = [];
-    console.log(`[MCPServer] Listed ${tools.length} tools (delegated to coordinator)`);
+    getLogger().info(`[MCPServer] Listed ${tools.length} tools (delegated to coordinator)`);
     return { tools };
   }
 
   async handleListResources(params) {
     // MCP Server doesn't define resources - Coordinator does
     const resources = [];
-    console.log(`📄 [MCPServer] Listed ${resources.length} resources (delegated to coordinator)`);
+    getLogger().info(`📄 [MCPServer] Listed ${resources.length} resources (delegated to coordinator)`);
     return { resources };
   }
 
   async handleListPrompts(params) {
     // MCP Server doesn't define prompts - Coordinator does
     const prompts = [];
-    console.log(`💬 [MCPServer] Listed ${prompts.length} prompts (delegated to coordinator)`);
+    getLogger().info(`💬 [MCPServer] Listed ${prompts.length} prompts (delegated to coordinator)`);
     return { prompts };
   }
 
@@ -163,7 +169,7 @@ class MCPServer {
     
     expired.forEach(sessionId => {
       this.sessions.delete(sessionId);
-      console.log(`🧹 [MCPServer] Cleaned up expired session: ${sessionId}`);
+      getLogger().info(`🧹 [MCPServer] Cleaned up expired session: ${sessionId}`);
     });
     
     return expired.length;
@@ -179,7 +185,7 @@ class MCPServerRegistry {
   constructor() {
     this.registeredServers = new Map(); // serverId -> server metadata
     this.initializedSessions = new Map(); // serverId -> sessionId with that server
-    console.log('🏢 [MCPServerRegistry] Initialized');
+    getLogger().info('🏢 [MCPServerRegistry] Initialized');
   }
 
   /**
@@ -200,7 +206,7 @@ class MCPServerRegistry {
           try {
             return JSON.parse(eventData);
           } catch (error) {
-            console.error(`❌ [MCPServerRegistry] Failed to parse SSE JSON:`, error);
+            getLogger().error(`❌ [MCPServerRegistry] Failed to parse SSE JSON:`, error);
             throw error;
           }
         }
@@ -213,7 +219,7 @@ class MCPServerRegistry {
     try {
       return JSON.parse(text);
     } catch (error) {
-      console.error(`❌ [MCPServerRegistry] Failed to parse response:`, error);
+      getLogger().error(`❌ [MCPServerRegistry] Failed to parse response:`, error);
       throw new Error(`Failed to parse response: ${text.substring(0, 100)}...`);
     }
   }
@@ -236,7 +242,7 @@ class MCPServerRegistry {
     };
 
     this.registeredServers.set(agentId, serverInfo);
-    console.log(`[MCPServerRegistry] Registered: ${name} (${agentId})`);
+    getLogger().info(`[MCPServerRegistry] Registered: ${name} (${agentId})`);
     
     return { 
       success: true, 
@@ -253,7 +259,7 @@ class MCPServerRegistry {
       const server = this.registeredServers.get(agentId);
       this.registeredServers.delete(agentId);
       this.initializedSessions.delete(agentId);
-      console.log(`[MCPServerRegistry] Unregistered: ${server.name} (${agentId})`);
+      getLogger().info(`[MCPServerRegistry] Unregistered: ${server.name} (${agentId})`);
       return { success: true, message: 'MCP server unregistered successfully' };
     }
     return { success: false, message: 'MCP server not found' };
@@ -308,7 +314,7 @@ class MCPServerRegistry {
     }
 
     try {
-      console.log(`[MCPServerRegistry] Initializing session with ${server.name}`);
+      getLogger().info(`[MCPServerRegistry] Initializing session with ${server.name}`);
       
       const initRequest = {
         jsonrpc: '2.0',
@@ -357,11 +363,11 @@ class MCPServerRegistry {
       const sessionId = result.result?.sessionId || response.headers.get('mcp-session-id') || randomUUID();
       
       this.initializedSessions.set(serverId, sessionId);
-      console.log(`[MCPServerRegistry] Session initialized with ${server.name}: ${sessionId}`);
+      getLogger().info(`[MCPServerRegistry] Session initialized with ${server.name}: ${sessionId}`);
       
       return sessionId;
     } catch (error) {
-      console.error(`❌ [MCPServerRegistry] Failed to initialize session with ${server.name}:`, error.message);
+      getLogger().error(`❌ [MCPServerRegistry] Failed to initialize session with ${server.name}:`, error.message);
       throw error;
     }
   }
@@ -380,7 +386,7 @@ class MCPServerRegistry {
       // Initialize session if needed
       const sessionId = await this.initializeSession(serverId);
 
-      console.log(`[MCPServerRegistry] Forwarding ${jsonRpcRequest.method} to ${server.name}`);
+      getLogger().info(`[MCPServerRegistry] Forwarding ${jsonRpcRequest.method} to ${server.name}`);
       
       const response = await fetch(`${server.url}/mcp`, {
         method: 'POST',
@@ -409,12 +415,12 @@ class MCPServerRegistry {
         result = await response.json();
       }
       
-      console.log(`[MCPServerRegistry] Response from ${server.name}`);
+      getLogger().info(`[MCPServerRegistry] Response from ${server.name}`);
       
       return result;
       
     } catch (error) {
-      console.error(`❌ [MCPServerRegistry] Error forwarding to ${server.name}:`, error.message);
+      getLogger().error(`❌ [MCPServerRegistry] Error forwarding to ${server.name}:`, error.message);
       server.status = 'unhealthy';
       throw error;
     }
@@ -456,7 +462,7 @@ app.use((req, res, next) => {
   });
 
   if (!shouldSkip) {
-    console.log(`${new Date().toISOString()} [MCPGateway] ${req.method} ${req.url}`);
+    getLogger().info(`${new Date().toISOString()} [MCPGateway] ${req.method} ${req.url}`);
   }
   next();
 });
@@ -506,7 +512,7 @@ app.post('/', async (req, res) => {
 
     // Handle notification (no response expected)
     if (jsonRpcRequest.id === undefined) {
-      console.log(`[MCPGateway] Notification: ${jsonRpcRequest.method}`);
+      getLogger().info(`[MCPGateway] Notification: ${jsonRpcRequest.method}`);
       res.status(204).end();
       return;
     }
@@ -537,7 +543,7 @@ app.post('/', async (req, res) => {
       }
     };
 
-    console.error('❌ [MCPGateway] Error:', errorResponse.error);
+    getLogger().error('❌ [MCPGateway] Error:', errorResponse.error);
     res.status(500).json(errorResponse);
   }
 });
@@ -561,7 +567,7 @@ app.post('/api/agents/register', (req, res) => {
     
     res.json(result);
   } catch (error) {
-    console.error('❌ [MCPGateway] Registration error:', error);
+    getLogger().error('❌ [MCPGateway] Registration error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error during registration'
@@ -579,7 +585,7 @@ app.post('/api/agents/:agentId/unregister', (req, res) => {
     
     res.json(result);
   } catch (error) {
-    console.error('❌ [MCPGateway] Unregistration error:', error);
+    getLogger().error('❌ [MCPGateway] Unregistration error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error during unregistration'
@@ -593,7 +599,7 @@ app.post('/api/agents/:agentId/heartbeat', (req, res) => {
     const result = mcpRegistry.heartbeat(agentId);
     res.json(result);
   } catch (error) {
-    console.error('❌ [MCPGateway] Heartbeat error:', error);
+    getLogger().error('❌ [MCPGateway] Heartbeat error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error during heartbeat'
@@ -668,7 +674,7 @@ app.post('/api/query', async (req, res) => {
       }
     }
   } catch (error) {
-    console.error('❌ [MCPGateway] Query processing error:', error);
+    getLogger().error('❌ [MCPGateway] Query processing error:', error);
     
     if (res.headersSent) {
       // If headers already sent (streaming mode), send error as JSON line
@@ -694,15 +700,15 @@ app.post('/api/query', async (req, res) => {
 setInterval(() => {
   const cleaned = mcpServer.cleanupSessions();
   if (cleaned > 0) {
-    console.log(`🧹 [MCPGateway] Cleaned up ${cleaned} expired sessions`);
+    getLogger().info(`🧹 [MCPGateway] Cleaned up ${cleaned} expired sessions`);
   }
 }, 300000); // Every 5 minutes
 
 // Start server
 app.listen(PORT, async () => {
-  console.log(`[MCPGateway] MCP Gateway running on http://localhost:${PORT}`);
-  console.log(`📋 [MCPGateway] Protocol: MCP ${mcpServer.protocolVersion} (JSON-RPC 2.0)`);
-  console.log(`[MCPGateway] Ready to register MCP servers`);
+  getLogger().info(`[MCPGateway] MCP Gateway running on http://localhost:${PORT}`);
+  getLogger().info(`📋 [MCPGateway] Protocol: MCP ${mcpServer.protocolVersion} (JSON-RPC 2.0)`);
+  getLogger().info(`[MCPGateway] Ready to register MCP servers`);
   
   // Initialize coordinator
   await coordinator.initialize();
@@ -710,13 +716,13 @@ app.listen(PORT, async () => {
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('🛑 [MCPGateway] SIGTERM signal received: closing MCP Gateway...');
+  getLogger().info('🛑 [MCPGateway] SIGTERM signal received: closing MCP Gateway...');
   await coordinator.cleanup();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log('🛑 [MCPGateway] SIGINT signal received: closing MCP Gateway...');
+  getLogger().info('🛑 [MCPGateway] SIGINT signal received: closing MCP Gateway...');
   await coordinator.cleanup();
   process.exit(0);
 });
