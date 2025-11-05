@@ -5,13 +5,13 @@ import express from 'express';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'node:crypto';
-import { Logger } from './logger.js';
+import { getLogger } from './logger.js';
 
 class MCPTransportManager {
   constructor(agentName, mcpServer) {
     this.agentName = agentName;
     this.mcpServer = mcpServer;
-    this.logger = new Logger(agentName);
+    this.logger = getLogger();
     this.transports = {};
   }
 
@@ -24,7 +24,7 @@ class MCPTransportManager {
 
     // Request logging middleware
     app.use((req, res, next) => {
-      this.logger.request(req.method, req.url);
+      this.logger.debug(`${req.method} ${req.url}`);
       next();
     });
 
@@ -126,7 +126,7 @@ class MCPTransportManager {
 
     // Standard MCP transport handling
     await transport.handleRequest(req, res, req.body);
-    this.logger.success('Request completed successfully');
+    this.logger.info('✓ Request completed successfully');
   }
 
   /**
@@ -136,7 +136,7 @@ class MCPTransportManager {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sessionId) => {
-        this.logger.success(`Session initialized: ${sessionId}`);
+        this.logger.info(`Session initialized: ${sessionId}`);
         this.transports[sessionId] = transport;
       }
     });
@@ -150,7 +150,7 @@ class MCPTransportManager {
 
     try {
       await this.mcpServer.connect(transport);
-      this.logger.success('Server connected to transport');
+      this.logger.info('Server connected to transport');
     } catch (error) {
       this.logger.error('Failed to connect server to transport', error);
       throw error;
@@ -188,7 +188,7 @@ class MCPTransportManager {
           throw new Error(`Unknown tool: ${name}`);
       }
 
-      this.logger.success(`Tool ${name} executed successfully`);
+      this.logger.info(`Tool ${name} executed successfully`);
       this._sendSSEResponse(res, transport.sessionId, req.body.id, {
         content: [
           {
@@ -211,7 +211,7 @@ class MCPTransportManager {
 
     try {
       const resources = this.mcpServer.agent.getResourcesList();
-      this.logger.success(`Found ${resources.length} registered resources`);
+      this.logger.info(`Found ${resources.length} registered resources`);
 
       this._sendSSEResponse(res, transport.sessionId, req.body.id, {
         resources
@@ -220,6 +220,10 @@ class MCPTransportManager {
       this.logger.error('Failed to list resources', error);
       throw error;
     }
+  }
+
+  /**
+
   }
 
   /**

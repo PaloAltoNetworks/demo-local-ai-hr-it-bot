@@ -17,9 +17,10 @@
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.922.0",
     "@modelcontextprotocol/sdk": "^1.21.0",
-    "axios": "^1.13.1",
+    "axios": "^1.13.2",
     "express": "^5.1.0",
-    "openai": "^6.7.0"
+    "openai": "^6.8.1",
+    "winston": "^3.18.3"
   },
   "keywords": [
     "mcp",

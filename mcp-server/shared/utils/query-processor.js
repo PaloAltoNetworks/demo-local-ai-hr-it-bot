@@ -2,13 +2,13 @@
  * Query processing utilities for agents
  */
 import { LLMProviderFactory } from './llm-provider.js';
-import { Logger } from './logger.js';
+import { getLogger } from './logger.js';
 import { ConfigManager } from './config.js';
 
 class QueryProcessor {
   constructor(agentName) {
     this.agentName = agentName;
-    this.logger = new Logger(agentName);
+    this.logger = getLogger();
     this.config = ConfigManager.getConfig();
     // Initialize LLM provider (supports both Ollama and AWS Bedrock)
     this.llmProvider = LLMProviderFactory.create();
@@ -18,7 +18,7 @@ class QueryProcessor {
    * Process query using LLM (Ollama or Bedrock)
    */
   async processWithModel(systemPrompt, query) {
-    this.logger.thinking('Processing query with LLM provider...');
+    this.logger.debug('Processing query with LLM provider...');
 
     try {
       const metadata = this.llmProvider.getMetadata();
@@ -30,7 +30,7 @@ class QueryProcessor {
 
       this.logger.debug(`Response length: ${result.response.length} characters`);
       this.logger.debug(`Tokens - Prompt: ${result.usage?.prompt_tokens}, Completion: ${result.usage?.completion_tokens}`);
-      this.logger.success('Query processed successfully');
+      this.logger.info('Query processed successfully');
 
       return result.response;
     } catch (error) {

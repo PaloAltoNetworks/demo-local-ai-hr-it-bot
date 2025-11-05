@@ -4,7 +4,7 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { randomUUID } from 'node:crypto';
-import { Logger } from './utils/logger.js';
+import { initializeLogger, getLogger } from './utils/logger.js';
 import { ConfigManager } from './utils/config.js';
 import { CoordinatorClient } from './utils/coordinator-client.js';
 import { MCPTransportManager } from './utils/transport-manager.js';
@@ -16,7 +16,8 @@ class MCPAgentBase {
     this.agentId = `${agentName}-agent-${randomUUID()}`;
 
     // Initialize utilities
-    this.logger = new Logger(agentName);
+    initializeLogger(agentName);
+    this.logger = getLogger();
     this.config = ConfigManager.getConfig();
 
     // MCP Server setup
@@ -70,7 +71,7 @@ class MCPAgentBase {
 
           try {
             const result = await this.handleToolCall(tool.name, args);
-            this.logger.success(`Tool ${tool.name} executed`);
+            this.logger.info(`Tool ${tool.name} executed`);
 
             return [
               {
@@ -86,7 +87,7 @@ class MCPAgentBase {
       );
     });
 
-    this.logger.success(`${tools.length} MCP tools registered`);
+    this.logger.info(`${tools.length} MCP tools registered`);
   }
 
   /**
@@ -260,7 +261,7 @@ class MCPAgentBase {
    * Start the MCP server with HTTP transport
    */
   async start() {
-    this.logger.divider(`Starting ${this.agentName.toUpperCase()} Agent`);
+    this.logger.info(`Starting ${this.agentName.toUpperCase()} Agent`);
 
     try {
       // Setup base handlers
@@ -277,7 +278,7 @@ class MCPAgentBase {
       const port = this.config.agent.port;
       await new Promise((resolve) => {
         app.listen(port, () => {
-          this.logger.success(`MCP HTTP Server started on port ${port}`);
+          this.logger.info(`MCP HTTP Server started on port ${port}`);
           this.logger.info('Resources registered and ready');
           resolve();
         });
@@ -308,7 +309,7 @@ class MCPAgentBase {
 
     try {
       await this.coordinatorClient.register(agentUrl, this.getCapabilities());
-      this.logger.success('Agent registered with coordinator');
+      this.logger.info('Agent registered with coordinator');
 
       // Start heartbeat to maintain registration
       this.coordinatorClient.startHeartbeat(

@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { getLogger } from './shared/utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,6 +19,7 @@ class DatabaseManager {
     this.db = null;
     this.SQL = null;
     this.initialized = false;
+    this.logger = getLogger();
   }
 
   /**
@@ -37,10 +39,10 @@ class DatabaseManager {
       this.db = new this.SQL.Database(buffer);
       this.initialized = true;
       
-      console.log('Database loaded successfully');
+      this.logger.info('Database loaded successfully');
       return this;
     } catch (error) {
-      console.error('❌ Failed to load database:', error);
+      this.logger.error('Failed to load database:', error);
       throw error;
     }
   }
@@ -54,7 +56,7 @@ class DatabaseManager {
       const buffer = Buffer.from(data);
       fs.writeFileSync(this.dbPath, buffer);
     } catch (error) {
-      console.error('Error saving database:', error);
+      this.logger.error('Error saving database:', error);
     }
   }
 
@@ -67,7 +69,7 @@ class DatabaseManager {
       this._saveDatabase();
       return { changes: this.db.getRowsModified() };
     } catch (error) {
-      console.error('Database run error:', error);
+      this.logger.error('Database run error:', error);
       throw error;
     }
   }
@@ -87,7 +89,7 @@ class DatabaseManager {
       stmt.free();
       return undefined;
     } catch (error) {
-      console.error('Database get error:', error);
+      this.logger.error('Database get error:', error);
       throw error;
     }
   }
@@ -106,7 +108,7 @@ class DatabaseManager {
       stmt.free();
       return rows;
     } catch (error) {
-      console.error('Database all error:', error);
+      this.logger.error('Database all error:', error);
       throw error;
     }
   }
@@ -121,10 +123,10 @@ class DatabaseManager {
         this.db.close();
         this.db = null;
         this.initialized = false;
-        console.log('Database connection closed');
+        this.logger.info('Database connection closed');
       }
     } catch (error) {
-      console.error('Error closing database:', error);
+      this.logger.error('Error closing database:', error);
       throw error;
     }
   }
@@ -163,7 +165,7 @@ class DatabaseManager {
         byAssignee
       };
     } catch (error) {
-      console.error('Failed to get statistics:', error);
+      this.logger.error('Failed to get statistics:', error);
       throw error;
     }
   }

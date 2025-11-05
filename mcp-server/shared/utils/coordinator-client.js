@@ -2,7 +2,7 @@
  * Coordinator communication module for agent registration, heartbeats, and lifecycle management
  */
 import axios from 'axios';
-import { Logger } from './logger.js';
+import { getLogger } from './logger.js';
 import { ConfigManager } from './config.js';
 
 class CoordinatorClient {
@@ -10,7 +10,7 @@ class CoordinatorClient {
     this.agentName = agentName;
     this.agentId = agentId;
     this.agentDescription = agentDescription;
-    this.logger = new Logger(agentName);
+    this.logger = getLogger();
     this.config = ConfigManager.getConfig();
     this.registrationRetries = 0;
     this.heartbeatStarted = false;
@@ -63,7 +63,7 @@ class CoordinatorClient {
       );
 
       if (response.status === 200) {
-        this.logger.success('Successfully registered with coordinator');
+        this.logger.info('Successfully registered with coordinator');
         this.logger.debug('Registration result:', response.data);
         this.registrationRetries = 0;
         return response.data;
@@ -96,7 +96,7 @@ class CoordinatorClient {
 
         // Reset failure count on successful heartbeat
         if (this.consecutiveHeartbeatFailures > 0) {
-          this.logger.success('Reconnected to coordinator');
+          this.logger.info('Reconnected to coordinator');
           this.consecutiveHeartbeatFailures = 0;
           this.isConnected = true;
           if (onReconnect) onReconnect();
@@ -169,7 +169,7 @@ class CoordinatorClient {
       );
 
       if (response.status === 200) {
-        this.logger.success('Successfully unregistered from coordinator');
+        this.logger.info('Successfully unregistered from coordinator');
       }
     } catch (error) {
       this.logger.warn('Failed to unregister from coordinator', error);

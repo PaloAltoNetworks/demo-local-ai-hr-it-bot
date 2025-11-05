@@ -10,7 +10,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "sql.js": "^1.10.3"
+    "sql.js": "^1.13.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

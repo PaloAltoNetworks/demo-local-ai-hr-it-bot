@@ -2,13 +2,13 @@
  * Resource management utilities for agents
  */
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { Logger } from './logger.js';
+import { getLogger } from './logger.js';
 
 class ResourceManager {
   constructor(agentName, mcpServer) {
     this.agentName = agentName;
     this.mcpServer = mcpServer;
-    this.logger = new Logger(agentName);
+    this.logger = getLogger();
     this.resources = [];
   }
 

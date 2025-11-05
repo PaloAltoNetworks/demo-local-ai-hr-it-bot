@@ -10,7 +10,6 @@ services:
     env_file:
       - ./.env
     environment:
-      - NODE_ENV=production
       - CHATBOT_HOST_PORT=3002
       - MCP_GATEWAY_URL=http://mcp-gateway:3001
     depends_on:
@@ -19,6 +18,8 @@ services:
       - it-mcp-server
       - general-mcp-server
     restart: unless-stopped
+    volumes:
+      - ./logs/chatbot-host:/app/logs
     networks:
       - mcp-network
 
@@ -33,9 +34,10 @@ services:
     env_file:
       - ./.env
     environment:
-      - NODE_ENV=production
       - MCP_GATEWAY_PORT=3001
     restart: unless-stopped
+    volumes:
+      - ./logs/mcp-gateway:/app/logs
     networks:
       - mcp-network
     
@@ -51,11 +53,11 @@ services:
       - "3003:3000"
     env_file:
       - ./.env
-    environment:
-      - NODE_ENV=production
     depends_on:
       - mcp-gateway
     restart: unless-stopped
+    volumes:
+      - ./logs/hr-mcp-server:/app/logs
     networks:
       - mcp-network
     
@@ -71,11 +73,11 @@ services:
       - "3004:3000"
     env_file:
       - ./.env
-    environment:
-      - NODE_ENV=production
     depends_on:
       - mcp-gateway
     restart: unless-stopped
+    volumes:
+      - ./logs/it-mcp-server:/app/logs
     networks:
       - mcp-network
     
@@ -91,11 +93,11 @@ services:
       - "3005:3000"
     env_file:
       - ./.env
-    environment:
-      - NODE_ENV=production
     depends_on:
       - mcp-gateway
     restart: unless-stopped
+    volumes:
+      - ./logs/general-mcp-server:/app/logs
     networks:
       - mcp-network
 
