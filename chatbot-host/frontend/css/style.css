@@ -865,6 +865,7 @@ select.form-control {
   text-transform: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 60px;
 }
 
 /* Larger otter icon in message avatars */
