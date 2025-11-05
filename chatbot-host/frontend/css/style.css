@@ -1347,7 +1347,6 @@ body {
 
 /* Action question styles (e.g., refresh) */
 .example-question.action-question {
-  background: var(--phase-color-secondary);
   border: 2px dashed var(--color-border);
   opacity: 0.8;
 }
