@@ -167,13 +167,13 @@
   <script type="module" src="./js/app.js"></script>
 
   <script type="module">
-       Initialize the app
-      port { ChatBotApp } from './js/app.js';
+    // Initialize the app
+    import { ChatBotApp } from './js/app.js';
 
-      cument.addEventListener('DOMContentLoaded', async () => {
-        nst app = new ChatBotApp();
-        ait app.init();
-      ;
+    document.addEventListener('DOMContentLoaded', async () => {
+      const app = new ChatBotApp();
+      await app.init();
+    });
   </script>
 </body>
 
