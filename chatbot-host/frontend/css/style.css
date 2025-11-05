@@ -1326,17 +1326,18 @@ body {
 
 .info-panel .card__body {
   flex: 1;
-  display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .example-questions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--space-16);
-  overflow-y: auto;
-  padding-right: var(--space-8);
+  min-height: 0;
+  max-height: 100%;
+  align-content: start;
 }
 
 .example-question {
