@@ -31,11 +31,10 @@ export COORDINATOR_MODEL=qwen2.5:1.5b
 
 # Option 2: AWS Production (Bedrock)
 export LLM_PROVIDER=bedrock
+export AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key
 export AWS_REGION=us-east-1
-export AWS_ACCESS_KEY_ID=your_key
-export AWS_SECRET_ACCESS_KEY=your_secret
-export BEDROCK_COORDINATOR_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
-export BEDROCK_AGENT_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
+export BEDROCK_COORDINATOR_MODEL=qwen.qwen3-32b-v1:0
+export BEDROCK_AGENT_MODEL=mistral.mistral-large-2402-v1:0
 
 # Start services
 docker compose up -d

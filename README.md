@@ -20,9 +20,8 @@ docker compose up -d
 
 # With AWS Bedrock (production)
 export LLM_PROVIDER=bedrock
+export AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key
 export AWS_REGION=us-east-1
-export AWS_ACCESS_KEY_ID=your_key
-export AWS_SECRET_ACCESS_KEY=your_secret
 docker compose up -d
 
 # Verify
