@@ -1244,8 +1244,18 @@ body {
 
 /* Contenu principal */
 .main-content {
-  padding: var(--space-32) 0 0 0;
-  min-height: calc(100vh - var(--header-height) - 200px);
+  padding: var(--space-32);
+  height: calc(100vh - var(--header-height));
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.main-content .container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 /* Section profil utilisateur */
@@ -1421,19 +1431,34 @@ body {
 
 /* Section de chat */
 .chat-section {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
 }
 
 /* Panneau de chat */
 .chat-panel {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
 }
 
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 800px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-container .card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .chat-container .card__header {
@@ -1441,6 +1466,18 @@ body {
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+}
+
+.chat-container .card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chat-container .chat-messages {
+  flex: 1;
+  min-height: 0;
 }
 
 .chat-status {
@@ -1457,6 +1494,7 @@ body {
   flex-direction: column;
   gap: var(--space-16);
   background: var(--color-background);
+  min-height: 0;
 }
 
 /* Chat input section */
@@ -1995,7 +2033,8 @@ body {
   display: grid;
   grid-template-columns: 380px 1fr;
   gap: var(--space-32);
-  height: calc(100vh - var(--header-height) - 120px);
+  height: 100%;
+  flex: 1;
 }
 
 /* Panneau d'informations */
@@ -2005,12 +2044,15 @@ body {
   gap: var(--space-20);
   overflow-y: auto;
   padding-right: var(--space-12);
+  height: 100%;
+  min-height: 0;
 }
 
 /* Panneau de chat */
 .chat-panel {
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
 /* Notification system */
