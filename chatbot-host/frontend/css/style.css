@@ -143,6 +143,9 @@
   --font-size-4xl: 30px;
   --font-size-8xl: 36px;
   
+  /* Otter Icon Size */
+  --otter-icon-size-avatar: 28px;
+  
   /* Font weights */
   --font-weight-normal: 400;
   --font-weight-medium: 500;
@@ -200,6 +203,13 @@
 /* Dark mode colors - Using Cyber Orange as primary */
 @media (prefers-color-scheme: dark) {
   :root {
+    /* Primitive Color Tokens - Dark Mode (Inverted Grays) */
+    --color-gray-200: rgba(119, 124, 124, 1);
+    --color-gray-300: rgba(98, 108, 113, 1);
+    --color-gray-400: rgba(167, 169, 169, 1);
+    --color-slate-500: rgba(167, 169, 169, 1);
+    --color-brown-600: rgba(148, 158, 164, 1);
+    
     /* RGB versions for opacity control (Dark Mode) */
     --color-gray-400-rgb: 119, 124, 124;
     --color-orange-300-rgb: 255, 114, 77;
@@ -207,14 +217,14 @@
     --color-gray-200-rgb: 245, 245, 245;
 
     /* Colorful background palette - Dark Mode - Using Palo Alto Colors */
-    --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15); /* Cyber Orange */
-    --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15); /* Strata Yellow */
-    --color-bg-3: rgba(var(--color-green-500-rgb), 0.15); /* Cortex Green */
-    --color-bg-4: rgba(var(--color-red-500-rgb), 0.15); /* Unit 42 Red */
-    --color-bg-5: rgba(var(--color-blue-500-rgb), 0.15); /* Prisma Blue */
-    --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1); /* Cyber Orange subtle */
-    --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1); /* Strata Yellow subtle */
-    --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1); /* Prisma Blue subtle */
+    --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15);
+    --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15);
+    --color-bg-3: rgba(var(--color-green-500-rgb), 0.15);
+    --color-bg-4: rgba(var(--color-red-500-rgb), 0.15);
+    --color-bg-5: rgba(var(--color-blue-500-rgb), 0.15);
+    --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1);
+    --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1);
+    --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1);
     
     /* Semantic Color Tokens (Dark Mode) - Primary: Cyber Orange */
     --color-background: var(--color-charcoal-700);
@@ -236,18 +246,9 @@
     --color-btn-primary-text: var(--color-charcoal-700);
     --color-card-border: rgba(var(--color-orange-500-rgb), 0.15);
     --color-card-border-inner: rgba(var(--color-orange-500-rgb), 0.15);
-    --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
     --color-border-secondary: rgba(var(--color-orange-500-rgb), 0.2);
     --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
-
-    /* Common style patterns - updated for dark mode */
-    --focus-ring: 0 0 0 3px var(--color-focus-ring);
-    --focus-outline: 2px solid var(--color-primary);
-    --status-bg-opacity: 0.15;
-    --status-border-opacity: 0.25;
-    --select-caret-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23134252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-    --select-caret-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
 
     /* RGB versions for dark mode */
     --color-success-rgb: var(--color-green-500-rgb);
@@ -259,23 +260,25 @@
 
 /* Data attribute for manual theme switching - Dark Mode */
 [data-color-scheme="dark"] {
-  /* RGB versions for opacity control (dark mode) */
+  /* Primitive Color Tokens - Dark Mode (Inverted Grays) */
+  --color-gray-200: rgba(119, 124, 124, 1);
+  --color-gray-300: rgba(98, 108, 113, 1);
+  --color-gray-400: rgba(167, 169, 169, 1);
+  --color-slate-500: rgba(167, 169, 169, 1);
+  --color-brown-600: rgba(148, 158, 164, 1);
+  
   --color-gray-400-rgb: 119, 124, 124;
   --color-orange-300-rgb: 255, 114, 77;
   --color-gray-300-rgb: 167, 169, 169;
   --color-gray-200-rgb: 245, 245, 245;
-
-  /* Colorful background palette - Dark Mode - Using Palo Alto Colors */
-  --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15); /* Cyber Orange */
-  --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15); /* Strata Yellow */
-  --color-bg-3: rgba(var(--color-green-500-rgb), 0.15); /* Cortex Green */
-  --color-bg-4: rgba(var(--color-red-500-rgb), 0.15); /* Unit 42 Red */
-  --color-bg-5: rgba(var(--color-blue-500-rgb), 0.15); /* Prisma Blue */
-  --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1); /* Cyber Orange subtle */
-  --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1); /* Strata Yellow subtle */
-  --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1); /* Prisma Blue subtle */
-  
-  /* Semantic Color Tokens (Dark Mode) - Primary: Cyber Orange */
+  --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15);
+  --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15);
+  --color-bg-3: rgba(var(--color-green-500-rgb), 0.15);
+  --color-bg-4: rgba(var(--color-red-500-rgb), 0.15);
+  --color-bg-5: rgba(var(--color-blue-500-rgb), 0.15);
+  --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1);
+  --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1);
+  --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1);
   --color-background: var(--color-charcoal-700);
   --color-surface: var(--color-charcoal-800);
   --color-text: var(--color-gray-200);
@@ -295,20 +298,9 @@
   --color-btn-primary-text: var(--color-charcoal-700);
   --color-card-border: rgba(var(--color-orange-500-rgb), 0.15);
   --color-card-border-inner: rgba(var(--color-orange-500-rgb), 0.15);
-  --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   --color-border-secondary: rgba(var(--color-orange-500-rgb), 0.2);
   --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
-
-  /* Common style patterns - updated for dark mode */
-  --focus-ring: 0 0 0 3px var(--color-focus-ring);
-  --focus-outline: 2px solid var(--color-primary);
-  --status-bg-opacity: 0.15;
-  --status-border-opacity: 0.25;
-  --select-caret-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23134252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  --select-caret-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-
-  /* RGB versions for dark mode */
+  --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   --color-success-rgb: var(--color-green-500-rgb);
   --color-error-rgb: var(--color-red-500-rgb);
   --color-warning-rgb: var(--color-orange-500-rgb);
@@ -316,10 +308,7 @@
 }
 
 [data-color-scheme="light"] {
-  /* RGB versions for opacity control (light mode) - Cyber Orange Primary */
   --color-orange-500-rgb: 250, 88, 45;
-  
-  /* Semantic Color Tokens (Light Mode) - Primary: Cyber Orange */
   --color-background: var(--color-cream-50);
   --color-surface: var(--color-cream-100);
   --color-text: var(--color-slate-900);
@@ -339,8 +328,6 @@
   --color-warning: var(--color-orange-500);
   --color-info: var(--color-blue-500);
   --color-focus-ring: rgba(var(--color-orange-500-rgb), 0.4);
-
-  /* RGB versions for light mode */
   --color-success-rgb: var(--color-green-500-rgb);
   --color-error-rgb: var(--color-red-500-rgb);
   --color-warning-rgb: var(--color-orange-500-rgb);
@@ -632,7 +619,7 @@ select.form-control {
   border-bottom: 1px solid var(--color-card-border-inner);
 }
 
-/* Status indicators - simplified with CSS variables */
+/* Status indicators */
 .status {
   display: inline-flex;
   align-items: center;
@@ -643,46 +630,29 @@ select.form-control {
 }
 
 .status--success {
-  background-color: rgba(
-    var(--color-success-rgb, 33, 128, 141),
-    var(--status-bg-opacity)
-  );
+  background-color: rgba(var(--color-success-rgb, 33, 128, 141), var(--status-bg-opacity));
   color: var(--color-success);
-  border: 1px solid
-    rgba(var(--color-success-rgb, 33, 128, 141), var(--status-border-opacity));
+  border: 1px solid rgba(var(--color-success-rgb, 33, 128, 141), var(--status-border-opacity));
 }
 
 .status--error {
-  background-color: rgba(
-    var(--color-error-rgb, 192, 21, 47),
-    var(--status-bg-opacity)
-  );
+  background-color: rgba(var(--color-error-rgb, 192, 21, 47), var(--status-bg-opacity));
   color: var(--color-error);
-  border: 1px solid
-    rgba(var(--color-error-rgb, 192, 21, 47), var(--status-border-opacity));
+  border: 1px solid rgba(var(--color-error-rgb, 192, 21, 47), var(--status-border-opacity));
 }
 
 .status--warning {
-  background-color: rgba(
-    var(--color-warning-rgb, 168, 75, 47),
-    var(--status-bg-opacity)
-  );
+  background-color: rgba(var(--color-warning-rgb, 168, 75, 47), var(--status-bg-opacity));
   color: var(--color-warning);
-  border: 1px solid
-    rgba(var(--color-warning-rgb, 168, 75, 47), var(--status-border-opacity));
+  border: 1px solid rgba(var(--color-warning-rgb, 168, 75, 47), var(--status-border-opacity));
 }
 
 .status--info {
-  background-color: rgba(
-    var(--color-info-rgb, 98, 108, 113),
-    var(--status-bg-opacity)
-  );
+  background-color: rgba(var(--color-info-rgb, 98, 108, 113), var(--status-bg-opacity));
   color: var(--color-info);
-  border: 1px solid
-    rgba(var(--color-info-rgb, 98, 108, 113), var(--status-border-opacity));
+  border: 1px solid rgba(var(--color-info-rgb, 98, 108, 113), var(--status-border-opacity));
 }
 
-/* Status tooltip styling */
 .status[title] {
   cursor: help;
   position: relative;
@@ -885,6 +855,23 @@ select.form-control {
 /* Material Symbols - Local Hosted (Apache 2.0 License - Free for Commercial Use) */
 @import url('/fonts/material-symbols/index.css');
 
+/* Otter Icon Font Utility Class */
+.otter-icon::before {
+  content: "\e900";
+  font-family: 'otter-icon';
+  font-weight: normal;
+  font-style: normal;
+  font-variant: normal;
+  text-transform: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Larger otter icon in message avatars */
+.message-avatar .otter-icon::before {
+  font-size: var(--otter-icon-size-avatar);
+}
+
 /* END PALO ALTO NETWORKS DESIGN SYSTEM */
 /* Enterprise Chatbot Styles */
 
@@ -900,6 +887,9 @@ select.form-control {
   --phase-border-color: var(--phase-color);
   --phase-bg-opacity: 0.1;
   --phase-transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  --phase-color-bg: var(--color-cream-50);
+  --phase-color-bg-1: var(--color-orange-250);
+  --phase-color-secondary: var(--color-orange-0);
   
   /* Primary color RGB for opacity control - Cyber Orange */
   --color-primary-rgb: var(--color-orange-500-rgb);
@@ -912,6 +902,12 @@ body.phase1-active {
   --phase-color-rgb: var(--color-green-500-rgb);
   --phase-color-bg: var(--color-green-0);
   --phase-color-bg-1: var(--color-green-250);
+  --phase-color-secondary: var(--color-green-0);
+  --color-text: var(--color-green-1000);
+  --focus-ring: 0 0 0 3px rgba(var(--phase-color-rgb), 0.4);
+  --color-card-border: rgba(var(--color-green-500-rgb), 0.1);
+  --color-border: rgba(var(--color-green-500-rgb), 0.15);
+  --color-primary-hover: var(--color-green-750);
 }
 
 /* Phase 2: Unit 42 (Fire Red) */
@@ -920,6 +916,12 @@ body.phase2-active {
   --phase-color-rgb: var(--color-red-500-rgb);
   --phase-color-bg: var(--color-red-0);
   --phase-color-bg-1: var(--color-red-250);
+  --phase-color-secondary: var(--color-red-0);
+  --color-text: var(--color-red-1000);
+  --focus-ring: 0 0 0 3px rgba(var(--phase-color-rgb), 0.4);
+  --color-card-border: rgba(var(--color-red-500-rgb), 0.1);
+  --color-border: rgba(var(--color-red-500-rgb), 0.15);
+  --color-primary-hover: var(--color-red-750);
 }
 
 /* Phase 3: Prisma (Cloud Blue) */
@@ -928,6 +930,88 @@ body.phase3-active {
   --phase-color-rgb: var(--color-blue-500-rgb);
   --phase-color-bg: var(--color-blue-0);
   --phase-color-bg-1: var(--color-blue-250);
+  --phase-color-secondary: var(--color-blue-0);
+  --color-text: var(--color-blue-1000);
+  --focus-ring: 0 0 0 3px rgba(var(--phase-color-rgb), 0.4);
+  --color-card-border: rgba(var(--color-blue-500-rgb), 0.1);
+  --color-border: rgba(var(--color-blue-500-rgb), 0.15);
+  --color-primary-hover: var(--color-blue-750);
+}
+
+/* Dark mode phase color overrides */
+@media (prefers-color-scheme: dark) {
+  body.phase1-active {
+    --phase-color-bg: var(--color-green-1000);
+    --phase-color-bg-1: var(--color-green-750);
+    --phase-color-secondary: var(--color-green-750);
+    --color-text: var(--color-green-0);
+    --focus-ring: 0 0 0 3px rgba(var(--color-green-500-rgb), 0.4);
+    --color-card-border: rgba(var(--color-green-500-rgb), 0.15);
+    --color-border: rgba(var(--color-green-500-rgb), 0.2);
+    --color-card-border-inner: rgba(var(--color-green-500-rgb), 0.2);
+    --color-primary-hover: var(--color-green-250);
+  }
+
+  body.phase2-active {
+    --phase-color-bg: var(--color-red-1000);
+    --phase-color-bg-1: var(--color-red-750);
+    --phase-color-secondary: var(--color-red-750);
+    --color-text: var(--color-red-0);
+    --focus-ring: 0 0 0 3px rgba(var(--color-red-500-rgb), 0.4);
+    --color-card-border: rgba(var(--color-red-500-rgb), 0.15);
+    --color-border: rgba(var(--color-red-500-rgb), 0.2);
+    --color-card-border-inner: rgba(var(--color-red-500-rgb), 0.2);
+    --color-primary-hover: var(--color-red-250);
+  }
+
+  body.phase3-active {
+    --phase-color-bg: var(--color-blue-1000);
+    --phase-color-bg-1: var(--color-blue-750);
+    --phase-color-secondary: var(--color-blue-750);
+    --color-text: var(--color-blue-0);
+    --focus-ring: 0 0 0 3px rgba(var(--color-blue-500-rgb), 0.4);
+    --color-card-border: rgba(var(--color-blue-500-rgb), 0.15);
+    --color-border: rgba(var(--color-blue-500-rgb), 0.2);
+    --color-card-border-inner: rgba(var(--color-blue-500-rgb), 0.2);
+    --color-primary-hover: var(--color-blue-250);
+  }
+}
+
+/* Data attribute dark mode phase color overrides */
+[data-color-scheme="dark"] body.phase1-active {
+  --phase-color-bg: var(--color-green-1000);
+  --phase-color-bg-1: var(--color-green-750);
+  --phase-color-secondary: var(--color-green-750);
+  --color-text: var(--color-green-0);
+  --focus-ring: 0 0 0 3px rgba(var(--color-green-500-rgb), 0.4);
+  --color-card-border: rgba(var(--color-green-500-rgb), 0.15);
+  --color-border: rgba(var(--color-green-500-rgb), 0.2);
+  --color-card-border-inner: rgba(var(--color-green-500-rgb), 0.2);
+  --color-primary-hover: var(--color-green-250);
+}
+
+[data-color-scheme="dark"] body.phase2-active {
+  --phase-color-bg: var(--color-red-1000);
+  --phase-color-bg-1: var(--color-red-750);
+  --phase-color-secondary: var(--color-red-750);
+  --color-text: var(--color-red-0);
+  --focus-ring: 0 0 0 3px rgba(var(--color-red-500-rgb), 0.4);
+  --color-card-border: rgba(var(--color-red-500-rgb), 0.15);
+  --color-border: rgba(var(--color-red-500-rgb), 0.2);
+  --color-card-border-inner: rgba(var(--color-red-500-rgb), 0.2);
+  --color-primary-hover: var(--color-red-250);
+}
+
+[data-color-scheme="dark"] body.phase3-active {
+  --phase-color-bg: var(--color-blue-1000);
+  --phase-color-bg-1: var(--color-blue-750);
+  --phase-color-secondary: var(--color-blue-750);
+  --color-text: var(--color-blue-0);
+  --focus-ring: 0 0 0 3px rgba(var(--color-blue-500-rgb), 0.4);
+  --color-card-border: rgba(var(--color-blue-500-rgb), 0.15);
+  --color-border: rgba(var(--color-blue-500-rgb), 0.2);
+  --color-card-border-inner: rgba(var(--color-blue-500-rgb), 0.2);
+  --color-primary-hover: var(--color-blue-250);
 }
 
 /* Layout principal */
@@ -1002,116 +1086,6 @@ body {
 .user-menu-trigger i,
 .user-menu-trigger .material-symbols-outlined {
   font-size: var(--font-size-2xl);
-}
-
-/* Material Icons alignment */
-.material-symbols-outlined {
-  vertical-align: middle;
-  font-size: inherit;
-  line-height: 1;
-  color: var(--phase-color);
-}
-
-h2 .material-symbols-outlined {
-  margin-right: var(--space-8);
-  vertical-align: middle;
-  color: var(--phase-color);
-}
-
-.message-avatar .material-symbols-outlined,
-.header-brand .material-symbols-outlined {
-  font-size: 32px;
-  color: var(--phase-color);
-}
-
-.user-menu-avatar .material-symbols-outlined {
-  font-size: 32px;
-  color: var(--phase-color);
-}
-
-.send-button .material-symbols-outlined {
-  font-size: 32px;
-  color: white;
-}
-
-.status .material-symbols-outlined {
-  font-size: 16px;
-  margin-right: 4px;
-  color: inherit;
-}
-
-/* Brand Icon (SVG) - Same styling as Material Icons */
-.brand-icon {
-  display: inline-block;
-  vertical-align: middle;
-  width: 32px;
-  height: 32px;
-  line-height: 1;
-  fill: currentColor;
-  color: inherit;
-}
-
-/* Otter Font Icon */
-.otter-icon {
-  display: inline-block;
-  vertical-align: middle;
-  width: 32px;
-  height: 32px;
-  line-height: 1;
-  font-size: 32px;
-  color: inherit;
-  font-family: 'otter-icon'; /* Your custom font */
-}
-
-.otter-icon::before {
-  content: '\e900'; /* Icon code */
-  display: inline-block;
-  font-weight: normal;
-  font-style: normal;
-  letter-spacing: normal;
-  text-transform: none;
-  text-decoration: none;
-  text-align: center;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  width: 100%;
-  height: 100%;
-}
-
-/* Otter icon variants */
-.otter-icon--lg {
-  width: 48px;
-  height: 48px;
-  font-size: 48px;
-}
-
-.otter-icon--sm {
-  width: 24px;
-  height: 24px;
-  font-size: 24px;
-  margin-right: var(--space-4);
-}
-
-/* Header brand - Use primary color (changes with phase) */
-.header-brand .otter-icon {
-  width: 32px;
-  height: 32px;
-  margin-right: var(--space-8);
-  color: var(--phase-color);
-}
-
-/* Message avatar - Use white */
-.message-avatar .otter-icon {
-  width: 32px;
-  height: 32px;
-  color: var(--phase-color);
-}
-
-/* User menu avatar - Use text color (dark) */
-.user-menu-avatar .otter-icon {
-  width: 32px;
-  height: 32px;
-  color: var(--color-text);
 }
 
 .user-menu-label {
@@ -1364,7 +1338,7 @@ h2 .material-symbols-outlined {
 }
 
 .example-question p {
-  color: var(--color-text-secondary);
+  color: var(--color-brown-600);
   font-size: var(--font-size-sm);
   margin: 0;
   line-height: var(--line-height-normal);
@@ -1372,13 +1346,13 @@ h2 .material-symbols-outlined {
 
 /* Action question styles (e.g., refresh) */
 .example-question.action-question {
-  background: var(--color-secondary);
+  background: var(--phase-color-secondary);
   border: 2px dashed var(--color-border);
   opacity: 0.8;
 }
 
 .example-question.action-question:hover {
-  background: var(--color-secondary);
+  background: var(--phase-color-secondary);
   border-color: var(--color-text-secondary);
   opacity: 1;
 }
@@ -1485,19 +1459,89 @@ h2 .material-symbols-outlined {
   background: var(--color-background);
 }
 
+/* Chat input section */
+.chat-input-container {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-16);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.chat-input-wrapper {
+  display: flex;
+  gap: var(--space-12);
+  margin-bottom: var(--space-12);
+}
+
+.chat-input {
+  flex: 1;
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-md);
+  background: var(--color-background);
+  color: var(--color-text);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+  font-family: var(--font-family-base);
+}
+
+.chat-input:focus {
+  border-color: var(--phase-color);
+  box-shadow: var(--focus-ring);
+}
+
+.chat-input:disabled {
+  background-color: var(--color-gray-200);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.send-button {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--phase-color);
+  color: var(--color-btn-primary-text);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  transition: all var(--duration-fast) var(--ease-standard);
+  flex-shrink: 0;
+}
+
+.send-button:hover {
+  background: var(--color-primary-hover);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(var(--phase-color-rgb), 0.3);
+}
+
+.send-button:active {
+  transform: scale(0.95);
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.chat-actions {
+  display: flex;
+  gap: var(--space-12);
+  justify-content: center;
+}
+
 /* Messages */
 .message {
   display: flex;
   gap: var(--space-12);
   max-width: 85%;
   animation: slideInMessage 0.4s var(--ease-standard);
-}
-
-/* Animation de réflexion du bot */
-.thinking-message .message-text {
-  display: flex;
-  align-items: center;
-  min-height: 40px;
 }
 
 /* Thinking text messages */
@@ -1523,7 +1567,7 @@ h2 .material-symbols-outlined {
 }
 
 .thinking-icon.error {
-  color: var(--color-danger);
+  color: var(--color-error);
 }
 
 @keyframes thinkingPulse {
@@ -1570,8 +1614,8 @@ h2 .material-symbols-outlined {
 }
 
 .bot-message .message-avatar, .assistant-message .message-avatar, .user-message .message-avatar {
-  background: var(--color-secondary);
-  color: var(--color-text);
+  background: var(--phase-color-secondary);
+  color: var(--phase-color);
 }
 
 .message-content {
@@ -1636,7 +1680,7 @@ h2 .material-symbols-outlined {
 .token-info {
   margin-top: var(--space-12);
   padding: var(--space-10) var(--space-12);
-  background: rgba(var(--color-teal-500-rgb), 0.08);
+  background: rgba(var(--color-primary-rgb), 0.1);
   border-radius: var(--radius-base);
   border-left: 3px solid var(--color-primary);
   font-size: var(--font-size-sm);
@@ -1686,7 +1730,7 @@ h2 .material-symbols-outlined {
 }
 
 .token-count-detail {
-  background: rgba(var(--color-teal-500-rgb), 0.15);
+  background: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary);
   padding: var(--space-2) var(--space-6);
   border-radius: var(--radius-sm);
@@ -1714,7 +1758,7 @@ h2 .material-symbols-outlined {
 }
 
 .thinking-toggle:hover {
-  background: rgba(var(--color-teal-500-rgb), 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
   border-color: var(--color-primary-hover);
   color: var(--color-primary-hover);
 }
@@ -1731,7 +1775,7 @@ h2 .material-symbols-outlined {
 .thinking-chain {
   margin-top: var(--space-12);
   padding: var(--space-12);
-  background: rgba(var(--color-teal-500-rgb), 0.05);
+  background: rgba(var(--color-primary-rgb), 0.1);
   border-left: 3px solid var(--color-primary);
   border-radius: var(--radius-base);
   display: flex;
@@ -1748,7 +1792,7 @@ h2 .material-symbols-outlined {
   padding: var(--space-8);
   background: var(--color-surface);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(var(--color-teal-500-rgb), 0.15);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
   animation: slideInThinking 0.3s var(--ease-standard) both;
 }
 
@@ -1774,17 +1818,6 @@ h2 .material-symbols-outlined {
   line-height: var(--line-height-tight);
 }
 
-@keyframes slideInThinking {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
 @keyframes thinkingDotPulse {
   0%, 80%, 100% {
     opacity: 0.7;
@@ -1796,69 +1829,17 @@ h2 .material-symbols-outlined {
   }
 }
 
-/* Interface de saisie */
-.chat-input-container {
-  border-top: 1px solid var(--color-border);
-  padding: var(--space-16);
-  background: var(--color-surface);
-  flex-shrink: 0;
+@keyframes slideInThinking {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.chat-input-wrapper {
-  display: flex;
-  gap: var(--space-12);
-  margin-bottom: var(--space-12);
-}
-
-.chat-input {
-  flex: 1;
-  padding: var(--space-12) var(--space-16);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-md);
-  background: var(--color-background);
-  color: var(--color-text);
-  outline: none;
-  transition: border-color var(--duration-fast) var(--ease-standard);
-}
-
-.chat-input:focus {
-  border-color: var(--phase-color);
-}
-
-.send-button {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: var(--phase-color);
-  color: var(--color-btn-primary-text);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-lg);
-  transition: all var(--duration-fast) var(--ease-standard);
-}
-
-.send-button:hover {
-  background: var(--color-primary-hover);
-  transform: scale(1.05);
-}
-
-.send-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.chat-actions {
-  display: flex;
-  gap: var(--space-12);
-  justify-content: center;
-}
-
-/* Animations */
 @keyframes slideInMessage {
   from { 
     opacity: 0; 
@@ -1867,21 +1848,6 @@ h2 .material-symbols-outlined {
   to { 
     opacity: 1; 
     transform: translateY(0); 
-  }
-}
-
-@keyframes thinkingDotPulse {
-  0% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0.3;
-    transform: scale(0.8);
   }
 }
 
@@ -1972,7 +1938,7 @@ h2 .material-symbols-outlined {
 }
 
 .phase-btn:hover {
-  background: var(--color-secondary);
+  background: var(--phase-color-secondary);
 }
 
 .phase-btn.active {
@@ -2145,6 +2111,13 @@ h2 .material-symbols-outlined {
   font-weight: var(--font-weight-medium);
 }
 
+/* Message phase-specific styling - Use phase color from body */
+.message.bot-message .message-text, 
+.message.assistant-message .message-text {
+  border-color: var(--phase-color);
+  border-width: 2px;
+}
+
 /* Disabled state for chat input */
 .chat-input:disabled {
   background-color: var(--color-gray-200);
@@ -2175,13 +2148,6 @@ h2 .material-symbols-outlined {
   }
 }
 
-/* Message phase-specific styling - Use phase color from body */
-.message.bot-message .message-text, 
-.message.assistant-message .message-text {
-  border-color: var(--phase-color);
-  border-width: 2px;
-}
-
 /* Language switcher styling */
 .language-switcher {
   display: flex;
@@ -2210,7 +2176,7 @@ h2 .material-symbols-outlined {
   outline: none;
   background: var(--color-bg-1);
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(var(--color-teal-500-rgb), 0.1);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* Loading indicator */
