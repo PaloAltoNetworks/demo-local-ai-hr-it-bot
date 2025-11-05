@@ -4,6 +4,7 @@
   "description": "MCP Host - Chatbot user interface and API server",
   "main": "backend/server.js",
   "scripts": {
+    "download-fonts": "node scripts/download-material-symbols.js",
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js"
   },
