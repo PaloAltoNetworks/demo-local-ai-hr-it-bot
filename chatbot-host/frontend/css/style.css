@@ -1,4 +1,8 @@
 :root {
+  /* ========================================
+     PALO ALTO NETWORKS BRAND COLORS
+     ======================================== */
+  
   /* Primitive Color Tokens */
   --color-white: rgba(255, 255, 255, 1);
   --color-black: rgba(0, 0, 0, 1);
@@ -12,57 +16,90 @@
   --color-charcoal-700: rgba(31, 33, 33, 1);
   --color-charcoal-800: rgba(38, 40, 40, 1);
   --color-slate-900: rgba(19, 52, 59, 1);
+
+  /* Cyber Orange - Main Brand Color */
+  --color-orange-0: rgba(255, 191, 156, 1);      /* #FFBF9C */
+  --color-orange-250: rgba(255, 114, 77, 1);     /* #FF724D */
+  --color-orange-500: rgba(250, 88, 45, 1);      /* #FA582D (Main) */
+  --color-orange-750: rgba(178, 56, 8, 1);       /* #B23808 */
+  --color-orange-1000: rgba(25, 0, 0, 1);        /* #190000 */
+
+  /* GTM Product Colors - Strata (Security Yellow) */
+  --color-yellow-0: rgba(255, 240, 204, 1);      /* #FFF0CC */
+  --color-yellow-250: rgba(255, 222, 115, 1);    /* #FFDE73 */
+  --color-yellow-500: rgba(255, 203, 6, 1);      /* #FFCB06 (Main) */
+  --color-yellow-750: rgba(214, 159, 37, 1);     /* #D69F25 */
+  --color-yellow-1000: rgba(38, 27, 1, 1);       /* #261B01 */
+
+  /* GTM Product Colors - Prisma (Cloud Blue) */
+  --color-blue-0: rgba(217, 248, 252, 1);        /* #D9F8FC */
+  --color-blue-250: rgba(86, 214, 244, 1);       /* #56D6F4 */
+  --color-blue-500: rgba(0, 192, 232, 1);        /* #00C0E8 (Main) */
+  --color-blue-750: rgba(1, 150, 179, 1);        /* #0196B3 */
+  --color-blue-1000: rgba(0, 29, 43, 1);         /* #001D2B */
+
+  /* GTM Product Colors - Cortex (Intelligence Green) */
+  --color-green-0: rgba(222, 254, 227, 1);       /* #DEFEE3 */
+  --color-green-250: rgba(101, 224, 136, 1);     /* #65E088 */
+  --color-green-500: rgba(0, 204, 102, 1);       /* #00CC66 (Main) */
+  --color-green-750: rgba(15, 147, 71, 1);       /* #0F9347 */
+  --color-green-1000: rgba(0, 30, 4, 1);         /* #001E04 */
+
+  /* GTM Product Colors - Unit 42 (Fire Red) */
+  --color-red-0: rgba(255, 215, 207, 1);         /* #FFD7CF */
+  --color-red-250: rgba(221, 102, 82, 1);        /* #DD6652 */
+  --color-red-500: rgba(200, 71, 39, 1);         /* #C84727 (Main) */
+  --color-red-750: rgba(170, 37, 27, 1);         /* #AA251B */
+  --color-red-1000: rgba(51, 0, 0, 1);           /* #330000 */
+
+  /* Neutral Grays (Dark mode support) */
   --color-teal-300: rgba(50, 184, 198, 1);
   --color-teal-400: rgba(45, 166, 178, 1);
   --color-teal-500: rgba(33, 128, 141, 1);
   --color-teal-600: rgba(29, 116, 128, 1);
   --color-teal-700: rgba(26, 104, 115, 1);
   --color-teal-800: rgba(41, 150, 161, 1);
-  --color-red-400: rgba(255, 84, 89, 1);
-  --color-red-500: rgba(192, 21, 47, 1);
-  --color-orange-400: rgba(230, 129, 97, 1);
-  --color-orange-500: rgba(168, 75, 47, 1);
 
   /* RGB versions for opacity control */
   --color-brown-600-rgb: 94, 82, 64;
-  --color-teal-500-rgb: 33, 128, 141;
+  --color-orange-500-rgb: 250, 88, 45;          /* Cyber Orange */
+  --color-yellow-500-rgb: 255, 203, 6;          /* Strata */
+  --color-blue-500-rgb: 0, 192, 232;            /* Prisma */
+  --color-green-500-rgb: 0, 204, 102;           /* Cortex */
+  --color-red-500-rgb: 200, 71, 39;             /* Unit 42 */
   --color-slate-900-rgb: 19, 52, 59;
   --color-slate-500-rgb: 98, 108, 113;
-  --color-red-500-rgb: 192, 21, 47;
-  --color-red-400-rgb: 255, 84, 89;
-  --color-orange-500-rgb: 168, 75, 47;
-  --color-orange-400-rgb: 230, 129, 97;
 
-  /* Background color tokens (Light Mode) */
-  --color-bg-1: rgba(59, 130, 246, 0.08); /* Light blue */
-  --color-bg-2: rgba(245, 158, 11, 0.08); /* Light yellow */
-  --color-bg-3: rgba(34, 197, 94, 0.08); /* Light green */
-  --color-bg-4: rgba(239, 68, 68, 0.08); /* Light red */
-  --color-bg-5: rgba(147, 51, 234, 0.08); /* Light purple */
-  --color-bg-6: rgba(249, 115, 22, 0.08); /* Light orange */
-  --color-bg-7: rgba(236, 72, 153, 0.08); /* Light pink */
-  --color-bg-8: rgba(6, 182, 212, 0.08); /* Light cyan */
+  /* Background color tokens (Light Mode) - Using Palo Alto Colors */
+  --color-bg-1: rgba(var(--color-orange-500-rgb), 0.08); /* Cyber Orange */
+  --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.08); /* Strata Yellow */
+  --color-bg-3: rgba(var(--color-green-500-rgb), 0.08); /* Cortex Green */
+  --color-bg-4: rgba(var(--color-red-500-rgb), 0.08); /* Unit 42 Red */
+  --color-bg-5: rgba(var(--color-blue-500-rgb), 0.08); /* Prisma Blue */
+  --color-bg-6: rgba(var(--color-orange-500-rgb), 0.06); /* Cyber Orange subtle */
+  --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.06); /* Strata Yellow subtle */
+  --color-bg-8: rgba(var(--color-blue-500-rgb), 0.06); /* Prisma Blue subtle */
 
-  /* Semantic Color Tokens (Light Mode) */
+  /* Semantic Color Tokens (Light Mode) - Primary: Cyber Orange */
   --color-background: var(--color-cream-50);
   --color-surface: var(--color-cream-100);
   --color-text: var(--color-slate-900);
   --color-text-secondary: var(--color-slate-500);
-  --color-primary: var(--color-teal-500);
-  --color-primary-hover: var(--color-teal-600);
-  --color-primary-active: var(--color-teal-700);
-  --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
-  --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
-  --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
-  --color-border: rgba(var(--color-brown-600-rgb), 0.2);
-  --color-btn-primary-text: var(--color-cream-50);
-  --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
-  --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-primary: var(--color-orange-500);
+  --color-primary-hover: var(--color-orange-750);
+  --color-primary-active: var(--color-orange-1000);
+  --color-secondary: rgba(var(--color-orange-500-rgb), 0.12);
+  --color-secondary-hover: rgba(var(--color-orange-500-rgb), 0.2);
+  --color-secondary-active: rgba(var(--color-orange-500-rgb), 0.25);
+  --color-border: rgba(var(--color-orange-500-rgb), 0.15);
+  --color-btn-primary-text: var(--color-white);
+  --color-card-border: rgba(var(--color-orange-500-rgb), 0.1);
+  --color-card-border-inner: rgba(var(--color-orange-500-rgb), 0.1);
   --color-error: var(--color-red-500);
-  --color-success: var(--color-teal-500);
+  --color-success: var(--color-green-500);
   --color-warning: var(--color-orange-500);
-  --color-info: var(--color-slate-500);
-  --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+  --color-info: var(--color-blue-500);
+  --color-focus-ring: rgba(var(--color-orange-500-rgb), 0.4);
   --color-select-caret: rgba(var(--color-slate-900-rgb), 0.8);
 
   /* Common style patterns */
@@ -74,16 +111,27 @@
   --select-caret-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 
   /* RGB versions for opacity control */
-  --color-success-rgb: 33, 128, 141;
-  --color-error-rgb: 192, 21, 47;
-  --color-warning-rgb: 168, 75, 47;
-  --color-info-rgb: 98, 108, 113;
+  --color-success-rgb: var(--color-green-500-rgb);
+  --color-error-rgb: var(--color-red-500-rgb);
+  --color-warning-rgb: var(--color-orange-500-rgb);
+  --color-info-rgb: var(--color-blue-500-rgb);
 
-  /* Typography */
-  --font-family-base: "FKGroteskNeue", "Geist", "Inter", -apple-system,
+  /* ========================================
+     TYPOGRAPHY - PALO ALTO NETWORKS FONTS
+     ======================================== */
+  
+  /* Primary Font: TT Hoves for headlines and body */
+  --font-family-base: "TT Hoves", "Helvetica Neue", -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  
+  /* Secondary Font: Celeste Pro for details and long texts */
+  --font-family-secondary: "Celeste Pro", "TT Hoves", "Helvetica Neue", serif;
+  
+  /* Monospace Font */
   --font-family-mono: "Berkeley Mono", ui-monospace, SFMono-Regular, Menlo,
     Monaco, Consolas, monospace;
+  
+  /* Font sizes */
   --font-size-xs: 11px;
   --font-size-sm: 12px;
   --font-size-base: 14px;
@@ -94,10 +142,14 @@
   --font-size-3xl: 24px;
   --font-size-4xl: 30px;
   --font-size-8xl: 36px;
+  
+  /* Font weights */
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 550;
   --font-weight-bold: 600;
+  
+  /* Line heights */
   --line-height-tight: 1.2;
   --line-height-normal: 1.5;
   --letter-spacing-tight: -0.01em;
@@ -145,49 +197,48 @@
   --container-xl: 1280px;
 }
 
-/* Dark mode colors */
+/* Dark mode colors - Using Cyber Orange as primary */
 @media (prefers-color-scheme: dark) {
   :root {
     /* RGB versions for opacity control (Dark Mode) */
     --color-gray-400-rgb: 119, 124, 124;
-    --color-teal-300-rgb: 50, 184, 198;
+    --color-orange-300-rgb: 255, 114, 77;
     --color-gray-300-rgb: 167, 169, 169;
     --color-gray-200-rgb: 245, 245, 245;
 
-    /* Background color tokens (Dark Mode) */
-    --color-bg-1: rgba(29, 78, 216, 0.15); /* Dark blue */
-    --color-bg-2: rgba(180, 83, 9, 0.15); /* Dark yellow */
-    --color-bg-3: rgba(21, 128, 61, 0.15); /* Dark green */
-    --color-bg-4: rgba(185, 28, 28, 0.15); /* Dark red */
-    --color-bg-5: rgba(107, 33, 168, 0.15); /* Dark purple */
-    --color-bg-6: rgba(194, 65, 12, 0.15); /* Dark orange */
-    --color-bg-7: rgba(190, 24, 93, 0.15); /* Dark pink */
-    --color-bg-8: rgba(8, 145, 178, 0.15); /* Dark cyan */
+    /* Colorful background palette - Dark Mode - Using Palo Alto Colors */
+    --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15); /* Cyber Orange */
+    --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15); /* Strata Yellow */
+    --color-bg-3: rgba(var(--color-green-500-rgb), 0.15); /* Cortex Green */
+    --color-bg-4: rgba(var(--color-red-500-rgb), 0.15); /* Unit 42 Red */
+    --color-bg-5: rgba(var(--color-blue-500-rgb), 0.15); /* Prisma Blue */
+    --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1); /* Cyber Orange subtle */
+    --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1); /* Strata Yellow subtle */
+    --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1); /* Prisma Blue subtle */
     
-    /* Semantic Color Tokens (Dark Mode) */
+    /* Semantic Color Tokens (Dark Mode) - Primary: Cyber Orange */
     --color-background: var(--color-charcoal-700);
     --color-surface: var(--color-charcoal-800);
     --color-text: var(--color-gray-200);
     --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
-    --color-primary: var(--color-teal-300);
-    --color-primary-hover: var(--color-teal-400);
-    --color-primary-active: var(--color-teal-800);
-    --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
-    --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
-    --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
-    --color-border: rgba(var(--color-gray-400-rgb), 0.3);
-    --color-error: var(--color-red-400);
-    --color-success: var(--color-teal-300);
-    --color-warning: var(--color-orange-400);
-    --color-info: var(--color-gray-300);
-    --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
-    --color-btn-primary-text: var(--color-slate-900);
-    --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
-    --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
+    --color-primary: var(--color-orange-250);
+    --color-primary-hover: var(--color-orange-0);
+    --color-primary-active: var(--color-orange-500);
+    --color-secondary: rgba(var(--color-orange-500-rgb), 0.15);
+    --color-secondary-hover: rgba(var(--color-orange-500-rgb), 0.25);
+    --color-secondary-active: rgba(var(--color-orange-500-rgb), 0.3);
+    --color-border: rgba(var(--color-orange-500-rgb), 0.25);
+    --color-error: var(--color-red-250);
+    --color-success: var(--color-green-250);
+    --color-warning: var(--color-orange-250);
+    --color-info: var(--color-blue-250);
+    --color-focus-ring: rgba(var(--color-orange-500-rgb), 0.4);
+    --color-btn-primary-text: var(--color-charcoal-700);
+    --color-card-border: rgba(var(--color-orange-500-rgb), 0.15);
+    --color-card-border-inner: rgba(var(--color-orange-500-rgb), 0.15);
     --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1),
       inset 0 -1px 0 rgba(0, 0, 0, 0.15);
-    --button-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
-    --color-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
+    --color-border-secondary: rgba(var(--color-orange-500-rgb), 0.2);
     --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
 
     /* Common style patterns - updated for dark mode */
@@ -199,54 +250,54 @@
     --select-caret-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 
     /* RGB versions for dark mode */
-    --color-success-rgb: var(--color-teal-300-rgb);
-    --color-error-rgb: var(--color-red-400-rgb);
-    --color-warning-rgb: var(--color-orange-400-rgb);
-    --color-info-rgb: var(--color-gray-300-rgb);
+    --color-success-rgb: var(--color-green-500-rgb);
+    --color-error-rgb: var(--color-red-500-rgb);
+    --color-warning-rgb: var(--color-orange-500-rgb);
+    --color-info-rgb: var(--color-blue-500-rgb);
   }
 }
 
-/* Data attribute for manual theme switching */
+/* Data attribute for manual theme switching - Dark Mode */
 [data-color-scheme="dark"] {
   /* RGB versions for opacity control (dark mode) */
   --color-gray-400-rgb: 119, 124, 124;
-  --color-teal-300-rgb: 50, 184, 198;
+  --color-orange-300-rgb: 255, 114, 77;
   --color-gray-300-rgb: 167, 169, 169;
   --color-gray-200-rgb: 245, 245, 245;
 
-  /* Colorful background palette - Dark Mode */
-  --color-bg-1: rgba(29, 78, 216, 0.15); /* Dark blue */
-  --color-bg-2: rgba(180, 83, 9, 0.15); /* Dark yellow */
-  --color-bg-3: rgba(21, 128, 61, 0.15); /* Dark green */
-  --color-bg-4: rgba(185, 28, 28, 0.15); /* Dark red */
-  --color-bg-5: rgba(107, 33, 168, 0.15); /* Dark purple */
-  --color-bg-6: rgba(194, 65, 12, 0.15); /* Dark orange */
-  --color-bg-7: rgba(190, 24, 93, 0.15); /* Dark pink */
-  --color-bg-8: rgba(8, 145, 178, 0.15); /* Dark cyan */
+  /* Colorful background palette - Dark Mode - Using Palo Alto Colors */
+  --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15); /* Cyber Orange */
+  --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15); /* Strata Yellow */
+  --color-bg-3: rgba(var(--color-green-500-rgb), 0.15); /* Cortex Green */
+  --color-bg-4: rgba(var(--color-red-500-rgb), 0.15); /* Unit 42 Red */
+  --color-bg-5: rgba(var(--color-blue-500-rgb), 0.15); /* Prisma Blue */
+  --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1); /* Cyber Orange subtle */
+  --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1); /* Strata Yellow subtle */
+  --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1); /* Prisma Blue subtle */
   
-  /* Semantic Color Tokens (Dark Mode) */
+  /* Semantic Color Tokens (Dark Mode) - Primary: Cyber Orange */
   --color-background: var(--color-charcoal-700);
   --color-surface: var(--color-charcoal-800);
   --color-text: var(--color-gray-200);
   --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
-  --color-primary: var(--color-teal-300);
-  --color-primary-hover: var(--color-teal-400);
-  --color-primary-active: var(--color-teal-800);
-  --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
-  --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
-  --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
-  --color-border: rgba(var(--color-gray-400-rgb), 0.3);
-  --color-error: var(--color-red-400);
-  --color-success: var(--color-teal-300);
-  --color-warning: var(--color-orange-400);
-  --color-info: var(--color-gray-300);
-  --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
-  --color-btn-primary-text: var(--color-slate-900);
-  --color-card-border: rgba(var(--color-gray-400-rgb), 0.15);
-  --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
+  --color-primary: var(--color-orange-250);
+  --color-primary-hover: var(--color-orange-0);
+  --color-primary-active: var(--color-orange-500);
+  --color-secondary: rgba(var(--color-orange-500-rgb), 0.15);
+  --color-secondary-hover: rgba(var(--color-orange-500-rgb), 0.25);
+  --color-secondary-active: rgba(var(--color-orange-500-rgb), 0.3);
+  --color-border: rgba(var(--color-orange-500-rgb), 0.25);
+  --color-error: var(--color-red-250);
+  --color-success: var(--color-green-250);
+  --color-warning: var(--color-orange-250);
+  --color-info: var(--color-blue-250);
+  --color-focus-ring: rgba(var(--color-orange-500-rgb), 0.4);
+  --color-btn-primary-text: var(--color-charcoal-700);
+  --color-card-border: rgba(var(--color-orange-500-rgb), 0.15);
+  --color-card-border-inner: rgba(var(--color-orange-500-rgb), 0.15);
   --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1),
     inset 0 -1px 0 rgba(0, 0, 0, 0.15);
-  --color-border-secondary: rgba(var(--color-gray-400-rgb), 0.2);
+  --color-border-secondary: rgba(var(--color-orange-500-rgb), 0.2);
   --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
 
   /* Common style patterns - updated for dark mode */
@@ -258,44 +309,42 @@
   --select-caret-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 
   /* RGB versions for dark mode */
-  --color-success-rgb: var(--color-teal-300-rgb);
-  --color-error-rgb: var(--color-red-400-rgb);
-  --color-warning-rgb: var(--color-orange-400-rgb);
-  --color-info-rgb: var(--color-gray-300-rgb);
+  --color-success-rgb: var(--color-green-500-rgb);
+  --color-error-rgb: var(--color-red-500-rgb);
+  --color-warning-rgb: var(--color-orange-500-rgb);
+  --color-info-rgb: var(--color-blue-500-rgb);
 }
 
 [data-color-scheme="light"] {
-  /* RGB versions for opacity control (light mode) */
-  --color-brown-600-rgb: 94, 82, 64;
-  --color-teal-500-rgb: 33, 128, 141;
-  --color-slate-900-rgb: 19, 52, 59;
+  /* RGB versions for opacity control (light mode) - Cyber Orange Primary */
+  --color-orange-500-rgb: 250, 88, 45;
   
-  /* Semantic Color Tokens (Light Mode) */
+  /* Semantic Color Tokens (Light Mode) - Primary: Cyber Orange */
   --color-background: var(--color-cream-50);
   --color-surface: var(--color-cream-100);
   --color-text: var(--color-slate-900);
   --color-text-secondary: var(--color-slate-500);
-  --color-primary: var(--color-teal-500);
-  --color-primary-hover: var(--color-teal-600);
-  --color-primary-active: var(--color-teal-700);
-  --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
-  --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
-  --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
-  --color-border: rgba(var(--color-brown-600-rgb), 0.2);
-  --color-btn-primary-text: var(--color-cream-50);
-  --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
-  --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-primary: var(--color-orange-500);
+  --color-primary-hover: var(--color-orange-750);
+  --color-primary-active: var(--color-orange-1000);
+  --color-secondary: rgba(var(--color-orange-500-rgb), 0.12);
+  --color-secondary-hover: rgba(var(--color-orange-500-rgb), 0.2);
+  --color-secondary-active: rgba(var(--color-orange-500-rgb), 0.25);
+  --color-border: rgba(var(--color-orange-500-rgb), 0.15);
+  --color-btn-primary-text: var(--color-white);
+  --color-card-border: rgba(var(--color-orange-500-rgb), 0.1);
+  --color-card-border-inner: rgba(var(--color-orange-500-rgb), 0.1);
   --color-error: var(--color-red-500);
-  --color-success: var(--color-teal-500);
+  --color-success: var(--color-green-500);
   --color-warning: var(--color-orange-500);
-  --color-info: var(--color-slate-500);
-  --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+  --color-info: var(--color-blue-500);
+  --color-focus-ring: rgba(var(--color-orange-500-rgb), 0.4);
 
   /* RGB versions for light mode */
-  --color-success-rgb: var(--color-teal-500-rgb);
+  --color-success-rgb: var(--color-green-500-rgb);
   --color-error-rgb: var(--color-red-500-rgb);
   --color-warning-rgb: var(--color-orange-500-rgb);
-  --color-info-rgb: var(--color-slate-500-rgb);
+  --color-info-rgb: var(--color-blue-500-rgb);
 }
 
 /* Base styles */
@@ -320,7 +369,8 @@ body {
   box-sizing: inherit;
 }
 
-/* Typography */
+/* Typography - Per Palo Alto Networks Brand Guidelines */
+/* Headline hierarchy using TT Hoves (Primary) */
 h1,
 h2,
 h3,
@@ -328,10 +378,12 @@ h4,
 h5,
 h6 {
   margin: 0;
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
   color: var(--color-text);
   letter-spacing: var(--letter-spacing-tight);
+  font-family: var(--font-family-base);
+  text-transform: none;
 }
 
 h1 {
@@ -353,10 +405,13 @@ h6 {
   font-size: var(--font-size-md);
 }
 
+/* Body text */
 p {
   margin: 0 0 var(--space-16) 0;
+  font-family: var(--font-family-base);
 }
 
+/* Links with Cyber Orange primary color */
 a {
   color: var(--color-primary);
   text-decoration: none;
@@ -365,8 +420,10 @@ a {
 
 a:hover {
   color: var(--color-primary-hover);
+  text-decoration: underline;
 }
 
+/* Code blocks - Using secondary font for technical content */
 code,
 pre {
   font-family: var(--font-family-mono);
@@ -391,7 +448,7 @@ pre code {
   padding: 0;
 }
 
-/* Buttons */
+/* Buttons - Per Palo Alto Networks Brand Guidelines */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -399,13 +456,16 @@ pre code {
   padding: var(--space-8) var(--space-16);
   border-radius: var(--radius-base);
   font-size: var(--font-size-base);
-  font-weight: 500;
+  font-weight: var(--font-weight-semibold);
   line-height: 1.5;
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-standard);
   border: none;
   text-decoration: none;
   position: relative;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: var(--font-family-base);
 }
 
 .btn:focus-visible {
@@ -413,19 +473,23 @@ pre code {
   box-shadow: var(--focus-ring);
 }
 
+/* Primary Button - Cyber Orange Fill */
 .btn--primary {
   background: var(--color-primary);
   color: var(--color-btn-primary-text);
+  border: none;
 }
 
 .btn--primary:hover {
   background: var(--color-primary-hover);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
 }
 
 .btn--primary:active {
   background: var(--color-primary-active);
 }
 
+/* Secondary Button */
 .btn--secondary {
   background: var(--color-secondary);
   color: var(--color-text);
@@ -439,14 +503,24 @@ pre code {
   background: var(--color-secondary-active);
 }
 
+/* Outline Button - Per Brand: 2pt Stroke */
 .btn--outline {
   background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+  padding: calc(var(--space-8) - 2px) calc(var(--space-16) - 2px);
 }
 
 .btn--outline:hover {
-  background: var(--color-secondary);
+  background: rgba(var(--color-primary-rgb), 0.08);
+  border-color: var(--color-primary-hover);
+  color: var(--color-primary-hover);
+}
+
+.btn--outline:active {
+  background: rgba(var(--color-primary-rgb), 0.12);
+  border-color: var(--color-primary-active);
+  color: var(--color-primary-active);
 }
 
 .btn--sm {
@@ -757,10 +831,43 @@ select.form-control {
   border: 1px solid var(--color-border-secondary);
 }
 
+/* ========================================
+   FONT-FACE DECLARATIONS
+   Palo Alto Networks Brand Fonts
+   ======================================== */
+
+/* Primary Font: TT Hoves */
 @font-face {
-  font-family: 'FKGroteskNeue';
-  src: url('https://r2cdn.perplexity.ai/fonts/FKGroteskNeue.woff2')
-    format('woff2');
+  font-family: 'TT Hoves';
+  src: url('/fonts/TTHoves-Regular_optimized.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TT Hoves';
+  src: url('/fonts/TTHoves-Medium_optimized.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TT Hoves';
+  src: url('/fonts/TTHoves-DemiBold_optimized.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Secondary Font: Celeste Pro */
+@font-face {
+  font-family: 'Celeste Pro';
+  src: url('/fonts/CelestePro-Book_optimized.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
 /* Custom Otter Icon Font */
@@ -778,8 +885,8 @@ select.form-control {
 /* Material Symbols - Local Hosted (Apache 2.0 License - Free for Commercial Use) */
 @import url('/fonts/material-symbols/index.css');
 
-/* END PERPLEXITY DESIGN SYSTEM */
-/* Styles spécifiques pour Bot Enterprise */
+/* END PALO ALTO NETWORKS DESIGN SYSTEM */
+/* Enterprise Chatbot Styles */
 
 /* Variables supplémentaires */
 :root {
@@ -787,31 +894,40 @@ select.form-control {
   --otter-primary: var(--color-primary);
   --otter-secondary: var(--color-secondary);
   
-  /* Phase color system - Centralized */
-  --phase-color: var(--otter-primary);
-  --phase-color-rgb: var(--color-teal-500-rgb);
+  /* Phase color system - Centralized using Palo Alto Colors */
+  --phase-color: var(--color-primary);
+  --phase-color-rgb: var(--color-orange-500-rgb);
   --phase-border-color: var(--phase-color);
   --phase-bg-opacity: 0.1;
   --phase-transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
   
-  /* Primary color RGB for opacity control */
-  --color-primary-rgb: 33, 128, 141;
+  /* Primary color RGB for opacity control - Cyber Orange */
+  --color-primary-rgb: var(--color-orange-500-rgb);
 }
 
-/* Phase-specific color overrides */
+/* Phase-specific color overrides - Using GTM Colors */
+/* Phase 1: Cortex (Intelligence Green) */
 body.phase1-active {
-  --phase-color: #0F9347;
-  --phase-color-rgb: 15, 147, 71;
+  --phase-color: var(--color-green-500);
+  --phase-color-rgb: var(--color-green-500-rgb);
+  --phase-color-bg: var(--color-green-0);
+  --phase-color-bg-1: var(--color-green-250);
 }
 
+/* Phase 2: Unit 42 (Fire Red) */
 body.phase2-active {
-  --phase-color: #AA251B;
-  --phase-color-rgb: 170, 37, 27;
+  --phase-color: var(--color-red-500);
+  --phase-color-rgb: var(--color-red-500-rgb);
+  --phase-color-bg: var(--color-red-0);
+  --phase-color-bg-1: var(--color-red-250);
 }
 
+/* Phase 3: Prisma (Cloud Blue) */
 body.phase3-active {
-  --phase-color: #0196B3;
-  --phase-color-rgb: 1, 150, 179;
+  --phase-color: var(--color-blue-500);
+  --phase-color-rgb: var(--color-blue-500-rgb);
+  --phase-color-bg: var(--color-blue-0);
+  --phase-color-bg-1: var(--color-blue-250);
 }
 
 /* Layout principal */
@@ -1212,8 +1328,8 @@ h2 .material-symbols-outlined {
 }
 
 .example-question {
-  background: var(--color-bg-2);
-  border: 1px solid var(--color-border);
+  background: var(--phase-color-bg);
+  border: 1px solid var(--phase-color);
   border-radius: var(--radius-base);
   padding: var(--space-16);
   cursor: pointer;
@@ -1224,7 +1340,7 @@ h2 .material-symbols-outlined {
 }
 
 .example-question:hover {
-  background: var(--color-bg-1);
+  background: var(--phase-color-bg-1);
   border-color: var(--phase-color);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
