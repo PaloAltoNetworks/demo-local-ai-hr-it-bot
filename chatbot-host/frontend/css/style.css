@@ -871,6 +871,7 @@ select.form-control {
 /* Larger otter icon in message avatars */
 .message-avatar .otter-icon::before {
   font-size: var(--otter-icon-size-avatar);
+  color: var(--color-text);
 }
 
 /* END PALO ALTO NETWORKS DESIGN SYSTEM */
