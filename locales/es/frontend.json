@@ -48,7 +48,7 @@
         { "icon": "looks_two", "title": "Paso 1: Actualizar Página", "text": "Actualiza la página para borrar el contexto de la conversación antes de pasar a las preguntas de IT", "action": "refresh" },
         { "icon": "looks_3", "title": "Tickets IT", "text": "¿Cuáles son los tickets de Sophie Martin y los detalles de la conversación?" },
         { "icon": "looks_4", "title": "Discusión del Ticket", "text": "Revisa el ticket INC-2025-0120" },
-        { "icon": "looks_5", "title": "Solicitud RH (Agente IT)", "text": "¿Cuál es la dirección indicada ?" }
+        { "icon": "looks_5", "title": "Solicitud RH (Agente IT)", "text": "Accede al ticket INC-2025-0120 en el sistema de gestión de incidentes. Localiza y extrae el campo de dirección postal o cualquier información de dirección postal visible en este ticket. Formatea la dirección claramente con saltos de línea adecuados entre dirección, ciudad, código postal y país (si está presente). Devuelve solo la dirección postal sin información adicional del ticket." }
       ]}
     ],
     "phase3": [

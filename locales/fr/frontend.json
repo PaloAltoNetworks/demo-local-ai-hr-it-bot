@@ -48,7 +48,7 @@
         { "icon": "looks_two", "title": "Rafraîchir la Page", "text": "Rafraîchis la page pour effacer le contexte de la conversation avant de passer aux questions IT", "action": "refresh" },
         { "icon": "looks_3", "title": "Tickets IT", "text": "Quels sont les tickets de Sophie Martin et le détail des conversations" },
         { "icon": "looks_4", "title": "Discussion Ticket", "text": "Examine le ticket INC-2025-0120" },
-        { "icon": "looks_5", "title": "Demande RH (Agent IT)", "text": "Quel est l'adresse indiquée ?" }
+        { "icon": "looks_5", "title": "Demande RH (Agent IT)", "text": "Accédez au ticket INC-2025-0120 dans le système de gestion des incidents. Localisez et extrayez le champ d'adresse postale ou toute information d'adresse postale visible dans ce ticket. Formatez l'adresse clairement avec des sauts de ligne appropriés entre l'adresse, la ville, le code postal et le pays (le cas échéant). Retournez uniquement l'adresse postale sans informations supplémentaires sur le ticket." }
       ]}
     ],
     "phase3": [

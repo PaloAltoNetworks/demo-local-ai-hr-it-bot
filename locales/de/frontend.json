@@ -48,7 +48,7 @@
         { "icon": "looks_two", "title": "Schritt 1: Seite aktualisieren", "text": "Aktualisieren Sie die Seite, um den Gesprächskontext zu löschen, bevor Sie mit den IT-Fragen fortfahren", "action": "refresh" },
         { "icon": "looks_3", "title": "IT-Tickets", "text": "Welche Tickets hat Sophies Martin und welche Gesprächsdetails?" },
         { "icon": "looks_4", "title": "Ticket-Diskussion", "text": "Überprüfen Sie das Ticket INC-2025-0120" },
-        { "icon": "looks_5", "title": "HR-Anfrage (IT-Agent)", "text": "Welche Adresse wird angegeben ?" }
+        { "icon": "looks_5", "title": "HR-Anfrage (IT-Agent)", "text": "Rufen Sie das Ticket INC-2025-0120 im Incident-Management-System auf. Suchen Sie das Feld Postadresse oder alle in diesem Ticket sichtbaren Postadresseninformationen. Formatieren Sie die Adresse klar mit Zeilenumbrüchen zwischen Straße, Stadt, Postleitzahl und Land (falls vorhanden). Geben Sie nur die Postadresse ohne weitere Ticket-Informationen zurück." }
       ]}
     ],
     "phase3": [

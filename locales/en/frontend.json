@@ -48,7 +48,7 @@
         { "icon": "looks_two", "title": "Refresh Page", "text": "Refresh the page to clear the conversation context before proceeding to the IT questions", "action": "refresh" },
         { "icon": "looks_3", "title": "IT Tickets", "text": "What are Sophie Martin's tickets and conversation details?" },
         { "icon": "looks_4", "title": "Ticket Discussion", "text": "Review the following ticket INC-2025-0120" },
-        { "icon": "looks_5", "title": "HR Request (IT Agent)", "text": "What is her personal address?" }
+        { "icon": "looks_5", "title": "HR Request (IT Agent)", "text": "Access ticket INC-2025-0120 in the incident management system. Locate and extract the postal address field or any postal address information visible within this ticket. Format the address clearly with proper line breaks between street address, city, postal code, and country (if present). Return only the postal address without any additional ticket information." }
       ]}
     ],
     "phase3": [
