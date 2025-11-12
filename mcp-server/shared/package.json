@@ -1,0 +1,34 @@
+{
+  "name": "chatbot-shared",
+  "version": "2.0.0",
+  "description": "Shared utilities and base classes for MCP agents",
+  "main": "mcp-agent-base.js",
+  "type": "module",
+  "exports": {
+    "./base": "./mcp-agent-base.js",
+    "./logger": "./utils/logger.js",
+    "./config": "./utils/config.js",
+    "./coordinator": "./utils/coordinator-client.js",
+    "./transport": "./utils/transport-manager.js",
+    "./query": "./utils/query-processor.js",
+    "./resources": "./utils/resource-manager.js",
+    "./llm": "./utils/llm-provider.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.922.0",
+    "@modelcontextprotocol/sdk": "^1.21.0",
+    "axios": "^1.13.2",
+    "express": "^5.1.0",
+    "openai": "^6.8.1",
+    "winston": "^3.18.3"
+  },
+  "keywords": [
+    "mcp",
+    "shared",
+    "agents",
+    "base-class",
+    "utilities"
+  ],
+  "author": "System",
+  "license": "MIT"
+}

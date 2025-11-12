@@ -1,0 +1,121 @@
+services:
+  # MCP Host - User-facing chatbot application
+  chatbot-host:
+    build:
+      context: .
+      dockerfile: chatbot-host/Dockerfile
+    hostname: chatbot-host
+    ports:
+      - "3002:3002"
+    env_file:
+      - ./.env
+    environment:
+      - CHATBOT_HOST_PORT=3002
+      - MCP_GATEWAY_URL=http://mcp-gateway:3001
+    depends_on:
+      - mcp-gateway
+      - hr-mcp-server
+      - it-mcp-server
+      - general-mcp-server
+    restart: unless-stopped
+    volumes:
+      - ./logs/chatbot-host:/app/logs
+    networks:
+      - mcp-network
+
+  # MCP Gateway - Enterprise routing and security layer
+  mcp-gateway:
+    build:
+      context: .
+      dockerfile: mcp-gateway/Dockerfile
+    hostname: mcp-gateway
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./.env
+    environment:
+      - MCP_GATEWAY_PORT=3001
+    restart: unless-stopped
+    volumes:
+      - ./logs/mcp-gateway:/app/logs
+    networks:
+      - mcp-network
+    
+  # HR MCP Server
+  hr-mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/Dockerfile.agent
+      args:
+        AGENT_NAME: hr
+    hostname: hr-mcp-server
+    ports:
+      - "3003:3000"
+    env_file:
+      - ./.env
+    depends_on:
+      - mcp-gateway
+    restart: unless-stopped
+    volumes:
+      - ./logs/hr-mcp-server:/app/logs
+    networks:
+      - mcp-network
+    
+  # IT MCP Server  
+  it-mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/Dockerfile.agent
+      args:
+        AGENT_NAME: it
+    hostname: it-mcp-server
+    ports:
+      - "3004:3000"
+    env_file:
+      - ./.env
+    depends_on:
+      - mcp-gateway
+    restart: unless-stopped
+    volumes:
+      - ./logs/it-mcp-server:/app/logs
+    networks:
+      - mcp-network
+    
+  # General MCP Server
+  general-mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/Dockerfile.agent
+      args:
+        AGENT_NAME: general
+    hostname: general-mcp-server
+    ports:
+      - "3005:3000"
+    env_file:
+      - ./.env
+    depends_on:
+      - mcp-gateway
+    restart: unless-stopped
+    volumes:
+      - ./logs/general-mcp-server:/app/logs
+    networks:
+      - mcp-network
+
+  # Optional: Ollama service (uncomment if you want to run Ollama in Docker)
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+
+networks:
+  mcp-network:
+    driver: bridge
+
+volumes:
+  it-db:
+
+# Uncomment if using Ollama service
+# volumes:
+#   ollama_data:

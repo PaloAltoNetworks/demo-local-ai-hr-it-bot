@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "cannotFulfillRequest": "Ich kann diese Anfrage leider nicht erfüllen."
+  },
+  "status": {
+    "healthy": "Dienst ist betriebsbereit",
+    "unhealthy": "Dienst ist nicht verfügbar",
+    "allServicesOperational": "Alle Dienste funktionieren normal",
+    "mcpServicesUnavailable": "MCP-Dienste nicht verfügbar"
+  },
+  "mcp": {
+    "unavailableMessage": "Entschuldigung, aber unsere KI-Dienste sind derzeit nicht verfügbar. Dies kann folgende Gründe haben:\n\n• Systemwartung\n• Verbindungsprobleme\n• Serverüberlastung\n\nBitte versuchen Sie es in wenigen Minuten erneut. Für sofortige Hilfe können Sie:\n• Die IT-Helpdesk kontaktieren: Durchwahl 1234\n• HR kontaktieren: Durchwahl 5678\n\nDanke für Ihre Geduld."
+  },
+  "security": {
+    "detections": {
+      "injection": "einen Injektionsangriff",
+      "toxicContent": "toxische Inhalte",
+      "maliciousCode": "bösartigen Code",
+      "dataLeak": "Datenleck",
+      "topicViolation": "Verstoß gegen Sicherheitsrichtlinie",
+      "urlCategory": "Zugriff auf nicht autorisierte URL-Kategorien",
+      "suspiciousAgent": "verdächtiges Agent-Verhalten",
+      "ungrounded": "unbegründete Antwort",
+      "dbSecurity": "Datenbankensicherheitsproblem"
+    },
+    "messages": {
+      "contentApproved": "Inhalt genehmigt",
+      "cannotProcessRequest": "Ich kann diese Anfrage nicht verarbeiten",
+      "cannotProvideResponse": "Ich kann diese Antwort nicht bereitstellen",
+      "containsIssues": "da sie folgendes enthält: {{issues}}.",
+      "policyViolation": "da sie nicht den geltenden Sicherheitsrichtlinien entspricht.",
+      "rephraseRequest": "Bitte formulieren Sie Ihre Frage angemessen um.",
+      "helpWithElse": "Kann ich dir bei etwas anderem helfen?"
+    },
+    "errors": {
+      "notConfigured": "Es tut mir leid, das Sicherheitssystem ist noch nicht konfiguriert. Bitte kontaktieren Sie den Administrator, um diese Funktion zu aktivieren.",
+      "serviceUnavailable": "Es tut mir leid, das Sicherheitsüberprüfungssystem ist derzeit nicht verfügbar. Bitte versuchen Sie es in wenigen Minuten erneut."
+    }
+  }
+}
