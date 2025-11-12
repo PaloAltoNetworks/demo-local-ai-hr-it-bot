@@ -117,6 +117,11 @@
     "mcpUnavailable": "Les services IA sont actuellement indisponibles. Veuillez réessayer plus tard.",
     "servicesDegraded": "Certains services sont actuellement indisponibles en raison de maintenance."
   },
+  "security": {
+    "title": "Analyse de Sécurité",
+    "waiting": "En attente d'analyse de sécurité...",
+    "clear": "Effacer"
+  },
   "language": {
     "code": "fr",
     "name": "Français",

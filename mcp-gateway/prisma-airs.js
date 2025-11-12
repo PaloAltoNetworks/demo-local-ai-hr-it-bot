@@ -161,7 +161,10 @@ class PrismaAIRSIntercept {
                 },
                 message: approved 
                     ? t('security.messages.contentApproved', { lng: metadata.language || 'en' })
-                    : this._generateBlockedMessage(result, response ? 'response' : 'prompt', metadata.language || 'en')
+                    : this._generateBlockedMessage(result, response ? 'response' : 'prompt', metadata.language || 'en'),
+                // Include raw API payloads for checkpoint display
+                __raw_request_payload: payload,
+                __raw_response_payload: result
             };
 
         } catch (error) {
@@ -176,7 +179,12 @@ class PrismaAIRSIntercept {
                 message: errorMessage,
                 category: 'service_error',
                 action: 'block',
-                apiError: true
+                apiError: true,
+                __raw_request_payload: payload,
+                __error_details: {
+                    message: error.message,
+                    response: error.response?.data || null
+                }
             };
         }
     }

@@ -5,8 +5,8 @@ import { ApiService } from './api-service.js';
 import { UIManager } from './ui-manager.js';
 import { QuestionsManager } from './questions-manager.js';
 import { ConnectionMonitor } from './connection-monitor.js';
+import { SecurityDevPanel } from './security-dev-panel.js';
 import { i18n } from './i18n.js';
-import { API_BASE_URL } from './config.js';
 
 class ChatBotApp {
     constructor() {
@@ -22,6 +22,7 @@ class ChatBotApp {
         }
         
         this.chatHistory = [];
+        this.securityDevPanel = null; // Will be initialized in init()
 
         console.log(`Initial language detected: ${this.currentLanguage}`);
     }
@@ -61,6 +62,9 @@ class ChatBotApp {
             this.uiManager = new UIManager(this.currentLanguage, i18n);
             this.questionsManager = new QuestionsManager(i18n, this.uiManager);
             this.connectionMonitor = new ConnectionMonitor(this.apiService, this.uiManager);
+            
+            // Initialize Security Dev Panel for real-time Prisma AIRS analysis
+            this.securityDevPanel = new SecurityDevPanel();
 
             // Setup page lifecycle events to handle refresh
             this.setupPageLifecycleEvents();
@@ -352,6 +356,14 @@ class ChatBotApp {
                             // Display with thinking chain if available, using the phase when message was sent
                             this.uiManager?.displayBotMessageWithThinking(contentToDisplay, messagePhase);
                         }
+                    }
+                },
+                // Checkpoints are sent individually via SSE as separate events
+                null, // onSecurityCheckpoints (batch) - not used
+                // Individual checkpoint callback for real-time display
+                (checkpoint) => {
+                    if (this.securityDevPanel && checkpoint) {
+                        this.securityDevPanel.addCheckpoint(checkpoint);
                     }
                 }
             );

@@ -117,6 +117,11 @@
     "mcpUnavailable": "AI services are currently unavailable. Please try again later.",
     "servicesDegraded": "Some services are currently unavailable due to maintenance."
   },
+  "security": {
+    "title": "Security Analysis",
+    "waiting": "Waiting for security analysis...",
+    "clear": "Clear"
+  },
   "language": {
     "code": "en",
     "name": "English",

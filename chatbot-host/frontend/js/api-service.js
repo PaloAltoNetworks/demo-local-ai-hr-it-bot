@@ -21,7 +21,7 @@ export class ApiService {
     /**
      * Send message with streaming thinking updates using Server-Sent Events
      */
-    async sendMessageWithThinking(chatHistory, currentPhase, language, onThinking, onComplete, retryCount = 0) {
+    async sendMessageWithThinking(chatHistory, currentPhase, language, onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount = 0) {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
@@ -84,6 +84,16 @@ export class ApiService {
                                         if (data.message) {
                                             if (onThinking) onThinking(data.message, false);
                                         }
+                                    } else if (data.type === 'checkpoint') {
+                                        // Handle individual checkpoint events - extract checkpoint from data
+                                        if (onCheckpoint) {
+                                            // Pass only checkpoint data (exclude the 'type' wrapper)
+                                            const checkpointData = { ...data };
+                                            delete checkpointData.type;
+                                            onCheckpoint(checkpointData);
+                                        }
+                                    } else if (data.type === 'security-checkpoints') {
+                                        if (onSecurityCheckpoints) onSecurityCheckpoints(data.checkpoints);
                                     } else if (data.type === 'response') {
                                         if (onComplete) onComplete(data);
                                         return data;
@@ -99,7 +109,7 @@ export class ApiService {
                 }
             }
         } catch (error) {
-            return this.handleApiError(error, chatHistory, currentPhase, language, retryCount, true, onThinking, onComplete);
+            return this.handleApiError(error, chatHistory, currentPhase, language, retryCount, true, onThinking, onComplete, onSecurityCheckpoints, onCheckpoint);
         }
     }
 
@@ -108,13 +118,13 @@ export class ApiService {
      */
     async sendMessage(chatHistory, currentPhase, language, retryCount = 0) {
         // Use streaming version for all requests
-        return this.sendMessageWithThinking(chatHistory, currentPhase, language, null, null, retryCount);
+        return this.sendMessageWithThinking(chatHistory, currentPhase, language, null, null, null, null, retryCount);
     }
 
     /**
      * Handle API errors with appropriate retry logic
      */
-    async handleApiError(error, chatHistory, currentPhase, language, retryCount, isStreaming = false, onThinking = null, onComplete = null) {
+    async handleApiError(error, chatHistory, currentPhase, language, retryCount, isStreaming = false, onThinking = null, onComplete = null, onSecurityCheckpoints = null, onCheckpoint = null) {
         console.error(`API Error (attempt ${retryCount + 1}):`, error);
         
         // Handle different types of errors with user-friendly messages
@@ -127,7 +137,7 @@ export class ApiService {
                 
                 if (isStreaming) {
                     return this.sendMessageWithThinking(chatHistory, currentPhase, language, 
-                        onThinking, onComplete, retryCount + 1);
+                        onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount + 1);
                 } else {
                     return this.sendMessage(chatHistory, currentPhase, language, retryCount + 1);
                 }
@@ -163,7 +173,7 @@ export class ApiService {
             
             if (isStreaming) {
                 return this.sendMessageWithThinking(chatHistory, currentPhase, language, 
-                    onThinking, onComplete, retryCount + 1);
+                    onThinking, onComplete, onSecurityCheckpoints, retryCount + 1);
             } else {
                 return this.sendMessage(chatHistory, currentPhase, language, retryCount + 1);
             }

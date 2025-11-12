@@ -273,7 +273,23 @@ app.post('/api/process-prompt', async (req, res) => {
                             try {
                                 const data = JSON.parse(line);
                                 if (data.type === 'thinking') {
-                                    messageQueue.push(data.message);
+                                    // Check if this is a checkpoint message with data marker
+                                    if (data.message && data.message.startsWith('[CHECKPOINT_DATA]')) {
+                                        try {
+                                            const jsonStr = data.message.substring('[CHECKPOINT_DATA]'.length);
+                                            const checkpointData = JSON.parse(jsonStr);
+                                            // Send checkpoint data as separate event
+                                            res.write('data: ' + JSON.stringify({
+                                                type: 'checkpoint',
+                                                ...checkpointData
+                                            }) + '\n\n');
+                                        } catch (parseErr) {
+                                            getLogger().warn('Error parsing checkpoint data: ' + parseErr.message);
+                                        }
+                                    } else {
+                                        // Regular thinking message
+                                        messageQueue.push(data.message);
+                                    }
                                 } else if (data.type === 'response') {
                                     if (data.success) {
                                         messageQueue.push('Response received from MCP Gateway');
@@ -314,6 +330,14 @@ app.post('/api/process-prompt', async (req, res) => {
 
             // Process any remaining queued messages
             await processQueue();
+
+            // Send security checkpoints if phase3 and available
+            if (phase === 'phase3' && tokenMetadata && tokenMetadata.securityCheckpoints) {
+                res.write('data: ' + JSON.stringify({
+                    type: 'security-checkpoints',
+                    checkpoints: tokenMetadata.securityCheckpoints
+                }) + '\n\n');
+            }
 
             // Send final response
             if (mcpResponse) {

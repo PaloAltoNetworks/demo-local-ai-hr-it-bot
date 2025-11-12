@@ -42,6 +42,7 @@ const ICONS = [
     'center_focus_strong', // Focus icon
     'chat',                // Chat/messaging icon
     'check_circle',        // Success/checkmark icon
+    'close',               // Close/x icon
     'cloud_queue',         // Cloud/network icon
     'event',               // Event/calendar icon
     'expand_more',         // Expand/dropdown icon
@@ -59,6 +60,7 @@ const ICONS = [
     'person',              // Person/user icon
     'public',              // Public/web icon
     'search',              // Search icon
+    'security',            // Security/shield icon
     'send',                // Send/submit icon
     'settings',            // Settings/configuration icon
     'syringe',             // Syringe icon (injection attack demo)

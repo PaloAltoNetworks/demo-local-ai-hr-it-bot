@@ -117,6 +117,11 @@
     "mcpUnavailable": "AIサービスは現在利用できません。後でもう一度お試しください。",
     "servicesDegraded": "メンテナンス中のため、一部のサービスは現在利用できません。"
   },
+  "security": {
+    "title": "セキュリティ分析",
+    "waiting": "セキュリティ分析を待機中...",
+    "clear": "クリア"
+  },
   "language": {
     "code": "ja",
     "name": "Japanese",

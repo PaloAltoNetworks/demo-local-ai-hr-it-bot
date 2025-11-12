@@ -156,6 +156,38 @@
     <span data-i18n="chat.thinking">Loading...</span>
   </div>
 
+  <!-- Floating Dev Button & Security Panel -->
+  <div id="security-dev-panel" class="security-dev-panel">
+    <!-- Floating Button -->
+    <button id="security-dev-button" class="security-dev-button" title="Toggle Security Analysis">
+      <span class="material-symbols">security</span>
+      <span class="security-badge" id="security-badge" style="display: none;">0</span>
+    </button>
+
+    <!-- Dev Panel -->
+    <div id="security-dev-content" class="security-dev-content">
+      <div class="security-dev-header">
+        <h3>
+          <span class="material-symbols">security</span>
+          <span data-i18n="security.title">Security Analysis</span>
+        </h3>
+        <button id="security-dev-close" class="security-dev-close" title="Close">
+          <span class="material-symbols">close</span>
+        </button>
+      </div>
+      
+      <!-- Live Feed -->
+      <div id="security-live-feed" class="security-live-feed">
+        <p class="no-data" data-i18n="security.waiting">Waiting for security analysis...</p>
+      </div>
+
+      <!-- Clear Button -->
+      <div class="security-dev-footer">
+        <button id="security-dev-clear" class="security-dev-clear-btn" data-i18n="security.clear">Clear</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script type="module" src="./js/i18n.js"></script>
   <script type="module" src="./js/config.js"></script>
@@ -164,6 +196,7 @@
   <script type="module" src="./js/ui-manager.js"></script>
   <script type="module" src="./js/questions-manager.js"></script>
   <script type="module" src="./js/connection-monitor.js"></script>
+  <script type="module" src="./js/security-dev-panel.js"></script>
   <script type="module" src="./js/app.js"></script>
 
   <script type="module">

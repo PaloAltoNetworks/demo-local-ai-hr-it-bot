@@ -117,6 +117,11 @@
     "mcpUnavailable": "Los servicios de IA no están disponibles. Por favor, intenta más tarde.",
     "servicesDegraded": "Algunos servicios no están disponibles debido a mantenimiento."
   },
+  "security": {
+    "title": "Análisis de Seguridad",
+    "waiting": "Esperando análisis de seguridad...",
+    "clear": "Limpiar"
+  },
   "language": {
     "code": "es",
     "name": "Spanish",

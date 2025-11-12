@@ -158,6 +158,9 @@ class IntelligentCoordinator {
       total_tokens: 0
     };
     
+    // Security checkpoint data tracking for phase 3
+    this.securityCheckpoints = [];
+    
     // LLM Models
     this.coordinatorModel = process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b';
     this.translationModel = process.env.TRANSLATION_MODEL || 'qwen2.5-translator';
@@ -194,6 +197,20 @@ class IntelligentCoordinator {
     if (this.streamThinkingCallback) {
       this.streamThinkingCallback(`[COORDINATOR] ${message}`);
     }
+  }
+
+  /**
+   * Get collected security checkpoints for the current query
+   */
+  getSecurityCheckpoints() {
+    return this.securityCheckpoints;
+  }
+
+  /**
+   * Clear security checkpoints at the start of a new query
+   */
+  clearSecurityCheckpoints() {
+    this.securityCheckpoints = [];
   }
 
   /**
@@ -1161,10 +1178,30 @@ Return only the concise version:`;
   }
 
   /**
+   * Store security checkpoint data for display on frontend
+   * @private
+   */
+  _recordSecurityCheckpoint(checkpointNumber, label, input, output, latency, agentName = null) {
+    const checkpoint = {
+      number: checkpointNumber,
+      label,
+      timestamp: new Date().toISOString(),
+      latency_ms: latency,
+      input: {
+        type: 'string',
+        content: input
+      },
+      output: output || {},
+      agent: agentName || null
+    };
+    this.securityCheckpoints.push(checkpoint);
+  }
+
+  /**
    * Helper method to send Prisma AIRS checkpoint thinking message with latency
    * @private
    */
-  _sendSecurityCheckpointMessage(checkpointNumber, result, startTime, context = {}) {
+  _sendSecurityCheckpointMessage(checkpointNumber, result, startTime, context = {}, checkpointData = null) {
     const latency = Date.now() - startTime;
     const detectionField = context.detectionField || 'promptDetected';
     const detections = result[detectionField] ? Object.keys(result[detectionField]).filter(k => result[detectionField][k]).join(', ') : 'policy violation';
@@ -1178,6 +1215,21 @@ Return only the concise version:`;
       if (context.blockLogMessage) {
         getLogger().info(context.blockLogMessage);
       }
+    }
+    
+    // Send checkpoint data as a special thinking message with JSON payload
+    if (checkpointData && this.streamThinkingCallback) {
+      // Use a special marker format that can be parsed by frontend: [CHECKPOINT_DATA]<json>
+      const checkpointMessage = {
+        type: 'checkpoint',
+        number: checkpointNumber,
+        label: context.message || 'Security checkpoint',
+        status: result.approved ? 'approved' : 'blocked',
+        latency_ms: latency,
+        input: checkpointData.input,
+        output: checkpointData.output
+      };
+      this.streamThinkingCallback(`[CHECKPOINT_DATA]${JSON.stringify(checkpointMessage)}`);
     }
   }
 
@@ -1239,12 +1291,35 @@ Return only the concise version:`;
       });
     }
 
-    // Send thinking messages for visibility
+    // Prepare checkpoint data to send with thinking message
+    // Keep raw Prisma AIRS JSON request and response untouched with clear input/output separation
+    const checkpointData = {
+      input: result.__raw_request_payload || {
+        tr_id: 'unknown',
+        contents: analyzeMethod === 'promptAndResponse' 
+          ? [{ prompt: input, response: secondaryInput }]
+          : [{ prompt: input }]
+      },
+      output: result.__raw_response_payload || result
+    };
+
+    // Send thinking messages for visibility (now includes checkpoint data)
     this._sendSecurityCheckpointMessage(checkpointNumber, result, startTime, {
       message: successMessage,
       detectionField,
       blockLogMessage: blockMessage
-    });
+    }, checkpointData);
+
+    // Record checkpoint data for frontend display
+    const latency = Date.now() - startTime;
+    this._recordSecurityCheckpoint(
+      checkpointNumber,
+      checkpointLabel,
+      input,
+      checkpointData.output,
+      latency,
+      agentName
+    );
 
     // Extract masked data if sensitive data was detected
     let maskedInput = input;
@@ -1383,12 +1458,13 @@ Return only the concise version:`;
       throw new Error('IntelligentCoordinator not initialized');
     }
 
-    // Reset token usage for this query
+    // Reset token usage and security checkpoints for this query
     this.tokenUsage = {
       coordinator_tokens: 0,
       agent_tokens: 0,
       total_tokens: 0
     };
+    this.clearSecurityCheckpoints();
 
     getLogger().info(`🎬 [Coordinator] Processing query: "${query}" (${language}, Phase: ${phase})`);
     this.sendThinkingMessage(`Analyzing your question...`);
@@ -1536,7 +1612,8 @@ Return only the concise version:`;
           total_tokens: this.tokenUsage.total_tokens,
           coordinator_tokens: this.tokenUsage.coordinator_tokens,
           agent_tokens: this.tokenUsage.agent_tokens,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
         };
         
         return {
@@ -1554,7 +1631,8 @@ Return only the concise version:`;
           total_tokens: this.tokenUsage.total_tokens,
           coordinator_tokens: this.tokenUsage.coordinator_tokens,
           agent_tokens: this.tokenUsage.agent_tokens,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
         };
         
         return {
@@ -1606,7 +1684,8 @@ Return only the concise version:`;
           total_tokens: this.tokenUsage.total_tokens,
           coordinator_tokens: this.tokenUsage.coordinator_tokens,
           agent_tokens: this.tokenUsage.agent_tokens,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
         };
         
         return {
