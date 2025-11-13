@@ -88,9 +88,9 @@ export class SecurityDevPanel {
         
         if (totalCount > 0) {
             this.securityBadge.textContent = totalCount;
-            this.securityBadge.style.display = 'flex';
+            this.securityBadge.classList.remove('hidden');
         } else {
-            this.securityBadge.style.display = 'none';
+            this.securityBadge.classList.add('hidden');
         }
     }
 
@@ -155,7 +155,7 @@ export class SecurityDevPanel {
         this.checkpoints = [];
         this.updateBadge();
         if (this.liveFeedContainer) {
-            this.liveFeedContainer.innerHTML = '<p class="no-data" style="padding: 16px; text-align: center; color: var(--color-text-secondary);">Waiting for security analysis...</p>';
+            this.liveFeedContainer.innerHTML = '<p class="no-data">Waiting for security analysis...</p>';
         }
     }
 }

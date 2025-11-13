@@ -1856,6 +1856,10 @@ body {
   overflow-y: auto;
 }
 
+.thinking-chain.hidden {
+  display: none;
+}
+
 .thinking-step {
   display: flex;
   flex-direction: column;
@@ -2609,6 +2613,10 @@ body {
   animation: pulse 2s infinite;
 }
 
+.security-badge.hidden {
+  display: none;
+}
+
 @keyframes pulse {
   0%, 100% {
     transform: scale(1);
@@ -2903,4 +2911,15 @@ body {
     bottom: 70px;
     right: 10px;
   }
+}
+
+/* No Data States */
+.no-data {
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.no-data.hidden {
+  display: none;
 }
