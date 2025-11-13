@@ -120,7 +120,11 @@
   "security": {
     "title": "Security Analysis",
     "waiting": "Waiting for security analysis...",
-    "clear": "Clear"
+    "clear": "Clear",
+    "viewDetails": "View Request/Response JSON",
+    "checkpoint": "Checkpoint",
+    "inputLabel": "INPUT",
+    "outputLabel": "OUTPUT (Raw Prisma AIRS Response)"
   },
   "language": {
     "code": "en",

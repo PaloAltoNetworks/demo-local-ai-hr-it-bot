@@ -120,7 +120,11 @@
   "security": {
     "title": "Análisis de Seguridad",
     "waiting": "Esperando análisis de seguridad...",
-    "clear": "Limpiar"
+    "clear": "Limpiar",
+    "viewDetails": "Ver JSON de Solicitud/Respuesta",
+    "checkpoint": "Checkpoint",
+    "inputLabel": "ENTRADA",
+    "outputLabel": "SALIDA (Respuesta Prisma AIRS sin filtrar)"
   },
   "language": {
     "code": "es",
