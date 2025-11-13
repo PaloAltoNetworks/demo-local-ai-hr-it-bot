@@ -1834,12 +1834,14 @@ body {
   color: var(--color-primary-hover);
 }
 
-.thinking-toggle i {
+.thinking-toggle i,
+.thinking-toggle .material-symbols {
   transition: transform var(--duration-fast) var(--ease-standard);
   font-size: var(--font-size-sm);
 }
 
-.thinking-toggle.expanded i {
+.thinking-toggle.expanded i,
+.thinking-toggle.expanded .material-symbols {
   transform: rotate(180deg);
 }
 
@@ -1854,6 +1856,10 @@ body {
   gap: var(--space-8);
   max-height: 400px;
   overflow-y: auto;
+}
+
+.thinking-chain.hidden {
+  display: none;
 }
 
 .thinking-step {
@@ -2609,6 +2615,10 @@ body {
   animation: pulse 2s infinite;
 }
 
+.security-badge.hidden {
+  display: none;
+}
+
 @keyframes pulse {
   0%, 100% {
     transform: scale(1);
@@ -2903,4 +2913,15 @@ body {
     bottom: 70px;
     right: 10px;
   }
+}
+
+/* No Data States */
+.no-data {
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.no-data.hidden {
+  display: none;
 }

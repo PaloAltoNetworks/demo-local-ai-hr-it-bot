@@ -5,13 +5,14 @@
  */
 
 export class SecurityDevPanel {
-    constructor() {
+    constructor(i18n = null) {
         this.panelButton = document.getElementById('security-dev-button');
         this.panelContent = document.getElementById('security-dev-content');
         this.panelClose = document.getElementById('security-dev-close');
         this.panelClear = document.getElementById('security-dev-clear');
         this.securityBadge = document.getElementById('security-badge');
         this.liveFeedContainer = document.getElementById('security-live-feed');
+        this.i18n = i18n;
         
         this.checkpoints = [];
         this.isOpen = false;
@@ -88,9 +89,9 @@ export class SecurityDevPanel {
         
         if (totalCount > 0) {
             this.securityBadge.textContent = totalCount;
-            this.securityBadge.style.display = 'flex';
+            this.securityBadge.classList.remove('hidden');
         } else {
-            this.securityBadge.style.display = 'none';
+            this.securityBadge.classList.add('hidden');
         }
     }
 
@@ -120,7 +121,7 @@ export class SecurityDevPanel {
             <div class="checkpoint-timestamp">${timestamp}</div>
             <div class="checkpoint-header">
                 <span class="checkpoint-icon">${statusIcon}</span>
-                <span class="checkpoint-number">Checkpoint ${checkpoint.number}</span>
+                <span class="checkpoint-number">${this.i18n.t('security.checkpoint')} ${checkpoint.number}</span>
                 <span class="checkpoint-latency">${checkpoint.latency_ms}ms</span>
             </div>
             <div class="checkpoint-label">${checkpoint.label}</div>
@@ -128,14 +129,14 @@ export class SecurityDevPanel {
                 ${actionText}${category}
             </div>
             <details class="checkpoint-details">
-                <summary>View Request/Response JSON</summary>
+                <summary>${this.i18n.t('security.viewDetails')}</summary>
                 <div class="checkpoint-json-container">
                     <div class="checkpoint-json-section">
-                        <div class="checkpoint-json-label">INPUT</div>
+                        <div class="checkpoint-json-label">${this.i18n.t('security.inputLabel')}</div>
                         <pre class="checkpoint-json-code"><code>${JSON.stringify(checkpoint.input, null, 2)}</code></pre>
                     </div>
                     <div class="checkpoint-json-section">
-                        <div class="checkpoint-json-label">OUTPUT (Raw Prisma AIRS Response)</div>
+                        <div class="checkpoint-json-label">${this.i18n.t('security.outputLabel')}</div>
                         <pre class="checkpoint-json-code"><code>${JSON.stringify(checkpoint.output, null, 2)}</code></pre>
                     </div>
                 </div>
@@ -148,14 +149,11 @@ export class SecurityDevPanel {
         this.liveFeedContainer.scrollTop = this.liveFeedContainer.scrollHeight;
     }
 
-    /**
-     * Clear all data
-     */
     clearAll() {
         this.checkpoints = [];
         this.updateBadge();
         if (this.liveFeedContainer) {
-            this.liveFeedContainer.innerHTML = '<p class="no-data" style="padding: 16px; text-align: center; color: var(--color-text-secondary);">Waiting for security analysis...</p>';
+            this.liveFeedContainer.innerHTML = `<p class="no-data">${this.i18n.t('security.waiting')}</p>`;
         }
     }
 }

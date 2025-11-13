@@ -120,7 +120,11 @@
   "security": {
     "title": "Sicherheitsanalyse",
     "waiting": "Warte auf Sicherheitsanalyse...",
-    "clear": "Löschen"
+    "clear": "Löschen",
+    "viewDetails": "Anfrage-/Antwort-JSON anzeigen",
+    "checkpoint": "Kontrollpunkt",
+    "inputLabel": "EINGABE",
+    "outputLabel": "AUSGABE (Rohe Prisma AIRS-Antwort)"
   },
   "language": {
     "code": "de",

@@ -120,7 +120,11 @@
   "security": {
     "title": "セキュリティ分析",
     "waiting": "セキュリティ分析を待機中...",
-    "clear": "クリア"
+    "clear": "クリア",
+    "viewDetails": "リクエスト/レスポンスJSONを表示",
+    "checkpoint": "チェックポイント",
+    "inputLabel": "入力",
+    "outputLabel": "出力 (Prisma AIRSの生のレスポンス)"
   },
   "language": {
     "code": "ja",

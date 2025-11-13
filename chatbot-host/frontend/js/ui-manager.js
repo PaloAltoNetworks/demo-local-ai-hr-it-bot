@@ -168,14 +168,14 @@ export class UIManager {
                     <span class="material-symbols">expand_more</span>
                     <span class="thinking-toggle-text">${this.i18n.t('chat.viewThinking')}</span>
                 </button>
-                <div class="thinking-chain" id="${thinkingId}" style="display: none;">
+                <div class="thinking-chain hidden" id="${thinkingId}">
             `;
             
             // Add each thinking step
             this.thinkingChain.forEach((thought, index) => {
                 const formattedIcon = this.getThinkingIcon(thought.text);
                 messageHTML += `
-                    <div class="thinking-step" style="animation-delay: ${index * 0.05}s;">
+                    <div class="thinking-step">
                         <div class="thinking-step-header">
                             <span class="thinking-step-time">${thought.timestamp}</span>
                         </div>
@@ -204,10 +204,8 @@ export class UIManager {
             const thinkingChain = messageDiv.querySelector('.thinking-chain');
             
             toggleBtn.addEventListener('click', () => {
-                const isVisible = thinkingChain.style.display !== 'none';
-                thinkingChain.style.display = isVisible ? 'none' : 'flex';
-                toggleBtn.classList.toggle('expanded', !isVisible);
-                this.scrollToBottom();
+                thinkingChain.classList.toggle('hidden');
+                toggleBtn.classList.toggle('expanded');
             });
         }
 

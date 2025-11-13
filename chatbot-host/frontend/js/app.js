@@ -64,7 +64,7 @@ class ChatBotApp {
             this.connectionMonitor = new ConnectionMonitor(this.apiService, this.uiManager);
             
             // Initialize Security Dev Panel for real-time Prisma AIRS analysis
-            this.securityDevPanel = new SecurityDevPanel();
+            this.securityDevPanel = new SecurityDevPanel(i18n);
 
             // Setup page lifecycle events to handle refresh
             this.setupPageLifecycleEvents();
