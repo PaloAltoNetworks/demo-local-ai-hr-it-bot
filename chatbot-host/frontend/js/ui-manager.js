@@ -204,14 +204,8 @@ export class UIManager {
             const thinkingChain = messageDiv.querySelector('.thinking-chain');
             
             toggleBtn.addEventListener('click', () => {
-                const isVisible = !thinkingChain.classList.contains('hidden');
-                if (isVisible) {
-                    thinkingChain.classList.add('hidden');
-                } else {
-                    thinkingChain.classList.remove('hidden');
-                }
-                toggleBtn.classList.toggle('expanded', !isVisible);
-                this.scrollToBottom();
+                thinkingChain.classList.toggle('hidden');
+                toggleBtn.classList.toggle('expanded');
             });
         }
 

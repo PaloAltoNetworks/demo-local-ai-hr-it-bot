@@ -1834,12 +1834,14 @@ body {
   color: var(--color-primary-hover);
 }
 
-.thinking-toggle i {
+.thinking-toggle i,
+.thinking-toggle .material-symbols {
   transition: transform var(--duration-fast) var(--ease-standard);
   font-size: var(--font-size-sm);
 }
 
-.thinking-toggle.expanded i {
+.thinking-toggle.expanded i,
+.thinking-toggle.expanded .material-symbols {
   transform: rotate(180deg);
 }
 
