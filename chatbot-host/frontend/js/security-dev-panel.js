@@ -106,12 +106,6 @@ export class SecurityDevPanel {
             this.liveFeedContainer.innerHTML = '';
         }
         
-        // Get translations with fallbacks
-        const viewDetailsText = this.i18n?.t('security.viewDetails') || 'View Request/Response JSON';
-        const checkpointLabel = this.i18n?.t('security.checkpoint') || 'Checkpoint';
-        const inputLabel = this.i18n?.t('security.inputLabel') || 'INPUT';
-        const outputLabel = this.i18n?.t('security.outputLabel') || 'OUTPUT (Raw Prisma AIRS Response)';
-        
         // Determine approval status from action field (Prisma AIRS native field)
         const action = checkpoint.output?.action;
         const isApproved = action === 'allow';
@@ -127,7 +121,7 @@ export class SecurityDevPanel {
             <div class="checkpoint-timestamp">${timestamp}</div>
             <div class="checkpoint-header">
                 <span class="checkpoint-icon">${statusIcon}</span>
-                <span class="checkpoint-number">${checkpointLabel} ${checkpoint.number}</span>
+                <span class="checkpoint-number">${this.i18n.t('security.checkpoint')} ${checkpoint.number}</span>
                 <span class="checkpoint-latency">${checkpoint.latency_ms}ms</span>
             </div>
             <div class="checkpoint-label">${checkpoint.label}</div>
@@ -135,14 +129,14 @@ export class SecurityDevPanel {
                 ${actionText}${category}
             </div>
             <details class="checkpoint-details">
-                <summary>${viewDetailsText}</summary>
+                <summary>${this.i18n.t('security.viewDetails')}</summary>
                 <div class="checkpoint-json-container">
                     <div class="checkpoint-json-section">
-                        <div class="checkpoint-json-label">${inputLabel}</div>
+                        <div class="checkpoint-json-label">${this.i18n.t('security.inputLabel')}</div>
                         <pre class="checkpoint-json-code"><code>${JSON.stringify(checkpoint.input, null, 2)}</code></pre>
                     </div>
                     <div class="checkpoint-json-section">
-                        <div class="checkpoint-json-label">${outputLabel}</div>
+                        <div class="checkpoint-json-label">${this.i18n.t('security.outputLabel')}</div>
                         <pre class="checkpoint-json-code"><code>${JSON.stringify(checkpoint.output, null, 2)}</code></pre>
                     </div>
                 </div>
@@ -155,15 +149,11 @@ export class SecurityDevPanel {
         this.liveFeedContainer.scrollTop = this.liveFeedContainer.scrollHeight;
     }
 
-    /**
-     * Clear all data
-     */
     clearAll() {
         this.checkpoints = [];
         this.updateBadge();
         if (this.liveFeedContainer) {
-            const waitingText = this.i18n?.t('security.waiting') || 'Waiting for security analysis...';
-            this.liveFeedContainer.innerHTML = `<p class="no-data">${waitingText}</p>`;
+            this.liveFeedContainer.innerHTML = `<p class="no-data">${this.i18n.t('security.waiting')}</p>`;
         }
     }
 }
