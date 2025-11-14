@@ -1562,20 +1562,12 @@ Return only the concise version:`;
         if (agentResponse && agentResponse._securityBlock) {
           getLogger().info(`🚫 [Coordinator] Checkpoint 3 blocked response, returning security message`);
           
-          const resultMetadata = {
-            total_tokens: this.tokenUsage.total_tokens,
-            coordinator_tokens: this.tokenUsage.coordinator_tokens,
-            agent_tokens: this.tokenUsage.agent_tokens,
-            timestamp: new Date().toISOString(),
-            securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
-          };
-          
           return {
             response: agentResponse.message,
             securityBlock: true,
             category: agentResponse.category,
             reportId: agentResponse.reportId,
-            metadata: resultMetadata
+            metadata: this.buildResultMetadata(phase)
           };
         }
         
@@ -1597,20 +1589,12 @@ Return only the concise version:`;
         if (shouldUsePrismaAIRS(phase)) {
           const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, selectedAgent.name);
           if (!finalSecurity.approved) {
-            const resultMetadata = {
-              total_tokens: this.tokenUsage.total_tokens,
-              coordinator_tokens: this.tokenUsage.coordinator_tokens,
-              agent_tokens: this.tokenUsage.agent_tokens,
-              timestamp: new Date().toISOString(),
-              securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
-            };
-            
             return {
               response: finalSecurity.message,
               securityBlock: true,
               category: finalSecurity.category,
               reportId: finalSecurity.reportId,
-              metadata: resultMetadata
+              metadata: this.buildResultMetadata(phase)
             };
           }
           
@@ -1622,41 +1606,24 @@ Return only the concise version:`;
         }
         
         // NOTE: Don't re-track agent response here - it was already tracked in queryAgent()
-        // The coordinator's work here (validation, masking) is part of operational overhead
-        
-        const resultMetadata = {
-          total_tokens: this.tokenUsage.total_tokens,
-          coordinator_tokens: this.tokenUsage.coordinator_tokens,
-          agent_tokens: this.tokenUsage.agent_tokens,
-          timestamp: new Date().toISOString(),
-          securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
-        };
-        
+        // The coordinator's work here (validation, masking) is part of operational overhead        
         return {
           response: finalResponseToReturn,
           agentUsed: selectedAgent.name,
           translatedQuery: translatedQuery !== query ? translatedQuery : null,
-          metadata: resultMetadata
+          metadata: this.buildResultMetadata(phase)
         };
       } else if (routingResult.type === 'declined') {
         // Query was declined by LLM for security/policy reasons
         getLogger().info(`🚫 [Coordinator] Query declined - Reasoning: ${routingResult.reasoning}`);
         this.sendThinkingMessage(`🚫 Request cannot be processed: ${routingResult.reasoning}`);
         
-        const resultMetadata = {
-          total_tokens: this.tokenUsage.total_tokens,
-          coordinator_tokens: this.tokenUsage.coordinator_tokens,
-          agent_tokens: this.tokenUsage.agent_tokens,
-          timestamp: new Date().toISOString(),
-          securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
-        };
-        
         return {
           response: routingResult.response,
           declined: true,
           reason: routingResult.reasoning,
           translatedQuery: translatedQuery !== query ? translatedQuery : null,
-          metadata: resultMetadata
+          metadata: this.buildResultMetadata(phase)
         };
       } else {
         // Multi-agent response - routingResult contains the final synthesized response
@@ -1678,20 +1645,13 @@ Return only the concise version:`;
         if (shouldUsePrismaAIRS(phase)) {
           const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, 'multi-agent-coordinator');
           if (!finalSecurity.approved) {
-            const resultMetadata = {
-              total_tokens: this.tokenUsage.total_tokens,
-              coordinator_tokens: this.tokenUsage.coordinator_tokens,
-              agent_tokens: this.tokenUsage.agent_tokens,
-              timestamp: new Date().toISOString(),
-              securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
-            };
             
             return {
               response: finalSecurity.message,
               securityBlock: true,
               category: finalSecurity.category,
               reportId: finalSecurity.reportId,
-              metadata: resultMetadata
+              metadata: this.buildResultMetadata(phase)
             };
           }
           
@@ -1705,19 +1665,11 @@ Return only the concise version:`;
         // Track multi-agent synthesis work as coordinator tokens
         this.trackCoordinatorTokens(finalResponseToReturn);
         
-        const resultMetadata = {
-          total_tokens: this.tokenUsage.total_tokens,
-          coordinator_tokens: this.tokenUsage.coordinator_tokens,
-          agent_tokens: this.tokenUsage.agent_tokens,
-          timestamp: new Date().toISOString(),
-          securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
-        };
-        
         return {
           response: finalResponseToReturn,
           agentUsed: 'multi-agent-coordinator',
           translatedQuery: translatedQuery !== query ? translatedQuery : null,
-          metadata: resultMetadata
+          metadata: this.buildResultMetadata(phase)
         };
       }
     } catch (error) {
@@ -1733,23 +1685,27 @@ Return only the concise version:`;
       
       this.sendThinkingMessage(`❌ Error: ${userMessage}`);
       
-      // Return error response with metadata
-      const resultMetadata = {
-        total_tokens: this.tokenUsage.total_tokens,
-        coordinator_tokens: this.tokenUsage.coordinator_tokens,
-        agent_tokens: this.tokenUsage.agent_tokens,
-        timestamp: new Date().toISOString(),
-        securityCheckpoints: this.getSecurityCheckpoints()
-      };
-      
       return {
         response: userMessage,
         error: true,
         errorType: error.message,
         success: false,
-        metadata: resultMetadata
+        metadata: this.buildResultMetadata(phase)
       };
     }
+  }
+
+  /**
+   * Helper to build result metadata object for responses
+   */
+  buildResultMetadata(phase) {
+    return {
+      total_tokens: this.tokenUsage.total_tokens,
+      coordinator_tokens: this.tokenUsage.coordinator_tokens,
+      agent_tokens: this.tokenUsage.agent_tokens,
+      timestamp: new Date().toISOString(),
+      securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
+    };
   }
 
   /**
