@@ -1696,10 +1696,10 @@ Return only the concise version:`;
   }
 
   /**
-  * Helper to build result metadata object for responses.
-  * @param {string} phase - The current processing phase (e.g., 'phase3').
-  * @returns {Object} An object containing token usage and security checkpoint information.
-  */
+   * Helper to build result metadata object for responses.
+   * @param {string} phase - The current processing phase (e.g., 'phase3').
+   * @returns {Object} An object containing token usage and security checkpoint information.
+   */
   buildResultMetadata(phase) {
     return {
       total_tokens: this.tokenUsage.total_tokens,
