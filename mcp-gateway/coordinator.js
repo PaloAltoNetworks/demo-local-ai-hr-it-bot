@@ -1268,9 +1268,6 @@ Return only the concise version:`;
 
     const startTime = Date.now();
     
-    // Build appName with agent info if available
-    const appNameWithAgent = agentName ? `${appName}-${agentName}` : appName;
-    
     // Call appropriate Prisma AIRS method
     let result;
     if (analyzeMethod === 'prompt') {
