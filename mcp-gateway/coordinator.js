@@ -1273,7 +1273,7 @@ Return only the concise version:`;
     if (analyzeMethod === 'prompt') {
       result = await this.prismaAIRS.analyzePrompt(input, {
         language: config.language,
-        appName: appName,
+        appName,
         appUser: userEmail || appUser,
         aiModel: this.coordinatorModel,
         trId
@@ -1281,7 +1281,7 @@ Return only the concise version:`;
     } else if (analyzeMethod === 'promptAndResponse') {
       result = await this.prismaAIRS.analyzePromptAndResponse(input, secondaryInput, {
         language: config.language,
-        appName: appName,
+        appName,
         appUser: userEmail || appUser,
         aiModel: this.coordinatorModel,
         trId
