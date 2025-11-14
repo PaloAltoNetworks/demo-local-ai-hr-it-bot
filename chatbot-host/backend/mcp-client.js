@@ -1,6 +1,5 @@
 const { EventEmitter } = require('events');
 const axios = require('axios');
-const { randomUUID } = require('crypto');
 const { getLogger } = require('./logger');
 
 /**
