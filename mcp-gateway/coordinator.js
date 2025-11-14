@@ -1561,11 +1561,21 @@ Return only the concise version:`;
         // Check if security blocked the response at Checkpoint 3
         if (agentResponse && agentResponse._securityBlock) {
           getLogger().info(`🚫 [Coordinator] Checkpoint 3 blocked response, returning security message`);
+          
+          const resultMetadata = {
+            total_tokens: this.tokenUsage.total_tokens,
+            coordinator_tokens: this.tokenUsage.coordinator_tokens,
+            agent_tokens: this.tokenUsage.agent_tokens,
+            timestamp: new Date().toISOString(),
+            securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
+          };
+          
           return {
             response: agentResponse.message,
             securityBlock: true,
             category: agentResponse.category,
-            reportId: agentResponse.reportId
+            reportId: agentResponse.reportId,
+            metadata: resultMetadata
           };
         }
         
@@ -1587,11 +1597,20 @@ Return only the concise version:`;
         if (shouldUsePrismaAIRS(phase)) {
           const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, selectedAgent.name);
           if (!finalSecurity.approved) {
+            const resultMetadata = {
+              total_tokens: this.tokenUsage.total_tokens,
+              coordinator_tokens: this.tokenUsage.coordinator_tokens,
+              agent_tokens: this.tokenUsage.agent_tokens,
+              timestamp: new Date().toISOString(),
+              securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
+            };
+            
             return {
               response: finalSecurity.message,
               securityBlock: true,
               category: finalSecurity.category,
-              reportId: finalSecurity.reportId
+              reportId: finalSecurity.reportId,
+              metadata: resultMetadata
             };
           }
           
@@ -1659,11 +1678,20 @@ Return only the concise version:`;
         if (shouldUsePrismaAIRS(phase)) {
           const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, 'multi-agent-coordinator');
           if (!finalSecurity.approved) {
+            const resultMetadata = {
+              total_tokens: this.tokenUsage.total_tokens,
+              coordinator_tokens: this.tokenUsage.coordinator_tokens,
+              agent_tokens: this.tokenUsage.agent_tokens,
+              timestamp: new Date().toISOString(),
+              securityCheckpoints: phase === 'phase3' ? this.getSecurityCheckpoints() : []
+            };
+            
             return {
               response: finalSecurity.message,
               securityBlock: true,
               category: finalSecurity.category,
-              reportId: finalSecurity.reportId
+              reportId: finalSecurity.reportId,
+              metadata: resultMetadata
             };
           }
           
@@ -1705,12 +1733,21 @@ Return only the concise version:`;
       
       this.sendThinkingMessage(`❌ Error: ${userMessage}`);
       
-      // Return error response instead of throwing to allow graceful user notification
+      // Return error response with metadata
+      const resultMetadata = {
+        total_tokens: this.tokenUsage.total_tokens,
+        coordinator_tokens: this.tokenUsage.coordinator_tokens,
+        agent_tokens: this.tokenUsage.agent_tokens,
+        timestamp: new Date().toISOString(),
+        securityCheckpoints: this.getSecurityCheckpoints()
+      };
+      
       return {
         response: userMessage,
         error: true,
         errorType: error.message,
-        success: false
+        success: false,
+        metadata: resultMetadata
       };
     }
   }
