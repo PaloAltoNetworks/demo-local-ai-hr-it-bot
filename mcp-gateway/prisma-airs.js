@@ -102,7 +102,7 @@ class PrismaAIRSIntercept {
                     ...(this.config.profileName ? { profile_name: this.config.profileName } : {})
                 },
                 metadata: {
-                    ...(metadata.appName ? { app_name: metadata.appName } : { app_name: "chatbot2" }),
+                    ...(metadata.appName ? { app_name: metadata.appName } : { app_name: "theotter-unknown" }),
                     ...(metadata.appUser ? { app_user: metadata.appUser } : { app_user: "user" }),
                     ...(metadata.aiModel ? { ai_model: metadata.aiModel } : { ai_model: "gemma3:1b" }),
                     ...(metadata.userIp ? { user_ip: metadata.userIp } : { user_ip: "127.0.0.1" })

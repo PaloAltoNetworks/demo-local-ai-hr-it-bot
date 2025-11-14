@@ -1359,7 +1359,7 @@ Return only the concise version:`;
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 1,
       checkpointLabel: 'Analyzing user input',
-      appName: 'mcp-coordinator',
+      appName: 'theotter-coordinator',
       appUser: 'user',
       userEmail,
       agentName,
@@ -1383,7 +1383,7 @@ Return only the concise version:`;
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 2,
       checkpointLabel: `Analyzing outbound request to ${serverName}`,
-      appName: 'mcp-coordinator',
+      appName: 'theotter-coordinator',
       appUser: 'user',
       userEmail,
       agentName,
@@ -1407,7 +1407,7 @@ Return only the concise version:`;
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 3,
       checkpointLabel: `Analyzing inbound response from ${serverName}`,
-      appName: 'mcp-agent',
+      appName: `theotter-mcp-agent-${agentName}`,
       appUser: 'agent',
       userEmail,
       agentName,
@@ -1432,7 +1432,7 @@ Return only the concise version:`;
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 4,
       checkpointLabel: 'Analyzing final coordinated response',
-      appName: 'mcp-agent',
+      appName: `theotter-mcp-agent-${agentName}`,
       appUser: 'agent',
       userEmail,
       agentName,
