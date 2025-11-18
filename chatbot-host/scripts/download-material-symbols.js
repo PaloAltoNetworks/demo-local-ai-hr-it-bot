@@ -65,6 +65,8 @@ const ICONS = [
     'settings',            // Settings/configuration icon
     'syringe',             // Syringe icon (injection attack demo)
     'warning',             // Warning/alert icon
+    'dark_mode',           // Dark mode icon
+    'light_mode',          // Light mode icon
 ];
 
 // Sort icons alphabetically

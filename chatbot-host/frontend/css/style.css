@@ -1073,6 +1073,48 @@ body {
   padding: var(--space-8);
 }
 
+/* User Controls Container (Theme Toggle + User Menu) */
+.user-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* Theme Toggle Button Styles */
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+.theme-toggle-icon {
+  font-size: var(--font-size-xl);
+  transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+.theme-toggle-btn:hover .theme-toggle-icon {
+  transform: rotate(20deg);
+}
+
 /* User Menu Styles */
 .user-menu-container {
   position: relative;

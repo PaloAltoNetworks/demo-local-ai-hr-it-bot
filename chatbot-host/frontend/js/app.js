@@ -6,6 +6,7 @@ import { UIManager } from './ui-manager.js';
 import { QuestionsManager } from './questions-manager.js';
 import { ConnectionMonitor } from './connection-monitor.js';
 import { SecurityDevPanel } from './security-dev-panel.js';
+import { ThemeManager } from './theme-manager.js';
 import { i18n } from './i18n.js';
 
 class ChatBotApp {
@@ -55,6 +56,9 @@ class ChatBotApp {
 
             // Initialize i18n first
             await i18n.init(this.currentLanguage);
+
+            // Initialize theme manager for dark/light mode switching
+            this.themeManager = new ThemeManager();
 
             // Initialize services with i18n
             this.apiService = new ApiService();
