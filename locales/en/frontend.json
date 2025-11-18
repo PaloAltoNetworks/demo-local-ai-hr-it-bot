@@ -130,5 +130,9 @@
     "code": "en",
     "name": "English",
     "nativeName": "English"
+  },
+  "theme": {
+    "switchToDarkMode": "Switch to dark mode",
+    "switchToLightMode": "Switch to light mode"
   }
 }

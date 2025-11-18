@@ -6,6 +6,7 @@ import { UIManager } from './ui-manager.js';
 import { QuestionsManager } from './questions-manager.js';
 import { ConnectionMonitor } from './connection-monitor.js';
 import { SecurityDevPanel } from './security-dev-panel.js';
+import { ThemeManager } from './theme-manager.js';
 import { i18n } from './i18n.js';
 
 class ChatBotApp {
@@ -55,6 +56,9 @@ class ChatBotApp {
 
             // Initialize i18n first
             await i18n.init(this.currentLanguage);
+
+            // Initialize theme manager with i18n service
+            this.themeManager = new ThemeManager(i18n);
 
             // Initialize services with i18n
             this.apiService = new ApiService();
@@ -181,6 +185,10 @@ class ChatBotApp {
         const { language } = event.detail;
         if (language !== this.currentLanguage) {
             this.currentLanguage = language;
+            // Update theme manager labels with new language
+            if (this.themeManager) {
+                this.themeManager.setI18nService(i18n);
+            }
             await this.updateUI();
         }
     }

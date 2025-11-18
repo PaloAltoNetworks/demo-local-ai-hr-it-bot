@@ -130,5 +130,9 @@
     "code": "fr",
     "name": "Français",
     "nativeName": "Français"
+  },
+  "theme": {
+    "switchToDarkMode": "Passer au mode sombre",
+    "switchToLightMode": "Passer au mode clair"
   }
 }

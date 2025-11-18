@@ -65,6 +65,12 @@ const ICONS = [
     'settings',            // Settings/configuration icon
     'syringe',             // Syringe icon (injection attack demo)
     'warning',             // Warning/alert icon
+    'dark_mode',           // Dark mode icon
+    'light_mode',          // Light mode icon
+    'unfold_less',        // Collapse icon
+    'unfold_more',        // Expand icon
+    'open_in_full',       // Open fullscreen icon
+    'close_fullscreen',   // Close fullscreen icon
 ];
 
 // Sort icons alphabetically

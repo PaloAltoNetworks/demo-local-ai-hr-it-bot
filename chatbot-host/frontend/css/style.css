@@ -62,11 +62,24 @@
 
   /* RGB versions for opacity control */
   --color-brown-600-rgb: 94, 82, 64;
+  --color-orange-0-rgb: 255, 191, 156;
+  --color-orange-250-rgb: 255, 114, 77;
   --color-orange-500-rgb: 250, 88, 45;          /* Cyber Orange */
+  --color-yellow-0-rgb: 255, 240, 204;
+  --color-yellow-250-rgb: 255, 222, 115;
   --color-yellow-500-rgb: 255, 203, 6;          /* Strata */
+  --color-blue-0-rgb: 217, 248, 252;
+  --color-blue-250-rgb: 86, 214, 244;
   --color-blue-500-rgb: 0, 192, 232;            /* Prisma */
+  --color-blue-750-rgb: 1, 150, 179;
+  --color-green-0-rgb: 222, 254, 227;
+  --color-green-250-rgb: 101, 224, 136;
   --color-green-500-rgb: 0, 204, 102;           /* Cortex */
+  --color-green-750-rgb: 15, 147, 71;
+  --color-red-0-rgb: 255, 215, 207;
+  --color-red-250-rgb: 221, 102, 82;
   --color-red-500-rgb: 200, 71, 39;             /* Unit 42 */
+  --color-red-750-rgb: 170, 37, 27;
   --color-slate-900-rgb: 19, 52, 59;
   --color-slate-500-rgb: 98, 108, 113;
 
@@ -201,64 +214,6 @@
 }
 
 /* Dark mode colors - Using Cyber Orange as primary */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Primitive Color Tokens - Dark Mode (Inverted Grays) */
-    --color-gray-200: rgba(119, 124, 124, 1);
-    --color-gray-300: rgba(98, 108, 113, 1);
-    --color-gray-400: rgba(167, 169, 169, 1);
-    --color-slate-500: rgba(167, 169, 169, 1);
-    --color-brown-600: rgba(148, 158, 164, 1);
-    
-    /* RGB versions for opacity control (Dark Mode) */
-    --color-gray-400-rgb: 119, 124, 124;
-    --color-orange-300-rgb: 255, 114, 77;
-    --color-gray-300-rgb: 167, 169, 169;
-    --color-gray-200-rgb: 245, 245, 245;
-
-    /* Colorful background palette - Dark Mode - Using Palo Alto Colors */
-    --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15);
-    --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15);
-    --color-bg-3: rgba(var(--color-green-500-rgb), 0.15);
-    --color-bg-4: rgba(var(--color-red-500-rgb), 0.15);
-    --color-bg-5: rgba(var(--color-blue-500-rgb), 0.15);
-    --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1);
-    --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1);
-    --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1);
-    
-    /* Semantic Color Tokens (Dark Mode) - Primary: Cyber Orange */
-    --color-background: var(--color-charcoal-700);
-    --color-surface: var(--color-charcoal-800);
-    --color-text: var(--color-gray-200);
-    --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
-    --color-primary: var(--color-orange-250);
-    --color-primary-hover: var(--color-orange-0);
-    --color-primary-active: var(--color-orange-500);
-    --color-secondary: rgba(var(--color-orange-500-rgb), 0.15);
-    --color-secondary-hover: rgba(var(--color-orange-500-rgb), 0.25);
-    --color-secondary-active: rgba(var(--color-orange-500-rgb), 0.3);
-    --color-border: rgba(var(--color-orange-500-rgb), 0.25);
-    --color-error: var(--color-red-250);
-    --color-success: var(--color-green-250);
-    --color-warning: var(--color-orange-250);
-    --color-info: var(--color-blue-250);
-    --color-focus-ring: rgba(var(--color-orange-500-rgb), 0.4);
-    --color-btn-primary-text: var(--color-charcoal-700);
-    --color-card-border: rgba(var(--color-orange-500-rgb), 0.15);
-    --color-card-border-inner: rgba(var(--color-orange-500-rgb), 0.15);
-    --color-border-secondary: rgba(var(--color-orange-500-rgb), 0.2);
-    --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
-    --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
-
-    /* RGB versions for dark mode */
-    --color-success-rgb: var(--color-green-500-rgb);
-    --color-error-rgb: var(--color-red-500-rgb);
-    --color-warning-rgb: var(--color-orange-500-rgb);
-    --color-info-rgb: var(--color-blue-500-rgb);
-  }
-}
-
-/* Data attribute for manual theme switching - Dark Mode */
 [data-color-scheme="dark"] {
   /* Primitive Color Tokens - Dark Mode (Inverted Grays) */
   --color-gray-200: rgba(119, 124, 124, 1);
@@ -267,10 +222,13 @@
   --color-slate-500: rgba(167, 169, 169, 1);
   --color-brown-600: rgba(148, 158, 164, 1);
   
+  /* RGB versions for opacity control (Dark Mode) */
   --color-gray-400-rgb: 119, 124, 124;
   --color-orange-300-rgb: 255, 114, 77;
   --color-gray-300-rgb: 167, 169, 169;
   --color-gray-200-rgb: 245, 245, 245;
+
+  /* Colorful background palette - Dark Mode - Using Palo Alto Colors */
   --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15);
   --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15);
   --color-bg-3: rgba(var(--color-green-500-rgb), 0.15);
@@ -279,6 +237,8 @@
   --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1);
   --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1);
   --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1);
+  
+  /* Semantic Color Tokens (Dark Mode) - Primary: Cyber Orange */
   --color-background: var(--color-charcoal-700);
   --color-surface: var(--color-charcoal-800);
   --color-text: var(--color-gray-200);
@@ -301,6 +261,8 @@
   --color-border-secondary: rgba(var(--color-orange-500-rgb), 0.2);
   --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
   --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+
+  /* RGB versions for dark mode */
   --color-success-rgb: var(--color-green-500-rgb);
   --color-error-rgb: var(--color-red-500-rgb);
   --color-warning-rgb: var(--color-orange-500-rgb);
@@ -566,14 +528,7 @@ select.form-control {
   padding-right: var(--space-32);
 }
 
-/* Add a dark mode specific caret */
-@media (prefers-color-scheme: dark) {
-  select.form-control {
-    background-image: var(--select-caret-dark);
-  }
-}
-
-/* Also handle data-color-scheme */
+/* Handle dark mode caret */
 [data-color-scheme="dark"] select.form-control {
   background-image: var(--select-caret-dark);
 }
@@ -941,45 +896,6 @@ body.phase3-active {
 }
 
 /* Dark mode phase color overrides */
-@media (prefers-color-scheme: dark) {
-  body.phase1-active {
-    --phase-color-bg: var(--color-green-1000);
-    --phase-color-bg-1: var(--color-green-750);
-    --phase-color-secondary: var(--color-green-750);
-    --color-text: var(--color-green-0);
-    --focus-ring: 0 0 0 3px rgba(var(--color-green-500-rgb), 0.4);
-    --color-card-border: rgba(var(--color-green-500-rgb), 0.15);
-    --color-border: rgba(var(--color-green-500-rgb), 0.2);
-    --color-card-border-inner: rgba(var(--color-green-500-rgb), 0.2);
-    --color-primary-hover: var(--color-green-250);
-  }
-
-  body.phase2-active {
-    --phase-color-bg: var(--color-red-1000);
-    --phase-color-bg-1: var(--color-red-750);
-    --phase-color-secondary: var(--color-red-750);
-    --color-text: var(--color-red-0);
-    --focus-ring: 0 0 0 3px rgba(var(--color-red-500-rgb), 0.4);
-    --color-card-border: rgba(var(--color-red-500-rgb), 0.15);
-    --color-border: rgba(var(--color-red-500-rgb), 0.2);
-    --color-card-border-inner: rgba(var(--color-red-500-rgb), 0.2);
-    --color-primary-hover: var(--color-red-250);
-  }
-
-  body.phase3-active {
-    --phase-color-bg: var(--color-blue-1000);
-    --phase-color-bg-1: var(--color-blue-750);
-    --phase-color-secondary: var(--color-blue-750);
-    --color-text: var(--color-blue-0);
-    --focus-ring: 0 0 0 3px rgba(var(--color-blue-500-rgb), 0.4);
-    --color-card-border: rgba(var(--color-blue-500-rgb), 0.15);
-    --color-border: rgba(var(--color-blue-500-rgb), 0.2);
-    --color-card-border-inner: rgba(var(--color-blue-500-rgb), 0.2);
-    --color-primary-hover: var(--color-blue-250);
-  }
-}
-
-/* Data attribute dark mode phase color overrides */
 [data-color-scheme="dark"] body.phase1-active {
   --phase-color-bg: var(--color-green-1000);
   --phase-color-bg-1: var(--color-green-750);
@@ -1058,6 +974,48 @@ body {
   display: flex;
   gap: var(--space-12);
   padding: var(--space-8);
+}
+
+/* User Controls Container (Theme Toggle + User Menu) */
+.user-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* Theme Toggle Button Styles */
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+.theme-toggle-icon {
+  font-size: var(--font-size-xl);
+  transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+.theme-toggle-btn:hover .theme-toggle-icon {
+  transform: rotate(20deg);
 }
 
 /* User Menu Styles */
@@ -1987,13 +1945,7 @@ body {
   }
 }
 
-/* Mode sombre améliorations */
-@media (prefers-color-scheme: dark) {
-  .example-question:hover {
-    box-shadow: 0 4px 12px rgba(50, 184, 198, 0.2);
-  }
-}
-
+/* Dark mode - example question hover */
 [data-color-scheme="dark"] .example-question:hover {
   box-shadow: 0 4px 12px rgba(50, 184, 198, 0.2);
 }
@@ -2157,39 +2109,11 @@ body {
   --message-phase-color-secondary: var(--color-green-0);
 }
 
-.message.phase1-message .message-avatar {
-  background: var(--message-phase-color-secondary);
-  color: var(--message-phase-color);
-}
-
-.message.phase1-message.bot-message .message-text,
-.message.phase1-message.assistant-message .message-text {
-  border-color: var(--message-phase-color);
-}
-
-.message.phase1-message.user-message .message-text {
-  background: var(--message-phase-color);
-}
-
 /* Phase 2 messages (Unit 42 Red) */
 .message.phase2-message {
   --message-phase-color: var(--color-red-500);
   --message-phase-color-rgb: var(--color-red-500-rgb);
   --message-phase-color-secondary: var(--color-red-0);
-}
-
-.message.phase2-message .message-avatar {
-  background: var(--message-phase-color-secondary);
-  color: var(--message-phase-color);
-}
-
-.message.phase2-message.bot-message .message-text,
-.message.phase2-message.assistant-message .message-text {
-  border-color: var(--message-phase-color);
-}
-
-.message.phase2-message.user-message .message-text {
-  background: var(--message-phase-color);
 }
 
 /* Phase 3 messages (Prisma Blue) */
@@ -2199,16 +2123,57 @@ body {
   --message-phase-color-secondary: var(--color-blue-0);
 }
 
+/* Dark mode - invert phase colors */
+[data-color-scheme="dark"] .message.phase1-message {
+  --message-phase-color: var(--color-green-0);
+  --message-phase-color-rgb: var(--color-green-0-rgb);
+  --message-phase-color-secondary: var(--color-green-500);
+}
+
+[data-color-scheme="dark"] .message.phase2-message {
+  --message-phase-color: var(--color-red-0);
+  --message-phase-color-rgb: var(--color-red-0-rgb);
+  --message-phase-color-secondary: var(--color-red-500);
+}
+
+[data-color-scheme="dark"] .message.phase3-message {
+  --message-phase-color: var(--color-blue-0);
+  --message-phase-color-rgb: var(--color-blue-0-rgb);
+  --message-phase-color-secondary: var(--color-blue-500);
+}
+
+/* Phase message styling */
+.message.phase1-message .message-avatar,
+.message.phase2-message .message-avatar,
 .message.phase3-message .message-avatar {
   background: var(--message-phase-color-secondary);
   color: var(--message-phase-color);
 }
 
+.message.phase1-message.bot-message .message-text,
+.message.phase1-message.assistant-message .message-text,
+.message.phase2-message.bot-message .message-text,
+.message.phase2-message.assistant-message .message-text,
 .message.phase3-message.bot-message .message-text,
 .message.phase3-message.assistant-message .message-text {
   border-color: var(--message-phase-color);
 }
 
+.message.phase1-message.bot-message .message-avatar,
+.message.phase2-message.bot-message .message-avatar,
+.message.phase3-message.bot-message .message-avatar {
+  background: var(--message-phase-color);
+  color: var(--message-phase-color-secondary);
+}
+
+.message.phase1-message.bot-message .message-avatar .otter-icon::before,
+.message.phase2-message.bot-message .message-avatar .otter-icon::before,
+.message.phase3-message.bot-message .message-avatar .otter-icon::before {
+  color: var(--message-phase-color-secondary);
+}
+
+.message.phase1-message.user-message .message-text,
+.message.phase2-message.user-message .message-text,
 .message.phase3-message.user-message .message-text {
   background: var(--message-phase-color);
 }
@@ -2643,10 +2608,14 @@ body {
   flex-direction: column;
   z-index: 999;
   animation: slideUp 0.3s ease;
-  resize: both;
   overflow: auto;
   min-width: 300px;
   min-height: 200px;
+}
+
+.security-dev-content.size-large {
+  width: 800px;
+  max-height: 800px;
 }
 
 .security-dev-content.open {
@@ -2679,9 +2648,19 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.security-dev-close {
+
+.security-dev-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.security-dev-size-btn {
   background: none;
   border: none;
   color: var(--color-text);
@@ -2690,10 +2669,11 @@ body {
   display: flex;
   align-items: center;
   transition: color 0.2s;
+  font-size: 1rem;
 }
 
-.security-dev-close:hover {
-  color: var(--color-text);
+.security-dev-size-btn:hover {
+  color: var(--color-orange-500);
 }
 
 /* Live Feed */
@@ -2883,8 +2863,8 @@ body {
 
 /* Dark Mode */
 [data-color-scheme="dark"] .security-dev-content {
-  background: rgba(var(--color-charcoal-800), 0.95);
-  border-color: rgba(var(--color-blue-500-rgb), 0.4);
+  background: var(--color-charcoal-800);
+  border-color: var(--color-blue-500);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 

@@ -130,5 +130,9 @@
     "code": "ja",
     "name": "Japanese",
     "nativeName": "日本語"
+  },
+  "theme": {
+    "switchToDarkMode": "ダークモードに切り替える",
+    "switchToLightMode": "ライトモードに切り替える"
   }
 }
