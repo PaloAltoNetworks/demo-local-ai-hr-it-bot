@@ -2608,10 +2608,14 @@ body {
   flex-direction: column;
   z-index: 999;
   animation: slideUp 0.3s ease;
-  resize: both;
   overflow: auto;
   min-width: 300px;
   min-height: 200px;
+}
+
+.security-dev-content.size-large {
+  width: 800px;
+  max-height: 800px;
 }
 
 .security-dev-content.open {
@@ -2649,7 +2653,14 @@ body {
   gap: 0.5rem;
 }
 
-.security-dev-close {
+
+.security-dev-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.security-dev-size-btn {
   background: none;
   border: none;
   color: var(--color-text);
@@ -2658,10 +2669,11 @@ body {
   display: flex;
   align-items: center;
   transition: color 0.2s;
+  font-size: 1rem;
 }
 
-.security-dev-close:hover {
-  color: var(--color-text);
+.security-dev-size-btn:hover {
+  color: var(--color-orange-500);
 }
 
 /* Live Feed */

@@ -67,6 +67,8 @@ const ICONS = [
     'warning',             // Warning/alert icon
     'dark_mode',           // Dark mode icon
     'light_mode',          // Light mode icon
+    'unfold_less',        // Collapse icon
+    'unfold_more',        // Expand icon
 ];
 
 // Sort icons alphabetically

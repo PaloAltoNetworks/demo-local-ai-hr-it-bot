@@ -8,14 +8,15 @@ export class SecurityDevPanel {
     constructor(i18n = null) {
         this.panelButton = document.getElementById('security-dev-button');
         this.panelContent = document.getElementById('security-dev-content');
-        this.panelClose = document.getElementById('security-dev-close');
         this.panelClear = document.getElementById('security-dev-clear');
+        this.panelResize = document.getElementById('security-dev-resize');
         this.securityBadge = document.getElementById('security-badge');
         this.liveFeedContainer = document.getElementById('security-live-feed');
         this.i18n = i18n;
         
         this.checkpoints = [];
         this.isOpen = false;
+        this.currentSize = 'medium'; // medium, large
         
         this.init();
     }
@@ -25,8 +26,27 @@ export class SecurityDevPanel {
      */
     init() {
         if (this.panelButton) this.panelButton.addEventListener('click', () => this.togglePanel());
-        if (this.panelClose) this.panelClose.addEventListener('click', () => this.closePanel());
         if (this.panelClear) this.panelClear.addEventListener('click', () => this.clearAll());
+        if (this.panelResize) this.panelResize.addEventListener('click', () => this.toggleSize());
+    }
+
+    /**
+     * Toggle panel size between medium and large
+     */
+    toggleSize() {
+        if (!this.panelContent || !this.panelResize) return;
+        
+        const resizeIcon = this.panelResize.querySelector('.material-symbols');
+        
+        if (this.currentSize === 'medium') {
+            this.currentSize = 'large';
+            this.panelContent.classList.add('size-large');
+            resizeIcon.textContent = 'unfold_less';
+        } else {
+            this.currentSize = 'medium';
+            this.panelContent.classList.remove('size-large');
+            resizeIcon.textContent = 'unfold_more';
+        }
     }
 
     /**
