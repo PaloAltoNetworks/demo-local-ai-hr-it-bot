@@ -60,30 +60,30 @@
                 <p class="user-menu-email" id="userMenuEmail">aurelien.delamarre@company.com</p>
                 <p class="user-menu-role" id="userMenuRole">Pre-Sales Engineer</p>
                 <p class="user-menu-department" id="userMenuDepartment">Sales Department</p>
+              </div>
             </div>
+
+            <!-- Divider -->
+            <div class="user-menu-divider"></div>
+
+            <!-- Language Selection -->
+            <div class="user-menu-section">
+              <label class="user-menu-section-label" data-i18n="userMenu.language">Language</label>
+              <select id="userMenuLanguageSelect" class="user-menu-language-select">
+                <!-- Languages populated dynamically by JavaScript -->
+              </select>
+            </div>
+
+            <!-- Divider -->
+            <div class="user-menu-divider"></div>
+
+            <!-- Logout Button -->
+            <button class="user-menu-logout" id="userMenuLogout">
+              <span class="material-symbols">logout</span>
+              <span data-i18n="userMenu.logout">Logout</span>
+            </button>
           </div>
-
-          <!-- Divider -->
-          <div class="user-menu-divider"></div>
-
-          <!-- Language Selection -->
-          <div class="user-menu-section">
-            <label class="user-menu-section-label" data-i18n="userMenu.language">Language</label>
-            <select id="userMenuLanguageSelect" class="user-menu-language-select">
-              <!-- Languages populated dynamically by JavaScript -->
-            </select>
-          </div>
-
-          <!-- Divider -->
-          <div class="user-menu-divider"></div>
-
-          <!-- Logout Button -->
-          <button class="user-menu-logout" id="userMenuLogout">
-            <span class="material-symbols">logout</span>
-            <span data-i18n="userMenu.logout">Logout</span>
-          </button>
         </div>
-      </div>
       </div>
     </div>
   </header>
@@ -185,7 +185,7 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Live Feed -->
       <div id="security-live-feed" class="security-live-feed">
         <p class="no-data" data-i18n="security.waiting">Waiting for security analysis...</p>
