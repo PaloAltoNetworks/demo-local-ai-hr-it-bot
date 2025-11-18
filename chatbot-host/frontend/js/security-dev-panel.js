@@ -41,11 +41,11 @@ export class SecurityDevPanel {
         if (this.currentSize === 'medium') {
             this.currentSize = 'large';
             this.panelContent.classList.add('size-large');
-            resizeIcon.textContent = 'unfold_less';
+            resizeIcon.textContent = 'close_fullscreen';
         } else {
             this.currentSize = 'medium';
             this.panelContent.classList.remove('size-large');
-            resizeIcon.textContent = 'unfold_more';
+            resizeIcon.textContent = 'open_in_full';
         }
     }
 

@@ -69,6 +69,8 @@ const ICONS = [
     'light_mode',          // Light mode icon
     'unfold_less',        // Collapse icon
     'unfold_more',        // Expand icon
+    'open_in_full',       // Open fullscreen icon
+    'close_fullscreen',   // Close fullscreen icon
 ];
 
 // Sort icons alphabetically
