@@ -62,11 +62,24 @@
 
   /* RGB versions for opacity control */
   --color-brown-600-rgb: 94, 82, 64;
+  --color-orange-0-rgb: 255, 191, 156;
+  --color-orange-250-rgb: 255, 114, 77;
   --color-orange-500-rgb: 250, 88, 45;          /* Cyber Orange */
+  --color-yellow-0-rgb: 255, 240, 204;
+  --color-yellow-250-rgb: 255, 222, 115;
   --color-yellow-500-rgb: 255, 203, 6;          /* Strata */
+  --color-blue-0-rgb: 217, 248, 252;
+  --color-blue-250-rgb: 86, 214, 244;
   --color-blue-500-rgb: 0, 192, 232;            /* Prisma */
+  --color-blue-750-rgb: 1, 150, 179;
+  --color-green-0-rgb: 222, 254, 227;
+  --color-green-250-rgb: 101, 224, 136;
   --color-green-500-rgb: 0, 204, 102;           /* Cortex */
+  --color-green-750-rgb: 15, 147, 71;
+  --color-red-0-rgb: 255, 215, 207;
+  --color-red-250-rgb: 221, 102, 82;
   --color-red-500-rgb: 200, 71, 39;             /* Unit 42 */
+  --color-red-750-rgb: 170, 37, 27;
   --color-slate-900-rgb: 19, 52, 59;
   --color-slate-500-rgb: 98, 108, 113;
 
@@ -2157,39 +2170,11 @@ body {
   --message-phase-color-secondary: var(--color-green-0);
 }
 
-.message.phase1-message .message-avatar {
-  background: var(--message-phase-color-secondary);
-  color: var(--message-phase-color);
-}
-
-.message.phase1-message.bot-message .message-text,
-.message.phase1-message.assistant-message .message-text {
-  border-color: var(--message-phase-color);
-}
-
-.message.phase1-message.user-message .message-text {
-  background: var(--message-phase-color);
-}
-
 /* Phase 2 messages (Unit 42 Red) */
 .message.phase2-message {
   --message-phase-color: var(--color-red-500);
   --message-phase-color-rgb: var(--color-red-500-rgb);
   --message-phase-color-secondary: var(--color-red-0);
-}
-
-.message.phase2-message .message-avatar {
-  background: var(--message-phase-color-secondary);
-  color: var(--message-phase-color);
-}
-
-.message.phase2-message.bot-message .message-text,
-.message.phase2-message.assistant-message .message-text {
-  border-color: var(--message-phase-color);
-}
-
-.message.phase2-message.user-message .message-text {
-  background: var(--message-phase-color);
 }
 
 /* Phase 3 messages (Prisma Blue) */
@@ -2199,16 +2184,77 @@ body {
   --message-phase-color-secondary: var(--color-blue-0);
 }
 
+/* Dark mode - invert phase colors */
+@media (prefers-color-scheme: dark) {
+  .message.phase1-message {
+    --message-phase-color: var(--color-green-0);
+    --message-phase-color-rgb: var(--color-green-0-rgb);
+    --message-phase-color-secondary: var(--color-green-500);
+  }
+
+  .message.phase2-message {
+    --message-phase-color: var(--color-red-0);
+    --message-phase-color-rgb: var(--color-red-0-rgb);
+    --message-phase-color-secondary: var(--color-red-500);
+  }
+
+  .message.phase3-message {
+    --message-phase-color: var(--color-blue-0);
+    --message-phase-color-rgb: var(--color-blue-0-rgb);
+    --message-phase-color-secondary: var(--color-blue-500);
+  }
+}
+
+[data-color-scheme="dark"] .message.phase1-message {
+  --message-phase-color: var(--color-green-0);
+  --message-phase-color-rgb: var(--color-green-0-rgb);
+  --message-phase-color-secondary: var(--color-green-500);
+}
+
+[data-color-scheme="dark"] .message.phase2-message {
+  --message-phase-color: var(--color-red-0);
+  --message-phase-color-rgb: var(--color-red-0-rgb);
+  --message-phase-color-secondary: var(--color-red-500);
+}
+
+[data-color-scheme="dark"] .message.phase3-message {
+  --message-phase-color: var(--color-blue-0);
+  --message-phase-color-rgb: var(--color-blue-0-rgb);
+  --message-phase-color-secondary: var(--color-blue-500);
+}
+
+/* Phase message styling */
+.message.phase1-message .message-avatar,
+.message.phase2-message .message-avatar,
 .message.phase3-message .message-avatar {
   background: var(--message-phase-color-secondary);
   color: var(--message-phase-color);
 }
 
+.message.phase1-message.bot-message .message-text,
+.message.phase1-message.assistant-message .message-text,
+.message.phase2-message.bot-message .message-text,
+.message.phase2-message.assistant-message .message-text,
 .message.phase3-message.bot-message .message-text,
 .message.phase3-message.assistant-message .message-text {
   border-color: var(--message-phase-color);
 }
 
+.message.phase1-message.bot-message .message-avatar,
+.message.phase2-message.bot-message .message-avatar,
+.message.phase3-message.bot-message .message-avatar {
+  background: var(--message-phase-color);
+  color: var(--message-phase-color-secondary);
+}
+
+.message.phase1-message.bot-message .message-avatar .otter-icon::before,
+.message.phase2-message.bot-message .message-avatar .otter-icon::before,
+.message.phase3-message.bot-message .message-avatar .otter-icon::before {
+  color: var(--message-phase-color-secondary);
+}
+
+.message.phase1-message.user-message .message-text,
+.message.phase2-message.user-message .message-text,
 .message.phase3-message.user-message .message-text {
   background: var(--message-phase-color);
 }
