@@ -130,5 +130,9 @@
     "code": "de",
     "name": "Deutsch",
     "nativeName": "Deutsch"
+  },
+  "theme": {
+    "switchToDarkMode": "Zum dunklen Modus wechseln",
+    "switchToLightMode": "Zum hellen Modus wechseln"
   }
 }

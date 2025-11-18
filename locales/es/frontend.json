@@ -130,5 +130,9 @@
     "code": "es",
     "name": "Spanish",
     "nativeName": "Español"
+  },
+  "theme": {
+    "switchToDarkMode": "Cambiar a modo oscuro",
+    "switchToLightMode": "Cambiar a modo claro"
   }
 }

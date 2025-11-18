@@ -3,7 +3,7 @@
  * Provides both manual user control and automatic system preference detection
  */
 export class ThemeManager {
-  constructor() {
+  constructor(i18nService = null) {
     this.STORAGE_KEY = 'theme-preference';
     this.THEME_ATTRIBUTE = 'data-color-scheme';
     this.DARK_MODE = 'dark';
@@ -11,6 +11,7 @@ export class ThemeManager {
     this.htmlElement = document.documentElement;
     this.toggleButton = document.getElementById('themeToggle');
     this.toggleIcon = document.querySelector('.theme-toggle-icon');
+    this.i18nService = i18nService;
     
     this.init();
   }
@@ -22,6 +23,16 @@ export class ThemeManager {
     this.loadThemePreference();
     this.attachEventListeners();
     this.watchSystemPreference();
+  }
+
+  /**
+   * Set i18n service (can be called after instantiation)
+   */
+  setI18nService(i18nService) {
+    this.i18nService = i18nService;
+    // Update labels with new i18n service
+    const currentTheme = this.getCurrentTheme();
+    this.updateToggleIcon(currentTheme);
   }
 
   /**
@@ -97,9 +108,21 @@ export class ThemeManager {
   updateToggleIcon(theme) {
     if (!this.toggleIcon) return;
     
-    // If dark mode is active, show light_mode icon (to indicate clicking will switch to light)
-    // If light mode is active, show dark_mode icon (to indicate clicking will switch to dark)
-    this.toggleIcon.textContent = theme === this.DARK_MODE ? 'light_mode' : 'dark_mode';
+    // Show current mode icon  
+    this.toggleIcon.textContent = theme === this.DARK_MODE ? 'dark_mode' : 'light_mode';  
+    
+    // Update button title and aria-label to indicate the action (what clicking will do)  
+    if (this.toggleButton && this.i18nService && this.i18nService.t) {  
+      const nextTheme = theme === this.DARK_MODE ? this.LIGHT_MODE : this.DARK_MODE;
+      
+      // Get translated labels from i18n
+      const actionLabel = nextTheme === this.DARK_MODE 
+        ? this.i18nService.t('theme.switchToDarkMode')
+        : this.i18nService.t('theme.switchToLightMode');
+      
+      this.toggleButton.title = actionLabel;  
+      this.toggleButton.setAttribute('aria-label', actionLabel);  
+    }  
   }
 
   /**
