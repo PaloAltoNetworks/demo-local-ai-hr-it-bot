@@ -214,64 +214,6 @@
 }
 
 /* Dark mode colors - Using Cyber Orange as primary */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Primitive Color Tokens - Dark Mode (Inverted Grays) */
-    --color-gray-200: rgba(119, 124, 124, 1);
-    --color-gray-300: rgba(98, 108, 113, 1);
-    --color-gray-400: rgba(167, 169, 169, 1);
-    --color-slate-500: rgba(167, 169, 169, 1);
-    --color-brown-600: rgba(148, 158, 164, 1);
-    
-    /* RGB versions for opacity control (Dark Mode) */
-    --color-gray-400-rgb: 119, 124, 124;
-    --color-orange-300-rgb: 255, 114, 77;
-    --color-gray-300-rgb: 167, 169, 169;
-    --color-gray-200-rgb: 245, 245, 245;
-
-    /* Colorful background palette - Dark Mode - Using Palo Alto Colors */
-    --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15);
-    --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15);
-    --color-bg-3: rgba(var(--color-green-500-rgb), 0.15);
-    --color-bg-4: rgba(var(--color-red-500-rgb), 0.15);
-    --color-bg-5: rgba(var(--color-blue-500-rgb), 0.15);
-    --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1);
-    --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1);
-    --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1);
-    
-    /* Semantic Color Tokens (Dark Mode) - Primary: Cyber Orange */
-    --color-background: var(--color-charcoal-700);
-    --color-surface: var(--color-charcoal-800);
-    --color-text: var(--color-gray-200);
-    --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
-    --color-primary: var(--color-orange-250);
-    --color-primary-hover: var(--color-orange-0);
-    --color-primary-active: var(--color-orange-500);
-    --color-secondary: rgba(var(--color-orange-500-rgb), 0.15);
-    --color-secondary-hover: rgba(var(--color-orange-500-rgb), 0.25);
-    --color-secondary-active: rgba(var(--color-orange-500-rgb), 0.3);
-    --color-border: rgba(var(--color-orange-500-rgb), 0.25);
-    --color-error: var(--color-red-250);
-    --color-success: var(--color-green-250);
-    --color-warning: var(--color-orange-250);
-    --color-info: var(--color-blue-250);
-    --color-focus-ring: rgba(var(--color-orange-500-rgb), 0.4);
-    --color-btn-primary-text: var(--color-charcoal-700);
-    --color-card-border: rgba(var(--color-orange-500-rgb), 0.15);
-    --color-card-border-inner: rgba(var(--color-orange-500-rgb), 0.15);
-    --color-border-secondary: rgba(var(--color-orange-500-rgb), 0.2);
-    --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
-    --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
-
-    /* RGB versions for dark mode */
-    --color-success-rgb: var(--color-green-500-rgb);
-    --color-error-rgb: var(--color-red-500-rgb);
-    --color-warning-rgb: var(--color-orange-500-rgb);
-    --color-info-rgb: var(--color-blue-500-rgb);
-  }
-}
-
-/* Data attribute for manual theme switching - Dark Mode */
 [data-color-scheme="dark"] {
   /* Primitive Color Tokens - Dark Mode (Inverted Grays) */
   --color-gray-200: rgba(119, 124, 124, 1);
@@ -280,10 +222,13 @@
   --color-slate-500: rgba(167, 169, 169, 1);
   --color-brown-600: rgba(148, 158, 164, 1);
   
+  /* RGB versions for opacity control (Dark Mode) */
   --color-gray-400-rgb: 119, 124, 124;
   --color-orange-300-rgb: 255, 114, 77;
   --color-gray-300-rgb: 167, 169, 169;
   --color-gray-200-rgb: 245, 245, 245;
+
+  /* Colorful background palette - Dark Mode - Using Palo Alto Colors */
   --color-bg-1: rgba(var(--color-orange-500-rgb), 0.15);
   --color-bg-2: rgba(var(--color-yellow-500-rgb), 0.15);
   --color-bg-3: rgba(var(--color-green-500-rgb), 0.15);
@@ -292,6 +237,8 @@
   --color-bg-6: rgba(var(--color-orange-500-rgb), 0.1);
   --color-bg-7: rgba(var(--color-yellow-500-rgb), 0.1);
   --color-bg-8: rgba(var(--color-blue-500-rgb), 0.1);
+  
+  /* Semantic Color Tokens (Dark Mode) - Primary: Cyber Orange */
   --color-background: var(--color-charcoal-700);
   --color-surface: var(--color-charcoal-800);
   --color-text: var(--color-gray-200);
@@ -314,6 +261,8 @@
   --color-border-secondary: rgba(var(--color-orange-500-rgb), 0.2);
   --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
   --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+
+  /* RGB versions for dark mode */
   --color-success-rgb: var(--color-green-500-rgb);
   --color-error-rgb: var(--color-red-500-rgb);
   --color-warning-rgb: var(--color-orange-500-rgb);
@@ -579,14 +528,7 @@ select.form-control {
   padding-right: var(--space-32);
 }
 
-/* Add a dark mode specific caret */
-@media (prefers-color-scheme: dark) {
-  select.form-control {
-    background-image: var(--select-caret-dark);
-  }
-}
-
-/* Also handle data-color-scheme */
+/* Handle dark mode caret */
 [data-color-scheme="dark"] select.form-control {
   background-image: var(--select-caret-dark);
 }
@@ -954,45 +896,6 @@ body.phase3-active {
 }
 
 /* Dark mode phase color overrides */
-@media (prefers-color-scheme: dark) {
-  body.phase1-active {
-    --phase-color-bg: var(--color-green-1000);
-    --phase-color-bg-1: var(--color-green-750);
-    --phase-color-secondary: var(--color-green-750);
-    --color-text: var(--color-green-0);
-    --focus-ring: 0 0 0 3px rgba(var(--color-green-500-rgb), 0.4);
-    --color-card-border: rgba(var(--color-green-500-rgb), 0.15);
-    --color-border: rgba(var(--color-green-500-rgb), 0.2);
-    --color-card-border-inner: rgba(var(--color-green-500-rgb), 0.2);
-    --color-primary-hover: var(--color-green-250);
-  }
-
-  body.phase2-active {
-    --phase-color-bg: var(--color-red-1000);
-    --phase-color-bg-1: var(--color-red-750);
-    --phase-color-secondary: var(--color-red-750);
-    --color-text: var(--color-red-0);
-    --focus-ring: 0 0 0 3px rgba(var(--color-red-500-rgb), 0.4);
-    --color-card-border: rgba(var(--color-red-500-rgb), 0.15);
-    --color-border: rgba(var(--color-red-500-rgb), 0.2);
-    --color-card-border-inner: rgba(var(--color-red-500-rgb), 0.2);
-    --color-primary-hover: var(--color-red-250);
-  }
-
-  body.phase3-active {
-    --phase-color-bg: var(--color-blue-1000);
-    --phase-color-bg-1: var(--color-blue-750);
-    --phase-color-secondary: var(--color-blue-750);
-    --color-text: var(--color-blue-0);
-    --focus-ring: 0 0 0 3px rgba(var(--color-blue-500-rgb), 0.4);
-    --color-card-border: rgba(var(--color-blue-500-rgb), 0.15);
-    --color-border: rgba(var(--color-blue-500-rgb), 0.2);
-    --color-card-border-inner: rgba(var(--color-blue-500-rgb), 0.2);
-    --color-primary-hover: var(--color-blue-250);
-  }
-}
-
-/* Data attribute dark mode phase color overrides */
 [data-color-scheme="dark"] body.phase1-active {
   --phase-color-bg: var(--color-green-1000);
   --phase-color-bg-1: var(--color-green-750);
@@ -2042,13 +1945,7 @@ body {
   }
 }
 
-/* Mode sombre améliorations */
-@media (prefers-color-scheme: dark) {
-  .example-question:hover {
-    box-shadow: 0 4px 12px rgba(50, 184, 198, 0.2);
-  }
-}
-
+/* Dark mode - example question hover */
 [data-color-scheme="dark"] .example-question:hover {
   box-shadow: 0 4px 12px rgba(50, 184, 198, 0.2);
 }
@@ -2227,26 +2124,6 @@ body {
 }
 
 /* Dark mode - invert phase colors */
-@media (prefers-color-scheme: dark) {
-  .message.phase1-message {
-    --message-phase-color: var(--color-green-0);
-    --message-phase-color-rgb: var(--color-green-0-rgb);
-    --message-phase-color-secondary: var(--color-green-500);
-  }
-
-  .message.phase2-message {
-    --message-phase-color: var(--color-red-0);
-    --message-phase-color-rgb: var(--color-red-0-rgb);
-    --message-phase-color-secondary: var(--color-red-500);
-  }
-
-  .message.phase3-message {
-    --message-phase-color: var(--color-blue-0);
-    --message-phase-color-rgb: var(--color-blue-0-rgb);
-    --message-phase-color-secondary: var(--color-blue-500);
-  }
-}
-
 [data-color-scheme="dark"] .message.phase1-message {
   --message-phase-color: var(--color-green-0);
   --message-phase-color-rgb: var(--color-green-0-rgb);
@@ -2971,8 +2848,8 @@ body {
 
 /* Dark Mode */
 [data-color-scheme="dark"] .security-dev-content {
-  background: rgba(var(--color-charcoal-800), 0.95);
-  border-color: rgba(var(--color-blue-500-rgb), 0.4);
+  background: var(--color-charcoal-800);
+  border-color: var(--color-blue-500-rgb);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
