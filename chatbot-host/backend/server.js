@@ -49,6 +49,24 @@ const CLOUD_PROVIDERS_CONFIG = [
         name: 'AWS',
         display_name: 'Amazon Web Services',
         logo: './images/amazonwebservices-original-wordmark.svg'
+    },
+    {
+        id: 'gcp',
+        name: 'Google Cloud Platform',
+        display_name: 'Google Cloud Platform',
+        logo: './images/googlecloud-original.svg'
+    },
+    {
+        id: 'azure',
+        name: 'Microsoft Azure',
+        display_name: 'Microsoft Azure',
+        logo: './images/azure-original.svg'
+    },
+    {
+        id: 'ollama',
+        name: 'Ollama',
+        display_name: 'Ollama',
+        logo: './images/ollama-icon.svg'
     }
 ];
 
@@ -196,7 +214,7 @@ app.post('/api/language', (req, res) => {
 
 // Server-Sent Events endpoint for streaming (Chrome-compatible)
 app.post('/api/process-prompt', async (req, res) => {
-    const { messages, language = 'en', phase } = req.body;
+    const { messages, language = 'en', phase, cloudProvider } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'Messages are required and must be a non-empty array.' });
@@ -261,6 +279,7 @@ app.post('/api/process-prompt', async (req, res) => {
                 query: userMessage.content,
                 language: language || 'en',
                 phase: phase || 'phase1',
+                cloudProvider: cloudProvider || 'aws',
                 userContext: {
                     email: STATIC_USER_IDENTITY.email,
                     history: session.messageHistory,

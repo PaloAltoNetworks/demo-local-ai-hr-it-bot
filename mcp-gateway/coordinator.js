@@ -374,8 +374,8 @@ Query: "${query}"`;
   /**
    * Route query to appropriate agent based on registered capabilities
    */
-  async routeQuery(query, language = 'en', phase = 'phase2', userContext = null) {
-    getLogger().info(`Routing query: "${query}"`);
+  async routeQuery(query, language = 'en', phase = 'phase2', userContext = null, cloudProvider = 'aws') {
+    getLogger().info(`Routing query: "${query}" (Cloud Provider: ${cloudProvider})`);
 
     // Log received user identity
     if (userContext) {
@@ -435,7 +435,7 @@ Query: "${query}"`;
         };
       } else if (routingStrategy.requiresMultiple) {
         getLogger().info(`Multi-agent query detected, splitting across: ${routingStrategy.agents.map(a => a.agent).join(', ')}`);
-        const multiAgentResponse = await this.handleMultiAgentQuery(query, routingStrategy, phase, userContext);
+        const multiAgentResponse = await this.handleMultiAgentQuery(query, routingStrategy, phase, userContext, cloudProvider);
         // Return a special object to indicate this is a multi-agent final response
         return { type: 'multi-agent-response', response: multiAgentResponse };
       } else {
@@ -715,7 +715,7 @@ Output JSON immediately`,
   /**
    * Handle multi-agent queries by coordinating across multiple specialists
    */
-  async handleMultiAgentQuery(originalQuery, routingStrategy, phase = 'phase2', userContext = null) {
+  async handleMultiAgentQuery(originalQuery, routingStrategy, phase = 'phase2', userContext = null, cloudProvider = 'aws') {
     this.sendThinkingMessage(`🔀 Coordinating multi-agent response across ${routingStrategy.agents.length} specialists...`);
 
     try {
@@ -730,7 +730,7 @@ Output JSON immediately`,
           }
 
           this.sendThinkingMessage(`Querying ${agentTask.agent} specialist: "${agentTask.subQuery}"`);
-          const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase);
+          const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase, cloudProvider);
 
           // Check if security blocked this agent's response
           if (response && response._securityBlock) {
@@ -762,7 +762,7 @@ Output JSON immediately`,
           }
 
           this.sendThinkingMessage(`Querying ${agentTask.agent} specialist: "${agentTask.subQuery}"`);
-          const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase);
+          const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase, cloudProvider);
 
           // Check if security blocked this agent's response
           if (response && response._securityBlock) {
@@ -796,7 +796,7 @@ Output JSON immediately`,
       const fallbackAgentId = this.findAgentIdByName(routingStrategy.agents[0].agent);
       if (fallbackAgentId) {
         this.sendThinkingMessage(`⚠️ Multi-agent coordination failed, falling back to ${routingStrategy.agents[0].agent} specialist...`);
-        return await this.queryAgent(fallbackAgentId, originalQuery, userContext, 'en', phase);
+        return await this.queryAgent(fallbackAgentId, originalQuery, userContext, 'en', phase, cloudProvider);
       }
       throw error;
     }
@@ -863,7 +863,7 @@ SYNTHESIZED RESPONSE:`;
   /**
    * Query an agent via MCP protocol (delegating to MCPServerRegistry)
    */
-  async queryAgent(agentId, query, userContext = null, language = 'en', phase = 'phase2') {
+  async queryAgent(agentId, query, userContext = null, language = 'en', phase = 'phase2', cloudProvider = 'aws') {
     const agent = this.registry.getAgent(agentId);
     if (!agent) {
       throw new Error(`Agent ${agentId} not found in registry`);
@@ -926,7 +926,7 @@ SYNTHESIZED RESPONSE:`;
       // Track outbound request tokens (after enrichment)
       this.trackAgentTokens(enrichedQuery);
 
-      const queryUri = `${agent.name}://query?q=${encodeURIComponent(enrichedQuery)}`;
+      const queryUri = `${agent.name}://query?q=${encodeURIComponent(enrichedQuery)}&cloudProvider=${encodeURIComponent(cloudProvider)}`;
 
       // Make MCP resource request via MCPServerRegistry
       const resourceRequest = {
@@ -1449,7 +1449,7 @@ Return only the concise version:`;
   /**
    * Process user query through the MCP system with full security integration
    */
-  async processQuery(query, language = 'en', phase = 'phase2', userContext = null) {
+  async processQuery(query, language = 'en', phase = 'phase2', userContext = null, cloudProvider = 'aws') {
     if (!this.initialized) {
       throw new Error('IntelligentCoordinator not initialized');
     }
@@ -1462,7 +1462,7 @@ Return only the concise version:`;
     };
     this.clearSecurityCheckpoints();
 
-    getLogger().info(`🎬 [Coordinator] Processing query: "${query}" (${language}, Phase: ${phase})`);
+    getLogger().info(`🎬 [Coordinator] Processing query: "${query}" (${language}, Phase: ${phase}, Cloud: ${cloudProvider})`);
     this.sendThinkingMessage(`Analyzing your question...`);
 
     let queryToProcess = query;
@@ -1526,7 +1526,7 @@ Return only the concise version:`;
 
       let routingResult;
       try {
-        routingResult = await this.routeQuery(translatedQuery, language, phase, userContext);
+        routingResult = await this.routeQuery(translatedQuery, language, phase, userContext, cloudProvider);
       } catch (routingError) {
         getLogger().error('❌ [Coordinator] Routing failed:', routingError.message);
 
@@ -1555,7 +1555,7 @@ Return only the concise version:`;
 
         // Step 3: Query the selected agent
         this.sendThinkingMessage(`${selectedAgent.name} specialist is processing your request...`);
-        const agentResponse = await this.queryAgent(routingResult.agentId, translatedQuery, userContext, language, phase);
+        const agentResponse = await this.queryAgent(routingResult.agentId, translatedQuery, userContext, language, phase, cloudProvider);
 
         // Check if security blocked the response at Checkpoint 3
         if (agentResponse && agentResponse._securityBlock) {

@@ -9,6 +9,7 @@ export class ApiService {
         this.lastHealthData = null;
         this.retryAttempts = new Map();
         this.currentLanguage = 'en';
+        this.currentCloudProvider = 'aws';
     }
 
     /**
@@ -16,6 +17,13 @@ export class ApiService {
      */
     setLanguage(language) {
         this.currentLanguage = language;
+    }
+
+    /**
+     * Set the current cloud provider for API requests
+     */
+    setCloudProvider(provider) {
+        this.currentCloudProvider = provider;
     }
 
     /**
@@ -36,7 +44,8 @@ export class ApiService {
                 body: JSON.stringify({ 
                     messages: chatHistory, 
                     phase: currentPhase,
-                    language: language
+                    language: language,
+                    cloudProvider: this.currentCloudProvider
                 }),
                 signal: controller.signal
             });

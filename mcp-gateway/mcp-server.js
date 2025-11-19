@@ -610,7 +610,7 @@ app.post('/api/agents/:agentId/heartbeat', (req, res) => {
 // Coordinator endpoints (routing and intelligence)
 app.post('/api/query', async (req, res) => {
   try {
-    const { query, language = 'en', phase = 'phase2', userContext, streamThinking = false } = req.body;
+    const { query, language = 'en', phase = 'phase2', userContext, streamThinking = false, cloudProvider = 'aws' } = req.body;
     
     if (!query) {
       return res.status(400).json({
@@ -632,7 +632,7 @@ app.post('/api/query', async (req, res) => {
       });
 
       // ROUTING DECISION: Coordinator handles this
-      const result = await coordinator.processQuery(query, language, phase, userContext);
+      const result = await coordinator.processQuery(query, language, phase, userContext, cloudProvider);
       
       // Check if the coordinator returned an error response
       if (result.error || result.success === false) {
@@ -657,7 +657,7 @@ app.post('/api/query', async (req, res) => {
       coordinator.setStreamThinkingCallback(null);
     } else {
       // Non-streaming mode (original behavior)
-      const result = await coordinator.processQuery(query, language, phase, userContext);
+      const result = await coordinator.processQuery(query, language, phase, userContext, cloudProvider);
       
       // Check if the coordinator returned an error response
       if (result.error || result.success === false) {
