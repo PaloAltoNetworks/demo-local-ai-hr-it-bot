@@ -214,10 +214,10 @@ class MCPAgentBase {
   }
 
   /**
-   * Get available cloud providers - can be overridden by subclasses
-   * By default, returns empty array (no specific cloud provider support)
+   * Get available llm providers - can be overridden by subclasses
+   * By default, returns empty array (no specific llm provider support)
    */
-  getCloudProviders() {
+  getLLMProviders() {
     return [];
   }
 
@@ -316,10 +316,10 @@ class MCPAgentBase {
     const agentUrl = `http://${this.agentName}-mcp-server:${this.config.agent.port}`;
 
     try {
-      // Get cloud providers if available
-      const cloudProviders = this.getCloudProviders ? this.getCloudProviders() : [];
+      // Get llm providers if available
+      const LLMProviders = this.getLLMProviders ? this.getLLMProviders() : [];
       
-      await this.coordinatorClient.register(agentUrl, this.getCapabilities(), cloudProviders);
+      await this.coordinatorClient.register(agentUrl, this.getCapabilities(), LLMProviders);
       this.logger.info('Agent registered with coordinator');
 
       // Start heartbeat to maintain registration

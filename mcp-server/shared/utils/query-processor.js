@@ -10,7 +10,7 @@ class QueryProcessor {
     this.agentName = agentName;
     this.logger = getLogger();
     this.config = ConfigManager.getConfig();
-    // Initialize LLM provider (supports multiple cloud providers)
+    // Initialize LLM provider (supports multiple llm providers)
     this.llmProvider = LLMProviderFactory.create();
   }
 
@@ -43,11 +43,11 @@ class QueryProcessor {
   }
 
   /**
-   * Get available cloud providers
+   * Get available llm providers
    */
   async getAvailableModels() {
     try {
-      const providers = LLMProviderFactory.getAvailableCloudProviders();
+      const providers = LLMProviderFactory.getAvailableLLMProviders();
       return providers;
     } catch (error) {
       this.logger.warn('Failed to fetch available providers', error);

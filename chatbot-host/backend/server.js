@@ -42,8 +42,8 @@ const mcpClient = new MCPClient(COORDINATOR_URL, {
     maxReconnectAttempts: 3
 });
 
-// Cloud Providers configuration and state
-const CLOUD_PROVIDERS_CONFIG = [
+// llm providers configuration and state
+const LLM_PROVIDERS_CONFIG = [
     {
         id: 'aws',
         name: 'AWS',
@@ -70,7 +70,7 @@ const CLOUD_PROVIDERS_CONFIG = [
     }
 ];
 
-let selectedCloudProvider = 'aws'; // Default provider
+let selectedAIProvider = 'aws'; // Default provider
 
 // Middleware
 app.use(cors({
@@ -214,7 +214,7 @@ app.post('/api/language', (req, res) => {
 
 // Server-Sent Events endpoint for streaming (Chrome-compatible)
 app.post('/api/process-prompt', async (req, res) => {
-    const { messages, language = 'en', phase, cloudProvider } = req.body;
+    const { messages, language = 'en', phase, llmProvider } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'Messages are required and must be a non-empty array.' });
@@ -279,7 +279,7 @@ app.post('/api/process-prompt', async (req, res) => {
                 query: userMessage.content,
                 language: language || 'en',
                 phase: phase || 'phase1',
-                cloudProvider: cloudProvider || 'aws',
+                llmProvider: llmProvider || 'aws',
                 userContext: {
                     email: STATIC_USER_IDENTITY.email,
                     history: session.messageHistory,
@@ -429,66 +429,66 @@ app.post('/api/clear-session', (req, res) => {
     }
 });
 
-// Cloud Providers endpoint - fetch from coordinator if available, fallback to static config
-app.get('/api/cloud-providers', async (req, res) => {
+// llm providers endpoint - fetch from coordinator if available, fallback to static config
+app.get('/api/llm-providers', async (req, res) => {
     try {
-        // Try to fetch cloud providers from MCP Gateway/Coordinator
+        // Try to fetch llm providers from MCP Gateway/Coordinator
         if (mcpClient.isInitialized) {
             try {
-                const coordinatorResponse = await axios.get(`${COORDINATOR_URL}/api/cloud-providers`, {
+                const coordinatorResponse = await axios.get(`${COORDINATOR_URL}/api/llm-providers`, {
                     timeout: 5000
                 });
                 
                 if (coordinatorResponse.data) {
                     if (coordinatorResponse.data.success === false && coordinatorResponse.data.providers && coordinatorResponse.data.providers.length === 0) {
                         // No providers configured - return error
-                        getLogger().warn('No cloud providers configured in coordinator');
+                        getLogger().warn('No llm providers configured in coordinator');
                         return res.status(503).json({
-                            error: 'No cloud providers configured',
-                            message: 'Please configure cloud providers: AWS Bedrock (AWS_REGION + BEDROCK_COORDINATOR_MODEL) or Ollama (OLLAMA_SERVER_URL)',
+                            error: 'No llm providers configured',
+                            message: 'Please configure llm providers: AWS Bedrock (AWS_REGION + BEDROCK_COORDINATOR_MODEL) or Ollama (OLLAMA_SERVER_URL)',
                             providers: [],
                             source: 'coordinator'
                         });
                     }
                     
                     if (coordinatorResponse.data.success !== false) {
-                        getLogger().info('Cloud providers fetched from coordinator');
+                        getLogger().info('llm providers fetched from coordinator');
                         return res.json(coordinatorResponse.data);
                     }
                 }
             } catch (error) {
-                getLogger().warn('Failed to fetch cloud providers from coordinator: ' + error.message);
+                getLogger().warn('Failed to fetch llm providers from coordinator: ' + error.message);
                 // Fall through to static config or error
             }
         }
 
         // If no coordinator response, return error instead of static config
-        getLogger().error('Unable to fetch cloud providers - coordinator unavailable');
+        getLogger().error('Unable to fetch llm providers - coordinator unavailable');
         return res.status(503).json({
-            error: 'Cloud providers unavailable',
-            message: 'Unable to reach MCP Gateway for cloud provider configuration',
+            error: 'llm providers unavailable',
+            message: 'Unable to reach MCP Gateway for llm provider configuration',
             providers: [],
             source: 'offline'
         });
     } catch (error) {
-        getLogger().error('Error loading cloud providers: ' + error.message);
+        getLogger().error('Error loading llm providers: ' + error.message);
         res.status(500).json({
-            error: 'Failed to load cloud providers',
+            error: 'Failed to load llm providers',
             message: error.message
         });
     }
 });
 
-// Cloud Provider selection endpoint - stores selected provider
-app.post('/api/cloud-providers', (req, res) => {
+// llm provider selection endpoint - stores selected provider
+app.post('/api/llm-providers', (req, res) => {
     try {
         const { provider } = req.body;
         
         // Validate against the same providers list
-        const validProvider = CLOUD_PROVIDERS_CONFIG.find(p => p.id === provider);
+        const validProvider = LLM_PROVIDERS_CONFIG.find(p => p.id === provider);
         
         if (!provider || !validProvider) {
-            const validProviders = CLOUD_PROVIDERS_CONFIG.map(p => p.id).join(', ');
+            const validProviders = LLM_PROVIDERS_CONFIG.map(p => p.id).join(', ');
             return res.status(400).json({
                 error: 'Invalid provider',
                 message: `Provider must be one of: ${validProviders}`
@@ -496,20 +496,20 @@ app.post('/api/cloud-providers', (req, res) => {
         }
         
         // Update the selected provider on the server
-        selectedCloudProvider = provider;
+        selectedAIProvider = provider;
         
-        getLogger().info(`Cloud provider selected: ${provider}`);
+        getLogger().info(`llm provider selected: ${provider}`);
         
         res.json({
             success: true,
-            message: `Cloud provider updated to ${provider}`,
+            message: `llm provider updated to ${provider}`,
             default_provider: provider,
-            providers: CLOUD_PROVIDERS_CONFIG
+            providers: LLM_PROVIDERS_CONFIG
         });
     } catch (error) {
-        getLogger().error('Error setting cloud provider: ' + error.message);
+        getLogger().error('Error setting llm provider: ' + error.message);
         res.status(500).json({
-            error: 'Failed to set cloud provider',
+            error: 'Failed to set llm provider',
             message: error.message
         });
     }

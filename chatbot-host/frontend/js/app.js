@@ -7,7 +7,7 @@ import { QuestionsManager } from './questions-manager.js';
 import { ConnectionMonitor } from './connection-monitor.js';
 import { SecurityDevPanel } from './security-dev-panel.js';
 import { ThemeManager } from './theme-manager.js';
-import { CloudProviderManager } from './cloud-provider-manager.js';
+import { LLMProviderManager } from './llm-provider-manager.js';
 import { i18n } from './i18n.js';
 
 class ChatBotApp {
@@ -65,11 +65,11 @@ class ChatBotApp {
             this.apiService = new ApiService();
             this.apiService.setLanguage(this.currentLanguage); // Set initial language
 
-            // Initialize cloud provider manager with i18n and API service
-            this.cloudProviderManager = new CloudProviderManager(i18n, this.apiService);
+            // Initialize llm provider manager with i18n and API service
+            this.LLMProviderManager = new LLMProviderManager(i18n, this.apiService);
             
-            // Set initial cloud provider
-            this.apiService.setCloudProvider(this.cloudProviderManager.getCurrentProvider());
+            // Set initial llm provider
+            this.apiService.setAIProvider(this.LLMProviderManager.getCurrentProvider());
 
             this.uiManager = new UIManager(this.currentLanguage, i18n);
             this.questionsManager = new QuestionsManager(i18n, this.uiManager);
@@ -142,8 +142,8 @@ class ChatBotApp {
         // Listen for global language change events
         window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
         
-        // Listen for cloud provider change events
-        window.addEventListener('cloudProviderChanged', this.cloudProviderManager.onChanged.bind(this.cloudProviderManager));
+        // Listen for llm provider change events
+        window.addEventListener('llmProviderChanged', this.LLMProviderManager.onChanged.bind(this.LLMProviderManager));
         
         // Listen for API retry events
         window.addEventListener('apiRetry', this.onApiRetry.bind(this));

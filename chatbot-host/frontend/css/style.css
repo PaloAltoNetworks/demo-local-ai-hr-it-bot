@@ -1016,25 +1016,25 @@ body {
   transform: rotate(20deg);
 }
 
-/* Cloud Provider Selector Styles */
-.cloud-provider-selector {
+/* llm provider Selector Styles */
+.llm-provider-selector {
   display: flex;
   align-items: center;
   gap: var(--space-4);
 }
 
-.cloud-provider-label {
+.llm-provider-label {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   font-weight: 500;
   white-space: nowrap;
 }
 
-.cloud-provider-dropdown {
+.llm-provider-dropdown {
   position: relative;
 }
 
-.cloud-provider-button {
+.llm-provider-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1051,18 +1051,18 @@ body {
   height: 44px;
 }
 
-.cloud-provider-button:hover {
+.llm-provider-button:hover {
   background-color: var(--color-secondary-hover);
   border-color: var(--color-primary);
 }
 
-.cloud-provider-button:focus {
+.llm-provider-button:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: var(--focus-ring);
 }
 
-.cloud-provider-button:active {
+.llm-provider-button:active {
   background-color: var(--color-secondary-active);
 }
 
@@ -1073,7 +1073,7 @@ body {
   object-fit: contain;
 }
 
-.cloud-provider-menu {
+.llm-provider-menu {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -1085,13 +1085,13 @@ body {
   gap: var(--space-8);
 }
 
-.cloud-provider-menu.show {
+.llm-provider-menu.show {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
 }
 
-.cloud-provider-option {
+.llm-provider-option {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1105,17 +1105,17 @@ body {
   transition: all var(--duration-fast) var(--ease-standard);
 }
 
-.cloud-provider-option:hover {
+.llm-provider-option:hover {
   background-color: var(--color-surface);
   border-color: var(--color-primary);
 }
 
-.cloud-provider-option.selected {
+.llm-provider-option.selected {
   background-color: var(--color-surface);
   border-color: var(--color-primary);
 }
 
-.cloud-provider-option img {
+.llm-provider-option img {
   height: 26px;
   width: auto;
   max-width: 35px;

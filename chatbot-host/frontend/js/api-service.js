@@ -10,7 +10,7 @@ export class ApiService {
         this.lastHealthData = null;
         this.retryAttempts = new Map();
         this.currentLanguage = 'en';
-        this.currentCloudProvider = 'aws';
+        this.currentLLMProvider = 'aws';
     }
 
     /**
@@ -21,10 +21,10 @@ export class ApiService {
     }
 
     /**
-     * Set the current cloud provider for API requests
+     * Set the current llm provider for API requests
      */
-    setCloudProvider(provider) {
-        this.currentCloudProvider = provider;
+    setAIProvider(provider) {
+        this.currentLLMProvider = provider;
     }
 
     /**
@@ -46,7 +46,7 @@ export class ApiService {
                     messages: chatHistory, 
                     phase: currentPhase,
                     language: language,
-                    cloudProvider: this.currentCloudProvider
+                    llmProvider: this.currentLLMProvider
                 }),
                 signal: controller.signal
             });
@@ -332,11 +332,11 @@ export class ApiService {
     }
 
     /**
-     * Fetch available cloud providers and their services
+     * Fetch available llm providers and their services
      */
-    async getCloudProviders() {
+    async getLLMProviders() {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/cloud-providers`, {
+            const response = await fetch(`${API_BASE_URL}/api/llm-providers`, {
                 method: 'GET',
                 mode: 'cors',
                 headers: {
@@ -352,17 +352,17 @@ export class ApiService {
             const data = await response.json();
             return data;
         } catch (error) {
-            console.error('❌ Failed to fetch cloud providers:', error);
+            console.error('❌ Failed to fetch llm providers:', error);
             return null;
         }
     }
 
     /**
-     * Send selected cloud provider to backend
+     * Send selected llm provider to backend
      */
-    async updateCloudProviderOnBackend(providerId) {
+    async updateAIProviderOnBackend(providerId) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/cloud-providers`, {
+            const response = await fetch(`${API_BASE_URL}/api/llm-providers`, {
                 method: 'POST',
                 mode: 'cors',
                 headers: {
@@ -377,10 +377,10 @@ export class ApiService {
             }
 
             const data = await response.json();
-            console.log('✓ Cloud provider updated:', providerId);
+            console.log('✓ llm provider updated:', providerId);
             return data;
         } catch (error) {
-            console.error('❌ Failed to set cloud provider:', error);
+            console.error('❌ Failed to set llm provider:', error);
             return null;
         }
     }

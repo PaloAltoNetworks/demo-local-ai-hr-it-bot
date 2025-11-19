@@ -26,7 +26,7 @@ class AgentRegistry {
   }
 
   registerAgent(agentData) {
-    const { agentId, name, description, url, capabilities = [], cloudProviders = [] } = agentData;
+    const { agentId, name, description, url, capabilities = [], LLMProviders = [] } = agentData;
 
     // Store agent metadata
     this.agents.set(agentId, {
@@ -35,7 +35,7 @@ class AgentRegistry {
       description,
       url,
       capabilities,
-      cloudProviders,
+      LLMProviders,
       lastSeen: Date.now(),
       healthy: true,
       sessionId: null
@@ -50,8 +50,8 @@ class AgentRegistry {
       this.capabilities.get(capability).add(agentId);
     });
 
-    const cloudProviderInfo = cloudProviders.length > 0 ? ` with providers: ${cloudProviders.map(p => p.id).join(', ')}` : '';
-    getLogger().info(`Agent ${name} (${agentId}) registered with capabilities: ${JSON.stringify(agentCapabilities)}${cloudProviderInfo}`);
+    const llmProviderInfo = LLMProviders.length > 0 ? ` with providers: ${LLMProviders.map(p => p.id).join(', ')}` : '';
+    getLogger().info(`Agent ${name} (${agentId}) registered with capabilities: ${JSON.stringify(agentCapabilities)}${llmProviderInfo}`);
   }
 
   unregisterAgent(agentId) {
@@ -138,15 +138,15 @@ class AgentRegistry {
   }
 
   /**
-   * Get all available cloud providers from registered agents
+   * Get all available llm providers from registered agents
    * Returns unique providers across all agents
    */
-  getAvailableCloudProviders() {
+  getAvailableLLMProviders() {
     const providersMap = new Map(); // id -> provider object
 
     for (const [agentId, agent] of this.agents) {
-      if (agent.cloudProviders && Array.isArray(agent.cloudProviders)) {
-        agent.cloudProviders.forEach(provider => {
+      if (agent.LLMProviders && Array.isArray(agent.LLMProviders)) {
+        agent.LLMProviders.forEach(provider => {
           if (provider.id && !providersMap.has(provider.id)) {
             providersMap.set(provider.id, provider);
           }
@@ -285,10 +285,10 @@ class IntelligentCoordinator {
    * Agent registration endpoint
    */
   registerAgent(agentData) {
-    // If agent didn't provide cloudProviders, add the available ones from gateway's LLM configuration
-    if (!agentData.cloudProviders || agentData.cloudProviders.length === 0) {
-      const availableProviders = LLMProviderFactory.getAvailableCloudProviders();
-      agentData.cloudProviders = availableProviders;
+    // If agent didn't provide LLMProviders, add the available ones from gateway's LLM configuration
+    if (!agentData.LLMProviders || agentData.LLMProviders.length === 0) {
+      const availableProviders = LLMProviderFactory.getAvailableLLMProviders();
+      agentData.LLMProviders = availableProviders;
     }
     
     this.registry.registerAgent(agentData);
@@ -402,11 +402,11 @@ Query: "${query}"`;
   /**
    * Route query to appropriate agent based on registered capabilities
    */
-  async routeQuery(query, language = 'en', phase = 'phase2', userContext = null, cloudProvider = 'aws') {
-    // Switch LLM provider if cloudProvider is explicitly requested
-    if (cloudProvider) {
-      getLogger().info(`[Coordinator] Switching LLM provider to: ${cloudProvider}`);
-      this.llmProvider = LLMProviderFactory.create(cloudProvider);
+  async routeQuery(query, language = 'en', phase = 'phase2', userContext = null, llmProvider = 'aws') {
+    // Switch LLM provider if llmProvider is explicitly requested
+    if (llmProvider) {
+      getLogger().info(`[Coordinator] Switching LLM provider to: ${llmProvider}`);
+      this.llmProvider = LLMProviderFactory.create(llmProvider);
     }
 
     getLogger().info(`Routing query: "${query}"`);
@@ -469,7 +469,7 @@ Query: "${query}"`;
         };
       } else if (routingStrategy.requiresMultiple) {
         getLogger().info(`Multi-agent query detected, splitting across: ${routingStrategy.agents.map(a => a.agent).join(', ')}`);
-        const multiAgentResponse = await this.handleMultiAgentQuery(query, routingStrategy, phase, userContext, cloudProvider);
+        const multiAgentResponse = await this.handleMultiAgentQuery(query, routingStrategy, phase, userContext, llmProvider);
         // Return a special object to indicate this is a multi-agent final response
         return { type: 'multi-agent-response', response: multiAgentResponse };
       } else {
@@ -749,7 +749,7 @@ Output JSON immediately`,
   /**
    * Handle multi-agent queries by coordinating across multiple specialists
    */
-  async handleMultiAgentQuery(originalQuery, routingStrategy, phase = 'phase2', userContext = null, cloudProvider = 'aws') {
+  async handleMultiAgentQuery(originalQuery, routingStrategy, phase = 'phase2', userContext = null, llmProvider = 'aws') {
     this.sendThinkingMessage(`🔀 Coordinating multi-agent response across ${routingStrategy.agents.length} specialists...`);
 
     try {
@@ -764,7 +764,7 @@ Output JSON immediately`,
           }
 
           this.sendThinkingMessage(`Querying ${agentTask.agent} specialist: "${agentTask.subQuery}"`);
-          const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase, cloudProvider);
+          const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase, llmProvider);
 
           // Check if security blocked this agent's response
           if (response && response._securityBlock) {
@@ -796,7 +796,7 @@ Output JSON immediately`,
           }
 
           this.sendThinkingMessage(`Querying ${agentTask.agent} specialist: "${agentTask.subQuery}"`);
-          const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase, cloudProvider);
+          const response = await this.queryAgent(agentId, agentTask.subQuery, userContext, 'en', phase, llmProvider);
 
           // Check if security blocked this agent's response
           if (response && response._securityBlock) {
@@ -830,7 +830,7 @@ Output JSON immediately`,
       const fallbackAgentId = this.findAgentIdByName(routingStrategy.agents[0].agent);
       if (fallbackAgentId) {
         this.sendThinkingMessage(`⚠️ Multi-agent coordination failed, falling back to ${routingStrategy.agents[0].agent} specialist...`);
-        return await this.queryAgent(fallbackAgentId, originalQuery, userContext, 'en', phase, cloudProvider);
+        return await this.queryAgent(fallbackAgentId, originalQuery, userContext, 'en', phase, llmProvider);
       }
       throw error;
     }
@@ -897,13 +897,13 @@ SYNTHESIZED RESPONSE:`;
   /**
    * Query an agent via MCP protocol (delegating to MCPServerRegistry)
    */
-  async queryAgent(agentId, query, userContext = null, language = 'en', phase = 'phase2', cloudProvider = 'aws') {
+  async queryAgent(agentId, query, userContext = null, language = 'en', phase = 'phase2', llmProvider = 'aws') {
     const agent = this.registry.getAgent(agentId);
     if (!agent) {
       throw new Error(`Agent ${agentId} not found in registry`);
     }
 
-    getLogger().info(`Querying ${agent.name} agent with Cloud Provider: ${cloudProvider}`);
+    getLogger().info(`Querying ${agent.name} agent with llm provider: ${llmProvider}`);
 
     try {
       let securityCheckResult = { maskedQuery: null, hasMasking: false };
@@ -959,9 +959,9 @@ SYNTHESIZED RESPONSE:`;
         }
       }
 
-      // Add cloud provider context if specified
-      if (cloudProvider && cloudProvider !== 'aws') {
-        enrichedQuery = `${enrichedQuery}\n[Cloud Provider: ${cloudProvider}]`;
+      // Add llm provider context if specified
+      if (llmProvider && llmProvider !== 'aws') {
+        enrichedQuery = `${enrichedQuery}\n[llm provider: ${llmProvider}]`;
       }
 
       // Track outbound request tokens (after enrichment)
@@ -970,7 +970,7 @@ SYNTHESIZED RESPONSE:`;
       const queryUri = `${agent.name}://query?q=${encodeURIComponent(enrichedQuery)}`;
 
       // Make MCP resource request via MCPServerRegistry
-      // Note: cloudProvider is passed in userContext, not in the URI
+      // Note: llmProvider is passed in userContext, not in the URI
       const resourceRequest = {
         jsonrpc: '2.0',
         method: 'resources/read',
@@ -980,7 +980,7 @@ SYNTHESIZED RESPONSE:`;
         }
       };
 
-      getLogger().info(`Sending resource request to ${agent.name} (Cloud Provider: ${cloudProvider})`);
+      getLogger().info(`Sending resource request to ${agent.name} (llm provider: ${llmProvider})`);
       this.sendThinkingMessage(`Sending request to ${agent.name} specialist...`);
 
       // Use MCPServerRegistry to forward the request
@@ -1491,7 +1491,7 @@ Return only the concise version:`;
   /**
    * Process user query through the MCP system with full security integration
    */
-  async processQuery(query, language = 'en', phase = 'phase2', userContext = null, cloudProvider = 'aws') {
+  async processQuery(query, language = 'en', phase = 'phase2', userContext = null, llmProvider = 'aws') {
     if (!this.initialized) {
       throw new Error('IntelligentCoordinator not initialized');
     }
@@ -1504,7 +1504,7 @@ Return only the concise version:`;
     };
     this.clearSecurityCheckpoints();
 
-    getLogger().info(`Processing query: "${query}" (${language}, Phase: ${phase}, Cloud: ${cloudProvider})`);
+    getLogger().info(`Processing query: "${query}" (${language}, Phase: ${phase}, Cloud: ${llmProvider})`);
     this.sendThinkingMessage(`Analyzing your question...`);
 
     let queryToProcess = query;
@@ -1568,7 +1568,7 @@ Return only the concise version:`;
 
       let routingResult;
       try {
-        routingResult = await this.routeQuery(translatedQuery, language, phase, userContext, cloudProvider);
+        routingResult = await this.routeQuery(translatedQuery, language, phase, userContext, llmProvider);
       } catch (routingError) {
         getLogger().error('❌ Routing failed:', routingError.message);
 
@@ -1597,7 +1597,7 @@ Return only the concise version:`;
 
         // Step 3: Query the selected agent
         this.sendThinkingMessage(`${selectedAgent.name} specialist is processing your request...`);
-        const agentResponse = await this.queryAgent(routingResult.agentId, translatedQuery, userContext, language, phase, cloudProvider);
+        const agentResponse = await this.queryAgent(routingResult.agentId, translatedQuery, userContext, language, phase, llmProvider);
 
         // Check if security blocked the response at Checkpoint 3
         if (agentResponse && agentResponse._securityBlock) {
@@ -1768,10 +1768,10 @@ Return only the concise version:`;
   }
 
   /**
-   * Get available cloud providers from all registered agents
+   * Get available llm providers from all registered agents
    */
-  getAvailableCloudProviders() {
-    return this.registry.getAvailableCloudProviders();
+  getAvailableLLMProviders() {
+    return this.registry.getAvailableLLMProviders();
   }
 
   /**

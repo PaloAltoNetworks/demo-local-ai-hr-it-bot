@@ -135,7 +135,7 @@
     "switchToDarkMode": "Passer au mode sombre",
     "switchToLightMode": "Passer au mode clair"
   },
-  "cloudProvider": {
-    "label": "Fournisseur Cloud"
+  "llmProvider": {
+    "label": "Fournisseur LLM"
   }
 }

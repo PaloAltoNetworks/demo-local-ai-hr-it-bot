@@ -135,7 +135,7 @@
     "switchToDarkMode": "Zum dunklen Modus wechseln",
     "switchToLightMode": "Zum hellen Modus wechseln"
   },
-  "cloudProvider": {
-    "label": "Cloud-Anbieter"
+  "llmProvider": {
+    "label": "LLM-Anbieter"
   }
 }

@@ -135,7 +135,7 @@
     "switchToDarkMode": "Switch to dark mode",
     "switchToLightMode": "Switch to light mode"
   },
-  "cloudProvider": {
-    "label": "Cloud Provider"
+  "llmProvider": {
+    "label": "LLM Provider"
   }
 }

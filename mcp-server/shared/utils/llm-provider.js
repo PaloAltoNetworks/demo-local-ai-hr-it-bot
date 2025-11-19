@@ -1,6 +1,6 @@
 /**
  * LLM Provider Abstraction using AI SDK with Provider Registry
- * Supports multiple cloud providers:
+ * Supports multiple llm providers:
  * - OpenAI (OpenAI API)
  * - Anthropic Claude (Anthropic API)
  * - AWS Bedrock (via AWS SDK)
@@ -241,11 +241,11 @@ class LLMProviderFactory {
   }
 
   /**
-   * Detect available cloud providers based on configured environment variables
+   * Detect available llm providers based on configured environment variables
    * Only checks for configuration availability, never exposes credentials
    * Returns list of providers that have necessary configuration
    */
-  static getAvailableCloudProviders() {
+  static getAvailableLLMProviders() {
     const availableProviders = [];
 
     // Check OpenAI configuration
@@ -334,11 +334,11 @@ class LLMProviderFactory {
 
     // If no providers are properly configured, return error information
     if (availableProviders.length === 0) {
-      getLogger().error('[LLMProvider] No cloud providers properly configured. Configure at least one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, AWS_REGION + BEDROCK_AGENT_MODEL, AZURE_API_KEY + AZURE_RESOURCE_NAME + AZURE_DEPLOYMENT_ID, GOOGLE_API_KEY, or OLLAMA_SERVER_URL');
+      getLogger().error('[LLMProvider] No llm providers properly configured. Configure at least one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, AWS_REGION + BEDROCK_AGENT_MODEL, AZURE_API_KEY + AZURE_RESOURCE_NAME + AZURE_DEPLOYMENT_ID, GOOGLE_API_KEY, or OLLAMA_SERVER_URL');
       return [];
     }
 
-    getLogger().info(`[LLMProvider] Available cloud providers: ${availableProviders.map((p) => p.id).join(', ')}`);
+    getLogger().info(`[LLMProvider] Available llm providers: ${availableProviders.map((p) => p.id).join(', ')}`);
     return availableProviders;
   }
 }

@@ -607,16 +607,16 @@ app.post('/api/agents/:agentId/heartbeat', (req, res) => {
   }
 });
 
-// Cloud Providers endpoint - fetch available providers from coordinator
-app.get('/api/cloud-providers', (req, res) => {
+// llm providers endpoint - fetch available providers from coordinator
+app.get('/api/llm-providers', (req, res) => {
   try {
-    const providers = coordinator.getAvailableCloudProviders();
+    const providers = coordinator.getAvailableLLMProviders();
     
     if (!providers || providers.length === 0) {
-      getLogger().warn('No cloud providers configured');
+      getLogger().warn('No llm providers configured');
       return res.status(503).json({
         success: false,
-        message: 'No cloud providers configured',
+        message: 'No llm providers configured',
         details: 'Please configure either AWS Bedrock (AWS_REGION + BEDROCK_COORDINATOR_MODEL) or Ollama (OLLAMA_SERVER_URL) environment variables',
         providers: [],
         count: 0
@@ -631,10 +631,10 @@ app.get('/api/cloud-providers', (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    getLogger().error('❌ [MCPGateway] Cloud providers endpoint error:', error);
+    getLogger().error('❌ [MCPGateway] llm providers endpoint error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch cloud providers',
+      message: 'Failed to fetch llm providers',
       error: error.message
     });
   }
@@ -643,7 +643,7 @@ app.get('/api/cloud-providers', (req, res) => {
 // Coordinator endpoints (routing and intelligence)
 app.post('/api/query', async (req, res) => {
   try {
-    const { query, language = 'en', phase = 'phase2', userContext, streamThinking = false, cloudProvider = 'aws' } = req.body;
+    const { query, language = 'en', phase = 'phase2', userContext, streamThinking = false, llmProvider = 'aws' } = req.body;
     
     if (!query) {
       return res.status(400).json({
@@ -665,7 +665,7 @@ app.post('/api/query', async (req, res) => {
       });
 
       // ROUTING DECISION: Coordinator handles this
-      const result = await coordinator.processQuery(query, language, phase, userContext, cloudProvider);
+      const result = await coordinator.processQuery(query, language, phase, userContext, llmProvider);
       
       // Check if the coordinator returned an error response
       if (result.error || result.success === false) {
@@ -690,7 +690,7 @@ app.post('/api/query', async (req, res) => {
       coordinator.setStreamThinkingCallback(null);
     } else {
       // Non-streaming mode (original behavior)
-      const result = await coordinator.processQuery(query, language, phase, userContext, cloudProvider);
+      const result = await coordinator.processQuery(query, language, phase, userContext, llmProvider);
       
       // Check if the coordinator returned an error response
       if (result.error || result.success === false) {

@@ -1,17 +1,17 @@
 /**
- * Cloud Provider Manager for handling cloud provider selection
+ * llm provider Manager for handling llm provider selection
  * Supports AWS, Google Cloud (GCP), and Azure with custom dropdown
- * Handles integration with API service for cloud provider updates
+ * Handles integration with API service for llm provider updates
  */
-export class CloudProviderManager {
+export class LLMProviderManager {
   constructor(i18nService = null, apiService = null) {
-    this.STORAGE_KEY = 'cloud-provider-preference';
+    this.STORAGE_KEY = 'llm-provider-preference';
     
     // Dropdown elements
-    this.dropdownElement = document.getElementById('cloudProviderDropdown');
-    this.buttonElement = document.getElementById('cloudProviderButton');
-    this.menuElement = document.getElementById('cloudProviderMenu');
-    this.logoElement = document.getElementById('cloudProviderLogo');
+    this.dropdownElement = document.getElementById('llmProviderDropdown');
+    this.buttonElement = document.getElementById('llmProviderButton');
+    this.menuElement = document.getElementById('llmProviderMenu');
+    this.logoElement = document.getElementById('llmProviderLogo');
     
     this.i18nService = i18nService;
     this.apiService = apiService;
@@ -24,7 +24,7 @@ export class CloudProviderManager {
   }
 
   /**
-   * Initialize cloud provider manager
+   * Initialize llm provider manager
    */
   async init() {
     await this.loadProvidersFromBackend();
@@ -37,12 +37,12 @@ export class CloudProviderManager {
    */
   async loadProvidersFromBackend() {
     if (!this.apiService) {
-      console.warn('No API service available for loading cloud providers');
+      console.warn('No API service available for loading llm providers');
       return;
     }
 
     try {
-      const data = await this.apiService.getCloudProviders();
+      const data = await this.apiService.getLLMProviders();
       if (data && data.providers) {
         this.providers = data.providers;
         // Store the backend's default provider
@@ -71,7 +71,7 @@ export class CloudProviderManager {
   }
 
   /**
-   * Load cloud provider preference from storage
+   * Load llm provider preference from storage
    */
   loadProviderPreference() {
     const savedProvider = this.getStoredProvider();
@@ -102,7 +102,7 @@ export class CloudProviderManager {
       return;
     }
     
-    console.log(`[CloudProviderManager] Setting provider to: ${provider}`);
+    console.log(`[LLMProviderManager] Setting provider to: ${provider}`);
     
     // Save user preference
     localStorage.setItem(this.STORAGE_KEY, provider);
@@ -120,8 +120,8 @@ export class CloudProviderManager {
     
     // Notify backend API service of provider change
     if (notifyChange && this.apiService) {
-      this.apiService.setCloudProvider(provider);  // Set local provider for requests
-      this.apiService.updateCloudProviderOnBackend(provider);  // Notify backend
+      this.apiService.setAIProvider(provider);  // Set local provider for requests
+      this.apiService.updateAIProviderOnBackend(provider);  // Notify backend
     }
     
     // Trigger change callbacks
@@ -153,7 +153,7 @@ export class CloudProviderManager {
     this.providers.forEach(provider => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'cloud-provider-option';
+      button.className = 'llm-provider-option';
       button.dataset.provider = provider.id;
       button.title = provider.name;
       
@@ -200,7 +200,7 @@ export class CloudProviderManager {
   updateMenuSelection(providerId) {
     if (!this.menuElement) return;
     
-    this.menuElement.querySelectorAll('.cloud-provider-option').forEach(option => {
+    this.menuElement.querySelectorAll('.llm-provider-option').forEach(option => {
       if (option.dataset.provider === providerId) {
         option.classList.add('selected');
       } else {
@@ -277,11 +277,11 @@ export class CloudProviderManager {
   }
 
   /**
-   * Handle cloud provider change event
+   * Handle llm provider change event
    * This method can be bound as an event listener for external notifications
    */
   onChanged(event) {
-    // This method handles external cloud provider change notifications
+    // This method handles external llm provider change notifications
     // If called as event listener, extract provider from event detail
     if (event && event.detail && event.detail.provider) {
       const provider = event.detail.provider;
@@ -295,20 +295,20 @@ export class CloudProviderManager {
    */
   notifyChange(provider) {
     // Dispatch global event for app-level listeners and external systems
-    window.dispatchEvent(new CustomEvent('cloudProviderChanged', { detail: { provider } }));
+    window.dispatchEvent(new CustomEvent('llmProviderChanged', { detail: { provider } }));
     
     // Call registered callbacks
     this.changeCallbacks.forEach(callback => {
       try {
         callback(provider);
       } catch (error) {
-        console.error('Error in cloud provider change callback:', error);
+        console.error('Error in llm provider change callback:', error);
       }
     });
   }
 
   /**
-   * Get cloud provider metadata by ID
+   * Get llm provider metadata by ID
    */
   getProviderMetadata(providerId = null) {
     providerId = providerId || this.getCurrentProvider();

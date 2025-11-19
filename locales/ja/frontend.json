@@ -135,7 +135,7 @@
     "switchToDarkMode": "ダークモードに切り替える",
     "switchToLightMode": "ライトモードに切り替える"
   },
-  "cloudProvider": {
-    "label": "クラウドプロバイダー"
+  "llmProvider": {
+    "label": "LLMプロバイダー"
   }
 }
