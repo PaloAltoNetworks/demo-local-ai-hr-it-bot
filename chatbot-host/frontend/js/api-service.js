@@ -352,7 +352,7 @@ export class ApiService {
      */
     async setCloudProvider(providerId) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/cloud-provider`, {
+            const response = await fetch(`${API_BASE_URL}/api/cloud-providers`, {
                 method: 'POST',
                 mode: 'cors',
                 headers: {

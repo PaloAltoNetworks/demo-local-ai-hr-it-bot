@@ -429,7 +429,7 @@ app.get('/api/cloud-providers', (req, res) => {
 });
 
 // Cloud Provider selection endpoint - stores selected provider
-app.post('/api/cloud-provider', (req, res) => {
+app.post('/api/cloud-providers', (req, res) => {
     try {
         const { provider } = req.body;
         
@@ -452,7 +452,7 @@ app.post('/api/cloud-provider', (req, res) => {
         res.json({
             success: true,
             message: `Cloud provider updated to ${provider}`,
-            provider: provider,
+            default_provider: provider,
             providers: CLOUD_PROVIDERS_CONFIG
         });
     } catch (error) {
