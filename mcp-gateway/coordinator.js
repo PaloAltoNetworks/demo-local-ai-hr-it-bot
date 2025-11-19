@@ -403,6 +403,12 @@ Query: "${query}"`;
    * Route query to appropriate agent based on registered capabilities
    */
   async routeQuery(query, language = 'en', phase = 'phase2', userContext = null, cloudProvider = 'aws') {
+    // Switch LLM provider if cloudProvider is explicitly requested
+    if (cloudProvider) {
+      getLogger().info(`[Coordinator] Switching LLM provider to: ${cloudProvider}`);
+      this.llmProvider = LLMProviderFactory.create(cloudProvider);
+    }
+
     getLogger().info(`Routing query: "${query}"`);
 
     // Log received user identity

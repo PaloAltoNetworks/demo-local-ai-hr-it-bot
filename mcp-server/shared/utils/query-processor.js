@@ -10,23 +10,26 @@ class QueryProcessor {
     this.agentName = agentName;
     this.logger = getLogger();
     this.config = ConfigManager.getConfig();
-    // Initialize LLM provider (supports both Ollama and AWS Bedrock)
+    // Initialize LLM provider (supports multiple cloud providers)
     this.llmProvider = LLMProviderFactory.create();
   }
 
   /**
-   * Process query using LLM (Ollama or Bedrock)
+   * Process query using LLM provider
    */
   async processWithModel(systemPrompt, query) {
     this.logger.debug('Processing query with LLM provider...');
 
     try {
-      const metadata = this.llmProvider.getMetadata();
-      this.logger.debug(`Provider: ${metadata.provider}`);
-      this.logger.debug(`Model: ${metadata.model}`);
-      this.logger.debug(`Prompt length: ${systemPrompt.length} characters`);
+      const metadata = this.llmProvider.model;
+      this.logger.debug(`Processing with model`);
+      this.logger.debug(`System prompt length: ${systemPrompt.length} characters`);
 
-      const result = await this.llmProvider.processQuery(systemPrompt, query);
+      const result = await this.llmProvider.generate(query, {
+        system: systemPrompt,
+        temperature: 0.3,
+        maxTokens: 2000,
+      });
 
       this.logger.debug(`Response length: ${result.response.length} characters`);
       this.logger.debug(`Tokens - Prompt: ${result.usage?.prompt_tokens}, Completion: ${result.usage?.completion_tokens}`);
@@ -40,14 +43,14 @@ class QueryProcessor {
   }
 
   /**
-   * Get available models from LLM provider
+   * Get available cloud providers
    */
   async getAvailableModels() {
     try {
-      const models = await this.llmProvider.getAvailableModels();
-      return models;
+      const providers = LLMProviderFactory.getAvailableCloudProviders();
+      return providers;
     } catch (error) {
-      this.logger.warn('Failed to fetch models from LLM provider', error);
+      this.logger.warn('Failed to fetch available providers', error);
       return [];
     }
   }

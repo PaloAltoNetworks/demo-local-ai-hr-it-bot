@@ -19,7 +19,7 @@ export OLLAMA_SERVER_URL=http://localhost:11434
 docker compose up -d
 
 # With AWS Bedrock (production)
-export LLM_PROVIDER=bedrock
+export LLM_PROVIDER=aws
 export AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key
 export AWS_REGION=us-east-1
 docker compose up -d

@@ -7,15 +7,20 @@
     "start": "node mcp-server.js"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.922.0",
-    "@modelcontextprotocol/sdk": "^1.21.0",
+    "@ai-sdk/anthropic": "^2.0.45",
+    "@ai-sdk/azure": "^2.0.70",
+    "@ai-sdk/google": "^2.0.38",
+    "@ai-sdk/openai": "^2.0.68",
+    "@ai-sdk/amazon-bedrock": "^3.0.56",
+    "ollama-ai-provider-v2": "^1.5.5",
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "ai": "^5.0.95",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "i18next": "^25.6.0",
-    "i18next-fs-backend": "^2.6.0",
-    "openai": "^6.8.1",
+    "i18next": "^25.6.3",
+    "i18next-fs-backend": "^2.6.1",
     "winston": "^3.18.3"
   }
 }

@@ -79,9 +79,9 @@ export class CloudProviderManager {
     
     // Use saved preference if available, otherwise use backend's default
     if (savedProvider && supportedProviderIds.includes(savedProvider)) {
-      this.setProvider(savedProvider, false);
+      this.setProvider(savedProvider, true);
     } else if (this.backendDefaultProvider) {
-      this.setProvider(this.backendDefaultProvider, false);
+      this.setProvider(this.backendDefaultProvider, true);
     }
   }
 
@@ -102,6 +102,8 @@ export class CloudProviderManager {
       return;
     }
     
+    console.log(`[CloudProviderManager] Setting provider to: ${provider}`);
+    
     // Save user preference
     localStorage.setItem(this.STORAGE_KEY, provider);
     
@@ -118,7 +120,8 @@ export class CloudProviderManager {
     
     // Notify backend API service of provider change
     if (notifyChange && this.apiService) {
-      this.apiService.setCloudProvider(provider);
+      this.apiService.setCloudProvider(provider);  // Set local provider for requests
+      this.apiService.updateCloudProviderOnBackend(provider);  // Notify backend
     }
     
     // Trigger change callbacks
@@ -131,7 +134,12 @@ export class CloudProviderManager {
    * Get current provider
    */
   getCurrentProvider() {
-    return localStorage.getItem(this.STORAGE_KEY) || this.DEFAULT_PROVIDER;
+    const stored = localStorage.getItem(this.STORAGE_KEY);
+    if (stored) {
+      return stored;
+    }
+    // Fallback to backend default or first available provider
+    return this.backendDefaultProvider || (this.providers.length > 0 ? this.providers[0].id : 'aws');
   }
 
   /**

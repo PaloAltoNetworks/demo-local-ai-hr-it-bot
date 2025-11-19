@@ -30,7 +30,7 @@ export OLLAMA_SERVER_URL=http://localhost:11434
 export COORDINATOR_MODEL=qwen2.5:1.5b
 
 # Option 2: AWS Production (Bedrock)
-export LLM_PROVIDER=bedrock
+export LLM_PROVIDER=aws
 export AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key
 export AWS_REGION=us-east-1
 export BEDROCK_COORDINATOR_MODEL=qwen.qwen3-32b-v1:0

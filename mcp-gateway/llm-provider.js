@@ -1,14 +1,23 @@
 /**
- * LLM Provider Abstraction
- * Supports both Ollama (via OpenAI API) and AWS Bedrock
+ * LLM Provider Abstraction using AI SDK with Provider Registry
+ * Supports multiple cloud providers:
+ * - OpenAI (OpenAI API)
+ * - Anthropic Claude (Anthropic API)
+ * - AWS Bedrock (via AWS SDK)
+ * - Google Vertex AI (GCP)
+ * - Azure OpenAI (Azure)
+ * - Ollama (local, OpenAI-compatible endpoint)
+ * 
  * This allows easy switching between providers without changing application code
  */
 
-const { OpenAI } = require('openai');
-const {
-  BedrockRuntimeClient,
-  InvokeModelCommand,
-} = require('@aws-sdk/client-bedrock-runtime');
+const { generateText, createProviderRegistry } = require('ai');
+const { createOpenAI } = require('@ai-sdk/openai');
+const { createAnthropic } = require('@ai-sdk/anthropic');
+const { createAzure } = require('@ai-sdk/azure');
+const { createGoogleGenerativeAI } = require('@ai-sdk/google');
+const { createAmazonBedrock } = require('@ai-sdk/amazon-bedrock');
+const { createOllama } = require('ollama-ai-provider-v2');
 const { getLogger } = require('./logger');
 
 /**
@@ -21,30 +30,21 @@ class LLMProvider {
 
   trackTokens(response) {
     return {
-      promptTokens: response.usage?.prompt_tokens || 0,
-      completionTokens: response.usage?.completion_tokens || 0,
-      totalTokens: response.usage?.total_tokens || 0
+      promptTokens: response.usage?.promptTokens || 0,
+      completionTokens: response.usage?.completionTokens || 0,
+      totalTokens: (response.usage?.promptTokens || 0) + (response.usage?.completionTokens || 0),
     };
   }
 }
 
 /**
- * Ollama via OpenAI API
- * Uses Ollama's OpenAI-compatible endpoint
+ * Unified LLM Provider
+ * Wraps the AI SDK to provide consistent interface across all providers
  */
-class OllamaOpenAIProvider extends LLMProvider {
-  constructor(config = {}) {
+class AIProvider extends LLMProvider {
+  constructor(model) {
     super();
-    const ollamaUrl = config.url || process.env.OLLAMA_SERVER_URL || 'http://localhost:11434';
-    const model = config.model || process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b';
-
-    this.client = new OpenAI({
-      apiKey: 'ollama', // Ollama doesn't require a real API key
-      baseURL: `${ollamaUrl}/v1`,
-    });
-    
     this.model = model;
-    getLogger().info(`[LLMProvider] Initialized Ollama OpenAI provider: ${this.model} at ${ollamaUrl}`);
   }
 
   async generate(prompt, options = {}) {
@@ -54,263 +54,213 @@ class OllamaOpenAIProvider extends LLMProvider {
       maxTokens = 1000,
     } = options;
 
-    const messages = [];
-    if (system) {
-      messages.push({ role: 'system', content: system });
+    try {
+      const messages = [];
+      if (system) {
+        messages.push({ role: 'system', content: system });
+      }
+      messages.push({ role: 'user', content: prompt });
+
+      getLogger().debug(`[AIProvider] Using model instance: ${this.model?.modelId || 'unknown'} (Provider: ${this.model?.provider || 'unknown'})`);
+      getLogger().debug(`[AIProvider] Model object keys: ${Object.keys(this.model || {}).join(', ')}`);
+      getLogger().debug(`[AIProvider] Sending request - temperature=${temperature}, maxTokens=${maxTokens}, messageCount=${messages.length}`);
+      getLogger().debug(`[AIProvider] First message content: ${messages[0]?.content?.substring(0, 100) || 'N/A'}`);
+
+      const response = await generateText({
+        model: this.model,
+        messages,
+        temperature,
+        maxTokens,
+      });
+
+      getLogger().debug(`[AIProvider] Response received successfully`);
+      getLogger().debug(`[AIProvider] Response text length: ${response.text?.length || 0} chars`);
+      getLogger().debug(`[AIProvider] Response usage: ${JSON.stringify(response.usage || {})}`);
+      getLogger().debug(`[AIProvider] Response model: ${response.model || 'N/A'}`);
+      
+      if (!response.text || response.text.trim().length === 0) {
+        getLogger().warn(`[AIProvider] Empty response received`);
+      }
+
+      // Extract token usage - try multiple paths as different providers format differently
+      // Ollama uses: inputTokens, outputTokens
+      // Most providers use: promptTokens, completionTokens
+      const promptTokens = response.usage?.promptTokens || response.usage?.prompt_tokens || response.usage?.inputTokens || response.promptTokens || 0;
+      const completionTokens = response.usage?.completionTokens || response.usage?.completion_tokens || response.usage?.outputTokens || response.completionTokens || 0;
+      const totalTokens = promptTokens + completionTokens;
+      
+      getLogger().debug(`[AIProvider] Token consumption - Prompt: ${promptTokens}, Completion: ${completionTokens}, Total: ${totalTokens}`);
+
+      return {
+        response: response.text,
+        usage: {
+          prompt_tokens: promptTokens,
+          completion_tokens: completionTokens,
+          total_tokens: totalTokens,
+        },
+        model: response.model || 'unknown',
+      };
+    } catch (error) {
+      getLogger().error(`[AIProvider] ❌ Error generating text: ${error.message}`);
+      getLogger().error(`[AIProvider] Error name: ${error.name}`);
+      getLogger().error(`[AIProvider] Error status: ${error.status || 'N/A'}`);
+      getLogger().error(`[AIProvider] Error statusCode: ${error.statusCode || 'N/A'}`);
+      getLogger().error(`[AIProvider] Error code: ${error.code || 'N/A'}`);
+      getLogger().error(`[AIProvider] Full error: ${JSON.stringify(error, null, 2)}`);
+      
+      if (error.message?.includes('Invalid JSON response')) {
+        getLogger().error('[AIProvider] This often indicates Bedrock endpoint misconfiguration or authentication issue');
+      }
+      
+      if (error.message?.includes('Not Found') || error.status === 404) {
+        getLogger().error('[AIProvider] 404 Not Found - check if model exists or endpoint URL is correct');
+        getLogger().error(`[AIProvider] Model ID being used: ${this.model?.modelId}`);
+        getLogger().error(`[AIProvider] Provider: ${this.model?.provider}`);
+      }
+      
+      throw error;
     }
-    messages.push({ role: 'user', content: prompt });
-
-    const response = await this.client.chat.completions.create({
-      model: this.model,
-      messages: messages,
-      temperature: temperature,
-      max_tokens: maxTokens,
-    });
-
-    return {
-      response: response.choices[0]?.message?.content || '',
-      usage: {
-        prompt_tokens: response.usage?.prompt_tokens || 0,
-        completion_tokens: response.usage?.completion_tokens || 0,
-        total_tokens: response.usage?.total_tokens || 0,
-      },
-      model: response.model,
-    };
   }
 }
 
 /**
- * AWS Bedrock Provider
- * Uses AWS Bedrock service for LLM inference
- */
-class BedrockProvider extends LLMProvider {
-  constructor(config = {}) {
-    super();
-    this.region = config.region || process.env.AWS_REGION || 'us-east-1';
-    this.modelId = config.modelId || process.env.BEDROCK_COORDINATOR_MODEL || 'anthropic.claude-3-sonnet-20240229-v1:0';
-    
-    this.client = new BedrockRuntimeClient({ region: this.region });
-    getLogger().info(`[LLMProvider] Initialized AWS Bedrock provider: ${this.modelId} in ${this.region}`);
-  }
-
-  async generate(prompt, options = {}) {
-    const {
-      system = '',
-      temperature = 0.3,
-      maxTokens = 1000,
-    } = options;
-
-    if (this.modelId.includes('claude')) {
-      return this._generateClaude(prompt, system, temperature, maxTokens);
-    } else if (this.modelId.includes('mistral')) {
-      return this._generateMistral(prompt, system, temperature, maxTokens);
-    } else if (this.modelId.includes('llama')) {
-      return this._generateLlama(prompt, system, temperature, maxTokens);
-    } else if (this.modelId.includes('gpt-')) {
-      return this._generateGPT(prompt, system, temperature, maxTokens);
-    } else if (this.modelId.includes('qwen')) {
-      return this._generateQwen(prompt, system, temperature, maxTokens);
-    }
-    
-    throw new Error(`Unsupported Bedrock model: ${this.modelId}`);
-  }
-
-  async _generateClaude(prompt, system, temperature, maxTokens) {
-    const payload = {
-      anthropic_version: 'bedrock-2023-05-31',
-      max_tokens: maxTokens,
-      temperature: temperature,
-      messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-      ...(system && { system }),
-    };
-
-    const response = await this.client.send(
-      new InvokeModelCommand({
-        modelId: this.modelId,
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify(payload),
-      })
-    );
-
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    const content = responseBody.content?.[0]?.text || '';
-
-    return {
-      response: content,
-      usage: {
-        prompt_tokens: responseBody.usage?.input_tokens || 0,
-        completion_tokens: responseBody.usage?.output_tokens || 0,
-        total_tokens: (responseBody.usage?.input_tokens || 0) + (responseBody.usage?.output_tokens || 0),
-      },
-      model: this.modelId,
-    };
-  }
-
-  async _generateMistral(prompt, system, temperature, maxTokens) {
-    // Mistral uses special prompt format
-    const instruction = `<s>[INST] ${system ? `${system}\n\n` : ''}${prompt} [/INST]`;
-
-    const payload = {
-      prompt: instruction,
-      max_tokens: maxTokens,
-      temperature: temperature,
-    };
-
-    const response = await this.client.send(
-      new InvokeModelCommand({
-        modelId: this.modelId,
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify(payload),
-      })
-    );
-
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    const content = responseBody.outputs?.[0]?.text || '';
-
-    return {
-      response: content,
-      usage: {
-        prompt_tokens: 0,
-        completion_tokens: 0,
-        total_tokens: 0,
-      },
-      model: this.modelId,
-    };
-  }
-
-  async _generateLlama(prompt, system, temperature, maxTokens) {
-    // Llama uses special prompt format with tags
-    const instruction = `
-<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-${system || 'You are a helpful assistant.'}
-<|eot_id|><|start_header_id|>user<|end_header_id|>
-${prompt}
-<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-`;
-
-    const payload = {
-      prompt: instruction,
-      max_gen_len: maxTokens,
-      temperature: temperature,
-      top_p: 0.9,
-    };
-
-    const response = await this.client.send(
-      new InvokeModelCommand({
-        modelId: this.modelId,
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify(payload),
-      })
-    );
-
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    const content = responseBody.generation || '';
-
-    return {
-      response: content,
-      usage: {
-        prompt_tokens: 0,
-        completion_tokens: 0,
-        total_tokens: 0,
-      },
-      model: this.modelId,
-    };
-  }
-
-  async _generateGPT(prompt, system, temperature, maxTokens) {
-    // GPT models via Bedrock - need to verify payload format
-    const payload = {
-      messages: [
-        ...(system ? [{ role: 'system', content: system }] : []),
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: maxTokens,
-      temperature: temperature,
-    };
-
-    const response = await this.client.send(
-      new InvokeModelCommand({
-        modelId: this.modelId,
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify(payload),
-      })
-    );
-
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    const content = responseBody.choices?.[0]?.message?.content || '';
-
-    return {
-      response: content,
-      usage: {
-        prompt_tokens: responseBody.usage?.prompt_tokens || 0,
-        completion_tokens: responseBody.usage?.completion_tokens || 0,
-        total_tokens: responseBody.usage?.total_tokens || 0,
-      },
-      model: this.modelId,
-    };
-  }
-
-  async _generateQwen(prompt, system, temperature, maxTokens) {
-    // Qwen format - need to verify
-    const payload = {
-      messages: [
-        ...(system ? [{ role: 'system', content: system }] : []),
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: maxTokens,
-      temperature: temperature,
-    };
-
-    const response = await this.client.send(
-      new InvokeModelCommand({
-        modelId: this.modelId,
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify(payload),
-      })
-    );
-
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    const content = responseBody.output?.text || responseBody.choices?.[0]?.message?.content || '';
-
-    return {
-      response: content,
-      usage: {
-        prompt_tokens: responseBody.usage?.prompt_tokens || 0,
-        completion_tokens: responseBody.usage?.completion_tokens || 0,
-        total_tokens: responseBody.usage?.total_tokens || 0,
-      },
-      model: this.modelId,
-    };
-  }
-}
-
-/**
- * Factory for creating LLM providers
+ * Factory for creating LLM providers using AI SDK Provider Registry
+ * The registry allows dynamic provider selection with simple string identifiers
  */
 class LLMProviderFactory {
-  static create(providerType = null) {
+  static _registry = null;
+
+  /**
+   * Initialize the provider registry with all configured providers
+   */
+  static _initializeRegistry() {
+    if (this._registry) {
+      return this._registry;
+    }
+
+    const providers = {};
+
+    // OpenAI provider
+    if (process.env.OPENAI_API_KEY) {
+      const openaiClient = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      providers.openai = openaiClient;
+      getLogger().info('[LLMProvider] ✓ OpenAI provider registered');
+    }
+
+    // Anthropic provider
+    if (process.env.ANTHROPIC_API_KEY) {
+      const anthropicClient = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      providers.anthropic = anthropicClient;
+      getLogger().info('[LLMProvider] ✓ Anthropic provider registered');
+    }
+
+    // Azure OpenAI provider
+    if (process.env.AZURE_API_KEY && process.env.AZURE_RESOURCE_NAME && process.env.AZURE_DEPLOYMENT_ID) {
+      const azureClient = createAzure({
+        apiKey: process.env.AZURE_API_KEY,
+        resourceName: process.env.AZURE_RESOURCE_NAME,
+      });
+      providers.azure = azureClient;
+      getLogger().info('[LLMProvider] ✓ Azure OpenAI provider registered');
+    }
+
+    // Google Cloud Vertex AI provider
+    if (process.env.GOOGLE_API_KEY) {
+      const googleClient = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY });
+      providers.gcp = googleClient;
+      getLogger().info('[LLMProvider] ✓ Google Cloud Vertex AI provider registered');
+    }
+
+    // AWS Bedrock provider
+    if (process.env.AWS_REGION && process.env.BEDROCK_COORDINATOR_MODEL) {
+      try {
+        const bedrockClient = createAmazonBedrock();
+        providers.bedrock = bedrockClient;
+        getLogger().info('[LLMProvider] ✓ AWS Bedrock provider registered');
+      } catch (error) {
+        getLogger().error(`[LLMProvider] ❌ Failed to initialize Bedrock: ${error.message}`);
+      }
+    }
+
+    // Ollama provider (using ollama-ai-provider-v2)
+    if (process.env.OLLAMA_SERVER_URL) {
+      const ollamaUrl = process.env.OLLAMA_SERVER_URL;
+      getLogger().debug(`[LLMProvider] Initializing Ollama provider with URL: ${ollamaUrl}`);
+      try {
+        const ollamaProvider = createOllama({
+          baseURL: `${ollamaUrl}/api`,
+        });
+        getLogger().debug(`[LLMProvider] Ollama provider created with baseURL: ${ollamaUrl}/api`);
+        providers.ollama = ollamaProvider;
+        getLogger().info(`[LLMProvider] ✓ Ollama provider registered at ${ollamaUrl}`);
+      } catch (error) {
+        getLogger().error(`[LLMProvider] ❌ Failed to initialize Ollama provider: ${error.message}`);
+        throw error;
+      }
+    }
+
+    // Create the registry
+    this._registry = createProviderRegistry(providers);
+    getLogger().info(`[LLMProvider] Provider registry initialized with ${Object.keys(providers).length} providers`);
+    return this._registry;
+  }
+
+  /**
+   * Create a model instance using the provider registry
+   * Format: 'provider:modelId' or just use configured default
+   */
+  static create(providerType = null, modelId = null) {
     const provider = providerType || process.env.LLM_PROVIDER || 'ollama';
+    getLogger().info(`[LLMProvider] Creating model - provider: ${provider}, modelId: ${modelId || 'default'}`);
 
-    switch (provider.toLowerCase()) {
+    const registry = this._initializeRegistry();
+    const modelIdentifier = this._buildModelIdentifier(provider, modelId);
+    
+    try {
+      getLogger().debug(`[LLMProvider] Creating model from registry: ${modelIdentifier}`);
+      getLogger().debug(`[LLMProvider] Registry keys: ${Object.keys(registry).join(', ')}`);
+      
+      const model = registry.languageModel(modelIdentifier);
+      
+      getLogger().debug(`[LLMProvider] Model object created - type: ${typeof model}`);
+      getLogger().debug(`[LLMProvider] Model properties: modelId=${model?.modelId}, provider=${model?.provider}`);
+      getLogger().info(`[LLMProvider] ✓ Created provider instance: ${modelIdentifier}`);
+      
+      return new AIProvider(model);
+    } catch (error) {
+      getLogger().error(`[LLMProvider] ❌ Failed to create model ${modelIdentifier}: ${error.message}`);
+      getLogger().error(`[LLMProvider] Error details:`, error);
+      throw new Error(`Unable to create model for provider: ${provider}. Error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Build model identifier string based on provider type
+   */
+  static _buildModelIdentifier(provider, modelId) {
+    const providerLower = provider.toLowerCase();
+    
+    switch (providerLower) {
+      case 'openai':
+        return `openai:${modelId || process.env.OPENAI_COORDINATOR_MODEL || 'gpt-4o-mini'}`;
+      
+      case 'anthropic':
+        return `anthropic:${modelId || process.env.ANTHROPIC_COORDINATOR_MODEL || 'claude-3-5-sonnet-20241022'}`;
+      
+      case 'azure':
+        return `azure:${modelId || process.env.AZURE_COORDINATOR_MODEL || process.env.AZURE_DEPLOYMENT_ID}`;
+      
+      case 'gcp':
+        return `gcp:${modelId || process.env.GCP_COORDINATOR_MODEL || 'gemini-1.5-flash'}`;
+      
+      case 'aws':
+        return `bedrock:${modelId || process.env.BEDROCK_COORDINATOR_MODEL || 'anthropic.claude-3-5-sonnet-20241022-v2:0'}`;
+      
       case 'ollama':
-        return new OllamaOpenAIProvider({
-          url: process.env.OLLAMA_SERVER_URL,
-          model: process.env.COORDINATOR_MODEL,
-        });
-
-      case 'bedrock':
-        return new BedrockProvider({
-          region: process.env.AWS_REGION,
-          modelId: process.env.BEDROCK_COORDINATOR_MODEL,
-        });
-
+        return `ollama:${modelId || process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b'}`;
+      
       default:
-        throw new Error(`Unknown LLM provider: ${provider}`);
+        throw new Error(`Unknown provider: ${provider}`);
     }
   }
 
@@ -322,6 +272,32 @@ class LLMProviderFactory {
   static getAvailableCloudProviders() {
     const availableProviders = [];
 
+    // Check OpenAI configuration
+    if (process.env.OPENAI_API_KEY) {
+      availableProviders.push({
+        id: 'openai',
+        name: 'OpenAI',
+        display_name: 'OpenAI',
+        logo: './images/openai.svg',
+        provider: 'openai',
+        configured: true,
+      });
+      getLogger().info('[LLMProvider] OpenAI provider detected (configured via OPENAI_API_KEY)');
+    }
+
+    // Check Anthropic configuration
+    if (process.env.ANTHROPIC_API_KEY) {
+      availableProviders.push({
+        id: 'anthropic',
+        name: 'Anthropic',
+        display_name: 'Anthropic Claude',
+        logo: './images/anthropic.svg',
+        provider: 'anthropic',
+        configured: true,
+      });
+      getLogger().info('[LLMProvider] Anthropic provider detected (configured via ANTHROPIC_API_KEY)');
+    }
+
     // Check AWS Bedrock configuration
     // Requires AWS_REGION and BEDROCK_COORDINATOR_MODEL (credentials come from AWS SDK env vars)
     if (process.env.AWS_REGION && process.env.BEDROCK_COORDINATOR_MODEL) {
@@ -331,11 +307,39 @@ class LLMProviderFactory {
         display_name: 'Amazon Web Services',
         logo: './images/amazonwebservices-original-wordmark.svg',
         provider: 'bedrock',
-        configured: true
+        configured: true,
       });
       getLogger().info('[LLMProvider] AWS Bedrock provider detected (configured via AWS_REGION and BEDROCK_COORDINATOR_MODEL)');
     } else if (process.env.AWS_REGION || process.env.BEDROCK_COORDINATOR_MODEL) {
       getLogger().warn('[LLMProvider] AWS Bedrock partially configured - missing AWS_REGION or BEDROCK_COORDINATOR_MODEL');
+    }
+
+    // Check Azure OpenAI configuration
+    if (process.env.AZURE_API_KEY && process.env.AZURE_RESOURCE_NAME && process.env.AZURE_DEPLOYMENT_ID) {
+      availableProviders.push({
+        id: 'azure',
+        name: 'Microsoft Azure',
+        display_name: 'Microsoft Azure OpenAI',
+        logo: './images/azure-original.svg',
+        provider: 'azure',
+        configured: true,
+      });
+      getLogger().info('[LLMProvider] Azure OpenAI provider detected (configured via Azure credentials)');
+    } else if (process.env.AZURE_API_KEY || process.env.AZURE_RESOURCE_NAME || process.env.AZURE_DEPLOYMENT_ID) {
+      getLogger().warn('[LLMProvider] Azure OpenAI partially configured - missing API key, resource name, or deployment ID');
+    }
+
+    // Check Google Cloud Vertex AI configuration
+    if (process.env.GOOGLE_API_KEY) {
+      availableProviders.push({
+        id: 'gcp',
+        name: 'Google Cloud Platform',
+        display_name: 'Google Cloud Platform',
+        logo: './images/googlecloud-original.svg',
+        provider: 'gcp',
+        configured: true,
+      });
+      getLogger().info('[LLMProvider] Google Cloud Vertex AI provider detected (configured via GOOGLE_API_KEY)');
     }
 
     // Check Ollama configuration
@@ -347,25 +351,24 @@ class LLMProviderFactory {
         display_name: 'Ollama',
         logo: './images/ollama-icon.svg',
         provider: 'ollama',
-        configured: true
+        configured: true,
       });
       getLogger().info('[LLMProvider] Ollama provider detected (configured via OLLAMA_SERVER_URL)');
     }
 
     // If no providers are properly configured, return error information
     if (availableProviders.length === 0) {
-      getLogger().error('[LLMProvider] No cloud providers properly configured. Required: AWS_REGION + BEDROCK_COORDINATOR_MODEL for AWS, or OLLAMA_SERVER_URL for Ollama');
+      getLogger().error('[LLMProvider] No cloud providers properly configured. Configure at least one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, AWS_REGION + BEDROCK_COORDINATOR_MODEL, AZURE_API_KEY + AZURE_RESOURCE_NAME + AZURE_DEPLOYMENT_ID, GOOGLE_API_KEY, or OLLAMA_SERVER_URL');
       return [];
     }
 
-    getLogger().info(`[LLMProvider] Available cloud providers: ${availableProviders.map(p => p.id).join(', ')}`);
+    getLogger().info(`[LLMProvider] Available cloud providers: ${availableProviders.map((p) => p.id).join(', ')}`);
     return availableProviders;
   }
 }
 
 module.exports = {
   LLMProvider,
-  OllamaOpenAIProvider,
-  BedrockProvider,
+  AIProvider,
   LLMProviderFactory,
 };

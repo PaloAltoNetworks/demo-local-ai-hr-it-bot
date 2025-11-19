@@ -5,6 +5,7 @@ import { API_BASE_URL, CONFIG } from './config.js';
 
 export class ApiService {
     constructor() {
+        this.id = Math.random().toString(36).substr(2, 9);
         this.isOnline = false;
         this.lastHealthData = null;
         this.retryAttempts = new Map();
@@ -359,7 +360,7 @@ export class ApiService {
     /**
      * Send selected cloud provider to backend
      */
-    async setCloudProvider(providerId) {
+    async updateCloudProviderOnBackend(providerId) {
         try {
             const response = await fetch(`${API_BASE_URL}/api/cloud-providers`, {
                 method: 'POST',
