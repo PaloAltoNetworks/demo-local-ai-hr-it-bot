@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Otter - Enterprise HR/IT Assistant</title>
-  <link rel="icon" type="image/svg+xml" href="./otter.svg">
+  <link rel="icon" type="image/svg+xml" href="./images/otter.svg">
   <link rel="stylesheet" href="./css/material-symbols.css">
   <link rel="stylesheet" href="./css/style.css">
 </head>
@@ -40,6 +40,18 @@
         <button class="theme-toggle-btn" id="themeToggle" title="Toggle Dark Mode" aria-label="Toggle dark mode">
           <span class="material-symbols theme-toggle-icon">dark_mode</span>
         </button>
+
+        <!-- llm provider Selector -->
+        <div class="llm-provider-selector">
+          <div class="llm-provider-dropdown" id="llmProviderDropdown">
+            <button class="llm-provider-button" id="llmProviderButton" type="button" title="Select llm provider" aria-expanded="false">
+              <img id="llmProviderLogo" class="provider-logo" src="" alt="Provider Logo">
+            </button>
+            <div class="llm-provider-menu" id="llmProviderMenu">
+              <!-- Options populated dynamically by LLMProviderManager from backend -->
+            </div>
+          </div>
+        </div>
 
         <!-- User Menu -->
         <div class="user-menu-container">

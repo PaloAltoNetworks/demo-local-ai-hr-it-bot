@@ -35,7 +35,7 @@ class CoordinatorClient {
   /**
    * Register this agent with the coordinator
    */
-  async register(agentUrl, capabilities) {
+  async register(agentUrl, capabilities, LLMProviders = []) {
     const isAvailable = await this.checkAvailability();
     if (!isAvailable) {
       throw new Error('Coordinator is not available');
@@ -46,7 +46,8 @@ class CoordinatorClient {
       name: this.agentName,
       description: this.agentDescription,
       url: agentUrl,
-      capabilities
+      capabilities,
+      LLMProviders
     };
 
     this.logger.info(`Registering with coordinator at ${this.config.coordinator.url}...`);

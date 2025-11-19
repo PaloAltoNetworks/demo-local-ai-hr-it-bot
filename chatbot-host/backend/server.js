@@ -42,6 +42,36 @@ const mcpClient = new MCPClient(COORDINATOR_URL, {
     maxReconnectAttempts: 3
 });
 
+// llm providers configuration and state
+const LLM_PROVIDERS_CONFIG = [
+    {
+        id: 'aws',
+        name: 'AWS',
+        display_name: 'Amazon Web Services',
+        logo: './images/amazonwebservices-original-wordmark.svg'
+    },
+    {
+        id: 'gcp',
+        name: 'Google Cloud Platform',
+        display_name: 'Google Cloud Platform',
+        logo: './images/googlecloud-original.svg'
+    },
+    {
+        id: 'azure',
+        name: 'Microsoft Azure',
+        display_name: 'Microsoft Azure',
+        logo: './images/azure-original.svg'
+    },
+    {
+        id: 'ollama',
+        name: 'Ollama',
+        display_name: 'Ollama',
+        logo: './images/ollama-icon.svg'
+    }
+];
+
+let selectedAIProvider = 'aws'; // Default provider
+
 // Middleware
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:3002'],
@@ -184,7 +214,7 @@ app.post('/api/language', (req, res) => {
 
 // Server-Sent Events endpoint for streaming (Chrome-compatible)
 app.post('/api/process-prompt', async (req, res) => {
-    const { messages, language = 'en', phase } = req.body;
+    const { messages, language = 'en', phase, llmProvider } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'Messages are required and must be a non-empty array.' });
@@ -249,6 +279,7 @@ app.post('/api/process-prompt', async (req, res) => {
                 query: userMessage.content,
                 language: language || 'en',
                 phase: phase || 'phase1',
+                llmProvider: llmProvider || 'aws',
                 userContext: {
                     email: STATIC_USER_IDENTITY.email,
                     history: session.messageHistory,
@@ -395,6 +426,92 @@ app.post('/api/clear-session', (req, res) => {
     } catch (error) {
         getLogger().error('Error clearing session: ' + error.message);
         res.status(500).json({ error: 'Failed to clear session', message: error.message });
+    }
+});
+
+// llm providers endpoint - fetch from coordinator if available, fallback to static config
+app.get('/api/llm-providers', async (req, res) => {
+    try {
+        // Try to fetch llm providers from MCP Gateway/Coordinator
+        if (mcpClient.isInitialized) {
+            try {
+                const coordinatorResponse = await axios.get(`${COORDINATOR_URL}/api/llm-providers`, {
+                    timeout: 5000
+                });
+                
+                if (coordinatorResponse.data) {
+                    if (coordinatorResponse.data.success === false && coordinatorResponse.data.providers && coordinatorResponse.data.providers.length === 0) {
+                        // No providers configured - return error
+                        getLogger().warn('No llm providers configured in coordinator');
+                        return res.status(503).json({
+                            error: 'No llm providers configured',
+                            message: 'Please configure llm providers: AWS Bedrock (AWS_REGION + BEDROCK_COORDINATOR_MODEL) or Ollama (OLLAMA_SERVER_URL)',
+                            providers: [],
+                            source: 'coordinator'
+                        });
+                    }
+                    
+                    if (coordinatorResponse.data.success !== false) {
+                        getLogger().info('llm providers fetched from coordinator');
+                        return res.json(coordinatorResponse.data);
+                    }
+                }
+            } catch (error) {
+                getLogger().warn('Failed to fetch llm providers from coordinator: ' + error.message);
+                // Fall through to static config or error
+            }
+        }
+
+        // If no coordinator response, return error instead of static config
+        getLogger().error('Unable to fetch llm providers - coordinator unavailable');
+        return res.status(503).json({
+            error: 'llm providers unavailable',
+            message: 'Unable to reach MCP Gateway for llm provider configuration',
+            providers: [],
+            source: 'offline'
+        });
+    } catch (error) {
+        getLogger().error('Error loading llm providers: ' + error.message);
+        res.status(500).json({
+            error: 'Failed to load llm providers',
+            message: error.message
+        });
+    }
+});
+
+// llm provider selection endpoint - stores selected provider
+app.post('/api/llm-providers', (req, res) => {
+    try {
+        const { provider } = req.body;
+        
+        // Validate against the same providers list
+        const validProvider = LLM_PROVIDERS_CONFIG.find(p => p.id === provider);
+        
+        if (!provider || !validProvider) {
+            const validProviders = LLM_PROVIDERS_CONFIG.map(p => p.id).join(', ');
+            return res.status(400).json({
+                error: 'Invalid provider',
+                message: `Provider must be one of: ${validProviders}`
+            });
+        }
+        
+        // Update the selected provider on the server
+        selectedAIProvider = provider;
+        
+        getLogger().info(`llm provider selected: ${provider}`);
+        
+        res.json({
+            success: true,
+            message: `llm provider updated to ${provider}`,
+            default_provider: provider,
+            providers: LLM_PROVIDERS_CONFIG
+        });
+    } catch (error) {
+        getLogger().error('Error setting llm provider: ' + error.message);
+        res.status(500).json({
+            error: 'Failed to set llm provider',
+            message: error.message
+        });
     }
 });
 

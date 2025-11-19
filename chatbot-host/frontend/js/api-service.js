@@ -5,10 +5,12 @@ import { API_BASE_URL, CONFIG } from './config.js';
 
 export class ApiService {
     constructor() {
+        this.id = Math.random().toString(36).substr(2, 9);
         this.isOnline = false;
         this.lastHealthData = null;
         this.retryAttempts = new Map();
         this.currentLanguage = 'en';
+        this.currentLLMProvider = 'aws';
     }
 
     /**
@@ -16,6 +18,13 @@ export class ApiService {
      */
     setLanguage(language) {
         this.currentLanguage = language;
+    }
+
+    /**
+     * Set the current llm provider for API requests
+     */
+    setAIProvider(provider) {
+        this.currentLLMProvider = provider;
     }
 
     /**
@@ -36,7 +45,8 @@ export class ApiService {
                 body: JSON.stringify({ 
                     messages: chatHistory, 
                     phase: currentPhase,
-                    language: language
+                    language: language,
+                    llmProvider: this.currentLLMProvider
                 }),
                 signal: controller.signal
             });
@@ -318,6 +328,60 @@ export class ApiService {
         } catch (error) {
             console.error('❌ Failed to clear session:', error);
             return false;
+        }
+    }
+
+    /**
+     * Fetch available llm providers and their services
+     */
+    async getLLMProviders() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/llm-providers`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-language': this.currentLanguage || 'en'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('❌ Failed to fetch llm providers:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Send selected llm provider to backend
+     */
+    async updateAIProviderOnBackend(providerId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/llm-providers`, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-language': this.currentLanguage || 'en'
+                },
+                body: JSON.stringify({ provider: providerId })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('✓ llm provider updated:', providerId);
+            return data;
+        } catch (error) {
+            console.error('❌ Failed to set llm provider:', error);
+            return null;
         }
     }
 

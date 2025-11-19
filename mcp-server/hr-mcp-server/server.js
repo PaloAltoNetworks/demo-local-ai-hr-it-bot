@@ -644,9 +644,9 @@ DATABASE FIELDS:
       );
       
       if (userDetails) {
-        this.sendThinkingMessage(`📋 Found user in database: ${userDetails.name} (${userDetails.role})`);
+        this.sendThinkingMessage(`Found user in database: ${userDetails.name} (${userDetails.role})`);
       } else if (userContext) {
-        this.sendThinkingMessage(`📋 Using user context: ${userContext.user || 'Unknown'}`);
+        this.sendThinkingMessage(`Using user context: ${userContext.user || 'Unknown'}`);
       }
 
       const rawEmployeeData = await this._fetchEmployeeData();

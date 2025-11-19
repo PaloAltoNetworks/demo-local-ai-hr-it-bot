@@ -213,6 +213,14 @@ class MCPAgentBase {
     throw new Error('getCapabilities must be implemented by agent');
   }
 
+  /**
+   * Get available llm providers - can be overridden by subclasses
+   * By default, returns empty array (no specific llm provider support)
+   */
+  getLLMProviders() {
+    return [];
+  }
+
   getMetadata() {
     return {
       name: this.agentName,
@@ -308,7 +316,10 @@ class MCPAgentBase {
     const agentUrl = `http://${this.agentName}-mcp-server:${this.config.agent.port}`;
 
     try {
-      await this.coordinatorClient.register(agentUrl, this.getCapabilities());
+      // Get llm providers if available
+      const LLMProviders = this.getLLMProviders ? this.getLLMProviders() : [];
+      
+      await this.coordinatorClient.register(agentUrl, this.getCapabilities(), LLMProviders);
       this.logger.info('Agent registered with coordinator');
 
       // Start heartbeat to maintain registration

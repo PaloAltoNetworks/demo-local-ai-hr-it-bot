@@ -134,5 +134,8 @@
   "theme": {
     "switchToDarkMode": "Zum dunklen Modus wechseln",
     "switchToLightMode": "Zum hellen Modus wechseln"
+  },
+  "llmProvider": {
+    "label": "LLM-Anbieter"
   }
 }

@@ -607,10 +607,43 @@ app.post('/api/agents/:agentId/heartbeat', (req, res) => {
   }
 });
 
+// llm providers endpoint - fetch available providers from coordinator
+app.get('/api/llm-providers', (req, res) => {
+  try {
+    const providers = coordinator.getAvailableLLMProviders();
+    
+    if (!providers || providers.length === 0) {
+      getLogger().warn('No llm providers configured');
+      return res.status(503).json({
+        success: false,
+        message: 'No llm providers configured',
+        details: 'Please configure either AWS Bedrock (AWS_REGION + BEDROCK_COORDINATOR_MODEL) or Ollama (OLLAMA_SERVER_URL) environment variables',
+        providers: [],
+        count: 0
+      });
+    }
+    
+    res.json({
+      success: true,
+      providers: providers,
+      default_provider: 'aws',
+      count: providers.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    getLogger().error('❌ [MCPGateway] llm providers endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch llm providers',
+      error: error.message
+    });
+  }
+});
+
 // Coordinator endpoints (routing and intelligence)
 app.post('/api/query', async (req, res) => {
   try {
-    const { query, language = 'en', phase = 'phase2', userContext, streamThinking = false } = req.body;
+    const { query, language = 'en', phase = 'phase2', userContext, streamThinking = false, llmProvider = 'aws' } = req.body;
     
     if (!query) {
       return res.status(400).json({
@@ -632,7 +665,7 @@ app.post('/api/query', async (req, res) => {
       });
 
       // ROUTING DECISION: Coordinator handles this
-      const result = await coordinator.processQuery(query, language, phase, userContext);
+      const result = await coordinator.processQuery(query, language, phase, userContext, llmProvider);
       
       // Check if the coordinator returned an error response
       if (result.error || result.success === false) {
@@ -657,7 +690,7 @@ app.post('/api/query', async (req, res) => {
       coordinator.setStreamThinkingCallback(null);
     } else {
       // Non-streaming mode (original behavior)
-      const result = await coordinator.processQuery(query, language, phase, userContext);
+      const result = await coordinator.processQuery(query, language, phase, userContext, llmProvider);
       
       // Check if the coordinator returned an error response
       if (result.error || result.success === false) {
@@ -707,7 +740,7 @@ setInterval(() => {
 // Start server
 app.listen(PORT, async () => {
   getLogger().info(`[MCPGateway] MCP Gateway running on http://localhost:${PORT}`);
-  getLogger().info(`📋 [MCPGateway] Protocol: MCP ${mcpServer.protocolVersion} (JSON-RPC 2.0)`);
+  getLogger().info(`[MCPGateway] Protocol: MCP ${mcpServer.protocolVersion} (JSON-RPC 2.0)`);
   getLogger().info(`[MCPGateway] Ready to register MCP servers`);
   
   // Initialize coordinator

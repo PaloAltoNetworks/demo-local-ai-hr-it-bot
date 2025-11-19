@@ -134,5 +134,8 @@
   "theme": {
     "switchToDarkMode": "Cambiar a modo oscuro",
     "switchToLightMode": "Cambiar a modo claro"
+  },
+  "llmProvider": {
+    "label": "Proveedor LLM"
   }
 }
