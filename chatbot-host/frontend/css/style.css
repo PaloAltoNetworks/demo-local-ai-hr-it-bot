@@ -835,8 +835,6 @@ select.form-control {
 /* Variables supplémentaires */
 :root {
   --header-height: 110px;
-  --otter-primary: var(--color-primary);
-  --otter-secondary: var(--color-secondary);
   
   /* Phase color system - Centralized using Palo Alto Colors */
   --phase-color: var(--color-primary);
@@ -1016,6 +1014,116 @@ body {
 
 .theme-toggle-btn:hover .theme-toggle-icon {
   transform: rotate(20deg);
+}
+
+/* Cloud Provider Selector Styles */
+.cloud-provider-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.cloud-provider-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.cloud-provider-dropdown {
+  position: relative;
+}
+
+.cloud-provider-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  width: 44px;
+  height: 44px;
+}
+
+.cloud-provider-button:hover {
+  background-color: var(--color-secondary-hover);
+  border-color: var(--color-primary);
+}
+
+.cloud-provider-button:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.cloud-provider-button:active {
+  background-color: var(--color-secondary-active);
+}
+
+.provider-logo {
+  height: 26px;
+  width: auto;
+  max-width: 60px;
+  object-fit: contain;
+}
+
+.cloud-provider-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: none;
+  min-width: auto;
+  padding: var(--space-8);
+  gap: var(--space-8);
+}
+
+[data-color-scheme="dark"] .cloud-provider-menu {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.cloud-provider-menu.show {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.cloud-provider-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.cloud-provider-option:hover {
+  background-color: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+.cloud-provider-option.selected {
+  background-color: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+.cloud-provider-option img {
+  height: 26px;
+  width: auto;
+  max-width: 35px;
+  object-fit: contain;
 }
 
 /* User Menu Styles */

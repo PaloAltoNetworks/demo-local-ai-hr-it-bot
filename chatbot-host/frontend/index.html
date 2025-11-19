@@ -41,6 +41,18 @@
           <span class="material-symbols theme-toggle-icon">dark_mode</span>
         </button>
 
+        <!-- Cloud Provider Selector -->
+        <div class="cloud-provider-selector">
+          <div class="cloud-provider-dropdown" id="cloudProviderDropdown">
+            <button class="cloud-provider-button" id="cloudProviderButton" type="button" title="Select Cloud Provider" aria-expanded="false">
+              <img id="cloudProviderLogo" class="provider-logo" src="" alt="Provider Logo">
+            </button>
+            <div class="cloud-provider-menu" id="cloudProviderMenu">
+              <!-- Options populated dynamically by CloudProviderManager from backend -->
+            </div>
+          </div>
+        </div>
+
         <!-- User Menu -->
         <div class="user-menu-container">
           <button class="user-menu-trigger" id="userMenuTrigger" title="User Menu">

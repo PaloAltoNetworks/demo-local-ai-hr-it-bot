@@ -42,6 +42,18 @@ const mcpClient = new MCPClient(COORDINATOR_URL, {
     maxReconnectAttempts: 3
 });
 
+// Cloud Providers configuration and state
+const CLOUD_PROVIDERS_CONFIG = [
+    {
+        id: 'aws',
+        name: 'AWS',
+        display_name: 'Amazon Web Services',
+        logo: './images/amazonwebservices-original-wordmark.svg'
+    }
+];
+
+let selectedCloudProvider = 'aws'; // Default provider
+
 // Middleware
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:3002'],
@@ -395,6 +407,60 @@ app.post('/api/clear-session', (req, res) => {
     } catch (error) {
         getLogger().error('Error clearing session: ' + error.message);
         res.status(500).json({ error: 'Failed to clear session', message: error.message });
+    }
+});
+
+// Cloud Providers endpoint - provides available cloud providers with logos
+app.get('/api/cloud-providers', (req, res) => {
+    try {
+        const cloudProvidersResponse = {
+            providers: CLOUD_PROVIDERS_CONFIG,
+            default_provider: selectedCloudProvider
+        };
+
+        res.json(cloudProvidersResponse);
+    } catch (error) {
+        getLogger().error('Error loading cloud providers: ' + error.message);
+        res.status(500).json({
+            error: 'Failed to load cloud providers',
+            message: error.message
+        });
+    }
+});
+
+// Cloud Provider selection endpoint - stores selected provider
+app.post('/api/cloud-provider', (req, res) => {
+    try {
+        const { provider } = req.body;
+        
+        // Validate against the same providers list
+        const validProvider = CLOUD_PROVIDERS_CONFIG.find(p => p.id === provider);
+        
+        if (!provider || !validProvider) {
+            const validProviders = CLOUD_PROVIDERS_CONFIG.map(p => p.id).join(', ');
+            return res.status(400).json({
+                error: 'Invalid provider',
+                message: `Provider must be one of: ${validProviders}`
+            });
+        }
+        
+        // Update the selected provider on the server
+        selectedCloudProvider = provider;
+        
+        getLogger().info(`Cloud provider selected: ${provider}`);
+        
+        res.json({
+            success: true,
+            message: `Cloud provider updated to ${provider}`,
+            provider: provider,
+            providers: CLOUD_PROVIDERS_CONFIG
+        });
+    } catch (error) {
+        getLogger().error('Error setting cloud provider: ' + error.message);
+        res.status(500).json({
+            error: 'Failed to set cloud provider',
+            message: error.message
+        });
     }
 });
 

@@ -322,6 +322,60 @@ export class ApiService {
     }
 
     /**
+     * Fetch available cloud providers and their services
+     */
+    async getCloudProviders() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/cloud-providers`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-language': this.currentLanguage || 'en'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('❌ Failed to fetch cloud providers:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Send selected cloud provider to backend
+     */
+    async setCloudProvider(providerId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/cloud-provider`, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-language': this.currentLanguage || 'en'
+                },
+                body: JSON.stringify({ provider: providerId })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('✓ Cloud provider updated:', providerId);
+            return data;
+        } catch (error) {
+            console.error('❌ Failed to set cloud provider:', error);
+            return null;
+        }
+    }
+
+    /**
      * Utility delay function
      */
     delay(ms) {

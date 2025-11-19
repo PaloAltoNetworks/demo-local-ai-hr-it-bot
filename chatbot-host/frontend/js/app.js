@@ -7,6 +7,7 @@ import { QuestionsManager } from './questions-manager.js';
 import { ConnectionMonitor } from './connection-monitor.js';
 import { SecurityDevPanel } from './security-dev-panel.js';
 import { ThemeManager } from './theme-manager.js';
+import { CloudProviderManager } from './cloud-provider-manager.js';
 import { i18n } from './i18n.js';
 
 class ChatBotApp {
@@ -63,6 +64,10 @@ class ChatBotApp {
             // Initialize services with i18n
             this.apiService = new ApiService();
             this.apiService.setLanguage(this.currentLanguage); // Set initial language
+
+            // Initialize cloud provider manager with i18n and API service
+            this.cloudProviderManager = new CloudProviderManager(i18n, this.apiService);
+
             this.uiManager = new UIManager(this.currentLanguage, i18n);
             this.questionsManager = new QuestionsManager(i18n, this.uiManager);
             this.connectionMonitor = new ConnectionMonitor(this.apiService, this.uiManager);
@@ -136,6 +141,15 @@ class ChatBotApp {
         
         // Listen for API retry events
         window.addEventListener('apiRetry', this.onApiRetry.bind(this));
+
+        // Listen for cloud provider change events
+        if (this.cloudProviderManager) {
+            this.cloudProviderManager.onProviderChange((provider) => {
+                console.log(`Cloud provider changed to: ${provider}`);
+                window.dispatchEvent(new CustomEvent('cloudProviderChanged', { detail: { provider } }));
+                // You can add additional logic here when cloud provider changes
+            });
+        }
     }
 
     /**
