@@ -1,6 +1,7 @@
 /**
  * Cloud Provider Manager for handling cloud provider selection
  * Supports AWS, Google Cloud (GCP), and Azure with custom dropdown
+ * Handles integration with API service for cloud provider updates
  */
 export class CloudProviderManager {
   constructor(i18nService = null, apiService = null) {
@@ -115,11 +116,9 @@ export class CloudProviderManager {
       this.closeMenu();
     }
     
-    // Notify backend of provider change
+    // Notify backend API service of provider change
     if (notifyChange && this.apiService) {
-      this.apiService.setCloudProvider(provider).catch(error => {
-        console.error('Failed to notify backend of provider change:', error);
-      });
+      this.apiService.setCloudProvider(provider);
     }
     
     // Trigger change callbacks
@@ -270,9 +269,27 @@ export class CloudProviderManager {
   }
 
   /**
+   * Handle cloud provider change event
+   * This method can be bound as an event listener for external notifications
+   */
+  onChanged(event) {
+    // This method handles external cloud provider change notifications
+    // If called as event listener, extract provider from event detail
+    if (event && event.detail && event.detail.provider) {
+      const provider = event.detail.provider;
+      // Apply the provider change
+      this.setProvider(provider, false); // false to avoid recursive event dispatch
+    }
+  }
+
+  /**
    * Notify all registered callbacks of provider change
    */
   notifyChange(provider) {
+    // Dispatch global event for app-level listeners and external systems
+    window.dispatchEvent(new CustomEvent('cloudProviderChanged', { detail: { provider } }));
+    
+    // Call registered callbacks
     this.changeCallbacks.forEach(callback => {
       try {
         callback(provider);

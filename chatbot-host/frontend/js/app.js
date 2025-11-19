@@ -67,6 +67,9 @@ class ChatBotApp {
 
             // Initialize cloud provider manager with i18n and API service
             this.cloudProviderManager = new CloudProviderManager(i18n, this.apiService);
+            
+            // Set initial cloud provider
+            this.apiService.setCloudProvider(this.cloudProviderManager.getCurrentProvider());
 
             this.uiManager = new UIManager(this.currentLanguage, i18n);
             this.questionsManager = new QuestionsManager(i18n, this.uiManager);
@@ -139,17 +142,11 @@ class ChatBotApp {
         // Listen for global language change events
         window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
         
+        // Listen for cloud provider change events
+        window.addEventListener('cloudProviderChanged', this.cloudProviderManager.onChanged.bind(this.cloudProviderManager));
+        
         // Listen for API retry events
         window.addEventListener('apiRetry', this.onApiRetry.bind(this));
-
-        // Listen for cloud provider change events
-        if (this.cloudProviderManager) {
-            this.cloudProviderManager.onProviderChange((provider) => {
-                console.log(`Cloud provider changed to: ${provider}`);
-                window.dispatchEvent(new CustomEvent('cloudProviderChanged', { detail: { provider } }));
-                // You can add additional logic here when cloud provider changes
-            });
-        }
     }
 
     /**
