@@ -313,6 +313,54 @@ class LLMProviderFactory {
         throw new Error(`Unknown LLM provider: ${provider}`);
     }
   }
+
+  /**
+   * Detect available cloud providers based on configured environment variables
+   * Only checks for configuration availability, never exposes credentials
+   * Returns list of providers that have necessary configuration
+   */
+  static getAvailableCloudProviders() {
+    const availableProviders = [];
+
+    // Check AWS Bedrock configuration
+    // Requires AWS_REGION and BEDROCK_COORDINATOR_MODEL (credentials come from AWS SDK env vars)
+    if (process.env.AWS_REGION && process.env.BEDROCK_COORDINATOR_MODEL) {
+      availableProviders.push({
+        id: 'aws',
+        name: 'AWS',
+        display_name: 'Amazon Web Services',
+        logo: './images/amazonwebservices-original-wordmark.svg',
+        provider: 'bedrock',
+        configured: true
+      });
+      getLogger().info('[LLMProvider] AWS Bedrock provider detected (configured via AWS_REGION and BEDROCK_COORDINATOR_MODEL)');
+    } else if (process.env.AWS_REGION || process.env.BEDROCK_COORDINATOR_MODEL) {
+      getLogger().warn('[LLMProvider] AWS Bedrock partially configured - missing AWS_REGION or BEDROCK_COORDINATOR_MODEL');
+    }
+
+    // Check Ollama configuration
+    // Requires OLLAMA_SERVER_URL to be explicitly set, or defaults to localhost
+    if (process.env.OLLAMA_SERVER_URL) {
+      availableProviders.push({
+        id: 'ollama',
+        name: 'Ollama',
+        display_name: 'Ollama',
+        logo: './images/ollama-icon.svg',
+        provider: 'ollama',
+        configured: true
+      });
+      getLogger().info('[LLMProvider] Ollama provider detected (configured via OLLAMA_SERVER_URL)');
+    }
+
+    // If no providers are properly configured, return error information
+    if (availableProviders.length === 0) {
+      getLogger().error('[LLMProvider] No cloud providers properly configured. Required: AWS_REGION + BEDROCK_COORDINATOR_MODEL for AWS, or OLLAMA_SERVER_URL for Ollama');
+      return [];
+    }
+
+    getLogger().info(`[LLMProvider] Available cloud providers: ${availableProviders.map(p => p.id).join(', ')}`);
+    return availableProviders;
+  }
 }
 
 module.exports = {

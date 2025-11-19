@@ -213,6 +213,14 @@ class MCPAgentBase {
     throw new Error('getCapabilities must be implemented by agent');
   }
 
+  /**
+   * Get available cloud providers - can be overridden by subclasses
+   * By default, returns empty array (no specific cloud provider support)
+   */
+  getCloudProviders() {
+    return [];
+  }
+
   getMetadata() {
     return {
       name: this.agentName,
@@ -308,7 +316,10 @@ class MCPAgentBase {
     const agentUrl = `http://${this.agentName}-mcp-server:${this.config.agent.port}`;
 
     try {
-      await this.coordinatorClient.register(agentUrl, this.getCapabilities());
+      // Get cloud providers if available
+      const cloudProviders = this.getCloudProviders ? this.getCloudProviders() : [];
+      
+      await this.coordinatorClient.register(agentUrl, this.getCapabilities(), cloudProviders);
       this.logger.info('Agent registered with coordinator');
 
       // Start heartbeat to maintain registration

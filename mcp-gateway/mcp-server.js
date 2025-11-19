@@ -607,6 +607,39 @@ app.post('/api/agents/:agentId/heartbeat', (req, res) => {
   }
 });
 
+// Cloud Providers endpoint - fetch available providers from coordinator
+app.get('/api/cloud-providers', (req, res) => {
+  try {
+    const providers = coordinator.getAvailableCloudProviders();
+    
+    if (!providers || providers.length === 0) {
+      getLogger().warn('No cloud providers configured');
+      return res.status(503).json({
+        success: false,
+        message: 'No cloud providers configured',
+        details: 'Please configure either AWS Bedrock (AWS_REGION + BEDROCK_COORDINATOR_MODEL) or Ollama (OLLAMA_SERVER_URL) environment variables',
+        providers: [],
+        count: 0
+      });
+    }
+    
+    res.json({
+      success: true,
+      providers: providers,
+      default_provider: 'aws',
+      count: providers.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    getLogger().error('❌ [MCPGateway] Cloud providers endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch cloud providers',
+      error: error.message
+    });
+  }
+});
+
 // Coordinator endpoints (routing and intelligence)
 app.post('/api/query', async (req, res) => {
   try {
@@ -707,7 +740,7 @@ setInterval(() => {
 // Start server
 app.listen(PORT, async () => {
   getLogger().info(`[MCPGateway] MCP Gateway running on http://localhost:${PORT}`);
-  getLogger().info(`📋 [MCPGateway] Protocol: MCP ${mcpServer.protocolVersion} (JSON-RPC 2.0)`);
+  getLogger().info(`[MCPGateway] Protocol: MCP ${mcpServer.protocolVersion} (JSON-RPC 2.0)`);
   getLogger().info(`[MCPGateway] Ready to register MCP servers`);
   
   // Initialize coordinator

@@ -121,7 +121,7 @@ const googleFontsUrl = `https://fonts.googleapis.com/css2?family=${FONT_FAMILY.r
 
 console.log('Step 1: Fetching Google Fonts CSS...');
 
-console.log('\n📋 Generated URL:');
+console.log('\nGenerated URL:');
 console.log(googleFontsUrl);
 console.log();
 

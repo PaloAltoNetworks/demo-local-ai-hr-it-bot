@@ -429,15 +429,47 @@ app.post('/api/clear-session', (req, res) => {
     }
 });
 
-// Cloud Providers endpoint - provides available cloud providers with logos
-app.get('/api/cloud-providers', (req, res) => {
+// Cloud Providers endpoint - fetch from coordinator if available, fallback to static config
+app.get('/api/cloud-providers', async (req, res) => {
     try {
-        const cloudProvidersResponse = {
-            providers: CLOUD_PROVIDERS_CONFIG,
-            default_provider: selectedCloudProvider
-        };
+        // Try to fetch cloud providers from MCP Gateway/Coordinator
+        if (mcpClient.isInitialized) {
+            try {
+                const coordinatorResponse = await axios.get(`${COORDINATOR_URL}/api/cloud-providers`, {
+                    timeout: 5000
+                });
+                
+                if (coordinatorResponse.data) {
+                    if (coordinatorResponse.data.success === false && coordinatorResponse.data.providers && coordinatorResponse.data.providers.length === 0) {
+                        // No providers configured - return error
+                        getLogger().warn('No cloud providers configured in coordinator');
+                        return res.status(503).json({
+                            error: 'No cloud providers configured',
+                            message: 'Please configure cloud providers: AWS Bedrock (AWS_REGION + BEDROCK_COORDINATOR_MODEL) or Ollama (OLLAMA_SERVER_URL)',
+                            providers: [],
+                            source: 'coordinator'
+                        });
+                    }
+                    
+                    if (coordinatorResponse.data.success !== false) {
+                        getLogger().info('Cloud providers fetched from coordinator');
+                        return res.json(coordinatorResponse.data);
+                    }
+                }
+            } catch (error) {
+                getLogger().warn('Failed to fetch cloud providers from coordinator: ' + error.message);
+                // Fall through to static config or error
+            }
+        }
 
-        res.json(cloudProvidersResponse);
+        // If no coordinator response, return error instead of static config
+        getLogger().error('Unable to fetch cloud providers - coordinator unavailable');
+        return res.status(503).json({
+            error: 'Cloud providers unavailable',
+            message: 'Unable to reach MCP Gateway for cloud provider configuration',
+            providers: [],
+            source: 'offline'
+        });
     } catch (error) {
         getLogger().error('Error loading cloud providers: ' + error.message);
         res.status(500).json({
