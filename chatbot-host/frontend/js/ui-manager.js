@@ -4,9 +4,9 @@
 import { Utils } from './utils.js';
 
 export class UIManager {
-    constructor(language, i18n) {
-        this.language = language;
+    constructor(i18n) {
         this.i18n = i18n;
+        this.language = i18n.getCurrentLanguage();
         this.elements = this.cacheElements();
         this.connectionStatusCallbacks = [];
         this.thinkingMessageElement = null;

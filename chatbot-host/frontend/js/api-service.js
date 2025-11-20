@@ -147,7 +147,7 @@ export class ApiService {
     /**
      * Send message with streaming thinking updates using Server-Sent Events
      */
-    async sendMessageWithThinking(chatHistory, currentPhase, language, onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount = 0) {
+    async sendMessageWithThinking(chatHistory, currentPhase, onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount = 0) {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
@@ -157,12 +157,12 @@ export class ApiService {
                 mode: 'cors',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-language': language,
+                    'x-language': this.currentLanguage,
                 },
                 body: JSON.stringify({ 
                     messages: chatHistory, 
                     phase: currentPhase,
-                    language: language,
+                    language: this.currentLanguage,
                     llmProvider: this.currentLLMProvider
                 }),
                 signal: controller.signal
@@ -243,15 +243,15 @@ export class ApiService {
     /**
      * Send chat history to backend with retry logic (kept for non-streaming fallback)
      */
-    async sendMessage(chatHistory, currentPhase, language, retryCount = 0) {
+    async sendMessage(chatHistory, currentPhase, retryCount = 0) {
         // Use streaming version for all requests
-        return this.sendMessageWithThinking(chatHistory, currentPhase, language, null, null, null, null, retryCount);
+        return this.sendMessageWithThinking(chatHistory, currentPhase, null, null, null, null, retryCount);
     }
 
     /**
      * Handle API errors with appropriate retry logic
      */
-    async handleApiError(error, chatHistory, currentPhase, language, retryCount, isStreaming = false, onThinking = null, onComplete = null, onSecurityCheckpoints = null, onCheckpoint = null) {
+    async handleApiError(error, chatHistory, currentPhase, retryCount, isStreaming = false, onThinking = null, onComplete = null, onSecurityCheckpoints = null, onCheckpoint = null) {
         console.error(`API Error (attempt ${retryCount + 1}):`, error);
         
         // Handle different types of errors with user-friendly messages
@@ -263,10 +263,10 @@ export class ApiService {
                 await this.delay(2000 * (retryCount + 1)); // Exponential backoff
                 
                 if (isStreaming) {
-                    return this.sendMessageWithThinking(chatHistory, currentPhase, language, 
+                    return this.sendMessageWithThinking(chatHistory, currentPhase, 
                         onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount + 1);
                 } else {
-                    return this.sendMessage(chatHistory, currentPhase, language, retryCount + 1);
+                    return this.sendMessage(chatHistory, currentPhase, retryCount + 1);
                 }
             }
             throw new Error('TIMEOUT_ERROR');
@@ -299,10 +299,10 @@ export class ApiService {
             await this.delay(1000 * (retryCount + 1)); // Exponential backoff
             
             if (isStreaming) {
-                return this.sendMessageWithThinking(chatHistory, currentPhase, language, 
-                    onThinking, onComplete, onSecurityCheckpoints, retryCount + 1);
+                return this.sendMessageWithThinking(chatHistory, currentPhase,
+                    onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount + 1);
             } else {
-                return this.sendMessage(chatHistory, currentPhase, language, retryCount + 1);
+                return this.sendMessage(chatHistory, currentPhase, retryCount + 1);
             }
         }
         

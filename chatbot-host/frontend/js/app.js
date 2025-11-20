@@ -12,8 +12,6 @@ import { I18nService } from './i18n.js';
 
 class ChatBotApp {
     constructor() {
-        // Default to English, but detect from URL params or localStorage
-        this.currentLanguage = this.detectLanguage();
         this.currentPhase = 'phase1';
         
         // Check if we need to restore a phase after refresh
@@ -25,26 +23,6 @@ class ChatBotApp {
         
         this.chatHistory = [];
         this.securityDevPanel = null; // Will be initialized in init()
-
-        console.log(`Initial language detected: ${this.currentLanguage}`);
-    }
-
-    /**
-     * Detect user's preferred language
-     */
-    detectLanguage() {
-        // 1. Check URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlLang = urlParams.get('lang');
-
-        // 2. Check localStorage
-        const savedLang = localStorage.getItem('chatbot-language');
-
-        // 3. Check browser language
-        const browserLang = navigator.language?.substring(0, 2);
-
-        // Priority: URL > localStorage > browser > default (English)
-        return urlLang || savedLang || 'en';
     }
 
     /**
@@ -57,11 +35,10 @@ class ChatBotApp {
 
             // Initialize API service first
             this.apiService = new ApiService();
-            this.apiService.setLanguage(this.currentLanguage); // Set initial language
 
-            // Initialize i18n with API service
+            // Initialize i18n with API service (detects language automatically)
             this.i18n = new I18nService(this.apiService);
-            await this.i18n.init(this.currentLanguage);
+            await this.i18n.init();
 
             // Initialize theme manager with i18n service
             this.themeManager = new ThemeManager(this.i18n);
@@ -72,7 +49,7 @@ class ChatBotApp {
             // Set initial llm provider
             this.apiService.setAIProvider(this.LLMProviderManager.getCurrentProvider());
 
-            this.uiManager = new UIManager(this.currentLanguage, this.i18n);
+            this.uiManager = new UIManager(this.i18n);
             this.questionsManager = new QuestionsManager(this.i18n, this.uiManager);
             this.connectionMonitor = new ConnectionMonitor(this.apiService, this.uiManager);
             
@@ -84,7 +61,7 @@ class ChatBotApp {
             this.setupPageLifecycleEvents();
 
             // Setup UI and event listeners
-            await this.updateUI();
+            this.i18n.updateUI();
             this.setupEventListeners();
             this.switchPhase(this.currentPhase, true); // Force render questions on initialization
 
@@ -114,20 +91,9 @@ class ChatBotApp {
     }
 
     /**
-     * Update UI text based on current language
-     */
-    async updateUI() {
-        // Delegate all UI translation updates to i18n service
-        this.i18n.updateUI();
-    }
-
-    /**
      * Setup all event listeners
      */
     setupEventListeners() {
-        // User Menu Setup
-        this.setupUserMenu();
-
         // Phase selector buttons
         document.querySelectorAll('.phase-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -140,6 +106,9 @@ class ChatBotApp {
 
         // Chat input and send button
         this.setupChatEventListeners();
+
+        // Setup user menu display (language selection handled by i18n)
+        this.setupUserMenu();
 
         // Listen for API retry events
         window.addEventListener('apiRetry', this.onApiRetry.bind(this));
@@ -269,7 +238,6 @@ class ChatBotApp {
             const response = await this.apiService.sendMessageWithThinking(
                 this.chatHistory,
                 this.currentPhase,
-                this.currentLanguage,
                 // Thinking callback
                 (thinkingMessage, isComplete) => {
                     if (isComplete) {
@@ -414,18 +382,14 @@ class ChatBotApp {
     }
 
     /**
-     * Setup user menu functionality
+     * Setup user menu functionality (language selection handled by i18n)
      */
-    async setupUserMenu() {
+    setupUserMenu() {
         const trigger = document.getElementById('userMenuTrigger');
         const dropdown = document.getElementById('userMenuDropdown');
-        const languageSelect = document.getElementById('userMenuLanguageSelect');
         const logoutBtn = document.getElementById('userMenuLogout');
 
         if (!trigger || !dropdown) return;
-
-        // Populate language options dynamically from backend using i18n service
-        await this.i18n.populateLanguageSelect(languageSelect);
 
         // Toggle dropdown on trigger click
         trigger.addEventListener('click', (e) => {
@@ -437,13 +401,6 @@ class ChatBotApp {
         document.addEventListener('click', (e) => {
             if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
                 dropdown.classList.remove('active');
-            }
-        });
-
-        // Close dropdown when clicking inside it
-        dropdown.addEventListener('click', (e) => {
-            if (e.target !== languageSelect) {
-                // Keep open for language select changes
             }
         });
 
@@ -465,7 +422,6 @@ class ChatBotApp {
         const userName = document.getElementById('userMenuName');
         const userEmail = document.getElementById('userMenuEmail');
         const userMenuLabel = document.getElementById('userMenuLabel');
-        const languageSelect = document.getElementById('userMenuLanguageSelect');
 
         if (userName) {
             userName.textContent = this.i18n.t('userProfile.name');
@@ -475,9 +431,6 @@ class ChatBotApp {
         }
         if (userMenuLabel) {
             userMenuLabel.textContent = this.i18n.t('userMenu.label') || 'User';
-        }
-        if (languageSelect) {
-            languageSelect.value = this.currentLanguage;
         }
     }
 
