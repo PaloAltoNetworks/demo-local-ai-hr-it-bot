@@ -5,7 +5,7 @@
  */
 export class LLMProviderManager {
   constructor(i18nService = null, apiService = null) {
-    this.STORAGE_KEY = 'llm-provider-preference';
+    this.CACHE_KEY = 'llm-providers-cache';
     
     // Dropdown elements
     this.dropdownElement = document.getElementById('llmProviderDropdown');
@@ -33,11 +33,13 @@ export class LLMProviderManager {
   }
 
   /**
-   * Fetch providers from backend API
+   * Fetch providers from backend API with cache fallback
    */
   async loadProvidersFromBackend() {
     if (!this.apiService) {
       console.warn('No API service available for loading llm providers');
+      // Try to load from cache as fallback
+      this.loadProvidersFromCache();
       return;
     }
 
@@ -49,11 +51,54 @@ export class LLMProviderManager {
         if (data.default_provider) {
           this.backendDefaultProvider = data.default_provider;
         }
+        // Cache the successful response
+        this.cacheProviders(data);
         this.populateDropdown();
+        console.log('✓ LLM providers loaded from backend and cached');
       }
     } catch (error) {
       console.error('Failed to load providers from backend:', error);
+      // Fallback to cached providers
+      this.loadProvidersFromCache();
     }
+  }
+
+  /**
+   * Cache providers data to localStorage
+   */
+  cacheProviders(data) {
+    try {
+      const cacheData = {
+        providers: data.providers || [],
+        default_provider: data.default_provider || null,
+        selected_provider: this.getStoredProvider() || (data.default_provider || null),
+        cached_at: new Date().toISOString()
+      };
+      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
+      console.log('✓ Providers cached locally');
+    } catch (error) {
+      console.warn('Failed to cache providers:', error);
+    }
+  }
+
+  /**
+   * Load providers from localStorage cache
+   */
+  loadProvidersFromCache() {
+    try {
+      const cached = localStorage.getItem(this.CACHE_KEY);
+      if (cached) {
+        const cacheData = JSON.parse(cached);
+        this.providers = cacheData.providers || [];
+        this.backendDefaultProvider = cacheData.default_provider || null;
+        this.populateDropdown();
+        console.log('✓ LLM providers loaded from local cache');
+        return true;
+      }
+    } catch (error) {
+      console.warn('Failed to load providers from cache:', error);
+    }
+    return false;
   }
 
   /**
@@ -71,10 +116,11 @@ export class LLMProviderManager {
   }
 
   /**
-   * Load llm provider preference from storage
+   * Load llm provider preference from cache or use default
    */
   loadProviderPreference() {
-    const savedProvider = this.getStoredProvider();
+    const cache = this.getCache();
+    const savedProvider = cache?.selected_provider;
     const supportedProviderIds = this.providers.map(p => p.id);
     
     // Use saved preference if available, otherwise use backend's default
@@ -86,10 +132,24 @@ export class LLMProviderManager {
   }
 
   /**
-   * Get provider preference from localStorage
+   * Get cache object from localStorage
+   */
+  getCache() {
+    try {
+      const cached = localStorage.getItem(this.CACHE_KEY);
+      return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+      console.warn('Failed to get cache:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get provider preference from cache
    */
   getStoredProvider() {
-    return localStorage.getItem(this.STORAGE_KEY);
+    const cache = this.getCache();
+    return cache?.selected_provider || null;
   }
 
   /**
@@ -104,8 +164,8 @@ export class LLMProviderManager {
     
     console.log(`[LLMProviderManager] Setting provider to: ${provider}`);
     
-    // Save user preference
-    localStorage.setItem(this.STORAGE_KEY, provider);
+    // Update cache with selected provider
+    this.updateCacheProvider(provider);
     
     // Update button display
     this.updateButtonDisplay(provider);
@@ -131,10 +191,23 @@ export class LLMProviderManager {
   }
 
   /**
+   * Update cache with selected provider
+   */
+  updateCacheProvider(provider) {
+    try {
+      const cache = this.getCache() || {};
+      cache.selected_provider = provider;
+      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
+    } catch (error) {
+      console.warn('Failed to update provider in cache:', error);
+    }
+  }
+
+  /**
    * Get current provider
    */
   getCurrentProvider() {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
+    const stored = this.getStoredProvider();
     if (stored) {
       return stored;
     }
