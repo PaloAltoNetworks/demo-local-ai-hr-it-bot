@@ -2,8 +2,7 @@
  * Phase Manager for handling phase switching and state management
  */
 export class PhaseManager {
-    constructor(uiManager, i18n) {
-        this.uiManager = uiManager;
+    constructor(i18n) {
         this.i18n = i18n;
         this.currentPhase = 'phase1';
         this.isInitialized = false;
@@ -60,7 +59,6 @@ export class PhaseManager {
         this.currentPhase = newPhase;
         this.savePhase(newPhase);
         this.updatePhaseUI();
-        this.uiManager.renderQuestions(newPhase);
 
         // Dispatch phase change event
         const phaseChangedEvent = new CustomEvent('phaseChanged', {

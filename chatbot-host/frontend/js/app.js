@@ -81,10 +81,7 @@ class ChatBotApp {
         this.modules.securityDevPanel = new SecurityDevPanel(this.modules.i18n);
 
         // Phase management - initializes its own listeners
-        this.modules.phaseManager = new PhaseManager(
-            this.modules.uiManager,
-            this.modules.i18n
-        );
+        this.modules.phaseManager = new PhaseManager(this.modules.i18n);
 
         // Chat operations - initializes its own listeners
         this.modules.chatHandler = new ChatHandler(
