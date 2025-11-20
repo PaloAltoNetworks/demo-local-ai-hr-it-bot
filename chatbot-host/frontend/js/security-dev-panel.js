@@ -28,6 +28,19 @@ export class SecurityDevPanel {
         if (this.panelButton) this.panelButton.addEventListener('click', () => this.togglePanel());
         if (this.panelClear) this.panelClear.addEventListener('click', () => this.clearAll());
         if (this.panelResize) this.panelResize.addEventListener('click', () => this.toggleSize());
+        
+        // Listen for security checkpoint events from ChatHandler
+        window.addEventListener('securityCheckpoint', this.onSecurityCheckpoint.bind(this));
+    }
+
+    /**
+     * Handle security checkpoint events
+     */
+    onSecurityCheckpoint(event) {
+        const { checkpoint } = event.detail;
+        if (checkpoint) {
+            this.addCheckpoint(checkpoint);
+        }
     }
 
     /**

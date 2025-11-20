@@ -383,7 +383,17 @@ app.post('/api/process-prompt', async (req, res) => {
                 // Include token metadata if available
                 if (tokenMetadata) {
                     finalResponse.metadata = tokenMetadata;
+                } else {
+                    finalResponse.metadata = {};
                 }
+
+                // Add LLM provider to metadata
+                const providerInfo = LLM_PROVIDERS_CONFIG.find(p => p.id === (llmProvider || 'aws'));
+                finalResponse.metadata.llmProvider = {
+                    id: llmProvider || 'aws',
+                    name: providerInfo ? providerInfo.name : 'AWS',
+                    logo: providerInfo ? providerInfo.logo : './images/amazonwebservices-original-wordmark.svg'
+                };
 
                 res.write('data: ' + JSON.stringify(finalResponse) + '\n\n');
             }

@@ -4,32 +4,258 @@
 import { Utils } from './utils.js';
 
 export class UIManager {
-    constructor(language, i18n) {
-        this.language = language;
+    constructor(i18n) {
         this.i18n = i18n;
-        this.elements = this.cacheElements();
+        this.currentLanguage = i18n.getCurrentLanguage();
         this.connectionStatusCallbacks = [];
         this.thinkingMessageElement = null;
         this.isOnlineStatus = true;
         this.thinkingChain = []; // Store thinking chain
         this.currentThinkingContainer = null; // Current thinking message container
         this.tokenMetadata = {}; // Store token usage metadata
+        this.llmProviderInfo = null; // Store current LLM provider info
+        
+        // Cache DOM elements
+        this.elements = {};
+        this.cacheElements();
+        
+        this.init();
     }
 
     /**
-     * Cache frequently used DOM elements
+     * Cache frequently accessed DOM elements
      */
     cacheElements() {
-        return {
-            chatInput: document.getElementById('chatInput'),
-            chatMessages: document.getElementById('chat-container'),
-            sendButton: document.getElementById('sendMessage'),
-            questionsContainer: document.getElementById('questions-container'),
-            phaseButtons: document.querySelectorAll('.phase-btn'),
-            statusIndicator: document.getElementById('statusIndicator'),
-            statusIcon: document.getElementById('statusIcon'),
-            statusText: document.getElementById('statusText')
-        };
+        this.elements.questionsContainer = document.getElementById('questions-container');
+        this.elements.chatMessages = document.getElementById('chat-container');
+        this.elements.chatInput = document.getElementById('chatInput');
+        this.elements.sendButton = document.getElementById('sendMessage');
+        this.elements.statusIndicator = document.getElementById('statusIndicator');
+        this.elements.statusIcon = document.getElementById('statusIcon');
+        this.elements.statusText = document.getElementById('statusText');
+        this.elements.loadingIndicator = document.getElementById('loading-indicator');
+        this.elements.welcomeMessage = document.getElementById('welcome-message');
+    }
+
+    /**
+     * Initialize event listeners
+     */
+    init() {
+        // Listen to language change events
+        window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
+        
+        // Setup UI listeners
+        this.setupUserMenuListeners();
+        this.setupWindowListeners();
+    }
+
+    /**
+     * Handle language change event
+     */
+    onLanguageChanged(event) {
+        const { language } = event.detail;
+        this.setLanguage(language);
+        // Update UI with new language
+        this.i18n.updateUI();
+    }
+
+    /**
+     * Setup user menu event listeners
+     */
+    setupUserMenuListeners() {
+        const trigger = document.getElementById('userMenuTrigger');
+        const dropdown = document.getElementById('userMenuDropdown');
+
+        if (!trigger || !dropdown) return;
+
+        // Toggle dropdown on trigger click
+        trigger.addEventListener('click', this.handleUserMenuClick.bind(this, dropdown));
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', this.handleDocumentClick.bind(this, trigger, dropdown));
+
+        // Update user menu with localized content
+        this.updateUserMenu();
+    }
+
+    /**
+     * Handle user menu trigger click
+     */
+    handleUserMenuClick(dropdown, e) {
+        e.stopPropagation();
+        dropdown.classList.toggle('active');
+    }
+
+    /**
+     * Handle document click for closing dropdown
+     */
+    handleDocumentClick(trigger, dropdown, e) {
+        if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('active');
+        }
+    }
+
+    /**
+     * Update user menu with localized content
+     */
+    updateUserMenu() {
+        const userName = document.getElementById('userMenuName');
+        const userEmail = document.getElementById('userMenuEmail');
+        const userMenuLabel = document.getElementById('userMenuLabel');
+
+        if (userName) {
+            userName.textContent = this.i18n.t('userProfile.name');
+        }
+        if (userEmail) {
+            userEmail.textContent = this.i18n.t('userProfile.email');
+        }
+        if (userMenuLabel) {
+            userMenuLabel.textContent = this.i18n.t('userMenu.label') || 'User';
+        }
+    }
+
+    /**
+     * Setup window-level listeners (API retry events)
+     */
+    setupWindowListeners() {
+        // Listen for API retry events
+        window.addEventListener('apiRetry', this.onApiRetry.bind(this));
+    }
+
+    /**
+     * Handle API retry event
+     */
+    onApiRetry(event) {
+        const { attempt, maxAttempts } = event.detail;
+        const retryMsg = this.i18n.t('errors.retrying', { count: attempt, max: maxAttempts });
+        this.showRetryNotification(retryMsg);
+    }
+
+    /**
+     * Get questions for current language and phase
+     */
+    getQuestions(phase) {
+        try {
+            // Get questions from i18n translations
+            const questions = this.i18n.t(`questions.${phase}`);
+            if (!questions || !Array.isArray(questions)) {
+                console.warn(`No questions found for phase: ${phase} in language: ${this.currentLanguage}`);
+                return [];
+            }
+            return questions;
+        } catch (error) {
+            console.error(`Error getting questions for phase ${phase}:`, error);
+            return [];
+        }
+    }
+
+    /**
+     * Render example questions for a phase
+     */
+    renderQuestions(phase) {
+        const questionsContainer = this.elements.questionsContainer;
+        if (!questionsContainer) return;
+
+        const questions = this.getQuestions(phase);
+        
+        // Clear existing questions
+        questionsContainer.innerHTML = '';
+        
+        if (questions.length === 0) {
+            console.warn(`No questions available for phase ${phase} in language ${this.currentLanguage}`);
+            return;
+        }
+        
+        // Create question elements
+        const fragment = document.createDocumentFragment();
+        questions.forEach(question => {
+            // Check if this is a subgroup (has a 'questions' property)
+            if (question.questions && Array.isArray(question.questions)) {
+                const subgroupElement = this.createSubgroupElement(question);
+                fragment.appendChild(subgroupElement);
+            } else {
+                const questionElement = this.createQuestionElement(question, phase);
+                fragment.appendChild(questionElement);
+            }
+        });
+        
+        questionsContainer.appendChild(fragment);
+    }
+
+    /**
+     * Parse icon string and return HTML
+     */
+    getIconHTML(iconString) {
+        if (!iconString) return '';
+        
+        if (iconString.includes(':')) {
+            const [className, iconName] = iconString.split(':');
+            return `<span class="${className}">${iconName}</span>`;
+        }
+        
+        return `<span class="material-symbols">${iconString}</span>`;
+    }
+
+    /**
+     * Create a subgroup element with nested questions
+     */
+    createSubgroupElement(subgroup) {
+        const subgroupDiv = document.createElement('div');
+        subgroupDiv.className = 'questions-subgroup';
+        
+        // Create subgroup header
+        const header = document.createElement('div');
+        header.className = 'subgroup-header';
+        header.innerHTML = `<h3>${this.getIconHTML(subgroup.icon)}${subgroup.title}</h3>`;
+        subgroupDiv.appendChild(header);
+        
+        // Create nested questions container
+        const questionsContainer = document.createElement('div');
+        questionsContainer.className = 'subgroup-questions';
+        
+        subgroup.questions.forEach(question => {
+            const questionElement = this.createQuestionElement(question);
+            questionsContainer.appendChild(questionElement);
+        });
+        
+        subgroupDiv.appendChild(questionsContainer);
+        return subgroupDiv;
+    }
+
+    /**
+     * Create a question element with click handler
+     */
+    createQuestionElement(question, currentPhase = null) {
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'example-question';
+        
+        // Check if this is an action question (like refresh)
+        if (question.action === 'refresh') {
+            questionDiv.classList.add('action-question');
+            questionDiv.setAttribute('data-action', 'refresh');
+        } else {
+            questionDiv.setAttribute('data-question', question.text);
+        }
+        
+        questionDiv.innerHTML = `
+            <h4>${this.getIconHTML(question.icon)}${question.title}</h4>
+            <p>${question.text}</p>
+        `;
+
+        questionDiv.addEventListener('click', () => {
+            if (question.action === 'refresh') {
+                // Save current phase to sessionStorage before refreshing
+                if (currentPhase) {
+                    sessionStorage.setItem('returnToPhase', currentPhase);
+                }
+                // Refresh the page
+                window.location.reload();
+            } else {
+                this.setUserInput(question.text);
+            }
+        });
+
+        return questionDiv;
     }
 
     /**
@@ -74,7 +300,7 @@ export class UIManager {
             </div>
             <div class="message-content">
                 <div class="message-text">${displayContent}</div>
-                <div class="message-timestamp">${Utils.getTimestamp(this.language)}</div>
+                <div class="message-timestamp">${Utils.getTimestamp(this.currentLanguage)}</div>
             </div>
         `;
 
@@ -107,18 +333,33 @@ export class UIManager {
         messageDiv.className = className;
 
         const displayContent = Utils.formatBotResponse(content);
-        const timestamp = Utils.getTimestamp(this.language);
+        const timestamp = Utils.getTimestamp(this.currentLanguage);
         
         // Create message with thinking chain button if there are thoughts
         const hasThinkingChain = this.thinkingChain.length > 0;
         const hasTokens = this.tokenMetadata && (this.tokenMetadata.total_tokens || this.tokenMetadata.coordinator_tokens);
+        const hasProvider = this.llmProviderInfo && this.llmProviderInfo.logo;
         
         let messageHTML = `
             <div class="message-avatar">
                 <i class="otter-icon"></i>
             </div>
             <div class="message-content">
-                <div class="message-text">${displayContent}</div>
+                <div class="message-text-wrapper">
+                    <div class="message-text">${displayContent}</div>
+        `;
+
+        // Add LLM provider badge if available (inside message-text wrapper)
+        if (hasProvider) {
+            messageHTML += `
+                    <div class="llm-provider-badge" title="${this.llmProviderInfo.name}">
+                        <img src="${this.llmProviderInfo.logo}" alt="${this.llmProviderInfo.name}" class="provider-badge-logo">
+                    </div>
+            `;
+        }
+
+        messageHTML += `
+                </div>
                 <div class="message-timestamp">${timestamp}</div>
         `;
 
@@ -216,26 +457,13 @@ export class UIManager {
     /**
      * Get thinking icon HTML based on content
      */
+    /**
+     * Get thinking icon HTML based on content
+     * @param {string} text - The text to match against icon patterns
+     * @returns {string} HTML span element with icon
+     */
     getThinkingIcon(text) {
-        if (text.includes('Analyzing') || text.includes('🔍')) {
-            return `<span class="material-symbols thinking-icon">search</span>`;
-        } else if (text.includes('Checking language') || text.includes('🌐')) {
-            return `<span class="material-symbols thinking-icon">public</span>`;
-        } else if (text.includes('Translated') || text.includes('🔄')) {
-            return `<span class="material-symbols thinking-icon">language</span>`;
-        } else if (text.includes('Determining') || text.includes('🎯')) {
-            return `<span class="material-symbols thinking-icon">center_focus_strong</span>`;
-        } else if (text.includes('Connecting') || text.includes('📡')) {
-            return `<span class="material-symbols thinking-icon">cloud_queue</span>`;
-        } else if (text.includes('processing') || text.includes('⏳')) {
-            return `<span class="material-symbols thinking-icon spinning">settings</span>`;
-        } else if (text.includes('Response received') || text.includes('✅')) {
-            return `<span class="material-symbols thinking-icon success">check_circle</span>`;
-        } else if (text.includes('Error') || text.includes('❌')) {
-            return `<span class="material-symbols thinking-icon error">cancel</span>`;
-        } else {
-            return `<span class="material-symbols thinking-icon">chat</span>`;
-        }
+        return Utils.getThinkingIcon(text);
     }
 
     /**
@@ -325,7 +553,7 @@ export class UIManager {
      */
     addToThinkingChain(text) {
         const cleanText = text.replace(/^\[COORDINATOR\]\s*/, '');
-        const timestamp = new Date().toLocaleTimeString(this.language);
+        const timestamp = new Date().toLocaleTimeString(this.currentLanguage);
         this.thinkingChain.push({
             text: cleanText,
             timestamp: timestamp,
@@ -362,6 +590,20 @@ export class UIManager {
     }
 
     /**
+     * Set LLM provider info
+     */
+    setLLMProviderInfo(providerInfo) {
+        this.llmProviderInfo = providerInfo;
+    }
+
+    /**
+     * Get LLM provider info
+     */
+    getLLMProviderInfo() {
+        return this.llmProviderInfo;
+    }
+
+    /**
      * Clear all thinking data (chain + metadata)
      */
     clearThinkingData() {
@@ -371,31 +613,24 @@ export class UIManager {
 
     /**
      * Format thinking messages with icons and styling
+     * Uses shared thinking icon mapping from Utils for consistency
+     * @param {string} text - The thinking message text to format
+     * @returns {string} HTML string with formatted text and icon
      */
     formatThinkingMessage(text) {
         // Remove [COORDINATOR] prefix if present
         const cleanText = text.replace(/^\[COORDINATOR\]\s*/, '');
         
-        // Add appropriate styling based on content
-        if (cleanText.includes('Analyzing') || cleanText.includes('🔍')) {
-            return `<span class="material-symbols thinking-icon">search</span> ${cleanText}`;
-        } else if (cleanText.includes('Checking language') || cleanText.includes('🌐')) {
-            return `<span class="material-symbols thinking-icon">public</span> ${cleanText}`;
-        } else if (cleanText.includes('Translated') || cleanText.includes('🔄')) {
-            return `<span class="material-symbols thinking-icon">language</span> ${cleanText}`;
-        } else if (cleanText.includes('Determining') || cleanText.includes('🎯')) {
-            return `<span class="material-symbols thinking-icon">center_focus_strong</span> ${cleanText}`;
-        } else if (cleanText.includes('Connecting') || cleanText.includes('📡')) {
-            return `<span class="material-symbols thinking-icon">cloud_queue</span> ${cleanText}`;
-        } else if (cleanText.includes('processing') || cleanText.includes('⏳')) {
-            return `<span class="material-symbols thinking-icon spinning">settings</span> ${cleanText}`;
-        } else if (cleanText.includes('Response received') || cleanText.includes('✅')) {
-            return `<span class="material-symbols thinking-icon success">check_circle</span> ${cleanText}`;
-        } else if (cleanText.includes('Error') || cleanText.includes('❌')) {
-            return `<span class="material-symbols thinking-icon error">cancel</span> ${cleanText}`;
-        } else {
-            return `<span class="material-symbols thinking-icon">chat</span> ${cleanText}`;
-        }
+        // Get icon (without HTML wrapper to build our own)
+        const iconName = Utils.getThinkingIcon(cleanText, { includeIcon: false });
+        
+        // Determine styling classes based on icon
+        let classNames = 'material-symbols thinking-icon';
+        if (iconName === 'check_circle') classNames += ' success';
+        if (iconName === 'cancel') classNames += ' error';
+        if (iconName === 'settings') classNames += ' spinning';
+        
+        return `<span class="${classNames}">${iconName}</span> ${cleanText}`;
     }
 
     /**
@@ -638,6 +873,24 @@ export class UIManager {
     }
 
     /**
+     * Clear chat input
+     */
+    clearChatInput() {
+        if (this.elements.chatInput) {
+            this.elements.chatInput.value = '';
+        }
+    }
+
+    /**
+     * Clear all chat messages
+     */
+    clearChat() {
+        if (this.elements.chatMessages) {
+            this.elements.chatMessages.innerHTML = '';
+        }
+    }
+
+    /**
      * Register callback for connection status changes
      */
     onConnectionStatusChange(callback) {
@@ -648,7 +901,7 @@ export class UIManager {
      * Update language
      */
     setLanguage(language) {
-        this.language = language;
+        this.currentLanguage = language;
     }
 
 
