@@ -28,6 +28,112 @@ export class ApiService {
     }
 
     /**
+     * Generic GET request
+     */
+    async get(endpoint, headers = {}) {
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'GET',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-language': this.currentLanguage || 'en',
+                    ...headers
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`❌ GET ${endpoint} failed:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generic POST request
+     */
+    async post(endpoint, data = {}, headers = {}) {
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-language': this.currentLanguage || 'en',
+                    ...headers
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`❌ POST ${endpoint} failed:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generic PUT request
+     */
+    async put(endpoint, data = {}, headers = {}) {
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'PUT',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-language': this.currentLanguage || 'en',
+                    ...headers
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`❌ PUT ${endpoint} failed:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generic DELETE request
+     */
+    async delete(endpoint, headers = {}) {
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'DELETE',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-language': this.currentLanguage || 'en',
+                    ...headers
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`❌ DELETE ${endpoint} failed:`, error);
+            throw error;
+        }
+    }
+
+    /**
      * Send message with streaming thinking updates using Server-Sent Events
      */
     async sendMessageWithThinking(chatHistory, currentPhase, language, onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount = 0) {
@@ -328,60 +434,6 @@ export class ApiService {
         } catch (error) {
             console.error('❌ Failed to clear session:', error);
             return false;
-        }
-    }
-
-    /**
-     * Fetch available llm providers and their services
-     */
-    async getLLMProviders() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/llm-providers`, {
-                method: 'GET',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-language': this.currentLanguage || 'en'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('❌ Failed to fetch llm providers:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Send selected llm provider to backend
-     */
-    async updateAIProviderOnBackend(providerId) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/llm-providers`, {
-                method: 'POST',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-language': this.currentLanguage || 'en'
-                },
-                body: JSON.stringify({ provider: providerId })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('✓ llm provider updated:', providerId);
-            return data;
-        } catch (error) {
-            console.error('❌ Failed to set llm provider:', error);
-            return null;
         }
     }
 

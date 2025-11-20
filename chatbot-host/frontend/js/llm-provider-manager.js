@@ -36,15 +36,8 @@ export class LLMProviderManager {
    * Fetch providers from backend API with cache fallback
    */
   async loadProvidersFromBackend() {
-    if (!this.apiService) {
-      console.warn('No API service available for loading llm providers');
-      // Try to load from cache as fallback
-      this.loadProvidersFromCache();
-      return;
-    }
-
     try {
-      const data = await this.apiService.getLLMProviders();
+      const data = await this.fetchProvidersFromAPI();
       if (data && data.providers) {
         this.providers = data.providers;
         // Store the backend's default provider
@@ -64,14 +57,50 @@ export class LLMProviderManager {
   }
 
   /**
-   * Cache providers data to localStorage
+   * Fetch LLM providers from API endpoint
+   */
+  async fetchProvidersFromAPI() {
+    if (!this.apiService) {
+      throw new Error('API service not available');
+    }
+
+    try {
+      const data = await this.apiService.get('/api/llm-providers');
+      return data;
+    } catch (error) {
+      console.error('❌ Failed to fetch llm providers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update LLM provider on backend
+   */
+  async updateProviderOnBackend(providerId) {
+    if (!this.apiService) {
+      throw new Error('API service not available');
+    }
+
+    try {
+      const data = await this.apiService.post('/api/llm-providers', { provider: providerId });
+      console.log('✓ llm provider updated:', providerId);
+      return data;
+    } catch (error) {
+      console.error('❌ Failed to update llm provider:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cache providers data to localStorage (only providers and defaults, not selected_provider)
    */
   cacheProviders(data) {
     try {
+      const existingCache = this.getCache() || {};
       const cacheData = {
         providers: data.providers || [],
         default_provider: data.default_provider || null,
-        selected_provider: this.getStoredProvider() || (data.default_provider || null),
+        selected_provider: existingCache.selected_provider || null,
         cached_at: new Date().toISOString()
       };
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
@@ -153,7 +182,7 @@ export class LLMProviderManager {
   }
 
   /**
-   * Set provider and apply to storage
+   * Set provider and apply to storage (user-initiated change)
    */
   setProvider(provider, notifyChange = true) {
     const supportedProviderIds = this.providers.map(p => p.id);
@@ -164,29 +193,37 @@ export class LLMProviderManager {
     
     console.log(`[LLMProviderManager] Setting provider to: ${provider}`);
     
-    // Update cache with selected provider
+    // Update cache
     this.updateCacheProvider(provider);
     
-    // Update button display
+    // Update UI
     this.updateButtonDisplay(provider);
-    
-    // Mark selected in menu
     this.updateMenuSelection(provider);
     
-    // Close menu after selection
+    // Close menu if open
     if (this.isMenuOpen) {
       this.closeMenu();
     }
     
-    // Notify backend API service of provider change
-    if (notifyChange && this.apiService) {
-      this.apiService.setAIProvider(provider);  // Set local provider for requests
-      this.apiService.updateAIProviderOnBackend(provider);  // Notify backend
+    // Update API service
+    if (this.apiService) {
+      this.apiService.setAIProvider(provider);
     }
     
-    // Trigger change callbacks
+    // Update provider on backend and notify if requested
     if (notifyChange) {
-      this.notifyChange(provider);
+      this.updateProviderOnBackend(provider).catch(error => {
+        console.error('Failed to update provider on backend:', error);
+      });
+      
+      // Trigger change callbacks
+      this.changeCallbacks.forEach(callback => {
+        try {
+          callback(provider);
+        } catch (error) {
+          console.error('Error in llm provider change callback:', error);
+        }
+      });
     }
   }
 
@@ -323,15 +360,16 @@ export class LLMProviderManager {
   }
 
   /**
-   * Attach event listeners
+   * Attach all event listeners (UI and global)
    */
   attachEventListeners() {
+    // UI: Button click to toggle menu
     if (this.buttonElement) {
       this.buttonElement.addEventListener('click', () => this.toggleMenu());
     }
     
+    // UI: Close menu when clicking outside
     if (this.dropdownElement) {
-      // Close menu when clicking outside
       document.addEventListener('click', (e) => {
         if (!this.dropdownElement.contains(e.target) && this.isMenuOpen) {
           this.closeMenu();
@@ -350,7 +388,7 @@ export class LLMProviderManager {
   }
 
   /**
-   * Handle llm provider change event
+   * Handle llm provider change event from external sources
    * This method can be bound as an event listener for external notifications
    */
   onChanged(event) {
@@ -358,8 +396,38 @@ export class LLMProviderManager {
     // If called as event listener, extract provider from event detail
     if (event && event.detail && event.detail.provider) {
       const provider = event.detail.provider;
-      // Apply the provider change
-      this.setProvider(provider, false); // false to avoid recursive event dispatch
+      // Apply the provider change without backend update
+      this.applyProviderChange(provider);
+    }
+  }
+
+  /**
+   * Apply provider change without triggering backend update (for external events)
+   */
+  applyProviderChange(provider) {
+    const supportedProviderIds = this.providers.map(p => p.id);
+    if (!supportedProviderIds.includes(provider)) {
+      console.warn(`Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
+      return;
+    }
+    
+    console.log(`[LLMProviderManager] Applying provider change to: ${provider}`);
+    
+    // Update cache
+    this.updateCacheProvider(provider);
+    
+    // Update UI
+    this.updateButtonDisplay(provider);
+    this.updateMenuSelection(provider);
+    
+    // Close menu if open
+    if (this.isMenuOpen) {
+      this.closeMenu();
+    }
+    
+    // Update API service
+    if (this.apiService) {
+      this.apiService.setAIProvider(provider);
     }
   }
 

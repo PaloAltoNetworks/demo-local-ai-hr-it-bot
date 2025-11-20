@@ -142,9 +142,6 @@ class ChatBotApp {
         // Listen for global language change events
         window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
         
-        // Listen for llm provider change events
-        window.addEventListener('llmProviderChanged', this.LLMProviderManager.onChanged.bind(this.LLMProviderManager));
-        
         // Listen for API retry events
         window.addEventListener('apiRetry', this.onApiRetry.bind(this));
     }
