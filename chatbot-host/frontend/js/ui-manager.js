@@ -7,7 +7,6 @@ export class UIManager {
     constructor(i18n) {
         this.i18n = i18n;
         this.language = i18n.getCurrentLanguage();
-        this.elements = this.cacheElements();
         this.connectionStatusCallbacks = [];
         this.thinkingMessageElement = null;
         this.isOnlineStatus = true;
@@ -111,22 +110,6 @@ export class UIManager {
         const { attempt, maxAttempts } = event.detail;
         const retryMsg = this.i18n.t('errors.retrying', { count: attempt, max: maxAttempts });
         this.showRetryNotification(retryMsg);
-    }
-
-    /**
-     * Cache frequently used DOM elements
-     */
-    cacheElements() {
-        return {
-            chatInput: document.getElementById('chatInput'),
-            chatMessages: document.getElementById('chat-container'),
-            sendButton: document.getElementById('sendMessage'),
-            questionsContainer: document.getElementById('questions-container'),
-            phaseButtons: document.querySelectorAll('.phase-btn'),
-            statusIndicator: document.getElementById('statusIndicator'),
-            statusIcon: document.getElementById('statusIcon'),
-            statusText: document.getElementById('statusText')
-        };
     }
 
     /**
