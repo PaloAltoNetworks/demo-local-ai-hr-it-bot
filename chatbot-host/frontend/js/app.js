@@ -9,6 +9,7 @@ import { SecurityDevPanel } from './security-dev-panel.js';
 import { ThemeManager } from './theme-manager.js';
 import { LLMProviderManager } from './llm-provider-manager.js';
 import { I18nService } from './i18n.js';
+import { SessionManager } from './session-manager.js';
 
 class ChatBotApp {
     constructor() {
@@ -36,6 +37,9 @@ class ChatBotApp {
             // Initialize API service first
             this.apiService = new ApiService();
 
+            // Initialize session manager and setup lifecycle
+            this.sessionManager = new SessionManager(this.apiService);
+
             // Initialize i18n with API service (detects language automatically)
             this.i18n = new I18nService(this.apiService);
             await this.i18n.init();
@@ -56,9 +60,10 @@ class ChatBotApp {
             // Initialize Security Dev Panel for real-time Prisma AIRS analysis
             this.securityDevPanel = new SecurityDevPanel(this.i18n);
 
-
-            // Setup page lifecycle events to handle refresh
-            this.setupPageLifecycleEvents();
+            // Now that UI and i18n are initialized, pass them to SessionManager
+            this.sessionManager.setUIManager(this.uiManager);
+            this.sessionManager.setI18nService(this.i18n);
+            await this.sessionManager.init();
 
             // Setup UI and event listeners
             this.i18n.updateUI();
@@ -143,44 +148,6 @@ class ChatBotApp {
         // Clear chat button
         const clearBtn = document.getElementById('clearChatBtn');
         clearBtn?.addEventListener('click', () => this.clearChat());
-    }
-
-    /**
-     * Setup page lifecycle events to detect and handle page refresh
-     */
-    setupPageLifecycleEvents() {
-        // Detect if this is a new page load (not a simple state change)
-        // We use sessionStorage to track if the page was refreshed
-        
-        // Check if this is a fresh page load (new session)
-        if (!sessionStorage.getItem('chatbot-session-id')) {
-            // This is a fresh page load, set a session ID in sessionStorage
-            const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            sessionStorage.setItem('chatbot-session-id', sessionId);
-            
-            // Clear the server-side session by calling the clear-session endpoint
-            this.clearServerSession();
-            
-            console.log('Page refreshed or new session detected, clearing server-side session');
-        }
-        
-        // Listen for unload events to clear session ID so it fires on every page refresh
-        window.addEventListener('beforeunload', () => {
-            // Clear session ID so the next page load will trigger clear-session
-            sessionStorage.removeItem('chatbot-session-id');
-        });
-    }
-
-    /**
-     * Clear server-side session to ensure fresh start after page refresh
-     */
-    async clearServerSession() {
-        try {
-            await this.apiService.clearSession();
-        } catch (error) {
-            console.warn('⚠️ Error clearing server session:', error);
-            // Don't fail the app initialization if clear fails
-        }
     }
 
     /**
@@ -387,7 +354,6 @@ class ChatBotApp {
     setupUserMenu() {
         const trigger = document.getElementById('userMenuTrigger');
         const dropdown = document.getElementById('userMenuDropdown');
-        const logoutBtn = document.getElementById('userMenuLogout');
 
         if (!trigger || !dropdown) return;
 
@@ -403,13 +369,6 @@ class ChatBotApp {
                 dropdown.classList.remove('active');
             }
         });
-
-        // Logout button
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                this.handleLogout();
-            });
-        }
 
         // Update user menu with user info
         this.updateUserMenu();
@@ -432,29 +391,6 @@ class ChatBotApp {
         if (userMenuLabel) {
             userMenuLabel.textContent = this.i18n.t('userMenu.label') || 'User';
         }
-    }
-
-    /**
-     * Handle logout action
-     */
-    async handleLogout() {
-        console.log('🚪 Logout initiated');
-        
-        // Clear user session data from localStorage
-        localStorage.removeItem('chatbot-session');
-        
-        // Clear server-side session
-        await this.clearServerSession();
-        
-        // Show confirmation message
-        this.uiManager?.showNotification(this.i18n.t('userMenu.logoutSuccess') || 'Logged out successfully', 'success');
-        
-        // Optional: Reload page or redirect
-        setTimeout(() => {
-            // Uncomment to redirect to login page
-            // window.location.href = '/login';
-            console.log('Logout complete');
-        }, 1000);
     }
 
     /**

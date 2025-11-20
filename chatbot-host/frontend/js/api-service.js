@@ -333,7 +333,6 @@ export class ApiService {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), CONFIG.CONNECTION_TIMEOUT);
 
-            // Use the dedicated health endpoint
             const response = await fetch(`${API_BASE_URL}/health`, {
                 method: 'GET',
                 mode: 'cors',
@@ -345,17 +344,14 @@ export class ApiService {
 
             clearTimeout(timeoutId);
             
-            // Accept 200 status - check service availability in response
             if (response.status === 200) {
                 const healthData = await response.json();
                 console.log('Health check response:', healthData);
                 this.lastHealthData = healthData;
                 
-                // Consider system online if basic service is running, even if MCP is degraded
                 const isBasicallyOnline = healthData.status === 'ok' || healthData.status === 'degraded';
                 this.updateConnectionStatus(isBasicallyOnline, healthData);
                 
-                // Show MCP status warning if degraded
                 if (healthData.status === 'degraded' && !healthData.serviceAvailable) {
                     console.warn('MCP services are unavailable:', healthData.message);
                 }
@@ -389,17 +385,6 @@ export class ApiService {
     }
 
     /**
-     * Extract assistant message from API response
-     */
-    extractAssistantMessage(response) {
-        if (!response?.messages?.length) {
-            throw new Error('Invalid response format');
-        }
-        const lastMessage = response.messages[response.messages.length - 1];
-        return lastMessage.content || 'No response received';
-    }
-
-    /**
      * Update connection status
      */
     updateConnectionStatus(isOnline, healthData = null) {
@@ -419,33 +404,6 @@ export class ApiService {
      */
     getLastHealthData() {
         return this.lastHealthData;
-    }
-
-    /**
-     * Clear session on the backend
-     */
-    async clearSession() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/clear-session`, {
-                method: 'POST',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-language': this.currentLanguage || 'en'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('Session cleared successfully:', data.message);
-            return true;
-        } catch (error) {
-            console.error('❌ Failed to clear session:', error);
-            return false;
-        }
     }
 
     /**

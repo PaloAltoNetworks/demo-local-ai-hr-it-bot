@@ -43,7 +43,7 @@ export class I18nService {
     async init(language = null) {
         // Fetch supported languages from backend first
         try {
-            const data = await this.apiService.get('/api/languages');
+            const data = await this.fetchSupportedLanguages();
             if (data.languages && Array.isArray(data.languages)) {
                 this.supportedLanguages = data.languages.map(lang => lang.code);
             }
@@ -73,6 +73,19 @@ export class I18nService {
         
         console.log(`I18n initialized with language: ${this.currentLanguage}`);
         return this;
+    }
+
+    /**
+     * Fetch supported languages from backend
+     * @return {Promise<Object>}
+     */
+    async fetchSupportedLanguages() {
+        try {
+            return await this.apiService.get('/api/languages');
+        } catch (error) {
+            console.error('Error fetching supported languages:', error);
+            throw error;
+        }
     }
 
     /**
@@ -221,7 +234,7 @@ export class I18nService {
         
         // Notify backend of language change
         try {
-            await this.apiService.post('/api/language', { language });
+            await this.notifyLanguageChange(language);
         } catch (error) {
             console.warn('Failed to notify backend of language change:', error);
         }
@@ -232,6 +245,20 @@ export class I18nService {
         }));
 
         console.log(`Language changed to: ${language}`);
+    }
+
+    /**
+     * Notify backend of language change
+     * @param {string} language - Language code
+     * @return {Promise}
+     */
+    async notifyLanguageChange(language) {
+        try {
+            return await this.apiService.post('/api/language', { language });
+        } catch (error) {
+            console.error('Error notifying backend of language change:', error);
+            throw error;
+        }
     }
 
     /**
@@ -301,7 +328,7 @@ export class I18nService {
         if (!selectElement) return;
 
         try {
-            const data = await this.apiService.get('/api/languages');
+            const data = await this.fetchSupportedLanguages();
             
             if (data.languages && Array.isArray(data.languages)) {
                 // Clear existing options
