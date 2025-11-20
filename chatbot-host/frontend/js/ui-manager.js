@@ -455,26 +455,13 @@ export class UIManager {
     /**
      * Get thinking icon HTML based on content
      */
+    /**
+     * Get thinking icon HTML based on content
+     * @param {string} text - The text to match against icon patterns
+     * @returns {string} HTML span element with icon
+     */
     getThinkingIcon(text) {
-        if (text.includes('Analyzing') || text.includes('🔍')) {
-            return `<span class="material-symbols thinking-icon">search</span>`;
-        } else if (text.includes('Checking language') || text.includes('🌐')) {
-            return `<span class="material-symbols thinking-icon">public</span>`;
-        } else if (text.includes('Translated') || text.includes('🔄')) {
-            return `<span class="material-symbols thinking-icon">language</span>`;
-        } else if (text.includes('Determining') || text.includes('🎯')) {
-            return `<span class="material-symbols thinking-icon">center_focus_strong</span>`;
-        } else if (text.includes('Connecting') || text.includes('📡')) {
-            return `<span class="material-symbols thinking-icon">cloud_queue</span>`;
-        } else if (text.includes('processing') || text.includes('⏳')) {
-            return `<span class="material-symbols thinking-icon spinning">settings</span>`;
-        } else if (text.includes('Response received') || text.includes('✅')) {
-            return `<span class="material-symbols thinking-icon success">check_circle</span>`;
-        } else if (text.includes('Error') || text.includes('❌')) {
-            return `<span class="material-symbols thinking-icon error">cancel</span>`;
-        } else {
-            return `<span class="material-symbols thinking-icon">chat</span>`;
-        }
+        return Utils.getThinkingIcon(text);
     }
 
     /**
@@ -624,31 +611,24 @@ export class UIManager {
 
     /**
      * Format thinking messages with icons and styling
+     * Uses shared thinking icon mapping from Utils for consistency
+     * @param {string} text - The thinking message text to format
+     * @returns {string} HTML string with formatted text and icon
      */
     formatThinkingMessage(text) {
         // Remove [COORDINATOR] prefix if present
         const cleanText = text.replace(/^\[COORDINATOR\]\s*/, '');
         
-        // Add appropriate styling based on content
-        if (cleanText.includes('Analyzing') || cleanText.includes('🔍')) {
-            return `<span class="material-symbols thinking-icon">search</span> ${cleanText}`;
-        } else if (cleanText.includes('Checking language') || cleanText.includes('🌐')) {
-            return `<span class="material-symbols thinking-icon">public</span> ${cleanText}`;
-        } else if (cleanText.includes('Translated') || cleanText.includes('🔄')) {
-            return `<span class="material-symbols thinking-icon">language</span> ${cleanText}`;
-        } else if (cleanText.includes('Determining') || cleanText.includes('🎯')) {
-            return `<span class="material-symbols thinking-icon">center_focus_strong</span> ${cleanText}`;
-        } else if (cleanText.includes('Connecting') || cleanText.includes('📡')) {
-            return `<span class="material-symbols thinking-icon">cloud_queue</span> ${cleanText}`;
-        } else if (cleanText.includes('processing') || cleanText.includes('⏳')) {
-            return `<span class="material-symbols thinking-icon spinning">settings</span> ${cleanText}`;
-        } else if (cleanText.includes('Response received') || cleanText.includes('✅')) {
-            return `<span class="material-symbols thinking-icon success">check_circle</span> ${cleanText}`;
-        } else if (cleanText.includes('Error') || cleanText.includes('❌')) {
-            return `<span class="material-symbols thinking-icon error">cancel</span> ${cleanText}`;
-        } else {
-            return `<span class="material-symbols thinking-icon">chat</span> ${cleanText}`;
-        }
+        // Get icon (without HTML wrapper to build our own)
+        const iconName = Utils.getThinkingIcon(cleanText, { includeIcon: false });
+        
+        // Determine styling classes based on icon
+        let classNames = 'material-symbols thinking-icon';
+        if (iconName === 'check_circle') classNames += ' success';
+        if (iconName === 'cancel') classNames += ' error';
+        if (iconName === 'settings') classNames += ' spinning';
+        
+        return `<span class="${classNames}">${iconName}</span> ${cleanText}`;
     }
 
     /**

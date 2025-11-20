@@ -88,4 +88,59 @@ export class Utils {
             timeout = setTimeout(later, wait);
         };
     }
+
+    /**
+     * Get thinking icon mapping - maps text patterns to icon names
+     * @returns {Object} Object where keys are pipe-separated keywords and values are icon names
+     */
+    static getThinkingIconMap() {
+        return {
+            'Analyzing|🔍': 'search',
+            'Checking language|🌐': 'public',
+            'Translated|🔄': 'language',
+            'Determining|🎯': 'center_focus_strong',
+            'Connecting|📡': 'cloud_queue',
+            'processing|⏳': 'settings',
+            'Response received|✅': 'check_circle',
+            'Error|❌': 'cancel'
+        };
+    }
+
+    /**
+     * Get thinking icon HTML based on content
+     * Maps text patterns to Material Symbols icons
+     * @param {string} text - The text to match against icon patterns
+     * @param {Object} options - Configuration options
+     * @param {string} options.defaultIcon - Default icon if no pattern matches (default: 'chat')
+     * @param {boolean} options.includeIcon - Whether to include icon HTML (default: true)
+     * @returns {string} HTML span element with icon
+     */
+    static getThinkingIcon(text, options = {}) {
+        const { defaultIcon = 'chat', includeIcon = true } = options;
+        const iconMap = this.getThinkingIconMap();
+
+        // Try to find a matching pattern
+        for (const [keywords, iconName] of Object.entries(iconMap)) {
+            const patterns = keywords.split('|');
+            if (patterns.some(pattern => text.includes(pattern))) {
+                if (!includeIcon) return iconName;
+                
+                // Determine if this is a special icon that needs styling
+                const isSuccess = iconName === 'check_circle';
+                const isError = iconName === 'cancel';
+                const isSpinning = iconName === 'settings';
+                
+                let classNames = 'material-symbols thinking-icon';
+                if (isSuccess) classNames += ' success';
+                if (isError) classNames += ' error';
+                if (isSpinning) classNames += ' spinning';
+                
+                return `<span class="${classNames}">${iconName}</span>`;
+            }
+        }
+
+        // Return default icon
+        if (!includeIcon) return defaultIcon;
+        return `<span class="material-symbols thinking-icon">${defaultIcon}</span>`;
+    }
 }
