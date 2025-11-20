@@ -15,7 +15,26 @@ export class UIManager {
         this.tokenMetadata = {}; // Store token usage metadata
         this.llmProviderInfo = null; // Store current LLM provider info
         
+        // Cache DOM elements
+        this.elements = {};
+        this.cacheElements();
+        
         this.init();
+    }
+
+    /**
+     * Cache frequently accessed DOM elements
+     */
+    cacheElements() {
+        this.elements.questionsContainer = document.getElementById('questions-container');
+        this.elements.chatMessages = document.getElementById('chat-container');
+        this.elements.chatInput = document.getElementById('chatInput');
+        this.elements.sendButton = document.getElementById('sendMessage');
+        this.elements.statusIndicator = document.getElementById('statusIndicator');
+        this.elements.statusIcon = document.getElementById('statusIcon');
+        this.elements.statusText = document.getElementById('statusText');
+        this.elements.loadingIndicator = document.getElementById('loading-indicator');
+        this.elements.welcomeMessage = document.getElementById('welcome-message');
     }
 
     /**
