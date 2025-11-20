@@ -12,28 +12,46 @@ export class ChatHandler {
         this.chatHistory = [];
         this.isProcessing = false;
         this.currentPhase = 'phase1';
+        this.boundHandlers = {};
+        this.isInitialized = false;
         
         this.init();
     }
 
     /**
-     * Initialize event listeners
+     * Initialize chat handler - called from constructor
      */
     init() {
+        if (this.isInitialized) return;
+        this.attachListeners();
+        this.isInitialized = true;
+        console.log('✅ ChatHandler initialized');
+    }
+
+    /**
+     * Attach event listeners for chat operations
+     */
+    attachListeners() {
+        // Store bound handlers for proper cleanup
+        this.boundHandlers.sendClick = this.handleSendMessageClick.bind(this);
+        this.boundHandlers.keyPress = this.handleKeyPress.bind(this);
+        this.boundHandlers.clearClick = this.clearChat.bind(this);
+        this.boundHandlers.phaseChanged = this.onPhaseChanged.bind(this);
+
         // Send message button
         const sendBtn = document.getElementById('sendMessage');
-        sendBtn?.addEventListener('click', this.handleSendMessageClick.bind(this));
+        sendBtn?.addEventListener('click', this.boundHandlers.sendClick);
 
         // Enter key in chat input
         const chatInput = document.getElementById('chatInput');
-        chatInput?.addEventListener('keypress', this.handleKeyPress.bind(this));
+        chatInput?.addEventListener('keypress', this.boundHandlers.keyPress);
 
         // Clear chat button
         const clearBtn = document.getElementById('clearChatBtn');
-        clearBtn?.addEventListener('click', this.clearChat.bind(this));
+        clearBtn?.addEventListener('click', this.boundHandlers.clearClick);
 
         // Listen for phase changes
-        window.addEventListener('phaseChanged', this.onPhaseChanged.bind(this));
+        window.addEventListener('phaseChanged', this.boundHandlers.phaseChanged);
     }
 
     /**
@@ -56,13 +74,34 @@ export class ChatHandler {
 
     /**
      * Setup chat event listeners (kept for backward compatibility with app.js)
+     * @deprecated Listeners are now initialized in init()
      */
     setupListeners() {
-        // Listeners are now initialized in init()
+        // Already called from init()
     }
 
     /**
-     * Handle send message button click
+     * Cleanup resources and listeners
+     */
+    destroy() {
+        const sendBtn = document.getElementById('sendMessage');
+        sendBtn?.removeEventListener('click', this.boundHandlers.sendClick);
+        
+        const chatInput = document.getElementById('chatInput');
+        chatInput?.removeEventListener('keypress', this.boundHandlers.keyPress);
+        
+        const clearBtn = document.getElementById('clearChatBtn');
+        clearBtn?.removeEventListener('click', this.boundHandlers.clearClick);
+        
+        window.removeEventListener('phaseChanged', this.boundHandlers.phaseChanged);
+        
+        this.boundHandlers = {};
+        this.isInitialized = false;
+        console.log('✅ ChatHandler destroyed');
+    }
+
+    /**
+     * Handle key press in chat input
      */
     async handleSendMessageClick() {
         const chatInput = document.getElementById('chatInput');

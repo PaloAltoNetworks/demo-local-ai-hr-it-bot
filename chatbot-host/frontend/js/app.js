@@ -94,11 +94,6 @@ class ChatBotApp {
             this.modules.i18n
         );
 
-        // Setup listeners for each module
-        this.modules.uiManager.setupListeners();
-        this.modules.phaseManager.setupListeners();
-        this.modules.chatHandler.setupListeners();
-
         // Start monitoring
         this.modules.connectionMonitor.start();
 

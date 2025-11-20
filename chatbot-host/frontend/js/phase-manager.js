@@ -6,15 +6,32 @@ export class PhaseManager {
         this.uiManager = uiManager;
         this.i18n = i18n;
         this.currentPhase = 'phase1';
+        this.isInitialized = false;
         
-        // Restore phase from sessionStorage if available
-        this.restorePhase();
+        // Initialize in constructor
+        this.init();
     }
 
     /**
-     * Setup phase button event listeners
+     * Initialize phase manager - called from constructor
      */
-    setupListeners() {
+    init() {
+        if (this.isInitialized) return;
+        
+        // Restore phase from sessionStorage
+        this.restorePhase();
+        
+        // Attach event listeners
+        this.attachListeners();
+        
+        this.isInitialized = true;
+        console.log('✅ PhaseManager initialized');
+    }
+
+    /**
+     * Attach phase button event listeners
+     */
+    attachListeners() {
         document.querySelectorAll('.phase-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const phase = e.currentTarget.getAttribute('data-phase');
@@ -23,6 +40,14 @@ export class PhaseManager {
                 }
             });
         });
+    }
+
+    /**
+     * Setup phase button event listeners (kept for backward compatibility)
+     * @deprecated Use init() instead
+     */
+    setupListeners() {
+        // Already called from init()
     }
 
     /**

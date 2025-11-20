@@ -13,12 +13,35 @@ export class ConnectionMonitor {
         this.wasDegraded = false;
         this.lastHealthData = null;
         this.isOnline = false;
+        this.boundHandlers = {};
+        this.isInitialized = false;
+        
+        this.init();
+    }
+
+    /**
+     * Initialize connection monitor - called from constructor
+     */
+    init() {
+        if (this.isInitialized) return;
+        this.attachListeners();
+        this.isInitialized = true;
+        console.log('✅ ConnectionMonitor initialized');
+    }
+
+    /**
+     * Attach event listeners for connection monitoring
+     */
+    attachListeners() {
+        // Store bound handlers for proper cleanup
+        this.boundHandlers.languageChanged = this.onLanguageChanged.bind(this);
+        this.boundHandlers.apiTimeout = this.onApiTimeout.bind(this);
 
         // Listen for language changes
-        window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
+        window.addEventListener('languageChanged', this.boundHandlers.languageChanged);
         
         // Listen for timeout events from api-service
-        window.addEventListener('apiTimeout', this.onApiTimeout.bind(this));
+        window.addEventListener('apiTimeout', this.boundHandlers.apiTimeout);
     }
 
     /**
@@ -61,9 +84,14 @@ export class ConnectionMonitor {
             clearInterval(this.connectionCheckInterval);
             this.connectionCheckInterval = null;
         }
-        // Clean up event listeners
-        window.removeEventListener('languageChanged', this.onLanguageChanged.bind(this));
-        window.removeEventListener('apiTimeout', this.onApiTimeout.bind(this));
+        
+        // Properly clean up event listeners using stored references
+        window.removeEventListener('languageChanged', this.boundHandlers.languageChanged);
+        window.removeEventListener('apiTimeout', this.boundHandlers.apiTimeout);
+        
+        this.boundHandlers = {};
+        this.isInitialized = false;
+        console.log('✅ ConnectionMonitor stopped');
     }
 
     /**

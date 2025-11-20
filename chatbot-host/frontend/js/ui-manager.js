@@ -42,13 +42,6 @@ export class UIManager {
     }
 
     /**
-     * Setup UI event listeners (user menu, window events)
-     */
-    setupListeners() {
-        // Listeners are now initialized in init()
-    }
-
-    /**
      * Setup user menu event listeners
      */
     setupUserMenuListeners() {
