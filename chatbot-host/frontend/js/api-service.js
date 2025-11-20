@@ -48,15 +48,24 @@ export class ApiService {
     }
 
     /**
-     * Generic GET request with timeout support
+     * Private helper: Make fetch request with timeout and error handling
+     * @private
+     * @param {string} method - HTTP method (GET, POST, PUT, DELETE)
+     * @param {string} endpoint - API endpoint path
+     * @param {Object} options - Request options
+     * @param {Object} options.headers - Custom headers
+     * @param {any} options.body - Request body for POST/PUT
+     * @param {number} options.timeout - Request timeout in ms
+     * @param {boolean} options.returnResponse - Return Response object instead of JSON
+     * @returns {Promise<Response|Object>} Response object or parsed JSON
      */
-    async get(endpoint, headers = {}, timeout = CONFIG.CONNECTION_TIMEOUT) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
+    async #makeRequest(method, endpoint, { headers = {}, body = null, timeout = CONFIG.REQUEST_TIMEOUT, returnResponse = false } = {}) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                method: 'GET',
+        try {
+            const fetchOptions = {
+                method,
                 mode: 'cors',
                 headers: {
                     'Content-Type': 'application/json',
@@ -64,214 +73,81 @@ export class ApiService {
                     ...headers
                 },
                 signal: controller.signal
-            });
+            };
 
+            if (body !== null) {
+                fetchOptions.body = JSON.stringify(body);
+            }
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
             clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            return await response.json();
+            return returnResponse ? response : await response.json();
         } catch (error) {
-            if (error.name === 'AbortError') {
-                console.warn(`⏱️ GET ${endpoint} timeout after ${timeout}ms`);
-                // Dispatch timeout event for listeners like ConnectionMonitor
-                const timeoutEvent = new CustomEvent('apiTimeout', {
-                    detail: {
-                        endpoint: endpoint,
-                        timeout: timeout,
-                        language: this.currentLanguage
-                    }
-                });
-                window.dispatchEvent(timeoutEvent);
-                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
-            }
-            console.error(`❌ GET ${endpoint} failed:`, error);
+            clearTimeout(timeoutId);
+            this.#handleRequestError(error, endpoint, timeout, method);
             throw error;
         }
+    }
+
+    /**
+     * Private helper: Handle request errors and dispatch events
+     * @private
+     */
+    #handleRequestError(error, endpoint, timeout, method = 'REQUEST') {
+        if (error.name === 'AbortError') {
+            console.warn(`⏱️ ${method} ${endpoint} timeout after ${timeout}ms`);
+            // Dispatch timeout event for listeners like ConnectionMonitor
+            const timeoutEvent = new CustomEvent('apiTimeout', {
+                detail: {
+                    endpoint: endpoint,
+                    timeout: timeout,
+                    language: this.currentLanguage,
+                    method: method
+                }
+            });
+            window.dispatchEvent(timeoutEvent);
+        } else {
+            console.error(`❌ ${method} ${endpoint} failed:`, error);
+        }
+    }
+
+    /**
+     * Generic GET request with timeout support
+     */
+    async get(endpoint, headers = {}, timeout = CONFIG.CONNECTION_TIMEOUT) {
+        return this.#makeRequest('GET', endpoint, { headers, timeout });
     }
 
     /**
      * Generic POST request with timeout support
      */
     async post(endpoint, data = {}, headers = {}, timeout = CONFIG.REQUEST_TIMEOUT) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                method: 'POST',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-language': this.currentLanguage || 'en',
-                    ...headers
-                },
-                body: JSON.stringify(data),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                console.warn(`⏱️ POST ${endpoint} timeout after ${timeout}ms`);
-                // Dispatch timeout event for listeners like ConnectionMonitor
-                const timeoutEvent = new CustomEvent('apiTimeout', {
-                    detail: {
-                        endpoint: endpoint,
-                        timeout: timeout,
-                        language: this.currentLanguage
-                    }
-                });
-                window.dispatchEvent(timeoutEvent);
-                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
-            }
-            console.error(`❌ POST ${endpoint} failed:`, error);
-            throw error;
-        }
+        return this.#makeRequest('POST', endpoint, { headers, body: data, timeout });
     }
 
     /**
      * Generic PUT request with timeout support
      */
     async put(endpoint, data = {}, headers = {}, timeout = CONFIG.REQUEST_TIMEOUT) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                method: 'PUT',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-language': this.currentLanguage || 'en',
-                    ...headers
-                },
-                body: JSON.stringify(data),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                console.warn(`⏱️ PUT ${endpoint} timeout after ${timeout}ms`);
-                // Dispatch timeout event for listeners like ConnectionMonitor
-                const timeoutEvent = new CustomEvent('apiTimeout', {
-                    detail: {
-                        endpoint: endpoint,
-                        timeout: timeout,
-                        language: this.currentLanguage
-                    }
-                });
-                window.dispatchEvent(timeoutEvent);
-                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
-            }
-            console.error(`❌ PUT ${endpoint} failed:`, error);
-            throw error;
-        }
+        return this.#makeRequest('PUT', endpoint, { headers, body: data, timeout });
     }
 
     /**
      * Generic DELETE request with timeout support
      */
     async delete(endpoint, headers = {}, timeout = CONFIG.REQUEST_TIMEOUT) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                method: 'DELETE',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-language': this.currentLanguage || 'en',
-                    ...headers
-                },
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                console.warn(`⏱️ DELETE ${endpoint} timeout after ${timeout}ms`);
-                // Dispatch timeout event for listeners like ConnectionMonitor
-                const timeoutEvent = new CustomEvent('apiTimeout', {
-                    detail: {
-                        endpoint: endpoint,
-                        timeout: timeout,
-                        language: this.currentLanguage
-                    }
-                });
-                window.dispatchEvent(timeoutEvent);
-                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
-            }
-            console.error(`❌ DELETE ${endpoint} failed:`, error);
-            throw error;
-        }
+        return this.#makeRequest('DELETE', endpoint, { headers, timeout });
     }
 
     /**
      * Generic POST request for streaming responses (Server-Sent Events)
      */
     async postStream(endpoint, data = {}, headers = {}, timeout = CONFIG.REQUEST_TIMEOUT) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                method: 'POST',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-language': this.currentLanguage || 'en',
-                    ...headers
-                },
-                body: JSON.stringify(data),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return response;
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                console.warn(`⏱️ POST ${endpoint} timeout after ${timeout}ms`);
-                // Dispatch timeout event for listeners
-                const timeoutEvent = new CustomEvent('apiTimeout', {
-                    detail: {
-                        endpoint: endpoint,
-                        timeout: timeout,
-                        language: this.currentLanguage
-                    }
-                });
-                window.dispatchEvent(timeoutEvent);
-                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
-            }
-            console.error(`❌ POST ${endpoint} failed:`, error);
-            throw error;
-        }
+        return this.#makeRequest('POST', endpoint, { headers, body: data, timeout, returnResponse: true });
     }
 }
