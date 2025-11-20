@@ -43,14 +43,6 @@ export class PhaseManager {
     }
 
     /**
-     * Setup phase button event listeners (kept for backward compatibility)
-     * @deprecated Use init() instead
-     */
-    setupListeners() {
-        // Already called from init()
-    }
-
-    /**
      * Get current phase
      */
     getCurrentPhase() {

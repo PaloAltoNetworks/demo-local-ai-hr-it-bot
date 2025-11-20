@@ -73,14 +73,6 @@ export class ChatHandler {
     }
 
     /**
-     * Setup chat event listeners (kept for backward compatibility with app.js)
-     * @deprecated Listeners are now initialized in init()
-     */
-    setupListeners() {
-        // Already called from init()
-    }
-
-    /**
      * Cleanup resources and listeners
      */
     destroy() {

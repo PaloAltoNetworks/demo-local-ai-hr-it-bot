@@ -64,7 +64,6 @@ class ChatBotApp {
     initializeManagers() {
         // LLM Provider manager
         this.modules.llmProviderManager = new LLMProviderManager(
-            this.modules.i18n,
             this.modules.apiService
         );
 

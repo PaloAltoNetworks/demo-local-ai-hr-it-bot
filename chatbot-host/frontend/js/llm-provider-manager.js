@@ -4,7 +4,7 @@
  * Handles integration with API service for llm provider updates
  */
 export class LLMProviderManager {
-  constructor(i18nService = null, apiService = null) {
+  constructor(apiService = null) {
     this.CACHE_KEY = 'llm-providers-cache';
     
     // Dropdown elements
@@ -13,7 +13,6 @@ export class LLMProviderManager {
     this.menuElement = document.getElementById('llmProviderMenu');
     this.logoElement = document.getElementById('llmProviderLogo');
     
-    this.i18nService = i18nService;
     this.apiService = apiService;
     this.changeCallbacks = [];
     this.providers = [];
@@ -135,13 +134,6 @@ export class LLMProviderManager {
    */
   setApiService(apiService) {
     this.apiService = apiService;
-  }
-
-  /**
-   * Set i18n service (can be called after instantiation)
-   */
-  setI18nService(i18nService) {
-    this.i18nService = i18nService;
   }
 
   /**
