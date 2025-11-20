@@ -138,10 +138,12 @@ class LLMProviderFactory {
     }
 
     // Azure OpenAI provider
-    if (process.env.AZURE_API_KEY && process.env.AZURE_RESOURCE_NAME && process.env.AZURE_DEPLOYMENT_ID) {
+    if (process.env.AZURE_API_KEY && (process.env.AZURE_RESOURCE_NAME || process.env.AZURE_BASE_URL)) {
       const azureClient = createAzure({
         apiKey: process.env.AZURE_API_KEY,
         resourceName: process.env.AZURE_RESOURCE_NAME,
+        baseUrl: process.env.AZURE_BASE_URL,
+        apiVersion: process.env.AZURE_API_VERSION,
       });
       providers.azure = azureClient;
       getLogger().info('[LLMProvider] ✓ Azure OpenAI provider registered');
@@ -234,7 +236,7 @@ class LLMProviderFactory {
         return `anthropic:${modelId || process.env.ANTHROPIC_AGENT_MODEL || 'claude-3-5-sonnet-20241022'}`;
       
       case 'azure':
-        return `azure:${modelId || process.env.AZURE_AGENT_MODEL || process.env.AZURE_DEPLOYMENT_ID}`;
+        return `azure:${modelId || process.env.AZURE_AGENT_MODEL}`;
       
       case 'gcp':
         return `gcp:${modelId || process.env.GCP_AGENT_MODEL || 'gemini-1.5-flash'}`;
@@ -301,7 +303,7 @@ class LLMProviderFactory {
     }
 
     // Check Azure OpenAI configuration
-    if (process.env.AZURE_API_KEY && process.env.AZURE_RESOURCE_NAME && process.env.AZURE_DEPLOYMENT_ID) {
+    if (process.env.AZURE_API_KEY && process.env.AZURE_RESOURCE_NAME) {
       availableProviders.push({
         id: 'azure',
         name: 'Microsoft Azure',
@@ -311,7 +313,7 @@ class LLMProviderFactory {
         configured: true,
       });
       getLogger().info('[LLMProvider] Azure OpenAI provider detected (configured via Azure credentials)');
-    } else if (process.env.AZURE_API_KEY || process.env.AZURE_RESOURCE_NAME || process.env.AZURE_DEPLOYMENT_ID) {
+    } else if (process.env.AZURE_API_KEY || process.env.AZURE_RESOURCE_NAME) {
       getLogger().warn('[LLMProvider] Azure OpenAI partially configured - missing API key, resource name, or deployment ID');
     }
 
@@ -344,7 +346,7 @@ class LLMProviderFactory {
 
     // If no providers are properly configured, return error information
     if (availableProviders.length === 0) {
-      getLogger().error('[LLMProvider] No llm providers properly configured. Configure at least one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, AWS_REGION + BEDROCK_AGENT_MODEL, AZURE_API_KEY + AZURE_RESOURCE_NAME + AZURE_DEPLOYMENT_ID, GOOGLE_APPLICATION_CREDENTIALS, or OLLAMA_SERVER_URL');
+      getLogger().error('[LLMProvider] No llm providers properly configured. Configure at least one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, AWS_REGION + BEDROCK_AGENT_MODEL, AZURE_API_KEY + AZURE_RESOURCE_NAME, GOOGLE_APPLICATION_CREDENTIALS, or OLLAMA_SERVER_URL');
       return [];
     }
 
