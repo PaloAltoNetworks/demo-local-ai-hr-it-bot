@@ -14,6 +14,7 @@ export class UIManager {
         this.currentThinkingContainer = null; // Current thinking message container
         this.tokenMetadata = {}; // Store token usage metadata
         this.llmProviderInfo = null; // Store current LLM provider info
+        this.currentPhase = null; // Reference to PhaseManager
         
         // Cache DOM elements
         this.elements = {};
@@ -44,6 +45,9 @@ export class UIManager {
         // Listen to language change events
         window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
         
+        // Listen to phase change events
+        window.addEventListener('phaseChanged', this.onPhaseChanged.bind(this));
+        
         // Setup UI listeners
         this.setupUserMenuListeners();
         this.setupWindowListeners();
@@ -57,6 +61,20 @@ export class UIManager {
         this.setLanguage(language);
         // Update UI with new language
         this.i18n.updateUI();
+        
+        // Re-render questions with new language
+        if (this.currentPhase) {
+            this.renderQuestions(this.currentPhase);
+        }
+    }
+
+    /**
+     * Handle phase change event
+     */
+    onPhaseChanged(event) {
+        const { phase } = event.detail;
+        this.currentPhase = phase;
+        this.renderQuestions(this.currentPhase);
     }
 
     /**
