@@ -76,13 +76,11 @@ export class PhaseManager {
      */
     updatePhaseUI() {
         // Update phase buttons
-        if (this.uiManager.elements && this.uiManager.elements.phaseButtons) {
-            this.uiManager.elements.phaseButtons.forEach(btn => {
-                btn.classList.toggle('active',
-                    btn.getAttribute('data-phase') === this.currentPhase
-                );
-            });
-        }
+        document.querySelectorAll('.phase-btn').forEach(btn => {
+            btn.classList.toggle('active',
+                btn.getAttribute('data-phase') === this.currentPhase
+            );
+        });
 
         // Update body class for styling
         document.body.className = `${this.currentPhase}-active`;
