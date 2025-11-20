@@ -15,6 +15,19 @@ export class UIManager {
         this.currentThinkingContainer = null; // Current thinking message container
         this.tokenMetadata = {}; // Store token usage metadata
         this.llmProviderInfo = null; // Store current LLM provider info
+        
+        // Listen to language change events
+        window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
+    }
+
+    /**
+     * Handle language change event
+     */
+    onLanguageChanged(event) {
+        const { language } = event.detail;
+        this.setLanguage(language);
+        // Update UI with new language
+        this.i18n.updateUI();
     }
 
     /**

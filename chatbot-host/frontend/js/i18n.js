@@ -1,10 +1,9 @@
 /**
  * Frontend I18n Service - Loads translations from backend
  */
-import { API_BASE_URL } from './config.js';
-
 export class I18nService {
-    constructor() {
+    constructor(apiService) {
+        this.apiService = apiService;
         this.currentLanguage = 'en'; // Default to English
         this.translations = {};
         this.loadPromise = null;
@@ -55,11 +54,8 @@ export class I18nService {
      */
     async fetchTranslations(language) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/translations/${language}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch translations: ${response.status}`);
-            }
-            return await response.json();
+            const data = await this.apiService.get(`/api/translations/${language}`);
+            return data;
         } catch (error) {
             console.error(`Error fetching translations for ${language}:`, error);
             
@@ -162,15 +158,17 @@ export class I18nService {
         // Update HTML lang attribute
         document.documentElement.lang = language;
         
+        // Save to localStorage
+        localStorage.setItem('chatbot-language', language);
+
+        // Update URL without reload
+        const url = new URL(window.location);
+        url.searchParams.set('lang', language);
+        window.history.replaceState({}, '', url);
+        
         // Notify backend of language change
         try {
-            await fetch(`${API_BASE_URL}/api/language`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ language })
-            });
+            await this.apiService.post('/api/language', { language });
         } catch (error) {
             console.warn('Failed to notify backend of language change:', error);
         }
@@ -250,8 +248,7 @@ export class I18nService {
         if (!selectElement) return;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/languages`);
-            const data = await response.json();
+            const data = await this.apiService.get('/api/languages');
             
             if (data.languages && Array.isArray(data.languages)) {
                 // Clear existing options
@@ -264,15 +261,28 @@ export class I18nService {
                     option.textContent = lang.nativeName || lang.name || lang.code;
                     selectElement.appendChild(option);
                 });
+
+                // Set current language as selected
+                selectElement.value = this.currentLanguage;
+
+                // Setup change listener
+                selectElement.addEventListener('change', this.onLanguageSelectChange.bind(this));
             }
         } catch (error) {
             console.error('Error fetching available languages:', error);
         }
     }
+
+    /**
+     * Handle language select change event
+     */
+    async onLanguageSelectChange(event) {
+        const selectedLanguage = event.target.value;
+        if (selectedLanguage && selectedLanguage !== this.currentLanguage) {
+            await this.changeLanguage(selectedLanguage);
+        }
+    }
 }
 
-// Create a global instance
-export const i18n = new I18nService();
-
-// Make it globally available for non-module scripts
-window.i18n = i18n;
+// Export the class (instance creation happens in app.js with apiService dependency)
+// This allows proper dependency injection

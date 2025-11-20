@@ -8,7 +8,7 @@ import { ConnectionMonitor } from './connection-monitor.js';
 import { SecurityDevPanel } from './security-dev-panel.js';
 import { ThemeManager } from './theme-manager.js';
 import { LLMProviderManager } from './llm-provider-manager.js';
-import { i18n } from './i18n.js';
+import { I18nService } from './i18n.js';
 
 class ChatBotApp {
     constructor() {
@@ -55,28 +55,30 @@ class ChatBotApp {
             // Show loading indicator
             this.showLoading(true);
 
-            // Initialize i18n first
-            await i18n.init(this.currentLanguage);
-
-            // Initialize theme manager with i18n service
-            this.themeManager = new ThemeManager(i18n);
-
-            // Initialize services with i18n
+            // Initialize API service first
             this.apiService = new ApiService();
             this.apiService.setLanguage(this.currentLanguage); // Set initial language
 
+            // Initialize i18n with API service
+            this.i18n = new I18nService(this.apiService);
+            await this.i18n.init(this.currentLanguage);
+
+            // Initialize theme manager with i18n service
+            this.themeManager = new ThemeManager(this.i18n);
+
             // Initialize llm provider manager with i18n and API service
-            this.LLMProviderManager = new LLMProviderManager(i18n, this.apiService);
+            this.LLMProviderManager = new LLMProviderManager(this.i18n, this.apiService);
             
             // Set initial llm provider
             this.apiService.setAIProvider(this.LLMProviderManager.getCurrentProvider());
 
-            this.uiManager = new UIManager(this.currentLanguage, i18n);
-            this.questionsManager = new QuestionsManager(i18n, this.uiManager);
+            this.uiManager = new UIManager(this.currentLanguage, this.i18n);
+            this.questionsManager = new QuestionsManager(this.i18n, this.uiManager);
             this.connectionMonitor = new ConnectionMonitor(this.apiService, this.uiManager);
             
             // Initialize Security Dev Panel for real-time Prisma AIRS analysis
-            this.securityDevPanel = new SecurityDevPanel(i18n);
+            this.securityDevPanel = new SecurityDevPanel(this.i18n);
+
 
             // Setup page lifecycle events to handle refresh
             this.setupPageLifecycleEvents();
@@ -96,7 +98,7 @@ class ChatBotApp {
             console.error(`❌ Failed to initialize ChatBot app:`, error);
 
             // Use fallback error message
-            const errorMsg = i18n.t('errors.initError') || 'Failed to initialize the application';
+            const errorMsg = this.i18n.t('errors.initError') || 'Failed to initialize the application';
             this.uiManager?.showError(errorMsg);
         }
     }
@@ -116,7 +118,7 @@ class ChatBotApp {
      */
     async updateUI() {
         // Delegate all UI translation updates to i18n service
-        i18n.updateUI();
+        this.i18n.updateUI();
     }
 
     /**
@@ -139,66 +141,8 @@ class ChatBotApp {
         // Chat input and send button
         this.setupChatEventListeners();
 
-        // Listen for global language change events
-        window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
-        
         // Listen for API retry events
         window.addEventListener('apiRetry', this.onApiRetry.bind(this));
-    }
-
-    /**
-     * Change language
-     */
-    async changeLanguage(language) {
-        try {
-            this.showLoading(true);
-
-            await i18n.changeLanguage(language);
-            this.currentLanguage = language;
-
-            // Save to localStorage
-            localStorage.setItem('chatbot-language', language);
-
-            // Update URL without reload
-            const url = new URL(window.location);
-            url.searchParams.set('lang', language);
-            window.history.replaceState({}, '', url);
-
-            // Update UI
-            await this.updateUI();
-
-            // Update API service language
-            if (this.apiService) {
-                this.apiService.setLanguage(language);
-            }
-
-            // Refresh questions for new language
-            if (this.questionsManager) {
-                this.questionsManager.setLanguage(language);
-                this.questionsManager.renderQuestions(this.currentPhase);
-            }
-
-            this.showLoading(false);
-
-        } catch (error) {
-            this.showLoading(false);
-            console.error('Error changing language:', error);
-        }
-    }
-
-    /**
-     * Handle global language change events
-     */
-    async onLanguageChanged(event) {
-        const { language } = event.detail;
-        if (language !== this.currentLanguage) {
-            this.currentLanguage = language;
-            // Update theme manager labels with new language
-            if (this.themeManager) {
-                this.themeManager.setI18nService(i18n);
-            }
-            await this.updateUI();
-        }
     }
 
     /**
@@ -206,7 +150,7 @@ class ChatBotApp {
      */
     onApiRetry(event) {
         const { attempt, maxAttempts } = event.detail;
-        const retryMsg = i18n.t('errors.retrying', { count: attempt, max: maxAttempts });
+        const retryMsg = this.i18n.t('errors.retrying', { count: attempt, max: maxAttempts });
         this.uiManager?.showRetryNotification(retryMsg);
     }
 
@@ -292,7 +236,7 @@ class ChatBotApp {
 
         // Check if we're online before attempting to send
         if (!this.apiService.getConnectionStatus()) {
-            const errorMsg = i18n.t('errors.connectionError');
+            const errorMsg = this.i18n.t('errors.connectionError');
             this.uiManager?.showError(errorMsg);
             return;
         }
@@ -316,7 +260,7 @@ class ChatBotApp {
             // Set up timeout warning
             const warningTimeout = setTimeout(() => {
                 if (this.isProcessing) {
-                    const timeoutWarning = i18n.t('errors.agentTimeout');
+                    const timeoutWarning = this.i18n.t('errors.agentTimeout');
                     this.uiManager?.showRetryNotification(timeoutWarning);
                 }
             }, 15000); // Show warning after 15 seconds
@@ -402,16 +346,16 @@ class ChatBotApp {
             const errorMessage = error.message || '';
             
             if (errorMessage === 'TIMEOUT_ERROR') {
-                errorMsg = i18n.t('errors.agentTimeout');
+                errorMsg = this.i18n.t('errors.agentTimeout');
             } else if (errorMessage === 'NETWORK_ERROR') {
-                errorMsg = i18n.t('errors.networkError');
+                errorMsg = this.i18n.t('errors.networkError');
             } else if (errorMessage === 'SERVER_OVERLOAD') {
-                errorMsg = i18n.t('errors.serverOverload');
+                errorMsg = this.i18n.t('errors.serverOverload');
             } else if (errorMessage === 'SERVER_ERROR') {
-                errorMsg = i18n.t('errors.serverError');
+                errorMsg = this.i18n.t('errors.serverError');
             } else {
                 // Fallback for unknown errors
-                errorMsg = i18n.t('errors.agentError');
+                errorMsg = this.i18n.t('errors.agentError');
             }
             
             this.uiManager?.showError(errorMsg);
@@ -481,7 +425,7 @@ class ChatBotApp {
         if (!trigger || !dropdown) return;
 
         // Populate language options dynamically from backend using i18n service
-        await i18n.populateLanguageSelect(languageSelect);
+        await this.i18n.populateLanguageSelect(languageSelect);
 
         // Toggle dropdown on trigger click
         trigger.addEventListener('click', (e) => {
@@ -502,17 +446,6 @@ class ChatBotApp {
                 // Keep open for language select changes
             }
         });
-
-        // Language selection from user menu
-        if (languageSelect) {
-            languageSelect.addEventListener('change', async (e) => {
-                const newLang = e.target.value;
-                if (newLang && newLang !== this.currentLanguage) {
-                    await this.changeLanguage(newLang);
-                    // Keep dropdown open
-                }
-            });
-        }
 
         // Logout button
         if (logoutBtn) {
@@ -535,13 +468,13 @@ class ChatBotApp {
         const languageSelect = document.getElementById('userMenuLanguageSelect');
 
         if (userName) {
-            userName.textContent = i18n.t('userProfile.name');
+            userName.textContent = this.i18n.t('userProfile.name');
         }
         if (userEmail) {
-            userEmail.textContent = i18n.t('userProfile.email');
+            userEmail.textContent = this.i18n.t('userProfile.email');
         }
         if (userMenuLabel) {
-            userMenuLabel.textContent = i18n.t('userMenu.label') || 'User';
+            userMenuLabel.textContent = this.i18n.t('userMenu.label') || 'User';
         }
         if (languageSelect) {
             languageSelect.value = this.currentLanguage;
@@ -561,7 +494,7 @@ class ChatBotApp {
         await this.clearServerSession();
         
         // Show confirmation message
-        this.uiManager?.showNotification(i18n.t('userMenu.logoutSuccess') || 'Logged out successfully', 'success');
+        this.uiManager?.showNotification(this.i18n.t('userMenu.logoutSuccess') || 'Logged out successfully', 'success');
         
         // Optional: Reload page or redirect
         setTimeout(() => {

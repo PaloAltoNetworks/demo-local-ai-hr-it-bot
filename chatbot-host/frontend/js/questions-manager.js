@@ -7,6 +7,19 @@ export class QuestionsManager {
         this.uiManager = uiManager;
         this.language = i18n.currentLanguage;
         this.currentPhase = 'phase1'; // Track current phase for refresh action
+        
+        // Listen to language change events
+        window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
+    }
+
+    /**
+     * Handle language change event
+     */
+    onLanguageChanged(event) {
+        const { language } = event.detail;
+        this.setLanguage(language);
+        // Re-render questions with new language
+        this.renderQuestions(this.currentPhase);
     }
 
     /**

@@ -11,6 +11,17 @@ export class ApiService {
         this.retryAttempts = new Map();
         this.currentLanguage = 'en';
         this.currentLLMProvider = 'aws';
+        
+        // Listen to language change events
+        window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
+    }
+
+    /**
+     * Handle language change event
+     */
+    onLanguageChanged(event) {
+        const { language } = event.detail;
+        this.setLanguage(language);
     }
 
     /**
