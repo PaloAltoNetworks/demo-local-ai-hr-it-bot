@@ -20,6 +20,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./logs/chatbot-host:/app/logs
+      - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
 
@@ -38,6 +39,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./logs/mcp-gateway:/app/logs
+      - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
     
@@ -58,6 +60,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./logs/hr-mcp-server:/app/logs
+      - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
     
@@ -78,6 +81,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./logs/it-mcp-server:/app/logs
+      - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
     
@@ -98,6 +102,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./logs/general-mcp-server:/app/logs
+      - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
 

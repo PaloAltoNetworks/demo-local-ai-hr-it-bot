@@ -44,6 +44,16 @@ jspm_packages/
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
+# Sensitive credentials and authentication files
+*.json
+*.pem
+*.key
+*.p12
+# Allow credentials folder and README to be tracked, ignore everything else inside
+!credentials/
+!credentials/README.md
+credentials/*
+
 # TypeScript cache
 *.tsbuildinfo
 
