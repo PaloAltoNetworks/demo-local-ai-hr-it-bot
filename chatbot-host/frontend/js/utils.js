@@ -73,22 +73,7 @@ export class Utils {
     static delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-    /**
-     * Debounce function
-     */
-    static debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
+    
     /**
      * Get thinking icon mapping - maps text patterns to icon names
      * @returns {Object} Object where keys are pipe-separated keywords and values are icon names
