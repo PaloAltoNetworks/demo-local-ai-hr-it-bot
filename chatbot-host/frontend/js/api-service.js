@@ -6,8 +6,6 @@ import { API_BASE_URL, CONFIG } from './config.js';
 export class ApiService {
     constructor() {
         this.id = Math.random().toString(36).substr(2, 9);
-        this.isOnline = false;
-        this.lastHealthData = null;
         this.retryAttempts = new Map();
         this.currentLanguage = 'en';
         this.currentLLMProvider = 'aws';
@@ -39,10 +37,13 @@ export class ApiService {
     }
 
     /**
-     * Generic GET request
+     * Generic GET request with timeout support
      */
-    async get(endpoint, headers = {}) {
+    async get(endpoint, headers = {}, timeout = CONFIG.CONNECTION_TIMEOUT) {
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'GET',
                 mode: 'cors',
@@ -50,8 +51,11 @@ export class ApiService {
                     'Content-Type': 'application/json',
                     'x-language': this.currentLanguage || 'en',
                     ...headers
-                }
+                },
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -59,16 +63,32 @@ export class ApiService {
 
             return await response.json();
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.warn(`⏱️ GET ${endpoint} timeout after ${timeout}ms`);
+                // Dispatch timeout event for listeners like ConnectionMonitor
+                const timeoutEvent = new CustomEvent('apiTimeout', {
+                    detail: {
+                        endpoint: endpoint,
+                        timeout: timeout,
+                        language: this.currentLanguage
+                    }
+                });
+                window.dispatchEvent(timeoutEvent);
+                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
+            }
             console.error(`❌ GET ${endpoint} failed:`, error);
             throw error;
         }
     }
 
     /**
-     * Generic POST request
+     * Generic POST request with timeout support
      */
-    async post(endpoint, data = {}, headers = {}) {
+    async post(endpoint, data = {}, headers = {}, timeout = CONFIG.REQUEST_TIMEOUT) {
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'POST',
                 mode: 'cors',
@@ -77,8 +97,11 @@ export class ApiService {
                     'x-language': this.currentLanguage || 'en',
                     ...headers
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -86,16 +109,32 @@ export class ApiService {
 
             return await response.json();
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.warn(`⏱️ POST ${endpoint} timeout after ${timeout}ms`);
+                // Dispatch timeout event for listeners like ConnectionMonitor
+                const timeoutEvent = new CustomEvent('apiTimeout', {
+                    detail: {
+                        endpoint: endpoint,
+                        timeout: timeout,
+                        language: this.currentLanguage
+                    }
+                });
+                window.dispatchEvent(timeoutEvent);
+                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
+            }
             console.error(`❌ POST ${endpoint} failed:`, error);
             throw error;
         }
     }
 
     /**
-     * Generic PUT request
+     * Generic PUT request with timeout support
      */
-    async put(endpoint, data = {}, headers = {}) {
+    async put(endpoint, data = {}, headers = {}, timeout = CONFIG.REQUEST_TIMEOUT) {
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'PUT',
                 mode: 'cors',
@@ -104,8 +143,11 @@ export class ApiService {
                     'x-language': this.currentLanguage || 'en',
                     ...headers
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -113,16 +155,32 @@ export class ApiService {
 
             return await response.json();
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.warn(`⏱️ PUT ${endpoint} timeout after ${timeout}ms`);
+                // Dispatch timeout event for listeners like ConnectionMonitor
+                const timeoutEvent = new CustomEvent('apiTimeout', {
+                    detail: {
+                        endpoint: endpoint,
+                        timeout: timeout,
+                        language: this.currentLanguage
+                    }
+                });
+                window.dispatchEvent(timeoutEvent);
+                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
+            }
             console.error(`❌ PUT ${endpoint} failed:`, error);
             throw error;
         }
     }
 
     /**
-     * Generic DELETE request
+     * Generic DELETE request with timeout support
      */
-    async delete(endpoint, headers = {}) {
+    async delete(endpoint, headers = {}, timeout = CONFIG.REQUEST_TIMEOUT) {
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'DELETE',
                 mode: 'cors',
@@ -130,8 +188,11 @@ export class ApiService {
                     'Content-Type': 'application/json',
                     'x-language': this.currentLanguage || 'en',
                     ...headers
-                }
+                },
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -139,9 +200,29 @@ export class ApiService {
 
             return await response.json();
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.warn(`⏱️ DELETE ${endpoint} timeout after ${timeout}ms`);
+                // Dispatch timeout event for listeners like ConnectionMonitor
+                const timeoutEvent = new CustomEvent('apiTimeout', {
+                    detail: {
+                        endpoint: endpoint,
+                        timeout: timeout,
+                        language: this.currentLanguage
+                    }
+                });
+                window.dispatchEvent(timeoutEvent);
+                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
+            }
             console.error(`❌ DELETE ${endpoint} failed:`, error);
             throw error;
         }
+    }
+
+    /**
+     * Utility delay function
+     */
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     /**
@@ -323,73 +404,6 @@ export class ApiService {
             }
         });
         window.dispatchEvent(retryEvent);
-    }
-
-    /**
-     * Check if backend is accessible
-     */
-    async checkConnection() {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), CONFIG.CONNECTION_TIMEOUT);
-
-            const response = await fetch(`${API_BASE_URL}/health`, {
-                method: 'GET',
-                mode: 'cors',
-                headers: {
-                    'x-language': this.currentLanguage || 'en'
-                },
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-            
-            if (response.status === 200) {
-                const healthData = await response.json();
-                console.log('Health check response:', healthData);
-                this.lastHealthData = healthData;
-                
-                const isBasicallyOnline = healthData.status === 'ok' || healthData.status === 'degraded';
-                this.updateConnectionStatus(isBasicallyOnline, healthData);
-                
-                if (healthData.status === 'degraded' && !healthData.serviceAvailable) {
-                    console.warn('MCP services are unavailable:', healthData.message);
-                }
-                
-                return isBasicallyOnline;
-            } else {
-                const healthData = await response.json().catch(() => ({}));
-                console.warn('Health check failed with status:', response.status, healthData.message || '');
-                this.lastHealthData = healthData;
-                this.updateConnectionStatus(false, healthData);
-                return false;
-            }
-        } catch (error) {
-            this.handleConnectionError(error);
-            this.updateConnectionStatus(false);
-            return false;
-        }
-    }
-
-    /**
-     * Handle connection check errors
-     */
-    handleConnectionError(error) {
-        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-            console.warn('Backend appears to be offline:', error.message);
-        } else if (error.name === 'AbortError') {
-            console.warn('Health check timeout');
-        } else {
-            console.warn('Backend connection check failed:', error.message);
-        }
-    }
-
-    /**
-     * Update connection status
-     */
-    updateConnectionStatus(isOnline, healthData = null) {
-        this.isOnline = isOnline;
-        // Health data is stored in lastHealthData and UI updates are handled by ConnectionMonitor
     }
 
     /**

@@ -55,7 +55,7 @@ class ChatBotApp {
 
             this.uiManager = new UIManager(this.i18n);
             this.questionsManager = new QuestionsManager(this.i18n, this.uiManager);
-            this.connectionMonitor = new ConnectionMonitor(this.apiService, this.uiManager);
+            this.connectionMonitor = new ConnectionMonitor(this.apiService, this.uiManager, this.i18n);
             
             // Initialize Security Dev Panel for real-time Prisma AIRS analysis
             this.securityDevPanel = new SecurityDevPanel(this.i18n);
@@ -298,10 +298,6 @@ class ChatBotApp {
             this.isProcessing = false;
         }
     }
-
-
-
-
 
     /**
      * Add message to chat history

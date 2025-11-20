@@ -4,12 +4,41 @@
 import { CONFIG } from './config.js';
 
 export class ConnectionMonitor {
-    constructor(apiService, uiManager) {
+    constructor(apiService, uiManager, i18n) {
         this.apiService = apiService;
         this.uiManager = uiManager;
+        this.i18n = i18n;
         this.connectionCheckInterval = null;
         this.wasOnline = true;
         this.wasDegraded = false;
+        this.lastHealthData = null;
+        this.isOnline = false;
+
+        // Listen for language changes
+        window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
+        
+        // Listen for timeout events from api-service
+        window.addEventListener('apiTimeout', this.onApiTimeout.bind(this));
+    }
+
+    /**
+     * Handle language change event
+     */
+    onLanguageChanged(event) {
+        const { language } = event.detail;
+        this.currentLanguage = language;
+        console.log('Connection monitor language updated to:', language);
+    }
+
+    /**
+     * Handle timeout events from api-service
+     */
+    onApiTimeout(event) {
+        console.warn('API timeout detected:', event.detail);
+        this.uiManager.showNotification(
+            this.i18n.t('errors.agentTimeout'),
+            'warning'
+        );
     }
 
     /**
@@ -32,14 +61,17 @@ export class ConnectionMonitor {
             clearInterval(this.connectionCheckInterval);
             this.connectionCheckInterval = null;
         }
+        // Clean up event listeners
+        window.removeEventListener('languageChanged', this.onLanguageChanged.bind(this));
+        window.removeEventListener('apiTimeout', this.onApiTimeout.bind(this));
     }
 
     /**
      * Check backend connection and update UI
      */
     async checkConnection() {
-        const isOnline = await this.apiService.checkConnection();
-        const healthData = this.apiService.getLastHealthData();
+        const isOnline = await this.fetchHealthStatus();
+        const healthData = this.lastHealthData;
         
         // Check if degraded state changed (MCP unavailable while service is running)
         const isDegraded = isOnline && healthData && healthData.status === 'degraded' && !healthData.serviceAvailable;
@@ -55,6 +87,64 @@ export class ConnectionMonitor {
         }
         
         return isOnline;
+    }
+
+    /**
+     * Fetch health status from backend using api-service generic call
+     * @return {Promise<boolean>}
+     */
+    async fetchHealthStatus() {
+        try {
+            const healthData = await this.apiService.get('/health');
+            
+            console.log('Health check response:', healthData);
+            this.lastHealthData = healthData;
+            
+            const isBasicallyOnline = healthData.status === 'ok' || healthData.status === 'degraded';
+            
+            if (healthData.status === 'degraded' && !healthData.serviceAvailable) {
+                console.warn('MCP services are unavailable:', healthData.message);
+            }
+            
+            return isBasicallyOnline;
+        } catch (error) {
+            this.handleConnectionError(error);
+            return false;
+        }
+    }
+
+    /**
+     * Handle connection check errors
+     */
+    handleConnectionError(error) {
+        if (error.name === 'AbortError' || error.message.includes('timeout')) {
+            console.warn('Health check timeout:', error.message);
+            // Dispatch timeout event to notify UI
+            const timeoutEvent = new CustomEvent('connectionCheckTimeout', {
+                detail: { error: error.message }
+            });
+            window.dispatchEvent(timeoutEvent);
+        } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            console.warn('Backend appears to be offline:', error.message);
+        } else if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
+            console.warn('Network error:', error.message);
+        } else {
+            console.warn('Backend connection check failed:', error.message);
+        }
+    }
+
+    /**
+     * Get current connection status
+     */
+    getConnectionStatus() {
+        return this.isOnline;
+    }
+
+    /**
+     * Get last health check data
+     */
+    getLastHealthData() {
+        return this.lastHealthData;
     }
 
     /**
