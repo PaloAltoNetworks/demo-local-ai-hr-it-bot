@@ -15,7 +15,7 @@ const { generateText, createProviderRegistry } = require('ai');
 const { createOpenAI } = require('@ai-sdk/openai');
 const { createAnthropic } = require('@ai-sdk/anthropic');
 const { createAzure } = require('@ai-sdk/azure');
-const { createGoogleGenerativeAI } = require('@ai-sdk/google');
+const { createVertex } = require('@ai-sdk/google-vertex');
 const { createAmazonBedrock } = require('@ai-sdk/amazon-bedrock');
 const { createOllama } = require('ollama-ai-provider-v2');
 const { getLogger } = require('./logger');
@@ -164,11 +164,21 @@ class LLMProviderFactory {
       getLogger().info('[LLMProvider] ✓ Azure OpenAI provider registered');
     }
 
-    // Google Cloud Vertex AI provider
-    if (process.env.GOOGLE_API_KEY) {
-      const googleClient = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY });
-      providers.gcp = googleClient;
-      getLogger().info('[LLMProvider] ✓ Google Cloud Vertex AI provider registered');
+    // Google Cloud Vertex AI provider (with automatic service account support)
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      try {
+        const vertexClient = createVertex({
+          project: process.env.GOOGLE_VERTEX_PROJECT,
+          location: process.env.GOOGLE_VERTEX_LOCATION || 'us-central1',
+          googleAuthOptions: {
+            keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS
+          }
+        });
+        providers.gcp = vertexClient;
+        getLogger().info('[LLMProvider] ✓ Google Cloud Vertex AI provider registered (Service Account)');
+      } catch (error) {
+        getLogger().error(`[LLMProvider] ❌ Failed to initialize Vertex AI: ${error.message}`);
+      }
     }
 
     // AWS Bedrock provider
@@ -257,7 +267,7 @@ class LLMProviderFactory {
         return `bedrock:${modelId || process.env.BEDROCK_COORDINATOR_MODEL || 'anthropic.claude-3-5-sonnet-20241022-v2:0'}`;
       
       case 'ollama':
-        return `ollama:${modelId || process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b'}`;
+        return `ollama:${modelId || process.env.OLLAMA_COORDINATOR_MODEL || process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b'}`;
       
       default:
         throw new Error(`Unknown provider: ${provider}`);
@@ -330,16 +340,16 @@ class LLMProviderFactory {
     }
 
     // Check Google Cloud Vertex AI configuration
-    if (process.env.GOOGLE_API_KEY) {
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       availableProviders.push({
         id: 'gcp',
         name: 'Google Cloud Platform',
-        display_name: 'Google Cloud Platform',
+        display_name: 'Google Cloud Vertex AI',
         logo: './images/googlecloud-original.svg',
         provider: 'gcp',
         configured: true,
       });
-      getLogger().info('[LLMProvider] Google Cloud Vertex AI provider detected (configured via GOOGLE_API_KEY)');
+      getLogger().info('[LLMProvider] Google Cloud Vertex AI provider detected (Service Account)');
     }
 
     // Check Ollama configuration
