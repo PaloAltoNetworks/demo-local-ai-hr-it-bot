@@ -14,6 +14,7 @@ export class UIManager {
         this.thinkingChain = []; // Store thinking chain
         this.currentThinkingContainer = null; // Current thinking message container
         this.tokenMetadata = {}; // Store token usage metadata
+        this.llmProviderInfo = null; // Store current LLM provider info
     }
 
     /**
@@ -112,13 +113,28 @@ export class UIManager {
         // Create message with thinking chain button if there are thoughts
         const hasThinkingChain = this.thinkingChain.length > 0;
         const hasTokens = this.tokenMetadata && (this.tokenMetadata.total_tokens || this.tokenMetadata.coordinator_tokens);
+        const hasProvider = this.llmProviderInfo && this.llmProviderInfo.logo;
         
         let messageHTML = `
             <div class="message-avatar">
                 <i class="otter-icon"></i>
             </div>
             <div class="message-content">
-                <div class="message-text">${displayContent}</div>
+                <div class="message-text-wrapper">
+                    <div class="message-text">${displayContent}</div>
+        `;
+
+        // Add LLM provider badge if available (inside message-text wrapper)
+        if (hasProvider) {
+            messageHTML += `
+                    <div class="llm-provider-badge" title="${this.llmProviderInfo.name}">
+                        <img src="${this.llmProviderInfo.logo}" alt="${this.llmProviderInfo.name}" class="provider-badge-logo">
+                    </div>
+            `;
+        }
+
+        messageHTML += `
+                </div>
                 <div class="message-timestamp">${timestamp}</div>
         `;
 
@@ -359,6 +375,20 @@ export class UIManager {
      */
     getTokenMetadata() {
         return this.tokenMetadata;
+    }
+
+    /**
+     * Set LLM provider info
+     */
+    setLLMProviderInfo(providerInfo) {
+        this.llmProviderInfo = providerInfo;
+    }
+
+    /**
+     * Get LLM provider info
+     */
+    getLLMProviderInfo() {
+        return this.llmProviderInfo;
     }
 
     /**

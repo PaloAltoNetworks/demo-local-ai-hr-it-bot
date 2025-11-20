@@ -353,6 +353,10 @@ class ChatBotApp {
                         // Set token metadata if available
                         if (response.metadata) {
                             this.uiManager?.setTokenMetadata(response.metadata);
+                            // Store LLM provider info for display
+                            if (response.metadata.llmProvider) {
+                                this.uiManager?.setLLMProviderInfo(response.metadata.llmProvider);
+                            }
                         }
 
                         // Display assistant response
