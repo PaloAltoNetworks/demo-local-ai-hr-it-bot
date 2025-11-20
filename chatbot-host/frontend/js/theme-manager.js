@@ -21,7 +21,7 @@ export class ThemeManager {
    */
   init() {
     this.loadThemePreference();
-    this.attachEventListeners();
+    this.attachListeners();
     this.watchSystemPreference();
   }
 
@@ -146,7 +146,7 @@ export class ThemeManager {
   /**
    * Attach event listeners
    */
-  attachEventListeners() {
+  attachListeners() {
     if (this.toggleButton) {
       this.toggleButton.addEventListener('click', () => this.toggleTheme());
     }

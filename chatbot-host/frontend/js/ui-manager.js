@@ -6,7 +6,7 @@ import { Utils } from './utils.js';
 export class UIManager {
     constructor(i18n) {
         this.i18n = i18n;
-        this.language = i18n.getCurrentLanguage();
+        this.currentLanguage = i18n.getCurrentLanguage();
         this.connectionStatusCallbacks = [];
         this.thinkingMessageElement = null;
         this.isOnlineStatus = true;
@@ -120,7 +120,7 @@ export class UIManager {
             // Get questions from i18n translations
             const questions = this.i18n.t(`questions.${phase}`);
             if (!questions || !Array.isArray(questions)) {
-                console.warn(`No questions found for phase: ${phase} in language: ${this.language}`);
+                console.warn(`No questions found for phase: ${phase} in language: ${this.currentLanguage}`);
                 return [];
             }
             return questions;
@@ -143,7 +143,7 @@ export class UIManager {
         questionsContainer.innerHTML = '';
         
         if (questions.length === 0) {
-            console.warn(`No questions available for phase ${phase} in language ${this.language}`);
+            console.warn(`No questions available for phase ${phase} in language ${this.currentLanguage}`);
             return;
         }
         
@@ -281,7 +281,7 @@ export class UIManager {
             </div>
             <div class="message-content">
                 <div class="message-text">${displayContent}</div>
-                <div class="message-timestamp">${Utils.getTimestamp(this.language)}</div>
+                <div class="message-timestamp">${Utils.getTimestamp(this.currentLanguage)}</div>
             </div>
         `;
 
@@ -314,7 +314,7 @@ export class UIManager {
         messageDiv.className = className;
 
         const displayContent = Utils.formatBotResponse(content);
-        const timestamp = Utils.getTimestamp(this.language);
+        const timestamp = Utils.getTimestamp(this.currentLanguage);
         
         // Create message with thinking chain button if there are thoughts
         const hasThinkingChain = this.thinkingChain.length > 0;
@@ -534,7 +534,7 @@ export class UIManager {
      */
     addToThinkingChain(text) {
         const cleanText = text.replace(/^\[COORDINATOR\]\s*/, '');
-        const timestamp = new Date().toLocaleTimeString(this.language);
+        const timestamp = new Date().toLocaleTimeString(this.currentLanguage);
         this.thinkingChain.push({
             text: cleanText,
             timestamp: timestamp,
@@ -882,7 +882,7 @@ export class UIManager {
      * Update language
      */
     setLanguage(language) {
-        this.language = language;
+        this.currentLanguage = language;
     }
 
 

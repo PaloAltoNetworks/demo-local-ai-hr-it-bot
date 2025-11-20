@@ -28,7 +28,7 @@ export class LLMProviderManager {
   async init() {
     await this.loadProvidersFromBackend();
     this.loadProviderPreference();
-    this.attachEventListeners();
+    this.attachListeners();
   }
 
   /**
@@ -360,7 +360,7 @@ export class LLMProviderManager {
   /**
    * Attach all event listeners (UI and global)
    */
-  attachEventListeners() {
+  attachListeners() {
     // UI: Button click to toggle menu
     if (this.buttonElement) {
       this.buttonElement.addEventListener('click', () => this.toggleMenu());
