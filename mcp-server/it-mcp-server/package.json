@@ -13,7 +13,7 @@
     "sql.js": "^1.13.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.11"
   },
   "keywords": [
     "mcp",
