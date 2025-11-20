@@ -16,8 +16,19 @@ export class UIManager {
         this.tokenMetadata = {}; // Store token usage metadata
         this.llmProviderInfo = null; // Store current LLM provider info
         
+        this.init();
+    }
+
+    /**
+     * Initialize event listeners
+     */
+    init() {
         // Listen to language change events
         window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
+        
+        // Setup UI listeners
+        this.setupUserMenuListeners();
+        this.setupWindowListeners();
     }
 
     /**
@@ -28,6 +39,85 @@ export class UIManager {
         this.setLanguage(language);
         // Update UI with new language
         this.i18n.updateUI();
+    }
+
+    /**
+     * Setup UI event listeners (user menu, window events)
+     */
+    setupListeners() {
+        // Listeners are now initialized in init()
+    }
+
+    /**
+     * Setup user menu event listeners
+     */
+    setupUserMenuListeners() {
+        const trigger = document.getElementById('userMenuTrigger');
+        const dropdown = document.getElementById('userMenuDropdown');
+
+        if (!trigger || !dropdown) return;
+
+        // Toggle dropdown on trigger click
+        trigger.addEventListener('click', this.handleUserMenuClick.bind(this, dropdown));
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', this.handleDocumentClick.bind(this, trigger, dropdown));
+
+        // Update user menu with localized content
+        this.updateUserMenu();
+    }
+
+    /**
+     * Handle user menu trigger click
+     */
+    handleUserMenuClick(dropdown, e) {
+        e.stopPropagation();
+        dropdown.classList.toggle('active');
+    }
+
+    /**
+     * Handle document click for closing dropdown
+     */
+    handleDocumentClick(trigger, dropdown, e) {
+        if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('active');
+        }
+    }
+
+    /**
+     * Update user menu with localized content
+     */
+    updateUserMenu() {
+        const userName = document.getElementById('userMenuName');
+        const userEmail = document.getElementById('userMenuEmail');
+        const userMenuLabel = document.getElementById('userMenuLabel');
+
+        if (userName) {
+            userName.textContent = this.i18n.t('userProfile.name');
+        }
+        if (userEmail) {
+            userEmail.textContent = this.i18n.t('userProfile.email');
+        }
+        if (userMenuLabel) {
+            userMenuLabel.textContent = this.i18n.t('userMenu.label') || 'User';
+        }
+    }
+
+    /**
+     * Setup window-level listeners (API retry events)
+     */
+    setupWindowListeners() {
+        // Listen for API retry events
+        window.addEventListener('apiRetry', this.onApiRetry.bind(this));
+    }
+
+    /**
+     * Handle API retry event
+     */
+    onApiRetry(event) {
+        const { attempt, maxAttempts } = event.detail;
+        const retryMsg = this.i18n.t('errors.retrying', { count: attempt, max: maxAttempts });
+        this.showRetryNotification(retryMsg);
     }
 
     /**
@@ -44,6 +134,133 @@ export class UIManager {
             statusIcon: document.getElementById('statusIcon'),
             statusText: document.getElementById('statusText')
         };
+    }
+
+    /**
+     * Get questions for current language and phase
+     */
+    getQuestions(phase) {
+        try {
+            // Get questions from i18n translations
+            const questions = this.i18n.t(`questions.${phase}`);
+            if (!questions || !Array.isArray(questions)) {
+                console.warn(`No questions found for phase: ${phase} in language: ${this.language}`);
+                return [];
+            }
+            return questions;
+        } catch (error) {
+            console.error(`Error getting questions for phase ${phase}:`, error);
+            return [];
+        }
+    }
+
+    /**
+     * Render example questions for a phase
+     */
+    renderQuestions(phase) {
+        const questionsContainer = this.elements.questionsContainer;
+        if (!questionsContainer) return;
+
+        const questions = this.getQuestions(phase);
+        
+        // Clear existing questions
+        questionsContainer.innerHTML = '';
+        
+        if (questions.length === 0) {
+            console.warn(`No questions available for phase ${phase} in language ${this.language}`);
+            return;
+        }
+        
+        // Create question elements
+        const fragment = document.createDocumentFragment();
+        questions.forEach(question => {
+            // Check if this is a subgroup (has a 'questions' property)
+            if (question.questions && Array.isArray(question.questions)) {
+                const subgroupElement = this.createSubgroupElement(question);
+                fragment.appendChild(subgroupElement);
+            } else {
+                const questionElement = this.createQuestionElement(question, phase);
+                fragment.appendChild(questionElement);
+            }
+        });
+        
+        questionsContainer.appendChild(fragment);
+    }
+
+    /**
+     * Parse icon string and return HTML
+     */
+    getIconHTML(iconString) {
+        if (!iconString) return '';
+        
+        if (iconString.includes(':')) {
+            const [className, iconName] = iconString.split(':');
+            return `<span class="${className}">${iconName}</span>`;
+        }
+        
+        return `<span class="material-symbols">${iconString}</span>`;
+    }
+
+    /**
+     * Create a subgroup element with nested questions
+     */
+    createSubgroupElement(subgroup) {
+        const subgroupDiv = document.createElement('div');
+        subgroupDiv.className = 'questions-subgroup';
+        
+        // Create subgroup header
+        const header = document.createElement('div');
+        header.className = 'subgroup-header';
+        header.innerHTML = `<h3>${this.getIconHTML(subgroup.icon)}${subgroup.title}</h3>`;
+        subgroupDiv.appendChild(header);
+        
+        // Create nested questions container
+        const questionsContainer = document.createElement('div');
+        questionsContainer.className = 'subgroup-questions';
+        
+        subgroup.questions.forEach(question => {
+            const questionElement = this.createQuestionElement(question);
+            questionsContainer.appendChild(questionElement);
+        });
+        
+        subgroupDiv.appendChild(questionsContainer);
+        return subgroupDiv;
+    }
+
+    /**
+     * Create a question element with click handler
+     */
+    createQuestionElement(question, currentPhase = null) {
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'example-question';
+        
+        // Check if this is an action question (like refresh)
+        if (question.action === 'refresh') {
+            questionDiv.classList.add('action-question');
+            questionDiv.setAttribute('data-action', 'refresh');
+        } else {
+            questionDiv.setAttribute('data-question', question.text);
+        }
+        
+        questionDiv.innerHTML = `
+            <h4>${this.getIconHTML(question.icon)}${question.title}</h4>
+            <p>${question.text}</p>
+        `;
+
+        questionDiv.addEventListener('click', () => {
+            if (question.action === 'refresh') {
+                // Save current phase to sessionStorage before refreshing
+                if (currentPhase) {
+                    sessionStorage.setItem('returnToPhase', currentPhase);
+                }
+                // Refresh the page
+                window.location.reload();
+            } else {
+                this.setUserInput(question.text);
+            }
+        });
+
+        return questionDiv;
     }
 
     /**
@@ -677,6 +894,24 @@ export class UIManager {
         if (this.elements.chatInput) {
             this.elements.chatInput.value = value;
             this.elements.chatInput.focus();
+        }
+    }
+
+    /**
+     * Clear chat input
+     */
+    clearChatInput() {
+        if (this.elements.chatInput) {
+            this.elements.chatInput.value = '';
+        }
+    }
+
+    /**
+     * Clear all chat messages
+     */
+    clearChat() {
+        if (this.elements.chatMessages) {
+            this.elements.chatMessages.innerHTML = '';
         }
     }
 

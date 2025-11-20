@@ -210,6 +210,12 @@ export class LLMProviderManager {
       this.apiService.setAIProvider(provider);
     }
     
+    // Dispatch aiProviderChanged event for reactive listeners
+    const providerChangedEvent = new CustomEvent('aiProviderChanged', {
+      detail: { provider }
+    });
+    window.dispatchEvent(providerChangedEvent);
+    
     // Update provider on backend and notify if requested
     if (notifyChange) {
       this.updateProviderOnBackend(provider).catch(error => {

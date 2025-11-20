@@ -12,6 +12,9 @@ export class ApiService {
         
         // Listen to language change events
         window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
+        
+        // Listen to AI provider change events
+        window.addEventListener('aiProviderChanged', this.onAIProviderChanged.bind(this));
     }
 
     /**
@@ -27,6 +30,14 @@ export class ApiService {
      */
     setLanguage(language) {
         this.currentLanguage = language;
+    }
+
+    /**
+     * Handle AI provider change event
+     */
+    onAIProviderChanged(event) {
+        const { provider } = event.detail;
+        this.setAIProvider(provider);
     }
 
     /**
@@ -219,211 +230,48 @@ export class ApiService {
     }
 
     /**
-     * Utility delay function
+     * Generic POST request for streaming responses (Server-Sent Events)
      */
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    /**
-     * Send message with streaming thinking updates using Server-Sent Events
-     */
-    async sendMessageWithThinking(chatHistory, currentPhase, onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount = 0) {
+    async postStream(endpoint, data = {}, headers = {}, timeout = CONFIG.REQUEST_TIMEOUT) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-            const response = await fetch(`${API_BASE_URL}/api/process-prompt`, {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'POST',
                 mode: 'cors',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-language': this.currentLanguage,
+                    'x-language': this.currentLanguage || 'en',
+                    ...headers
                 },
-                body: JSON.stringify({ 
-                    messages: chatHistory, 
-                    phase: currentPhase,
-                    language: this.currentLanguage,
-                    llmProvider: this.currentLLMProvider
-                }),
+                body: JSON.stringify(data),
                 signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            // Mark as online if request succeeds
-            this.updateConnectionStatus(true);
-            this.retryAttempts.clear();
-
-            // Process Server-Sent Events
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                
-                if (done) {
-                    clearTimeout(timeoutId);
-                    break;
-                }
-                
-                buffer += decoder.decode(value, { stream: true });
-                const events = buffer.split('\n\n');
-                buffer = events.pop(); // Keep incomplete event in buffer
-                
-                for (const event of events) {
-                    if (event.trim()) {
-                        try {
-                            // Parse SSE format: "data: {...}"
-                            const lines = event.trim().split('\n');
-                            for (const line of lines) {
-                                if (line.startsWith('data: ')) {
-                                    const jsonStr = line.substring(6);
-                                    if (jsonStr === '[DONE]') {
-                                        continue;
-                                    }
-                                    
-                                    const data = JSON.parse(jsonStr);
-                                    
-                                    if (data.type === 'thinking') {
-                                        if (data.message) {
-                                            if (onThinking) onThinking(data.message, false);
-                                        }
-                                    } else if (data.type === 'checkpoint') {
-                                        // Handle individual checkpoint events - extract checkpoint from data
-                                        if (onCheckpoint) {
-                                            // Pass only checkpoint data (exclude the 'type' wrapper)
-                                            const checkpointData = { ...data };
-                                            delete checkpointData.type;
-                                            onCheckpoint(checkpointData);
-                                        }
-                                    } else if (data.type === 'security-checkpoints') {
-                                        if (onSecurityCheckpoints) onSecurityCheckpoints(data.checkpoints);
-                                    } else if (data.type === 'response') {
-                                        if (onComplete) onComplete(data);
-                                        return data;
-                                    } else if (data.type === 'error') {
-                                        throw new Error(data.error || 'Unknown error occurred');
-                                    }
-                                }
-                            }
-                        } catch (e) {
-                            console.error('Error parsing SSE event:', e);
-                        }
-                    }
-                }
-            }
+            return response;
         } catch (error) {
-            return this.handleApiError(error, chatHistory, currentPhase, language, retryCount, true, onThinking, onComplete, onSecurityCheckpoints, onCheckpoint);
-        }
-    }
-
-    /**
-     * Send chat history to backend with retry logic (kept for non-streaming fallback)
-     */
-    async sendMessage(chatHistory, currentPhase, retryCount = 0) {
-        // Use streaming version for all requests
-        return this.sendMessageWithThinking(chatHistory, currentPhase, null, null, null, null, retryCount);
-    }
-
-    /**
-     * Handle API errors with appropriate retry logic
-     */
-    async handleApiError(error, chatHistory, currentPhase, retryCount, isStreaming = false, onThinking = null, onComplete = null, onSecurityCheckpoints = null, onCheckpoint = null) {
-        console.error(`API Error (attempt ${retryCount + 1}):`, error);
-        
-        // Handle different types of errors with user-friendly messages
-        if (error.name === 'AbortError') {
-            // Timeout error
-            if (retryCount < CONFIG.MAX_RETRIES) {
-                // Show retry notification to user
-                this.notifyRetry(retryCount + 1, CONFIG.MAX_RETRIES);
-                await this.delay(2000 * (retryCount + 1)); // Exponential backoff
-                
-                if (isStreaming) {
-                    return this.sendMessageWithThinking(chatHistory, currentPhase, 
-                        onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount + 1);
-                } else {
-                    return this.sendMessage(chatHistory, currentPhase, retryCount + 1);
-                }
+            if (error.name === 'AbortError') {
+                console.warn(`⏱️ POST ${endpoint} timeout after ${timeout}ms`);
+                // Dispatch timeout event for listeners
+                const timeoutEvent = new CustomEvent('apiTimeout', {
+                    detail: {
+                        endpoint: endpoint,
+                        timeout: timeout,
+                        language: this.currentLanguage
+                    }
+                });
+                window.dispatchEvent(timeoutEvent);
+                throw new Error(`TIMEOUT_ERROR: ${endpoint}`);
             }
-            throw new Error('TIMEOUT_ERROR');
+            console.error(`❌ POST ${endpoint} failed:`, error);
+            throw error;
         }
-        
-        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-            this.updateConnectionStatus(false);
-            throw new Error('NETWORK_ERROR');
-        }
-        
-        if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
-            this.updateConnectionStatus(false);
-            throw new Error('NETWORK_ERROR');
-        }
-
-        // Server returned an error response
-        if (error.message.includes('HTTP error!')) {
-            const status = error.message.match(/status: (\d+)/)?.[1];
-            if (status === '500' || status === '503') {
-                throw new Error('SERVER_OVERLOAD');
-            } else if (status === '408' || status === '504') {
-                throw new Error('TIMEOUT_ERROR');
-            }
-            throw new Error('SERVER_ERROR');
-        }
-
-        if (retryCount < CONFIG.MAX_RETRIES) {
-            console.warn(`Retry attempt ${retryCount + 1}:`, error.message);
-            this.notifyRetry(retryCount + 1, CONFIG.MAX_RETRIES);
-            await this.delay(1000 * (retryCount + 1)); // Exponential backoff
-            
-            if (isStreaming) {
-                return this.sendMessageWithThinking(chatHistory, currentPhase,
-                    onThinking, onComplete, onSecurityCheckpoints, onCheckpoint, retryCount + 1);
-            } else {
-                return this.sendMessage(chatHistory, currentPhase, retryCount + 1);
-            }
-        }
-        
-        // Mark as offline after all retries failed
-        this.updateConnectionStatus(false);
-        throw error;
-    }
-
-    /**
-     * Notify user about retry attempts
-     */
-    notifyRetry(currentAttempt, maxAttempts) {
-        // Dispatch custom event for retry notification
-        const retryEvent = new CustomEvent('apiRetry', {
-            detail: {
-                attempt: currentAttempt,
-                maxAttempts: maxAttempts
-            }
-        });
-        window.dispatchEvent(retryEvent);
-    }
-
-    /**
-     * Get current connection status
-     */
-    getConnectionStatus() {
-        return this.isOnline;
-    }
-
-    /**
-     * Get last health check data
-     */
-    getLastHealthData() {
-        return this.lastHealthData;
-    }
-
-    /**
-     * Utility delay function
-     */
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
