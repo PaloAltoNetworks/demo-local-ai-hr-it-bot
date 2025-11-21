@@ -704,6 +704,7 @@ Output JSON immediately`,
         // Validate JSON is not empty
         if (!jsonText || jsonText.length === 0 || !jsonText.includes('agents')) {
           getLogger().error(`❌ LLM response produced no valid JSON content`);
+          getLogger().error(`   Extracted text: "${jsonText.substring(0, 200)}"`);
           throw new Error('LLM response produced no valid JSON content');
         }
 
@@ -732,9 +733,9 @@ Output JSON immediately`,
         getLogger().error(`❌ Strategy JSON parsing failed:`, parseError.message);
         // Log both response and thinking fields if present
         const rawContent = response?.response || response?.thinking || 'N/A';
-        getLogger().error(`❌ Raw response was:`, rawContent?.substring(0, 500));
+        getLogger().error(`❌ Problematic jsonText:`, jsonText);
         getLogger().error(`❌ Full error:`, parseError);
-        throw new Error(`LLM routing failed - invalid JSON response. Please ensure LLM is returning valid JSON.`);
+        throw new Error(`LLM routing failed - invalid JSON response: ${jsonText}`);
       }
     } catch (error) {
       getLogger().error(`❌ Strategy analysis failed:`, error.message);
@@ -1556,7 +1557,7 @@ Return only the concise version:`;
       try {
         routingResult = await this.routeQuery(translatedQuery, language, phase, userContext, llmProvider);
       } catch (routingError) {
-        getLogger().error('❌ Routing failed:', routingError.message);
+        getLogger().debug(`Routing failed: ${routingError.message}`);
 
         // Determine if this is a model/configuration error vs a processing error
         let userMessage = routingError.message;

@@ -212,7 +212,7 @@ app.post('/api/language', (req, res) => {
     }
 });
 
-// Server-Sent Events endpoint for streaming (Chrome-compatible)
+// Server-Sent Events endpoint for streaming prompt processing
 app.post('/api/process-prompt', async (req, res) => {
     const { messages, language = 'en', phase, llmProvider } = req.body;
 
@@ -436,6 +436,113 @@ app.post('/api/clear-session', (req, res) => {
     } catch (error) {
         getLogger().error('Error clearing session: ' + error.message);
         res.status(500).json({ error: 'Failed to clear session', message: error.message });
+    }
+});
+
+// Simple prompt endpoint - returns final answer only (no streaming)
+app.post('/api/prompt', async (req, res) => {
+    const { messages, language = 'en', phase, llmProvider } = req.body;
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ error: 'Messages are required and must be a non-empty array.' });
+    }
+
+    const userId = req.headers['x-user-id'] || 'anonymous-user';
+
+    try {
+        // Ensure MCP Client is initialized
+        if (!mcpClient.isInitialized) {
+            await mcpClient.initialize();
+        }
+
+        // Get or create session for the user
+        const session = sessionManager.getOrCreateSession(userId, {
+            userAgent: req.headers['user-agent'],
+            language: language
+        });
+
+        // Add messages to session history with phase
+        messages.forEach(msg => {
+            if (!msg.phase) {
+                msg.phase = phase || 'phase1';
+            }
+            sessionManager.addMessageToHistory(session.sessionId, msg);
+        });
+
+        // Get the latest user message
+        const userMessage = messages[messages.length - 1];
+
+        try {
+            const response = await axios.post(`${COORDINATOR_URL}/api/query`, {
+                query: userMessage.content,
+                language: language || 'en',
+                phase: phase || 'phase1',
+                llmProvider: llmProvider || 'aws',
+                userContext: {
+                    email: STATIC_USER_IDENTITY.email,
+                    history: session.messageHistory,
+                    sessionId: session.sessionId
+                },
+                streamThinking: false
+            }, {
+                timeout: 120000
+            });
+
+            const data = response.data;
+
+            if (data.success) {
+                const assistantMessage = {
+                    role: 'assistant',
+                    content: data.response
+                };
+
+                sessionManager.addMessageToHistory(session.sessionId, assistantMessage);
+
+                const finalResponse = {
+                    type: 'response',
+                    messages: session.messageHistory,
+                    sessionId: session.sessionId,
+                    source: 'mcp-gateway'
+                };
+
+                // Include token metadata if available
+                if (data.metadata) {
+                    finalResponse.metadata = data.metadata;
+                } else {
+                    finalResponse.metadata = {};
+                }
+
+                // Add LLM provider to metadata
+                const providerInfo = LLM_PROVIDERS_CONFIG.find(p => p.id === (llmProvider || 'aws'));
+                finalResponse.metadata.llmProvider = {
+                    id: llmProvider || 'aws',
+                    name: providerInfo ? providerInfo.name : 'AWS',
+                    logo: providerInfo ? providerInfo.logo : './images/amazonwebservices-original-wordmark.svg'
+                };
+
+                res.json(finalResponse);
+            } else {
+                res.status(400).json({
+                    success: false,
+                    error: data.message || 'Failed to process query',
+                    sessionId: session.sessionId
+                });
+            }
+        } catch (error) {
+            getLogger().error('Error calling coordinator: ' + error.message);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to process query',
+                message: error.message
+            });
+        }
+    } catch (error) {
+        getLogger().error('Error in prompt endpoint: ' + error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message
+        });
     }
 });
 
