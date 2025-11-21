@@ -97,7 +97,7 @@ class CoordinatorClient {
 
         // Reset failure count on successful heartbeat
         if (this.consecutiveHeartbeatFailures > 0) {
-          this.logger.info('Reconnected to coordinator');
+          this.logger.debug('Reconnected to coordinator');
           this.consecutiveHeartbeatFailures = 0;
           this.isConnected = true;
           if (onReconnect) onReconnect();
@@ -116,7 +116,7 @@ class CoordinatorClient {
 
         // Attempt re-registration after multiple failures
         if (this.consecutiveHeartbeatFailures >= 3 && onReconnect) {
-          this.logger.info('Multiple heartbeat failures detected, triggering reconnection...');
+          this.logger.warn('Multiple heartbeat failures detected, triggering reconnection...');
           onReconnect();
         }
       }
@@ -135,7 +135,7 @@ class CoordinatorClient {
         this.config.coordinator.retryBackoffMax
       );
 
-      this.logger.info(
+      this.logger.debug(
         `Retrying registration in ${backoffDelay}ms (attempt ${this.registrationRetries}/${this.config.coordinator.registrationRetries})`
       );
 
@@ -147,7 +147,7 @@ class CoordinatorClient {
 
       // Periodic retry every minute
       setTimeout(() => {
-        this.logger.info('Periodic registration retry...');
+        this.logger.debug('Periodic registration retry...');
         this.registrationRetries = 0;
         retryFn();
       }, 60000);
