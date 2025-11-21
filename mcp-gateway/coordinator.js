@@ -51,7 +51,7 @@ class AgentRegistry {
     });
 
     const llmProviderInfo = LLMProviders.length > 0 ? ` with providers: ${LLMProviders.map(p => p.id).join(', ')}` : '';
-    getLogger().info(`Agent ${name} (${agentId}) registered with capabilities: ${JSON.stringify(agentCapabilities)}${llmProviderInfo}`);
+    getLogger().debug(`Agent ${name} (${agentId}) registered with capabilities: ${JSON.stringify(agentCapabilities)}${llmProviderInfo}`);
   }
 
   unregisterAgent(agentId) {
@@ -70,7 +70,7 @@ class AgentRegistry {
       });
 
       this.agents.delete(agentId);
-      getLogger().info(`Agent ${agent.name} (${agentId}) unregistered`);
+      getLogger().debug(`Agent ${agent.name} (${agentId}) unregistered`);
     }
   }
 
@@ -198,7 +198,7 @@ class IntelligentCoordinator {
         profileId: process.env.PRISMA_AIRS_PROFILE_ID,
         profileName: process.env.PRISMA_AIRS_PROFILE_NAME
       });
-      getLogger().info('Prisma AIRS security module loaded (available for phase3 requests)');
+      getLogger().debug('Prisma AIRS security module loaded (available for phase3 requests)');
     } else {
       getLogger().warn('Prisma AIRS not configured - phase3 security unavailable');
     }
@@ -272,7 +272,7 @@ class IntelligentCoordinator {
     if (totalTokens > 0) {
       this.tokenUsage.coordinator_tokens += totalTokens;
       this.tokenUsage.total_tokens += totalTokens;
-      getLogger().info(`${operationType} tokens: ${promptTokens} (prompt) + ${completionTokens} (completion) = ${totalTokens}`);
+      getLogger().debug(`${operationType} tokens: ${promptTokens} (prompt) + ${completionTokens} (completion) = ${totalTokens}`);
     }
   }
 
@@ -307,13 +307,13 @@ class IntelligentCoordinator {
    * Initialize the coordinator
    */
   async initialize() {
-    getLogger().info('Initializing Intelligent Coordinator...');
+    getLogger().debug('Initializing Intelligent Coordinator...');
 
     try {
       this.initialized = true;
-      getLogger().info('Initialized - waiting for agent registrations...');
-      getLogger().info(`Using coordinator model: ${this.coordinatorModel}`);
-      getLogger().info(`Using translation model: ${this.translationModel}`);
+      getLogger().debug('Initialized - waiting for agent registrations...');
+      getLogger().debug(`Using coordinator model: ${this.coordinatorModel}`);
+      getLogger().debug(`Using translation model: ${this.translationModel}`);
 
       // Warn if using extended thinking model
       if (this.coordinatorModel.includes('qwen3') || this.coordinatorModel.includes('deepseek')) {
@@ -323,7 +323,7 @@ class IntelligentCoordinator {
       }
 
       if (this.prismaAIRS && this.prismaAIRS.isConfigured()) {
-        getLogger().info('Prisma AIRS security active');
+        getLogger().debug('Prisma AIRS security active');
       }
 
       // Start periodic health checks for registered agents
@@ -365,7 +365,7 @@ class IntelligentCoordinator {
       return query; // No translation needed
     }
 
-    getLogger().info(`Translating "${query}" from ${language} to English`);
+    getLogger().debug(`Translating "${query}" from ${language} to English`);
 
     try {
       const translationPrompt = `Translate this query from ${language} to English. Only return the English translation, nothing else.
@@ -391,7 +391,7 @@ Query: "${query}"`;
         translatedQuery = translatedQuery.slice(1, -1);
       }
 
-      getLogger().info(`Translated: "${translatedQuery}"`);
+      getLogger().debug(`Translated: "${translatedQuery}"`);
       return translatedQuery;
     } catch (error) {
       getLogger().error('Translation failed:', { error: error.message });
@@ -405,11 +405,11 @@ Query: "${query}"`;
   async routeQuery(query, language = 'en', phase = 'phase2', userContext = null, llmProvider = 'aws') {
     // Switch LLM provider if llmProvider is explicitly requested
     if (llmProvider) {
-      getLogger().info(`[Coordinator] Switching LLM provider to: ${llmProvider}`);
+      getLogger().debug(`[Coordinator] Switching LLM provider to: ${llmProvider}`);
       this.llmProvider = LLMProviderFactory.create(llmProvider);
     }
 
-    getLogger().info(`Routing query: "${query}"`);
+    getLogger().debug(`Routing query: "${query}"`);
 
     // Log received user identity
     if (userContext) {
@@ -421,21 +421,21 @@ Query: "${query}"`;
       if (userContext.employeeId) identityInfo.push(`empId: ${userContext.employeeId}`);
 
       if (identityInfo.length > 0) {
-        getLogger().info(`User identity received: ${identityInfo.join(', ')}`);
+        getLogger().debug(`User identity received: ${identityInfo.join(', ')}`);
       }
 
       // Log conversation history if available
       if (userContext.history && Array.isArray(userContext.history) && userContext.history.length > 0) {
-        getLogger().info(`Conversation history available: ${userContext.history.length} messages`);
+        getLogger().debug(`Conversation history available: ${userContext.history.length} messages`);
       }
     }
 
     try {
       // Log all registered agents
       const allAgents = this.registry.getAllAgents();
-      getLogger().info(`Total registered agents: ${allAgents.length}`);
+      getLogger().debug(`Total registered agents: ${allAgents.length}`);
       allAgents.forEach(agent => {
-        getLogger().info(`   - ${agent.name} (${agent.agentId}) - ${agent.description.substring(0, 60)}...`);
+        getLogger().debug(`   - ${agent.name} (${agent.agentId}) - ${agent.description.substring(0, 60)}...`);
       });
 
       // Use registry to find matching agents
@@ -445,7 +445,7 @@ Query: "${query}"`;
         throw new Error('No registered agents available');
       }
 
-      getLogger().info(`Candidate agents for this query: ${candidateAgentIds.map(id => {
+      getLogger().debug(`Candidate agents for this query: ${candidateAgentIds.map(id => {
         const agent = this.registry.getAgent(id);
         return `${agent.name}`;
       }).join(', ')}`);
@@ -460,7 +460,7 @@ Query: "${query}"`;
       }
 
       if (routingStrategy.strategy === "declined") {
-        getLogger().info('Query declined by LLM for security/policy reasons');
+        getLogger().debug('Query declined by LLM for security/policy reasons');
         // Return a declined response indicating the request was refused
         return {
           type: 'declined',
@@ -468,7 +468,7 @@ Query: "${query}"`;
           response: routingStrategy.reasoning || 'I cannot assist with this request as it falls outside the scope of available services.'
         };
       } else if (routingStrategy.requiresMultiple) {
-        getLogger().info(`Multi-agent query detected, splitting across: ${routingStrategy.agents.map(a => a.agent).join(', ')}`);
+        getLogger().debug(`Multi-agent query detected, splitting across: ${routingStrategy.agents.map(a => a.agent).join(', ')}`);
         const multiAgentResponse = await this.handleMultiAgentQuery(query, routingStrategy, phase, userContext, llmProvider);
         // Return a special object to indicate this is a multi-agent final response
         return { type: 'multi-agent-response', response: multiAgentResponse };
@@ -482,7 +482,7 @@ Query: "${query}"`;
         }
 
         const selectedAgent = this.registry.getAgent(selectedAgentId);
-        getLogger().info(`Routed to: ${selectedAgent.name} agent (${selectedAgentId})`);
+        getLogger().debug(`Routed to: ${selectedAgent.name} agent (${selectedAgentId})`);
         return { type: 'agent-id', agentId: selectedAgentId };
       }
     } catch (error) {
@@ -588,7 +588,7 @@ ${capabilities}`;
       }).join('\n');
 
       // Log available agents for routing
-      getLogger().info(`Available agents for routing:`, candidateAgentIds.map(id => {
+      getLogger().debug(`Available agents for routing:`, candidateAgentIds.map(id => {
         const agent = this.registry.getAgent(id);
         return `${agent.name} (${id})`;
       }).join(', '));
@@ -596,7 +596,7 @@ ${capabilities}`;
       // Build conversation context from history
       let conversationContext = '';
       if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-        getLogger().info(`Including ${conversationHistory.length} messages from conversation history in routing analysis`);
+        getLogger().debug(`Including ${conversationHistory.length} messages from conversation history in routing analysis`);
         const historyLines = conversationHistory
           .map(msg => {
             const role = msg.role === 'user' ? 'User' : 'Assistant';
@@ -660,7 +660,7 @@ Output JSON immediately`,
         // Handle extended thinking models (qwen3, etc.) where content is in 'thinking' field
         let responseContent = response.response;
         if (!responseContent && response.thinking) {
-          getLogger().info(`Extended thinking detected, extracting from thinking field`);
+          getLogger().debug(`Extended thinking detected, extracting from thinking field`);
           responseContent = response.thinking;
         }
 
@@ -673,8 +673,6 @@ Output JSON immediately`,
           });
           throw new Error('LLM returned empty response and thinking');
         }
-
-        getLogger().info(`Extracted Raw:`, responseContent.substring(0, 500)); // Log first 500 chars
 
         // Clean the response - remove any markdown code blocks
         let jsonText = responseContent.trim();
@@ -718,10 +716,10 @@ Output JSON immediately`,
 
         // Handle cases where LLM refuses to route (empty agents array = security refusal)
         if (strategy.agents.length === 0) {
-          getLogger().info(`⚠️  LLM declined to route query. Reasoning: ${strategy.reasoning || 'No explanation provided'}`);
+          getLogger().warn(`LLM declined to route query. Reasoning: ${strategy.reasoning || 'No explanation provided'}`);
           strategy.requiresMultiple = false;
           strategy.strategy = "declined";
-          getLogger().info(`Routing strategy: DECLINED`, strategy);
+          getLogger().warn(`Routing strategy: DECLINED`, strategy);
           return strategy;
         }
 
@@ -729,7 +727,6 @@ Output JSON immediately`,
         strategy.requiresMultiple = strategy.agents.length > 1;
         strategy.strategy = strategy.agents.length > 1 ? "parallel" : "single";
 
-        getLogger().info(`Routing strategy:`, strategy);
         return strategy;
       } catch (parseError) {
         getLogger().error(`❌ Strategy JSON parsing failed:`, parseError.message);
@@ -903,24 +900,24 @@ SYNTHESIZED RESPONSE:`;
       throw new Error(`Agent ${agentId} not found in registry`);
     }
 
-    getLogger().info(`Querying ${agent.name} agent with llm provider: ${llmProvider}`);
+    getLogger().debug(`Querying ${agent.name} agent with llm provider: ${llmProvider}`);
 
     try {
       let securityCheckResult = { maskedQuery: null, hasMasking: false };
 
       // CHECKPOINT 2: Analyze outbound request security (use passed phase)
       if (shouldUsePrismaAIRS(phase)) {
-        getLogger().info(`Phase 3 active - Running Security Checkpoint 2: Outbound Request to ${agent.name}`);
+        getLogger().debug(`Phase 3 active - Running Security Checkpoint 2: Outbound Request to ${agent.name}`);
         securityCheckResult = await this.analyzeOutboundRequest(query, agent.name, language, userContext?.email, agent.name);
         if (!securityCheckResult.approved) {
-          getLogger().info(`🚫 Security Checkpoint 2 BLOCKED: ${securityCheckResult.category}`);
+          getLogger().warn(`🚫 Security Checkpoint 2 BLOCKED: ${securityCheckResult.category}`);
           throw new Error(`Security blocked outbound request to ${agent.name}: ${securityCheckResult.message}`);
         }
-        getLogger().info(`Security Checkpoint 2 PASSED`);
+        getLogger().debug(`Security Checkpoint 2 PASSED`);
 
         // If sensitive data was detected and masked, use the masked query instead
         if (securityCheckResult.hasMasking) {
-          getLogger().info(`Using masked query for agent (sensitive data detected)`);
+          getLogger().debug(`Using masked query for agent (sensitive data detected)`);
         }
       }
 
@@ -941,7 +938,7 @@ SYNTHESIZED RESPONSE:`;
           .join('\n');
 
         enrichedQuery = `[Conversation context]\n${conversationSummary}\n\n[Current query]\n${enrichedQuery}`;
-        getLogger().info(`Added conversation history (${userContext.history.length} messages) to query for ${agent.name}`);
+        getLogger().debug(`Added conversation history (${userContext.history.length} messages) to query for ${agent.name}`);
       }
 
       // Add user context to the query as natural language if provided
@@ -955,7 +952,7 @@ SYNTHESIZED RESPONSE:`;
 
         if (contextInfo.length > 0) {
           enrichedQuery = `${enrichedQuery}\n[User context: ${contextInfo.join(', ')}]`;
-          getLogger().info(`Enriched query for ${agent.name} with user context`);
+          getLogger().debug(`Enriched query for ${agent.name} with user context`);
         }
       }
 
@@ -980,16 +977,11 @@ SYNTHESIZED RESPONSE:`;
         }
       };
 
-      getLogger().info(`Sending resource request to ${agent.name} (llm provider: ${llmProvider})`);
+      getLogger().debug(`Sending resource request to ${agent.name} (llm provider: ${llmProvider})`);
       this.sendThinkingMessage(`Sending request to ${agent.name} specialist...`);
 
       // Use MCPServerRegistry to forward the request
       const response = await this.mcpServerRegistry.forwardRequest(agentId, resourceRequest);
-
-      getLogger().info(`Response from ${agent.name}:`, {
-        hasResult: !!response.result,
-        hasError: !!response.error
-      });
 
       if (response.error) {
         throw new Error(`Agent ${agent.name} returned error: ${response.error.message}`);
@@ -1004,10 +996,10 @@ SYNTHESIZED RESPONSE:`;
         // CHECKPOINT 3: Analyze inbound response security (use passed phase)
         let responseToReturn = responseText;
         if (shouldUsePrismaAIRS(phase)) {
-          getLogger().info(`Phase 3 active - Running Security Checkpoint 3: Inbound Response from ${agent.name}`);
+          getLogger().debug(`Phase 3 active - Running Security Checkpoint 3: Inbound Response from ${agent.name}`);
           const inboundSecurity = await this.analyzeInboundResponse(query, responseText, agent.name, language, userContext?.email, agent.name);
           if (!inboundSecurity.approved) {
-            getLogger().info(`🚫 Security Checkpoint 3 BLOCKED: ${inboundSecurity.category}`);
+            getLogger().warn(`Security Checkpoint 3 BLOCKED: ${inboundSecurity.category}`);
             // Return the security block info - don't throw, let processQuery handle it
             return {
               _securityBlock: true,
@@ -1016,12 +1008,12 @@ SYNTHESIZED RESPONSE:`;
               reportId: inboundSecurity.reportId
             };
           }
-          getLogger().info(`Security Checkpoint 3 PASSED`);
+          getLogger().debug(`Security Checkpoint 3 PASSED`);
 
           // If sensitive data was detected and masked in the response, use the masked response
           if (inboundSecurity.hasMasking) {
             responseToReturn = inboundSecurity.maskedResponse;
-            getLogger().info(`Using masked response (sensitive data detected)`);
+            getLogger().debug(`Using masked response (sensitive data detected)`);
           }
         }
 
@@ -1044,7 +1036,7 @@ SYNTHESIZED RESPONSE:`;
    */
   async processAgentResponse(agentResponse, originalQuery, translatedQuery, targetLanguage = 'en', agentName) {
     try {
-      getLogger().info(`Processing response from ${agentName}...`);
+      getLogger().debug(`Processing response from ${agentName}...`);
 
       // Step 1: Verify response relevance and extract key information
       const validationPrompt = `You are a response quality validator. Analyze if the agent response properly answers the user's question and extract the key information.
@@ -1095,7 +1087,7 @@ RESPOND ONLY WITH THIS JSON FORMAT:
         validation = JSON.parse(jsonText);
       } catch (parseError) {
         getLogger().warn(`⚠️ Validation parsing failed:`, parseError.message);
-        getLogger().info(`Raw validation response:`, validationResponse.response.substring(0, 200));
+        getLogger().debug(`Raw validation response:`, validationResponse.response.substring(0, 200));
         validation = {
           isRelevant: true,
           keyInformation: agentResponse,
@@ -1104,28 +1096,22 @@ RESPOND ONLY WITH THIS JSON FORMAT:
         };
       }
 
-      getLogger().info(`Response validation:`, {
-        isRelevant: validation.isRelevant,
-        confidence: validation.confidence,
-        reasoning: validation.reasoning
-      });
-
       // Step 2: Use processed response or fallback to original
       let processedResponse = validation.isRelevant ? validation.keyInformation : agentResponse;
 
       // Step 3: Translate back to target language if needed
       if (targetLanguage !== 'en') {
-        getLogger().info(`Translating response to ${targetLanguage}`);
+        getLogger().debug(`Translating response to ${targetLanguage}`);
         processedResponse = await this.translateResponse(processedResponse, targetLanguage);
       }
 
       // // Step 4: Final quality check - ensure response is concise and clear
       // if (processedResponse.length > 500) {
-      //   getLogger().info(`Response is lengthy, making it more concise...`);
+      //   getLogger().debug(`Response is lengthy, making it more concise...`);
       //   processedResponse = await this.makeConcise(processedResponse, originalQuery);
       // }
 
-      getLogger().info(`Response processing completed`);
+      getLogger().debug(`Response processing completed`);
       return processedResponse;
 
     } catch (error) {
@@ -1173,7 +1159,7 @@ Response to translate: "${response}"`;
         translatedResponse = translatedResponse.slice(1, -1);
       }
 
-      getLogger().info(`Translated response to ${targetLanguage}`);
+      getLogger().debug(`Translated response to ${targetLanguage}`);
       return translatedResponse;
     } catch (error) {
       getLogger().error(`❌ Response translation failed:`, error);
@@ -1210,7 +1196,7 @@ Return only the concise version:`;
       this.trackTokens(conciseResponse, 'Conciseness optimization');
 
       const conciseText = conciseResponse.response?.trim() || response;
-      getLogger().info(`Made response more concise`);
+      getLogger().debug(`Made response more concise`);
       return conciseText;
     } catch (error) {
       getLogger().error(`❌ Concise processing failed:`, error);
@@ -1254,7 +1240,7 @@ Return only the concise version:`;
       const contextStr = context.contextStr ? ` - ${context.contextStr}` : '';
       this.sendThinkingMessage(`LOCKED - Checkpoint ${checkpointNumber}: ${result.category || 'security'} detected (${detections})${contextStr} - ${latency}ms`);
       if (context.blockLogMessage) {
-        getLogger().info(context.blockLogMessage);
+        getLogger().debug(context.blockLogMessage);
       }
     }
 
@@ -1305,7 +1291,7 @@ Return only the concise version:`;
     }
 
     const agentInfo = agentName ? ` (${agentName})` : '';
-    getLogger().info(`Security Checkpoint ${checkpointNumber}: ${checkpointLabel}${agentInfo}`);
+    getLogger().debug(`Security Checkpoint ${checkpointNumber}: ${checkpointLabel}${agentInfo}`);
 
     const startTime = Date.now();
 
@@ -1365,12 +1351,12 @@ Return only the concise version:`;
 
     if (maskingField === 'prompt' && result.maskedData?.prompt?.data) {
       maskedInput = result.maskedData.prompt.data;
-      getLogger().info(`Sensitive data detected - using masked prompt${agentInfo}`);
-      getLogger().info(`Detections:`, result.maskedData.prompt.pattern_detections || []);
+      getLogger().debug(`Sensitive data detected - using masked prompt${agentInfo}`);
+      getLogger().debug(`Detections:`, result.maskedData.prompt.pattern_detections || []);
     } else if (maskingField === 'response' && result.maskedData?.response?.data) {
       maskedSecondaryInput = result.maskedData.response.data;
-      getLogger().info(`Sensitive data detected - using masked response${agentInfo}`);
-      getLogger().info(`Detections:`, result.maskedData.response.pattern_detections || []);
+      getLogger().debug(`Sensitive data detected - using masked response${agentInfo}`);
+      getLogger().debug(`Detections:`, result.maskedData.response.pattern_detections || []);
     }
 
     // Return appropriate structure based on checkpoint type
@@ -1504,7 +1490,7 @@ Return only the concise version:`;
     };
     this.clearSecurityCheckpoints();
 
-    getLogger().info(`Processing query: "${query}" (${language}, Phase: ${phase}, Cloud: ${llmProvider})`);
+    getLogger().debug(`Processing query: "${query}" (${language}, Phase: ${phase}, Cloud: ${llmProvider})`);
     this.sendThinkingMessage(`Analyzing your question...`);
 
     let queryToProcess = query;
@@ -1513,7 +1499,7 @@ Return only the concise version:`;
       // Validate user context for personal queries
       const personalKeywords = /\bmy\b|\bi\b|\bme\b|\bours\b|\bwe\b/i;
       if (personalKeywords.test(query) && !userContext?.email) {
-        getLogger().info(`⚠️ Personal query detected but no user context provided`);
+        getLogger().debug(`Personal query detected but no user context provided`);
         this.sendThinkingMessage(`❌ User identification required for personal queries`);
 
         return {
@@ -1527,10 +1513,10 @@ Return only the concise version:`;
 
       // CHECKPOINT 1: Analyze user input security (use passed phase, not instance variable)
       if (shouldUsePrismaAIRS(phase)) {
-        getLogger().info(`Phase 3 active - Running Security Checkpoint 1: User Input Analysis`);
+        getLogger().debug(`Phase 3 active - Running Security Checkpoint 1: User Input Analysis`);
         const inputSecurity = await this.analyzeUserInput(query, language, userContext?.email);
         if (!inputSecurity.approved) {
-          getLogger().info(`🚫 Security Checkpoint 1 BLOCKED: ${inputSecurity.category}`);
+          getLogger().warn(`Security Checkpoint 1 BLOCKED: ${inputSecurity.category}`);
           // Return security block message
           return {
             response: inputSecurity.message,
@@ -1539,14 +1525,14 @@ Return only the concise version:`;
             reportId: inputSecurity.reportId
           };
         }
-        getLogger().info(`Security Checkpoint 1 PASSED`);
+        getLogger().debug(`Security Checkpoint 1 PASSED`);
 
         // If sensitive data was detected and masked, use the masked query for all downstream processing
         if (inputSecurity.hasMasking) {
           queryToProcess = inputSecurity.maskedQuery;
-          getLogger().info(`Using masked query for all downstream processing`);
-          getLogger().info(`   Original: "${query}"`);
-          getLogger().info(`   Masked:   "${queryToProcess}"`);
+          getLogger().debug(`Using masked query for all downstream processing`);
+          getLogger().debug(`   Original: "${query}"`);
+          getLogger().debug(`   Masked:   "${queryToProcess}"`);
         }
       }
 
@@ -1601,7 +1587,7 @@ Return only the concise version:`;
 
         // Check if security blocked the response at Checkpoint 3
         if (agentResponse && agentResponse._securityBlock) {
-          getLogger().info(`🚫 Checkpoint 3 blocked response, returning security message`);
+          getLogger().warn(`🚫 Checkpoint 3 blocked response, returning security message`);
 
           return {
             response: agentResponse.message,
@@ -1613,7 +1599,7 @@ Return only the concise version:`;
         }
 
         this.sendThinkingMessage(`Response received from ${selectedAgent.name} specialist`);
-        getLogger().info(`Response from ${selectedAgent.name} agent received`);
+        getLogger().debug(`Response from ${selectedAgent.name} agent received`);
 
         // Step 4: Process and validate the agent response
         this.sendThinkingMessage(`Processing and validating response...`);
@@ -1642,7 +1628,7 @@ Return only the concise version:`;
           // If sensitive data was detected and masked in the response, use the masked response
           if (finalSecurity.hasMasking) {
             finalResponseToReturn = finalSecurity.maskedResponse;
-            getLogger().info(`Using masked response in final output (sensitive data detected)`);
+            getLogger().debug(`Using masked response in final output (sensitive data detected)`);
           }
         }
 
@@ -1656,7 +1642,7 @@ Return only the concise version:`;
         };
       } else if (routingResult.type === 'declined') {
         // Query was declined by LLM for security/policy reasons
-        getLogger().info(`🚫 Query declined - Reasoning: ${routingResult.reasoning}`);
+        getLogger().warn(`🚫 Query declined - Reasoning: ${routingResult.reasoning}`);
         this.sendThinkingMessage(`🚫 Request cannot be processed: ${routingResult.reasoning}`);
 
         return {
@@ -1669,7 +1655,7 @@ Return only the concise version:`;
       } else {
         // Multi-agent response - routingResult contains the final synthesized response
         this.sendThinkingMessage(`Multi-agent coordination completed`);
-        getLogger().info(`Multi-agent response completed`);
+        getLogger().debug(`Multi-agent response completed`);
 
         // Process multi-agent response
         this.sendThinkingMessage(`Processing and validating multi-agent response...`);
@@ -1699,7 +1685,7 @@ Return only the concise version:`;
           // If sensitive data was detected and masked in the response, use the masked response
           if (finalSecurity.hasMasking) {
             finalResponseToReturn = finalSecurity.maskedResponse;
-            getLogger().info(`Using masked response in final output (sensitive data detected)`);
+            getLogger().debug(`Using masked response in final output (sensitive data detected)`);
           }
         }
 
@@ -1826,7 +1812,7 @@ Return only the concise version:`;
       throw new Error('Messages array is required and must not be empty');
     }
 
-    getLogger().info(`💬 Processing message array with ${messages.length} messages (${language})`);
+    getLogger().debug(`💬 Processing message array with ${messages.length} messages (${language})`);
 
     // Extract the most recent user message for processing
     const userMessages = messages.filter(msg => msg.role === 'user');
@@ -1896,7 +1882,7 @@ Return only the concise version:`;
    * Cleanup - close connections and sessions
    */
   async cleanup() {
-    getLogger().info('🧹 Cleaning up...');
+    getLogger().debug('🧹 Cleaning up...');
 
     // Clear registry
     const allAgents = this.registry.getAllAgents();
@@ -1905,7 +1891,7 @@ Return only the concise version:`;
     }
 
     this.initialized = false;
-    getLogger().info('Cleanup completed');
+    getLogger().debug('Cleanup completed');
   }
 }
 

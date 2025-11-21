@@ -126,7 +126,7 @@ class MCPTransportManager {
 
     // Standard MCP transport handling
     await transport.handleRequest(req, res, req.body);
-    this.logger.info('✓ Request completed successfully');
+    this.logger.debug('✓ Request completed successfully');
   }
 
   /**
@@ -136,7 +136,7 @@ class MCPTransportManager {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sessionId) => {
-        this.logger.info(`Session initialized: ${sessionId}`);
+        this.logger.debug(`Session initialized: ${sessionId}`);
         this.transports[sessionId] = transport;
       }
     });
@@ -150,7 +150,7 @@ class MCPTransportManager {
 
     try {
       await this.mcpServer.connect(transport);
-      this.logger.info('Server connected to transport');
+      this.logger.debug('Server connected to transport');
     } catch (error) {
       this.logger.error('Failed to connect server to transport', error);
       throw error;
@@ -188,7 +188,7 @@ class MCPTransportManager {
           throw new Error(`Unknown tool: ${name}`);
       }
 
-      this.logger.info(`Tool ${name} executed successfully`);
+      this.logger.debug(`Tool ${name} executed successfully`);
       this._sendSSEResponse(res, transport.sessionId, req.body.id, {
         content: [
           {
@@ -211,7 +211,7 @@ class MCPTransportManager {
 
     try {
       const resources = this.mcpServer.agent.getResourcesList();
-      this.logger.info(`Found ${resources.length} registered resources`);
+      this.logger.debug(`Found ${resources.length} registered resources`);
 
       this._sendSSEResponse(res, transport.sessionId, req.body.id, {
         resources

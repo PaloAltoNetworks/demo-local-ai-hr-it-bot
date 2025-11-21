@@ -33,7 +33,7 @@ class QueryProcessor {
 
       this.logger.debug(`Response length: ${result.response.length} characters`);
       this.logger.debug(`Tokens - Prompt: ${result.usage?.prompt_tokens}, Completion: ${result.usage?.completion_tokens}`);
-      this.logger.info('Query processed successfully');
+      this.logger.debug('Query processed successfully');
 
       return result.response;
     } catch (error) {

@@ -77,7 +77,7 @@ class PrismaAIRSIntercept {
         try {
             // Check if Prisma AIRS is configured
             if (!this.isConfigured()) {
-                getLogger().info('❌ Prisma AIRS not configured - missing API token or profile ID/name');
+                getLogger().warn('Prisma AIRS not configured - missing API token or profile ID/name');
                 
                 const configErrorMessage = t('security.errors.notConfigured', { lng: metadata.language || 'en' });
                 
@@ -92,7 +92,7 @@ class PrismaAIRSIntercept {
             }
 
             const analysisType = response ? 'prompt and response' : 'prompt only';
-            getLogger().info(`Prisma AIRS intercept - analyzing ${analysisType}`);
+            getLogger().debug(`Prisma AIRS intercept - analyzing ${analysisType}`);
 
             // Prepare the request payload for Prisma AIRS API
             const payload = {
@@ -133,12 +133,12 @@ class PrismaAIRSIntercept {
                 timeout: 15000 // 15 second timeout
             };
 
-            getLogger().info('Sending request to Prisma AIRS API:', JSON.stringify(payload, null, 2));
+            getLogger().debug('Sending request to Prisma AIRS API:', JSON.stringify(payload, null, 2));
 
             const apiResponse = await axios.request(axiosConfig);
             const result = apiResponse.data;
             
-            getLogger().info('Prisma AIRS analysis result:', {
+            getLogger().debug('Prisma AIRS analysis result:', {
                 action: result.action,
                 category: result.category,
                 reportId: result.report_id,

@@ -48,7 +48,7 @@ class MCPAgentBase {
    * Setup base handlers (resources and tools)
    */
   async setupBaseHandlers() {
-    this.logger.info('Setting up base handlers');
+    this.logger.debug('Setting up base handlers');
     await this.setupResources();
     this.setupMCPHandlers();
   }
@@ -71,7 +71,7 @@ class MCPAgentBase {
 
           try {
             const result = await this.handleToolCall(tool.name, args);
-            this.logger.info(`Tool ${tool.name} executed`);
+            this.logger.debug(`Tool ${tool.name} executed`);
 
             return [
               {
@@ -87,7 +87,7 @@ class MCPAgentBase {
       );
     });
 
-    this.logger.info(`${tools.length} MCP tools registered`);
+    this.logger.debug(`${tools.length} MCP tools registered`);
   }
 
   /**
@@ -269,7 +269,7 @@ class MCPAgentBase {
    * Start the MCP server with HTTP transport
    */
   async start() {
-    this.logger.info(`Starting ${this.agentName.toUpperCase()} Agent`);
+    this.logger.debug(`Starting ${this.agentName.toUpperCase()} Agent`);
 
     try {
       // Setup base handlers
@@ -286,8 +286,8 @@ class MCPAgentBase {
       const port = this.config.agent.port;
       await new Promise((resolve) => {
         app.listen(port, () => {
-          this.logger.info(`MCP HTTP Server started on port ${port}`);
-          this.logger.info('Resources registered and ready');
+          this.logger.debug(`MCP HTTP Server started on port ${port}`);
+          this.logger.debug('Resources registered and ready');
           resolve();
         });
       });
@@ -320,7 +320,7 @@ class MCPAgentBase {
       const LLMProviders = this.getLLMProviders ? this.getLLMProviders() : [];
       
       await this.coordinatorClient.register(agentUrl, this.getCapabilities(), LLMProviders);
-      this.logger.info('Agent registered with coordinator');
+      this.logger.debug('Agent registered with coordinator');
 
       // Start heartbeat to maintain registration
       this.coordinatorClient.startHeartbeat(
@@ -337,7 +337,7 @@ class MCPAgentBase {
    */
   _setupGracefulShutdown() {
     const shutdown = async (signal) => {
-      this.logger.info(`Received ${signal}, shutting down gracefully...`);
+      this.logger.debug(`Received ${signal}, shutting down gracefully...`);
       await this.coordinatorClient.unregister();
       process.exit(0);
     };
@@ -350,7 +350,7 @@ class MCPAgentBase {
    * Cleanup
    */
   async cleanup() {
-    this.logger.info('Cleaning up agent');
+    this.logger.debug('Cleaning up agent');
     await this.coordinatorClient.unregister();
     this.initialized = false;
   }

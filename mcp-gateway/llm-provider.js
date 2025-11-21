@@ -144,14 +144,14 @@ class LLMProviderFactory {
     if (process.env.OPENAI_API_KEY) {
       const openaiClient = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
       providers.openai = openaiClient;
-      getLogger().info('[LLMProvider] ✓ OpenAI provider registered');
+      getLogger().debug('[LLMProvider] ✓ OpenAI provider registered');
     }
 
     // Anthropic provider
     if (process.env.ANTHROPIC_API_KEY) {
       const anthropicClient = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
       providers.anthropic = anthropicClient;
-      getLogger().info('[LLMProvider] ✓ Anthropic provider registered');
+      getLogger().debug('[LLMProvider] ✓ Anthropic provider registered');
     }
 
     // Azure OpenAI provider
@@ -163,7 +163,7 @@ class LLMProviderFactory {
         apiVersion: process.env.AZURE_API_VERSION,
       });
       providers.azure = azureClient;
-      getLogger().info('[LLMProvider] ✓ Azure OpenAI provider registered');
+      getLogger().debug('[LLMProvider] ✓ Azure OpenAI provider registered');
     }
 
     // Google Cloud Vertex AI provider (with automatic service account support)
@@ -177,7 +177,7 @@ class LLMProviderFactory {
           }
         });
         providers.gcp = vertexClient;
-        getLogger().info('[LLMProvider] ✓ Google Cloud Vertex AI provider registered (Service Account)');
+        getLogger().debug('[LLMProvider] ✓ Google Cloud Vertex AI provider registered (Service Account)');
       } catch (error) {
         getLogger().error(`[LLMProvider] ❌ Failed to initialize Vertex AI: ${error.message}`);
       }
@@ -188,7 +188,7 @@ class LLMProviderFactory {
       try {
         const bedrockClient = createAmazonBedrock();
         providers.bedrock = bedrockClient;
-        getLogger().info('[LLMProvider] ✓ AWS Bedrock provider registered');
+        getLogger().debug('[LLMProvider] ✓ AWS Bedrock provider registered');
       } catch (error) {
         getLogger().error(`[LLMProvider] ❌ Failed to initialize Bedrock: ${error.message}`);
       }
@@ -204,7 +204,7 @@ class LLMProviderFactory {
         });
         getLogger().debug(`[LLMProvider] Ollama provider created with baseURL: ${ollamaUrl}/api`);
         providers.ollama = ollamaProvider;
-        getLogger().info(`[LLMProvider] ✓ Ollama provider registered at ${ollamaUrl}`);
+        getLogger().debug(`[LLMProvider] ✓ Ollama provider registered at ${ollamaUrl}`);
       } catch (error) {
         getLogger().error(`[LLMProvider] ❌ Failed to initialize Ollama provider: ${error.message}`);
         throw error;
@@ -213,7 +213,7 @@ class LLMProviderFactory {
 
     // Create the registry
     this._registry = createProviderRegistry(providers);
-    getLogger().info(`[LLMProvider] Provider registry initialized with ${Object.keys(providers).length} providers`);
+    getLogger().debug(`[LLMProvider] Provider registry initialized with ${Object.keys(providers).length} providers`);
     return this._registry;
   }
 
@@ -223,7 +223,7 @@ class LLMProviderFactory {
    */
   static create(providerType = null, modelId = null) {
     const provider = providerType || process.env.LLM_PROVIDER || 'ollama';
-    getLogger().info(`[LLMProvider] Creating model - provider: ${provider}, modelId: ${modelId || 'default'}`);
+    getLogger().debug(`[LLMProvider] Creating model - provider: ${provider}, modelId: ${modelId || 'default'}`);
 
     const registry = this._initializeRegistry();
     const modelIdentifier = this._buildModelIdentifier(provider, modelId);
@@ -236,7 +236,7 @@ class LLMProviderFactory {
       
       getLogger().debug(`[LLMProvider] Model object created - type: ${typeof model}`);
       getLogger().debug(`[LLMProvider] Model properties: modelId=${model?.modelId}, provider=${model?.provider}`);
-      getLogger().info(`[LLMProvider] ✓ Created provider instance: ${modelIdentifier}`);
+      getLogger().debug(`[LLMProvider] ✓ Created provider instance: ${modelIdentifier}`);
       
       return new AIProvider(model);
     } catch (error) {
@@ -294,7 +294,7 @@ class LLMProviderFactory {
         provider: 'openai',
         configured: true,
       });
-      getLogger().info('[LLMProvider] OpenAI provider detected (configured via OPENAI_API_KEY)');
+      getLogger().debug('[LLMProvider] OpenAI provider detected (configured via OPENAI_API_KEY)');
     }
 
     // Check Anthropic configuration
@@ -307,7 +307,7 @@ class LLMProviderFactory {
         provider: 'anthropic',
         configured: true,
       });
-      getLogger().info('[LLMProvider] Anthropic provider detected (configured via ANTHROPIC_API_KEY)');
+      getLogger().debug('[LLMProvider] Anthropic provider detected (configured via ANTHROPIC_API_KEY)');
     }
 
     // Check AWS Bedrock configuration
@@ -321,7 +321,7 @@ class LLMProviderFactory {
         provider: 'bedrock',
         configured: true,
       });
-      getLogger().info('[LLMProvider] AWS Bedrock provider detected (configured via AWS_REGION and BEDROCK_COORDINATOR_MODEL)');
+      getLogger().debug('[LLMProvider] AWS Bedrock provider detected (configured via AWS_REGION and BEDROCK_COORDINATOR_MODEL)');
     } else if (process.env.AWS_REGION || process.env.BEDROCK_COORDINATOR_MODEL) {
       getLogger().warn('[LLMProvider] AWS Bedrock partially configured - missing AWS_REGION or BEDROCK_COORDINATOR_MODEL');
     }
@@ -336,7 +336,7 @@ class LLMProviderFactory {
         provider: 'azure',
         configured: true,
       });
-      getLogger().info('[LLMProvider] Azure OpenAI provider detected (configured via Azure credentials)');
+      getLogger().debug('[LLMProvider] Azure OpenAI provider detected (configured via Azure credentials)');
     } else if (process.env.AZURE_API_KEY || process.env.AZURE_RESOURCE_NAME) {
       getLogger().warn('[LLMProvider] Azure OpenAI partially configured - missing API key, resource name, or deployment ID');
     }
@@ -351,7 +351,7 @@ class LLMProviderFactory {
         provider: 'gcp',
         configured: true,
       });
-      getLogger().info('[LLMProvider] Google Cloud Vertex AI provider detected (Service Account)');
+      getLogger().debug('[LLMProvider] Google Cloud Vertex AI provider detected (Service Account)');
     }
 
     // Check Ollama configuration
@@ -365,7 +365,7 @@ class LLMProviderFactory {
         provider: 'ollama',
         configured: true,
       });
-      getLogger().info('[LLMProvider] Ollama provider detected (configured via OLLAMA_SERVER_URL)');
+      getLogger().debug('[LLMProvider] Ollama provider detected (configured via OLLAMA_SERVER_URL)');
     }
 
     // If no providers are properly configured, return error information
@@ -374,7 +374,7 @@ class LLMProviderFactory {
       return [];
     }
 
-    getLogger().info(`[LLMProvider] Available llm providers: ${availableProviders.map((p) => p.id).join(', ')}`);
+    getLogger().debug(`[LLMProvider] Available llm providers: ${availableProviders.map((p) => p.id).join(', ')}`);
     return availableProviders;
   }
 }
