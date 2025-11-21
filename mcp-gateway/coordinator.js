@@ -1490,7 +1490,7 @@ Return only the concise version:`;
     };
     this.clearSecurityCheckpoints();
 
-    getLogger().debug(`Processing query: "${query}" (${language}, Phase: ${phase}, Cloud: ${llmProvider})`);
+    getLogger().info(`Processing query: "${query}" (${language}, Phase: ${phase}, Cloud: ${llmProvider})`);
     this.sendThinkingMessage(`Analyzing your question...`);
 
     let queryToProcess = query;
