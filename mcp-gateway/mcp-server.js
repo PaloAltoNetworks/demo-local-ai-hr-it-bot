@@ -433,7 +433,7 @@ const PORT = process.env.MCP_GATEWAY_PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Initialize MCP Server and Registry
 const mcpServer = new MCPServer();

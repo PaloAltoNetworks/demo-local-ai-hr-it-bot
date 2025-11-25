@@ -77,7 +77,7 @@ app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:3002'],
     credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../frontend')));
