@@ -10,6 +10,7 @@ class ResourceManager {
     this.mcpServer = mcpServer;
     this.logger = getLogger();
     this.resources = [];
+    this.handlers = new Map(); // Store handlers for later access
   }
 
   /**
@@ -19,6 +20,7 @@ class ResourceManager {
     this.logger.debug(`Registering static resource: ${name}`);
 
     this.mcpServer.registerResource(name, uri, metadata, handler);
+    this.handlers.set(uri, handler); // Store handler
 
     this.resources.push({
       uri,
@@ -36,6 +38,7 @@ class ResourceManager {
 
     const resourceTemplate = new ResourceTemplate(template.uri, template.params || {});
     this.mcpServer.registerResource(name, resourceTemplate, metadata, handler);
+    this.handlers.set(template.uri, handler); // Store handler with template URI
 
     this.resources.push({
       uri: template.uri,
@@ -52,6 +55,39 @@ class ResourceManager {
   getResourcesList() {
     this.logger.debug(`Returning ${this.resources.length} resources`);
     return this.resources;
+  }
+
+  /**
+   * Get handler for a resource URI
+   */
+  getHandler(uri) {
+    // Try exact match first
+    if (this.handlers.has(uri)) {
+      return this.handlers.get(uri);
+    }
+    
+    // Try template matching
+    for (const [templateUri, handler] of this.handlers.entries()) {
+      if (this._uriMatchesTemplate(templateUri, uri)) {
+        return handler;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Check if URI matches a template pattern
+   */
+  _uriMatchesTemplate(template, uri) {
+    if (template === uri) return true;
+    
+    // Simple template matching for patterns like "hr://employees/{employeeId}/profile"
+    const regexPattern = template
+      .replace(/\{[^}]+\}/g, '[^/]+');
+    
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(uri);
   }
 
   /**

@@ -8,6 +8,7 @@ import { initializeLogger, getLogger } from './utils/logger.js';
 import { ConfigManager } from './utils/config.js';
 import { CoordinatorClient } from './utils/coordinator-client.js';
 import { MCPTransportManager } from './utils/transport-manager.js';
+import { ResourceManager } from './utils/resource-manager.js';
 
 class MCPAgentBase {
   constructor(agentName, agentDescription) {
@@ -49,7 +50,6 @@ class MCPAgentBase {
    */
   async setupBaseHandlers() {
     this.logger.debug('Setting up base handlers');
-    await this.setupResources();
     this.setupMCPHandlers();
   }
 
@@ -91,6 +91,38 @@ class MCPAgentBase {
   }
 
   /**
+   * Initialize agent with standard pattern
+   * Subclasses should override createService() to return their service instance
+   */
+  async initialize() {
+    this.logger.debug('Initializing agent');
+    
+    try {
+      // Create service instance
+      this.service = await this.createService();
+      this.logger.debug('Service created');
+      
+      // Create resource manager with agent name and MCP server
+      this.resourceManager = new ResourceManager(this.agentName, this.server);
+      this.logger.debug('Resource manager created');
+      
+      // Setup resources (subclass-specific)
+      await this.setupResources();
+      this.logger.debug('Resources set up');
+    } catch (error) {
+      this.logger.error('Failed to initialize agent', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create service instance - to be overridden by subclasses
+   */
+  async createService() {
+    throw new Error('createService must be implemented by agent');
+  }
+
+  /**
    * Setup MCP resources - to be implemented by each agent
    */
   async setupResources() {
@@ -102,7 +134,7 @@ class MCPAgentBase {
    */
   getResourcesList() {
     try {
-      return this.getAvailableResources ? this.getAvailableResources() : [];
+      return this.resourceManager ? this.resourceManager.getResourcesList() : [];
     } catch (error) {
       this.logger.warn('Failed to get resources list', error);
       return [];
@@ -272,6 +304,9 @@ class MCPAgentBase {
     this.logger.debug(`Starting ${this.agentName.toUpperCase()} Agent`);
 
     try {
+      // Initialize agent (subclass-specific setup)
+      await this.initialize();
+
       // Setup base handlers
       await this.setupBaseHandlers();
       this.initialized = true;
