@@ -2,6 +2,8 @@
 
 Intelligent chatbot with multi-agent routing, flexible LLM providers (Ollama/AWS Bedrock), and multilingual support.
 
+[![The Otter](https://github.com/user-attachments/assets/71cdbc6c-5c97-4d92-841a-d3df7b216326)]https://github.com/user-attachments/assets/e4b44f5c-593d-4607-9158-cf2a0455cbc3)
+
 ## Features
 
 - Intelligent query routing (HR, IT, General agents)
