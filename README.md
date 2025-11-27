@@ -2,6 +2,8 @@
 
 Intelligent chatbot with multi-agent routing, flexible LLM providers (Ollama/AWS Bedrock), and multilingual support.
 
+[Watch the demo](https://github.com/user-attachments/assets/e4b44f5c-593d-4607-9158-cf2a0455cbc3)
+
 ## Features
 
 - Intelligent query routing (HR, IT, General agents)
