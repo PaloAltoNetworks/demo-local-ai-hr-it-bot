@@ -7,14 +7,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Import logger from shared utils
-import { initializeLogger, getLogger } from '../utils/index.js';
+// Import shared utils (logger and i18n)
+import { initializeLogger, getLogger, changeLanguage, t, getAvailableLanguages, loadFrontendTranslations } from '../utils/index.js';
 
 // Initialize logger
 initializeLogger('chatbot-host');
-
-// Import i18n module
-import { changeLanguage, t, getAvailableLanguages, loadFrontendTranslations } from './i18n.js';
 
 // Import MCP components
 import { MCPClient } from './mcp-client.js';
