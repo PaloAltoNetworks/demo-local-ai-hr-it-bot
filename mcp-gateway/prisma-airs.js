@@ -1,6 +1,6 @@
-const axios = require('axios');
-const { t } = require('./i18n');
-const { getLogger } = require('./logger');
+import axios from 'axios';
+import { t } from './i18n.js';
+import { getLogger } from './utils/index.js';
 
 /**
  * Prisma AIRS API Intercept Module
@@ -220,7 +220,7 @@ function shouldUsePrismaAIRS(phase) {
     return phase === 'phase3';
 }
 
-module.exports = {
+export {
     PrismaAIRSIntercept,
     shouldUsePrismaAIRS
 };

@@ -1,10 +1,10 @@
-const express = require('express');
-const cors = require('cors');
-const { randomUUID } = require('crypto');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import { randomUUID } from 'crypto';
+import dotenv from 'dotenv';
+import { initializeLogger, getLogger } from './utils/index.js';
 
-// Import logger
-const { initializeLogger, getLogger } = require('./logger');
+dotenv.config();
 
 // Initialize logger
 initializeLogger('mcp-gateway');
@@ -440,7 +440,7 @@ const mcpServer = new MCPServer();
 const mcpRegistry = new MCPServerRegistry();
 
 // Import Coordinator (for routing decisions)
-const { IntelligentCoordinator } = require('./coordinator');
+import { IntelligentCoordinator } from './coordinator.js';
 const ollamaUrl = process.env.OLLAMA_HOST || 'http://localhost:11434';
 const coordinator = new IntelligentCoordinator(ollamaUrl, mcpRegistry);
 
@@ -760,4 +760,4 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-module.exports = { MCPServer, MCPServerRegistry };
+export { MCPServer, MCPServerRegistry };

@@ -1,22 +1,26 @@
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const path = require('path');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import axios from 'axios';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
-// Import logger
-const { initializeLogger, getLogger } = require('./logger');
+dotenv.config();
+
+// Import logger from shared utils
+import { initializeLogger, getLogger } from '../utils/index.js';
 
 // Initialize logger
 initializeLogger('chatbot-host');
 
 // Import i18n module
-const { changeLanguage, t, getAvailableLanguages, loadFrontendTranslations } = require('./i18n');
+import { changeLanguage, t, getAvailableLanguages, loadFrontendTranslations } from './i18n.js';
 
 // Import MCP components
-const { MCPClient } = require('./mcp-client');
-const { SessionManager } = require('./session-manager');
+import { MCPClient } from './mcp-client.js';
+import { SessionManager } from './session-manager.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.CHATBOT_HOST_PORT || 3002;
 
@@ -640,12 +644,12 @@ app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
     getLogger().info('Received SIGTERM, shutting down gracefully...');
-    sessionManager.cleanup();
+    sessionManager.shutdown();
     process.exit(0);
 });
 
 process.on('SIGINT', () => {
     getLogger().info('Received SIGINT, shutting down gracefully...');
-    sessionManager.cleanup();
+    sessionManager.shutdown();
     process.exit(0);
 });

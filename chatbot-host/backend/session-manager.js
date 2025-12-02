@@ -1,11 +1,11 @@
-const { EventEmitter } = require('events');
-const { getLogger } = require('./logger');
+import { EventEmitter } from 'events';
+import { getLogger } from '../utils/index.js';
 
 /**
  * Session Manager for MCP Client
  * Handles session state, persistence, and lifecycle management
  */
-class SessionManager extends EventEmitter {
+export class SessionManager extends EventEmitter {
   constructor(options = {}) {
     super();
     
@@ -381,5 +381,3 @@ class SessionManager extends EventEmitter {
     getLogger().info('Shutdown complete');
   }
 }
-
-module.exports = { SessionManager };

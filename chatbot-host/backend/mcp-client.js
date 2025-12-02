@@ -1,12 +1,12 @@
-const { EventEmitter } = require('events');
-const axios = require('axios');
-const { getLogger } = require('./logger');
+import { EventEmitter } from 'events';
+import axios from 'axios';
+import { getLogger } from '../utils/index.js';
 
 /**
  * MCP Client Implementation - Following MCP Specification 2025-06-18
  * Implements proper JSON-RPC 2.0 communication over HTTP transport
  */
-class MCPClient extends EventEmitter {
+export class MCPClient extends EventEmitter {
   constructor(serverUrl, options = {}) {
     super();
     
@@ -478,5 +478,3 @@ class MCPClient extends EventEmitter {
     this.removeAllListeners();
   }
 }
-
-module.exports = { MCPClient };

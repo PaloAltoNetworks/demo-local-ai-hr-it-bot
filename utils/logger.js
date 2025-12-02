@@ -1,7 +1,8 @@
 /**
- * Winston logger singleton - single logger for the chatbot backend
+ * Winston logger singleton - Shared across chatbot-host, mcp-gateway, and mcp-server
+ * Single maintenance point for all logging functionality
  */
-const winston = require('winston');
+import winston from 'winston';
 
 let logger = null;
 
@@ -10,7 +11,7 @@ let logger = null;
  * @param {string} serviceName - The name of the service/application
  * @returns {winston.Logger} Winston logger instance
  */
-function initializeLogger(serviceName = 'chatbot-host') {
+export function initializeLogger(serviceName = 'app') {
   if (logger) {
     return logger;
   }
@@ -52,14 +53,9 @@ function initializeLogger(serviceName = 'chatbot-host') {
  * Get the global logger instance
  * @returns {winston.Logger} Winston logger instance
  */
-function getLogger() {
+export function getLogger() {
   if (!logger) {
     throw new Error('Logger not initialized. Call initializeLogger() first.');
   }
   return logger;
 }
-
-module.exports = {
-  initializeLogger,
-  getLogger
-};

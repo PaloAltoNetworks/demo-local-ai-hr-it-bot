@@ -2,7 +2,7 @@
  * Coordinator communication module for agent registration, heartbeats, and lifecycle management
  */
 import axios from 'axios';
-import { getLogger } from './logger.js';
+import { getLogger } from '../../utils/index.js';
 import { ConfigManager } from './config.js';
 
 class CoordinatorClient {

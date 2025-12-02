@@ -4,17 +4,17 @@ FROM node:22-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy all application files
 COPY chatbot-host/package*.json ./
-
-# Install dependencies
-RUN npm install --only=production
-
-# Copy application code
 COPY chatbot-host/ .
-
-# Copy locales directory for i18n support
 COPY locales/ ./locales/
+COPY utils/ ./utils/
+
+# Install utils dependencies first
+RUN cd utils && npm install --only=production
+
+# Install main application dependencies
+RUN npm install --only=production
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \

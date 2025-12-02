@@ -5,7 +5,7 @@ import express from 'express';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'node:crypto';
-import { getLogger } from './logger.js';
+import { getLogger } from '../../utils/index.js';
 
 class MCPTransportManager {
   constructor(agentName, mcpServer) {

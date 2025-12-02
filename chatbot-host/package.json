@@ -2,6 +2,7 @@
   "name": "chatbot-host",
   "version": "1.0.0",
   "description": "MCP Host - Chatbot user interface and API server",
+  "type": "module",
   "main": "backend/server.js",
   "scripts": {
     "download-fonts": "node scripts/download-material-symbols.js",
