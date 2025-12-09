@@ -16,8 +16,8 @@ COPY mcp-server/shared/package*.json ./shared/
 COPY mcp-server/${AGENT_NAME}-mcp-server/package*.json ./
 
 # Install dependencies
-RUN npm install && \
-    cd shared && npm install
+RUN npm ci && \
+    cd shared && npm ci
 
 # Copy source files
 COPY mcp-server/shared ./shared

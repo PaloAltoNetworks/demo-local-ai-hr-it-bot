@@ -8,7 +8,7 @@ WORKDIR /app
 COPY chatbot-host/package*.json ./
 
 # Install dependencies
-RUN npm install --only=production
+RUN npm ci --only=production
 
 # Copy application code
 COPY chatbot-host/ .
