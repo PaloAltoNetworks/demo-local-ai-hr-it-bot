@@ -1,5 +1,6 @@
 /**
  * LLM Provider Abstraction using AI SDK with Provider Registry
+ * Shared across chatbot-host, mcp-gateway, and mcp-server
  * Supports multiple llm providers:
  * - OpenAI (OpenAI API)
  * - Anthropic Claude (Anthropic API)
@@ -11,14 +12,14 @@
  * This allows easy switching between providers without changing application code
  */
 
-const { generateText, createProviderRegistry } = require('ai');
-const { createOpenAI } = require('@ai-sdk/openai');
-const { createAnthropic } = require('@ai-sdk/anthropic');
-const { createAzure } = require('@ai-sdk/azure');
-const { createVertex } = require('@ai-sdk/google-vertex');
-const { createAmazonBedrock } = require('@ai-sdk/amazon-bedrock');
-const { createOllama } = require('ollama-ai-provider-v2');
-const { getLogger } = require('./logger');
+import { generateText, createProviderRegistry } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createAzure } from '@ai-sdk/azure';
+import { createVertex } from '@ai-sdk/google-vertex';
+import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
+import { createOllama } from 'ollama-ai-provider-v2';
+import { getLogger } from './logger.js';
 
 /**
  * Base LLM Provider Interface
@@ -101,7 +102,7 @@ class AIProvider extends LLMProvider {
         model: response.model || 'unknown',
       };
     } catch (error) {
-      getLogger().error(`[AIProvider] ❌ Error generating text: ${error.message}`);
+      getLogger().error(`[AIProvider] Error generating text: ${error.message}`);
       getLogger().error(`[AIProvider] Error name: ${error.name}`);
       getLogger().error(`[AIProvider] Error status: ${error.status || 'N/A'}`);
       getLogger().error(`[AIProvider] Error statusCode: ${error.statusCode || 'N/A'}`);
@@ -144,14 +145,14 @@ class LLMProviderFactory {
     if (process.env.OPENAI_API_KEY) {
       const openaiClient = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
       providers.openai = openaiClient;
-      getLogger().debug('[LLMProvider] ✓ OpenAI provider registered');
+      getLogger().debug('[LLMProvider] OpenAI provider registered');
     }
 
     // Anthropic provider
     if (process.env.ANTHROPIC_API_KEY) {
       const anthropicClient = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
       providers.anthropic = anthropicClient;
-      getLogger().debug('[LLMProvider] ✓ Anthropic provider registered');
+      getLogger().debug('[LLMProvider] Anthropic provider registered');
     }
 
     // Azure OpenAI provider
@@ -163,7 +164,7 @@ class LLMProviderFactory {
         apiVersion: process.env.AZURE_API_VERSION,
       });
       providers.azure = azureClient;
-      getLogger().debug('[LLMProvider] ✓ Azure OpenAI provider registered');
+      getLogger().debug('[LLMProvider] Azure OpenAI provider registered');
     }
 
     // Google Cloud Vertex AI provider (with automatic service account support)
@@ -177,9 +178,9 @@ class LLMProviderFactory {
           }
         });
         providers.gcp = vertexClient;
-        getLogger().debug('[LLMProvider] ✓ Google Cloud Vertex AI provider registered (Service Account)');
+        getLogger().debug('[LLMProvider] Google Cloud Vertex AI provider registered (Service Account)');
       } catch (error) {
-        getLogger().error(`[LLMProvider] ❌ Failed to initialize Vertex AI: ${error.message}`);
+        getLogger().error(`[LLMProvider] Failed to initialize Vertex AI: ${error.message}`);
       }
     }
 
@@ -188,9 +189,9 @@ class LLMProviderFactory {
       try {
         const bedrockClient = createAmazonBedrock();
         providers.bedrock = bedrockClient;
-        getLogger().debug('[LLMProvider] ✓ AWS Bedrock provider registered');
+        getLogger().debug('[LLMProvider] AWS Bedrock provider registered');
       } catch (error) {
-        getLogger().error(`[LLMProvider] ❌ Failed to initialize Bedrock: ${error.message}`);
+        getLogger().error(`[LLMProvider] Failed to initialize Bedrock: ${error.message}`);
       }
     }
 
@@ -204,9 +205,9 @@ class LLMProviderFactory {
         });
         getLogger().debug(`[LLMProvider] Ollama provider created with baseURL: ${ollamaUrl}/api`);
         providers.ollama = ollamaProvider;
-        getLogger().debug(`[LLMProvider] ✓ Ollama provider registered at ${ollamaUrl}`);
+        getLogger().debug(`[LLMProvider] Ollama provider registered at ${ollamaUrl}`);
       } catch (error) {
-        getLogger().error(`[LLMProvider] ❌ Failed to initialize Ollama provider: ${error.message}`);
+        getLogger().error(`[LLMProvider] Failed to initialize Ollama provider: ${error.message}`);
         throw error;
       }
     }
@@ -236,11 +237,11 @@ class LLMProviderFactory {
       
       getLogger().debug(`[LLMProvider] Model object created - type: ${typeof model}`);
       getLogger().debug(`[LLMProvider] Model properties: modelId=${model?.modelId}, provider=${model?.provider}`);
-      getLogger().debug(`[LLMProvider] ✓ Created provider instance: ${modelIdentifier}`);
+      getLogger().debug(`[LLMProvider] Created provider instance: ${modelIdentifier}`);
       
       return new AIProvider(model);
     } catch (error) {
-      getLogger().error(`[LLMProvider] ❌ Failed to create model ${modelIdentifier}: ${error.message}`);
+      getLogger().error(`[LLMProvider] Failed to create model ${modelIdentifier}: ${error.message}`);
       getLogger().error(`[LLMProvider] Error details:`, error);
       throw new Error(`Unable to create model for provider: ${provider}. Error: ${error.message}`);
     }
@@ -379,7 +380,7 @@ class LLMProviderFactory {
   }
 }
 
-module.exports = {
+export {
   LLMProvider,
   AIProvider,
   LLMProviderFactory,

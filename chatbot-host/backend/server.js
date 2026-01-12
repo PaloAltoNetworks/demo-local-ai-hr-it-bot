@@ -1,22 +1,23 @@
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const path = require('path');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import axios from 'axios';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
-// Import logger
-const { initializeLogger, getLogger } = require('./logger');
+dotenv.config();
 
-// Initialize logger
+// Import shared utils (logger and i18n)
+import { initializeLogger, getLogger, initializeI18n, changeLanguage, t, getAvailableLanguages, loadFrontendTranslations, ensureI18nInitialized } from '../utils/index.js';
+
+// Initialize logger first (MUST be before i18n)
 initializeLogger('chatbot-host');
 
-// Import i18n module
-const { changeLanguage, t, getAvailableLanguages, loadFrontendTranslations } = require('./i18n');
-
 // Import MCP components
-const { MCPClient } = require('./mcp-client');
-const { SessionManager } = require('./session-manager');
+import { MCPClient } from './mcp-client.js';
+import { SessionManager } from './session-manager.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.CHATBOT_HOST_PORT || 3002;
 
@@ -85,6 +86,10 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // Initialize MCP client on startup
 (async () => {
     try {
+        // Initialize i18n after logger is ready
+        await initializeI18n();
+        getLogger().info('i18n initialized');
+        
         getLogger().info('Starting server...');
         await mcpClient.initialize();
         getLogger().info('MCP Client initialized successfully');
@@ -107,22 +112,35 @@ app.get('/', (req, res) => {
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-    const mcpStatus = mcpClient.isInitialized ? 'connected' : 'disconnected';
-    const overallStatus = mcpClient.isInitialized ? 'ok' : 'degraded';
+app.get('/health', async (req, res) => {
+    try {
+        // Ensure i18n is initialized before using it
+        await ensureI18nInitialized();
+        
+        const mcpStatus = mcpClient.isInitialized ? 'connected' : 'disconnected';
+        const overallStatus = mcpClient.isInitialized ? 'ok' : 'degraded';
 
-    // Use language from header or default to English
-    const requestLanguage = req.headers['x-language'] || 'en';
-    changeLanguage(requestLanguage);
+        // Use language from header or default to English
+        const requestLanguage = req.headers['x-language'] || 'en';
+        await changeLanguage(requestLanguage);
 
-    res.json({
-        status: overallStatus,
-        service: 'chatbot-host',
-        timestamp: new Date().toISOString(),
-        mcpStatus: mcpStatus,
-        serviceAvailable: mcpClient.isInitialized,
-        message: mcpClient.isInitialized ? t('status.allServicesOperational') : t('status.mcpServicesUnavailable')
-    });
+        res.json({
+            status: overallStatus,
+            service: 'chatbot-host',
+            timestamp: new Date().toISOString(),
+            mcpStatus: mcpStatus,
+            serviceAvailable: mcpClient.isInitialized,
+            message: await t('status.allServicesOperational')
+        });
+    } catch (error) {
+        getLogger().error('Error in /health endpoint: ' + error.message);
+        res.status(500).json({
+            status: 'error',
+            service: 'chatbot-host',
+            timestamp: new Date().toISOString(),
+            message: 'Health check failed'
+        });
+    }
 });
 
 // Translations endpoint
@@ -640,12 +658,12 @@ app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
     getLogger().info('Received SIGTERM, shutting down gracefully...');
-    sessionManager.cleanup();
+    sessionManager.shutdown();
     process.exit(0);
 });
 
 process.on('SIGINT', () => {
     getLogger().info('Received SIGINT, shutting down gracefully...');
-    sessionManager.cleanup();
+    sessionManager.shutdown();
     process.exit(0);
 });

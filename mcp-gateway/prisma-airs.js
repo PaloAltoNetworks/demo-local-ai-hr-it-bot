@@ -1,6 +1,5 @@
-const axios = require('axios');
-const { t } = require('./i18n');
-const { getLogger } = require('./logger');
+import axios from 'axios';
+import { t, getLogger } from './utils/index.js';
 
 /**
  * Prisma AIRS API Intercept Module
@@ -30,38 +29,38 @@ class PrismaAIRSIntercept {
      * @param {Object} result - AIRS API result
      * @param {string} type - 'prompt' or 'response'
      * @param {string} language - Language for the message ('en' or other supported languages)
-     * @returns {string} Detailed error message
+     * @returns {Promise<string>} Detailed error message
      */
-    _generateBlockedMessage(result, type = 'prompt', language = 'en') {
+    async _generateBlockedMessage(result, type = 'prompt', language = 'en') {
         // Build detailed message based on detections
         const detections = type === 'prompt' ? result.prompt_detected : result.response_detected;
         const detectedIssues = [];
         
         if (detections) {
-            if (detections.injection) detectedIssues.push(t('security.detections.injection', { lng: language }));
-            if (detections.toxic_content) detectedIssues.push(t('security.detections.toxicContent', { lng: language }));
-            if (detections.malicious_code) detectedIssues.push(t('security.detections.maliciousCode', { lng: language }));
-            if (detections.dlp) detectedIssues.push(t('security.detections.dataLeak', { lng: language }));
-            if (detections.topic_violation) detectedIssues.push(t('security.detections.topicViolation', { lng: language }));
-            if (detections.url_cats) detectedIssues.push(t('security.detections.urlCategory', { lng: language }));
-            if (detections.agent) detectedIssues.push(t('security.detections.suspiciousAgent', { lng: language }));
-            if (detections.ungrounded && type === 'response') detectedIssues.push(t('security.detections.ungrounded', { lng: language }));
-            if (detections.db_security && type === 'response') detectedIssues.push(t('security.detections.dbSecurity', { lng: language }));
+            if (detections.injection) detectedIssues.push(await t('security.detections.injection', { lng: language }));
+            if (detections.toxic_content) detectedIssues.push(await t('security.detections.toxicContent', { lng: language }));
+            if (detections.malicious_code) detectedIssues.push(await t('security.detections.maliciousCode', { lng: language }));
+            if (detections.dlp) detectedIssues.push(await t('security.detections.dataLeak', { lng: language }));
+            if (detections.topic_violation) detectedIssues.push(await t('security.detections.topicViolation', { lng: language }));
+            if (detections.url_cats) detectedIssues.push(await t('security.detections.urlCategory', { lng: language }));
+            if (detections.agent) detectedIssues.push(await t('security.detections.suspiciousAgent', { lng: language }));
+            if (detections.ungrounded && type === 'response') detectedIssues.push(await t('security.detections.ungrounded', { lng: language }));
+            if (detections.db_security && type === 'response') detectedIssues.push(await t('security.detections.dbSecurity', { lng: language }));
         }
         
         let message = type === 'prompt' 
-            ? t('security.messages.cannotProcessRequest', { lng: language })
-            : t('security.messages.cannotProvideResponse', { lng: language });
+            ? await t('security.messages.cannotProcessRequest', { lng: language })
+            : await t('security.messages.cannotProvideResponse', { lng: language });
             
         if (detectedIssues.length > 0) {
-            message += ' ' + t('security.messages.containsIssues', { issues: detectedIssues.join(', '), lng: language });
+            message += ' ' + await t('security.messages.containsIssues', { issues: detectedIssues.join(', '), lng: language });
         } else {
-            message += ' ' + t('security.messages.policyViolation', { lng: language });
+            message += ' ' + await t('security.messages.policyViolation', { lng: language });
         }
         
         message += ' ' + (type === 'prompt' 
-            ? t('security.messages.rephraseRequest', { lng: language })
-            : t('security.messages.helpWithElse', { lng: language }));
+            ? await t('security.messages.rephraseRequest', { lng: language })
+            : await t('security.messages.helpWithElse', { lng: language }));
             
         return message;
     }
@@ -79,7 +78,7 @@ class PrismaAIRSIntercept {
             if (!this.isConfigured()) {
                 getLogger().warn('Prisma AIRS not configured - missing API token or profile ID/name');
                 
-                const configErrorMessage = t('security.errors.notConfigured', { lng: metadata.language || 'en' });
+                const configErrorMessage = await t('security.errors.notConfigured', { lng: metadata.language || 'en' });
                 
                 return { 
                     approved: false, 
@@ -148,6 +147,13 @@ class PrismaAIRSIntercept {
             // Check the action field to determine if content is approved
             const approved = result.action === 'allow';
 
+            let message;
+            if (approved) {
+                message = await t('security.messages.contentApproved', { lng: metadata.language || 'en' });
+            } else {
+                message = await this._generateBlockedMessage(result, response ? 'response' : 'prompt', metadata.language || 'en');
+            }
+
             return {
                 approved: approved,
                 action: result.action,
@@ -159,9 +165,7 @@ class PrismaAIRSIntercept {
                     prompt: result.prompt_masked_data,
                     response: result.response_masked_data
                 },
-                message: approved 
-                    ? t('security.messages.contentApproved', { lng: metadata.language || 'en' })
-                    : this._generateBlockedMessage(result, response ? 'response' : 'prompt', metadata.language || 'en'),
+                message: message,
                 // Include raw API payloads for checkpoint display
                 __raw_request_payload: payload,
                 __raw_response_payload: result
@@ -170,7 +174,7 @@ class PrismaAIRSIntercept {
         } catch (error) {
             getLogger().error('❌ Prisma AIRS intercept error:', error.message);
             
-            const errorMessage = t('security.errors.serviceUnavailable', { lng: metadata.language || 'en' });
+            const errorMessage = await t('security.errors.serviceUnavailable', { lng: metadata.language || 'en' });
             
             // Return error - MUST block the request when AIRS fails
             return {
@@ -220,7 +224,7 @@ function shouldUsePrismaAIRS(phase) {
     return phase === 'phase3';
 }
 
-module.exports = {
+export {
     PrismaAIRSIntercept,
     shouldUsePrismaAIRS
 };
