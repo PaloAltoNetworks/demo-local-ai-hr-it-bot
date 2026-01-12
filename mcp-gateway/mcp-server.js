@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
-import { initializeLogger, getLogger } from './utils/index.js';
+import { initializeLogger, getLogger, initializeI18n } from './utils/index.js';
 
 dotenv.config();
 
@@ -438,6 +438,11 @@ app.use(express.json({ limit: '50mb' }));
 // Initialize MCP Server and Registry
 const mcpServer = new MCPServer();
 const mcpRegistry = new MCPServerRegistry();
+
+// Initialize i18n (don't await here, let code that uses translations await ensureI18nInitialized)
+initializeI18n().catch(err => {
+  getLogger().error('Failed to initialize i18n:', err.message);
+});
 
 // Import Coordinator (for routing decisions)
 import { IntelligentCoordinator } from './coordinator.js';

@@ -8,9 +8,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Import shared utils (logger and i18n)
-import { initializeLogger, getLogger, changeLanguage, t, getAvailableLanguages, loadFrontendTranslations } from '../utils/index.js';
+import { initializeLogger, getLogger, initializeI18n, changeLanguage, t, getAvailableLanguages, loadFrontendTranslations, ensureI18nInitialized } from '../utils/index.js';
 
-// Initialize logger
+// Initialize logger first (MUST be before i18n)
 initializeLogger('chatbot-host');
 
 // Import MCP components
@@ -86,6 +86,10 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // Initialize MCP client on startup
 (async () => {
     try {
+        // Initialize i18n after logger is ready
+        await initializeI18n();
+        getLogger().info('i18n initialized');
+        
         getLogger().info('Starting server...');
         await mcpClient.initialize();
         getLogger().info('MCP Client initialized successfully');
@@ -108,22 +112,35 @@ app.get('/', (req, res) => {
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-    const mcpStatus = mcpClient.isInitialized ? 'connected' : 'disconnected';
-    const overallStatus = mcpClient.isInitialized ? 'ok' : 'degraded';
+app.get('/health', async (req, res) => {
+    try {
+        // Ensure i18n is initialized before using it
+        await ensureI18nInitialized();
+        
+        const mcpStatus = mcpClient.isInitialized ? 'connected' : 'disconnected';
+        const overallStatus = mcpClient.isInitialized ? 'ok' : 'degraded';
 
-    // Use language from header or default to English
-    const requestLanguage = req.headers['x-language'] || 'en';
-    changeLanguage(requestLanguage);
+        // Use language from header or default to English
+        const requestLanguage = req.headers['x-language'] || 'en';
+        await changeLanguage(requestLanguage);
 
-    res.json({
-        status: overallStatus,
-        service: 'chatbot-host',
-        timestamp: new Date().toISOString(),
-        mcpStatus: mcpStatus,
-        serviceAvailable: mcpClient.isInitialized,
-        message: mcpClient.isInitialized ? t('status.allServicesOperational') : t('status.mcpServicesUnavailable')
-    });
+        res.json({
+            status: overallStatus,
+            service: 'chatbot-host',
+            timestamp: new Date().toISOString(),
+            mcpStatus: mcpStatus,
+            serviceAvailable: mcpClient.isInitialized,
+            message: await t('status.allServicesOperational')
+        });
+    } catch (error) {
+        getLogger().error('Error in /health endpoint: ' + error.message);
+        res.status(500).json({
+            status: 'error',
+            service: 'chatbot-host',
+            timestamp: new Date().toISOString(),
+            message: 'Health check failed'
+        });
+    }
 });
 
 // Translations endpoint
