@@ -10,18 +10,23 @@ WORKDIR /app
 
 ARG AGENT_NAME
 
-# Copy shared package files
+# Copy all files
+COPY utils/ ./utils/
 COPY mcp-server/shared/package*.json ./shared/
-# Copy agent-specific package files
+COPY mcp-server/shared/ ./shared/
 COPY mcp-server/${AGENT_NAME}-mcp-server/package*.json ./
+COPY mcp-server/${AGENT_NAME}-mcp-server/ ./
 
 # Install dependencies
 RUN npm ci && \
     cd shared && npm ci
 
-# Copy source files
-COPY mcp-server/shared ./shared
-COPY mcp-server/${AGENT_NAME}-mcp-server/ ./
+# Install utils dependencies first
+RUN cd utils && npm ci --only=production
+
+# Install shared and main dependencies
+RUN npm ci && \
+    cd shared && npm ci --only=production
 
 # Copy data files (CSV) for agents that need them
 COPY mcp-server/${AGENT_NAME}-mcp-server/*.csv ./

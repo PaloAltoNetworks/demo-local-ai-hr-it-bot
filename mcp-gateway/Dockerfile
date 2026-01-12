@@ -4,7 +4,7 @@ FROM node:22-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy all application files
 COPY mcp-gateway/package*.json ./
 
 # Install dependencies
@@ -12,9 +12,14 @@ RUN npm ci --only=production
 
 # Copy application code
 COPY mcp-gateway/ .
-
-# Copy locales directory for i18n support
 COPY locales/ ./locales/
+COPY utils/ ./utils/
+
+# Install utils dependencies first
+RUN cd utils && npm ci --only=production
+
+# Install main application dependencies
+RUN npm ci --only=production
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \

@@ -1,7 +1,6 @@
-const axios = require('axios');
-const { PrismaAIRSIntercept, shouldUsePrismaAIRS } = require('./prisma-airs');
-const { LLMProviderFactory } = require('./llm-provider');
-const { getLogger } = require('./logger');
+import axios from 'axios';
+import { PrismaAIRSIntercept, shouldUsePrismaAIRS } from './prisma-airs.js';
+import { LLMProviderFactory, getLogger } from './utils/index.js';
 
 /**
  * Intelligent Coordinator for MCP Gateway
@@ -1896,4 +1895,4 @@ Return only the concise version:`;
   }
 }
 
-module.exports = { IntelligentCoordinator };
+export { IntelligentCoordinator };
