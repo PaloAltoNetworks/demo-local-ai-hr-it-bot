@@ -33,8 +33,7 @@ export COORDINATOR_MODEL=qwen2.5:1.5b
 export LLM_PROVIDER=aws
 export AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key
 export AWS_REGION=us-east-1
-export BEDROCK_COORDINATOR_MODEL=qwen.qwen3-32b-v1:0
-export BEDROCK_AGENT_MODEL=mistral.mistral-large-2402-v1:0
+export BEDROCK_MODEL=qwen.qwen3-32b-v1:0
 
 # Start services
 docker compose up -d
@@ -154,8 +153,7 @@ AGENT_MODEL=qwen2.5:1.5b
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
-BEDROCK_COORDINATOR_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
-BEDROCK_AGENT_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
+BEDROCK_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
 ```
 
 #### Gateway Settings
@@ -179,8 +177,7 @@ LLM_PROVIDER=bedrock
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
-BEDROCK_COORDINATOR_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
-BEDROCK_AGENT_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
+BEDROCK_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
 
 # 2. Restart containers
 docker compose restart mcp-gateway hr-mcp-server it-mcp-server general-mcp-server

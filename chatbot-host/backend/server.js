@@ -580,7 +580,7 @@ app.get('/api/llm-providers', async (req, res) => {
                         getLogger().warn('No llm providers configured in coordinator');
                         return res.status(503).json({
                             error: 'No llm providers configured',
-                            message: 'Please configure llm providers: AWS Bedrock (AWS_REGION + BEDROCK_COORDINATOR_MODEL) or Ollama (OLLAMA_SERVER_URL)',
+                            message: 'Please configure llm providers: AWS Bedrock (AWS_REGION + BEDROCK_MODEL) or Ollama (OLLAMA_SERVER_URL)',
                             providers: [],
                             source: 'coordinator'
                         });

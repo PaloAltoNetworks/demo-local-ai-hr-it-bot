@@ -622,7 +622,7 @@ app.get('/api/llm-providers', (req, res) => {
       return res.status(503).json({
         success: false,
         message: 'No llm providers configured',
-        details: 'Please configure either AWS Bedrock (AWS_REGION + BEDROCK_COORDINATOR_MODEL) or Ollama (OLLAMA_SERVER_URL) environment variables',
+        details: 'Please configure either AWS Bedrock (AWS_REGION + BEDROCK_MODEL) or Ollama (OLLAMA_SERVER_URL) environment variables',
         providers: [],
         count: 0
       });
