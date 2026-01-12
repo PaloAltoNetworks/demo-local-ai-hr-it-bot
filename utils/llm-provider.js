@@ -103,10 +103,6 @@ class AIProvider extends LLMProvider {
       };
     } catch (error) {
       getLogger().error(`[AIProvider] Error generating text: ${error.message}`);
-      getLogger().error(`[AIProvider] Error name: ${error.name}`);
-      getLogger().error(`[AIProvider] Error status: ${error.status || 'N/A'}`);
-      getLogger().error(`[AIProvider] Error statusCode: ${error.statusCode || 'N/A'}`);
-      getLogger().error(`[AIProvider] Error code: ${error.code || 'N/A'}`);
       getLogger().error(`[AIProvider] Full error: ${JSON.stringify(error, null, 2)}`);
       
       if (error.message?.includes('Invalid JSON response')) {
@@ -162,6 +158,7 @@ class LLMProviderFactory {
         resourceName: process.env.AZURE_RESOURCE_NAME,
         baseUrl: process.env.AZURE_BASE_URL,
         apiVersion: process.env.AZURE_API_VERSION,
+        useDeploymentBasedUrls: true,
       });
       providers.azure = azureClient;
       getLogger().debug('[LLMProvider] Azure OpenAI provider registered');
@@ -185,7 +182,7 @@ class LLMProviderFactory {
     }
 
     // AWS Bedrock provider
-    if (process.env.AWS_REGION && process.env.BEDROCK_COORDINATOR_MODEL) {
+    if (process.env.AWS_REGION && process.env.BEDROCK_MODEL) {
       try {
         const bedrockClient = createAmazonBedrock();
         providers.bedrock = bedrockClient;
@@ -255,22 +252,22 @@ class LLMProviderFactory {
     
     switch (providerLower) {
       case 'openai':
-        return `openai:${modelId || process.env.OPENAI_COORDINATOR_MODEL || 'gpt-4o-mini'}`;
+        return `openai:${modelId || process.env.OPENAI_MODEL || 'gpt-4o-mini'}`;
       
       case 'anthropic':
-        return `anthropic:${modelId || process.env.ANTHROPIC_COORDINATOR_MODEL || 'claude-3-5-sonnet-20241022'}`;
+        return `anthropic:${modelId || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022'}`;
       
       case 'azure':
-        return `azure:${modelId || process.env.AZURE_COORDINATOR_MODEL}`;
+        return `azure:${modelId || process.env.AZURE_MODEL || ''}`;
       
       case 'gcp':
-        return `gcp:${modelId || process.env.GCP_COORDINATOR_MODEL || 'gemini-1.5-flash'}`;
+        return `gcp:${modelId || process.env.GCP_MODEL || 'gemini-1.5-flash'}`;
       
       case 'aws':
-        return `bedrock:${modelId || process.env.BEDROCK_COORDINATOR_MODEL || 'anthropic.claude-3-5-sonnet-20241022-v2:0'}`;
+        return `bedrock:${modelId || process.env.BEDROCK_MODEL || 'anthropic.claude-3-5-sonnet-20241022-v2:0'}`;
       
       case 'ollama':
-        return `ollama:${modelId || process.env.OLLAMA_COORDINATOR_MODEL || process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b'}`;
+        return `ollama:${modelId || process.env.OLLAMA_MODEL || process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b'}`;
       
       default:
         throw new Error(`Unknown provider: ${provider}`);
@@ -312,8 +309,8 @@ class LLMProviderFactory {
     }
 
     // Check AWS Bedrock configuration
-    // Requires AWS_REGION and BEDROCK_COORDINATOR_MODEL (credentials come from AWS SDK env vars)
-    if (process.env.AWS_REGION && process.env.BEDROCK_COORDINATOR_MODEL) {
+    // Requires AWS_REGION and BEDROCK_MODEL (credentials come from AWS SDK env vars)
+    if (process.env.AWS_REGION && process.env.BEDROCK_MODEL) {
       availableProviders.push({
         id: 'aws',
         name: 'AWS',
@@ -322,9 +319,9 @@ class LLMProviderFactory {
         provider: 'bedrock',
         configured: true,
       });
-      getLogger().debug('[LLMProvider] AWS Bedrock provider detected (configured via AWS_REGION and BEDROCK_COORDINATOR_MODEL)');
-    } else if (process.env.AWS_REGION || process.env.BEDROCK_COORDINATOR_MODEL) {
-      getLogger().warn('[LLMProvider] AWS Bedrock partially configured - missing AWS_REGION or BEDROCK_COORDINATOR_MODEL');
+      getLogger().debug('[LLMProvider] AWS Bedrock provider detected (configured via AWS_REGION and BEDROCK_MODEL)');
+    } else if (process.env.AWS_REGION || process.env.BEDROCK_MODEL) {
+      getLogger().warn('[LLMProvider] AWS Bedrock partially configured - missing AWS_REGION or BEDROCK_MODEL');
     }
 
     // Check Azure OpenAI configuration
@@ -371,7 +368,7 @@ class LLMProviderFactory {
 
     // If no providers are properly configured, return error information
     if (availableProviders.length === 0) {
-      getLogger().error('[LLMProvider] No llm providers properly configured. Configure at least one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, AWS_REGION + BEDROCK_COORDINATOR_MODEL, AZURE_API_KEY + AZURE_RESOURCE_NAME, GOOGLE_API_KEY, or OLLAMA_SERVER_URL');
+      getLogger().error('[LLMProvider] No llm providers properly configured. Configure at least one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, AWS_REGION + BEDROCK_MODEL, AZURE_API_KEY + AZURE_RESOURCE_NAME, GOOGLE_API_KEY, or OLLAMA_SERVER_URL');
       return [];
     }
 
