@@ -45,7 +45,6 @@ jspm_packages/
 web_modules/
 
 # Sensitive credentials and authentication files
-*.json
 *.pem
 *.key
 *.p12

@@ -1,0 +1,19 @@
+{
+  "name": "demo-local-ai-hr-it-bot",
+  "version": "1.0.0",
+  "description": "Local AI HR/IT Bot with MCP servers",
+  "type": "module",
+  "workspaces": [
+    "utils",
+    "chatbot-host",
+    "mcp-gateway",
+    "mcp-server/shared",
+    "mcp-server/it-mcp-server",
+    "mcp-server/hr-mcp-server",
+    "mcp-server/general-mcp-server"
+  ],
+  "scripts": {
+    "install": "npm install --workspaces"
+  },
+  "private": true
+}
