@@ -1,28 +1,26 @@
 # Use Node.js official image
 FROM node:22-alpine
 
-# Set working directory
-WORKDIR /app
-
-# Copy all application files
-COPY chatbot-host/package*.json ./
-COPY chatbot-host/ .
-COPY locales/ ./locales/
-COPY utils/ ./utils/
-
-# Install utils dependencies first
-RUN cd utils && npm install --only=production
-
-# Install main application dependencies
-RUN npm install --only=production
-
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S chatbot -u 1001
-
-# Change ownership of app directory
-RUN chown -R chatbot:nodejs /app
 USER chatbot
+
+# Set working directory
+WORKDIR /app
+
+# copy only package files first (cache-friendly)
+COPY --chown=chatbot:nodejs utils/package*.json ./utils/
+COPY --chown=chatbot:nodejs chatbot-host/package*.json ./
+
+# install all deps in one layer
+RUN npm install --prefix ./utils --only=production && \
+    npm install --prefix . --only=production
+
+# Copy all application files
+COPY --chown=mcpserver:nodejs utils/ ./utils/
+COPY --chown=chatbot:nodejs locales/ ./locales/
+COPY --chown=chatbot:nodejs chatbot-host/ .
 
 # Expose port
 EXPOSE 3002

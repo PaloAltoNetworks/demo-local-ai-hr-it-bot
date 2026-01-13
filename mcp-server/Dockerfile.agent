@@ -6,34 +6,36 @@ ARG AGENT_NAME=general
 
 FROM node:22-alpine
 
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S mcpserver -u 1001
+USER mcpserver
+
 WORKDIR /app
 
 ARG AGENT_NAME
 
-# Copy all files
-COPY utils/ ./utils/
-COPY mcp-server/shared/package*.json ./shared/
-COPY mcp-server/shared/ ./shared/
-COPY mcp-server/${AGENT_NAME}-mcp-server/package*.json ./
-COPY mcp-server/${AGENT_NAME}-mcp-server/ ./
+# copy only package files first (cache-friendly)
+COPY --chown=mcpserver:nodejs utils/package*.json ./utils/
+COPY --chown=mcpserver:nodejs mcp-server/shared/package*.json ./shared/
+COPY --chown=mcpserver:nodejs mcp-server/${AGENT_NAME}-mcp-server/package*.json ./
 
-# Copy data files (CSV) for agents that need them
-COPY mcp-server/${AGENT_NAME}-mcp-server/*.csv ./
+# install all deps in one layer
+RUN npm install --prefix ./utils --only=production && \
+    npm install --prefix ./shared --only=production && \
+    npm install --prefix . --only=production
 
-# Install utils dependencies first
-RUN cd utils && npm install --only=production
+# then copy full sources
+COPY --chown=mcpserver:nodejs utils/ ./utils/
+COPY --chown=mcpserver:nodejs mcp-server/shared/ ./shared/
+COPY --chown=mcpserver:nodejs mcp-server/${AGENT_NAME}-mcp-server/ ./
 
-# Install shared and main dependencies
-RUN npm install && \
-    cd shared && npm install --only=production
-
-# Copy data files (CSV) for agents that need them
-COPY mcp-server/${AGENT_NAME}-mcp-server/*.csv ./
+# Expose port
+EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD node -e "console.log('Health Check - OK')" || exit 1
 
-EXPOSE 3000
-
-CMD ["node", "server.js"]
+# Start the application
+CMD ["npm", "start"]
