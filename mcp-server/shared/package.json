@@ -24,8 +24,7 @@
     "@modelcontextprotocol/sdk": "^1.25.2",
     "ai": "^6.0.28",
     "axios": "^1.13.2",
-    "express": "^5.2.1",
-    "winston": "^3.19.0"
+    "express": "^5.2.1"
   },
   "keywords": [
     "mcp",
