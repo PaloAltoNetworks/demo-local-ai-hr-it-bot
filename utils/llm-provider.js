@@ -217,10 +217,20 @@ class LLMProviderFactory {
 
   /**
    * Create a model instance using the provider registry
-   * Format: 'provider:modelId' or just use configured default
+   * Priority: explicit providerType > first available provider > error
    */
   static create(providerType = null, modelId = null) {
-    const provider = providerType || process.env.LLM_PROVIDER || 'ollama';
+    const availableProviders = this.getAvailableLLMProviders();
+    
+    let provider = providerType;
+    if (!provider) {
+      if (availableProviders.length === 0) {
+        throw new Error('[LLMProvider] No LLM providers configured. Configure at least one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, AWS_REGION + BEDROCK_MODEL, AZURE_API_KEY + AZURE_RESOURCE_NAME, GOOGLE_APPLICATION_CREDENTIALS, or OLLAMA_SERVER_URL');
+      }
+      provider = availableProviders[0].id;
+      getLogger().info(`[LLMProvider] No provider specified, using first available: ${provider}`);
+    }
+    
     getLogger().debug(`[LLMProvider] Creating model - provider: ${provider}, modelId: ${modelId || 'default'}`);
 
     const registry = this._initializeRegistry();

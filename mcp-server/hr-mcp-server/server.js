@@ -80,7 +80,7 @@ class HRAgent extends MCPAgentBase {
     // Query resource
     this.resourceManager.registerTemplateResource(
       'query',
-      { uri: 'hr://query{?q*}', params: {} },
+      { uri: 'hr://query{?q*,provider*}', params: {} },
       {
         title: 'HR Query with User Context',
         description: 'Handle HR queries with user context information',
@@ -90,14 +90,15 @@ class HRAgent extends MCPAgentBase {
         try {
           const urlObj = new URL(uri.href);
           const query = urlObj.searchParams.get('q');
+          const provider = urlObj.searchParams.get('provider');
 
-          this.logger.debug(`Processing HR query: "${query}"`);
+          this.logger.debug(`Processing HR query: "${query}"${provider ? ` (provider: ${provider})` : ''}`);
 
           if (!query) {
             throw new Error('No query parameter provided');
           }
 
-          const response = await this.processQuery(query);
+          const response = await this.processQuery(query, provider);
 
           return {
             contents: [{
@@ -136,7 +137,7 @@ class HRAgent extends MCPAgentBase {
     return Math.min(score, 100);
   }
 
-  async processQuery(query) {
+  async processQuery(query, providerOverride = null) {
     this.sendThinkingMessage('Analyzing HR request...');
 
     try {
@@ -147,7 +148,7 @@ class HRAgent extends MCPAgentBase {
 
       this.sendThinkingMessage('Processing with HR knowledge...');
 
-      return await this.queryProcessor.processWithModel(fullPrompt, query);
+      return await this.queryProcessor.processWithModel(fullPrompt, query, providerOverride);
     } catch (error) {
       this.logger.error('HR Agent processing error', error);
       return 'I encountered an error while accessing HR information. Please try again or contact HR directly.';

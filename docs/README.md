@@ -300,7 +300,7 @@ DEFAULT_LANGUAGE=fr
 
 ### Architecture
 
-Both Ollama and AWS Bedrock are accessed through a **unified LLM interface** that abstracts away provider-specific details:
+LLMs are accessed through a **unified LLM interface** that abstracts away provider-specific details:
 
 ```javascript
 const llmProvider = LLMProviderFactory.create();

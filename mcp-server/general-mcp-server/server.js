@@ -36,7 +36,7 @@ class GeneralAgent extends MCPAgentBase {
     // Query resource
     this.resourceManager.registerTemplateResource(
       'query',
-      { uri: 'general://query{?q*}', params: {} },
+      { uri: 'general://query{?q*,provider*}', params: {} },
       {
         title: 'General Query with User Context',
         description: 'Handle general queries with user context information',
@@ -46,14 +46,15 @@ class GeneralAgent extends MCPAgentBase {
         try {
           const urlObj = new URL(uri.href);
           const query = urlObj.searchParams.get('q');
+          const provider = urlObj.searchParams.get('provider');
 
-          this.logger.debug(`Processing general query: "${query}"`);
+          this.logger.debug(`Processing general query: "${query}"${provider ? ` (provider: ${provider})` : ''}`);
 
           if (!query) {
             throw new Error('No query parameter provided');
           }
 
-          const response = await this.processQuery(query);
+          const response = await this.processQuery(query, provider);
 
           return {
             contents: [{
@@ -94,7 +95,7 @@ class GeneralAgent extends MCPAgentBase {
     return Math.min(score, 60); // Cap at 60 for fallback priority
   }
 
-  async processQuery(query) {
+  async processQuery(query, providerOverride = null) {
     this.sendThinkingMessage('Analyzing general workplace request...');
 
     try {
@@ -103,7 +104,7 @@ class GeneralAgent extends MCPAgentBase {
 
       this.sendThinkingMessage('Providing general guidance and information...');
 
-      return await this.queryProcessor.processWithModel(fullPrompt, query);
+      return await this.queryProcessor.processWithModel(fullPrompt, query, providerOverride);
     } catch (error) {
       this.logger.error('General Agent processing error', error);
       return 'I encountered an error while processing your request. Please try again.';

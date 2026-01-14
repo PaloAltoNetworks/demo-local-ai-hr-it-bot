@@ -9,22 +9,28 @@ class QueryProcessor {
     this.agentName = agentName;
     this.logger = getLogger();
     this.config = ConfigManager.getConfig();
-    // Initialize LLM provider (supports multiple llm providers)
     this.llmProvider = LLMProviderFactory.create();
   }
 
   /**
-   * Process query using LLM provider
+   * Process query using LLM provider with optional provider override
    */
-  async processWithModel(systemPrompt, query) {
+  async processWithModel(systemPrompt, query, providerOverride = null) {
     this.logger.debug('Processing query with LLM provider...');
 
     try {
-      const metadata = this.llmProvider.model;
+      // Switch provider if override provided
+      let activeProvider = this.llmProvider;
+      if (providerOverride) {
+        this.logger.debug(`[QueryProcessor] Switching to provider: ${providerOverride}`);
+        activeProvider = LLMProviderFactory.create(providerOverride);
+      }
+
+      const metadata = activeProvider.model;
       this.logger.debug(`Processing with model`);
       this.logger.debug(`System prompt length: ${systemPrompt.length} characters`);
 
-      const result = await this.llmProvider.generate(query, {
+      const result = await activeProvider.generate(query, {
         system: systemPrompt,
         temperature: 0.3,
         maxTokens: 2000,

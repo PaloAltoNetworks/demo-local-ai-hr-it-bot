@@ -163,7 +163,6 @@ class AgentRegistry {
  */
 class IntelligentCoordinator {
   constructor(ollamaUrl, mcpServerRegistry) {
-    // Initialize LLM provider (supports both Ollama and AWS Bedrock)
     this.llmProvider = LLMProviderFactory.create();
     this.mcpServerRegistry = mcpServerRegistry; // Reference to MCPServerRegistry for forwarding
     this.registry = new AgentRegistry();
@@ -956,15 +955,14 @@ SYNTHESIZED RESPONSE:`;
         }
       }
 
-      // Add llm provider context if specified
-      if (llmProvider && llmProvider !== 'aws') {
-        enrichedQuery = `${enrichedQuery}\n[llm provider: ${llmProvider}]`;
-      }
-
       // Track outbound request tokens (after enrichment)
       this.trackAgentTokens(enrichedQuery);
 
-      const queryUri = `${agent.name}://query?q=${encodeURIComponent(enrichedQuery)}`;
+      // Build query URI with llmProvider parameter
+      let queryUri = `${agent.name}://query?q=${encodeURIComponent(enrichedQuery)}`;
+      if (llmProvider) {
+        queryUri += `&provider=${encodeURIComponent(llmProvider)}`;
+      }
 
       // Make MCP resource request via MCPServerRegistry
       // Note: llmProvider is passed in userContext, not in the URI

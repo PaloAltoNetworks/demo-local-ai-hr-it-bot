@@ -146,7 +146,7 @@ ${discussionsText}
     // Query resource
     this.resourceManager.registerTemplateResource(
       'query',
-      { uri: 'it://query{?q*}', params: {} },
+      { uri: 'it://query{?q*,provider*}', params: {} },
       {
         title: 'IT Query with User Context',
         description: 'Handle IT queries with user context information',
@@ -156,14 +156,15 @@ ${discussionsText}
         try {
           const urlObj = new URL(uri.href);
           const query = urlObj.searchParams.get('q');
+          const provider = urlObj.searchParams.get('provider');
 
-          this.logger.debug(`Processing IT query: "${query}"`);
+          this.logger.debug(`Processing IT query: "${query}"${provider ? ` (provider: ${provider})` : ''}`);
 
           if (!query) {
             throw new Error('No query parameter provided');
           }
 
-          const response = await this.processQuery(query);
+          const response = await this.processQuery(query, provider);
 
           return {
             contents: [{
@@ -204,7 +205,7 @@ ${discussionsText}
     return Math.min(score, 100);
   }
 
-  async processQuery(query) {
+  async processQuery(query, providerOverride = null) {
     this.sendThinkingMessage('Analyzing IT support request...');
 
     try {
@@ -264,7 +265,7 @@ ${discussionsText}`;
 
       this.sendThinkingMessage('Querying IT database...');
 
-      return await this.queryProcessor.processWithModel(fullPrompt, query);
+      return await this.queryProcessor.processWithModel(fullPrompt, query, providerOverride);
     } catch (error) {
       this.logger.error('IT Agent processing error', error);
       return 'I encountered an error while accessing IT support information. Please try again or contact IT support directly.';
