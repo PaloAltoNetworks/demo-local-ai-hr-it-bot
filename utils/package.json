@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "description": "Shared utilities for chatbot-host, mcp-gateway, and mcp-server",
   "type": "module",
-  "main": "index.js",
   "exports": {
-    ".": "./index.js",
     "./logger": "./logger.js",
     "./llm-provider": "./llm-provider.js",
     "./config": "./config.js"

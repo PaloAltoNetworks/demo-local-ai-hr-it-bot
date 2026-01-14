@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { PrismaAIRSIntercept, shouldUsePrismaAIRS } from './prisma-airs.js';
-import { LLMProviderFactory, getLogger } from './utils/index.js';
+import { getLogger } from './utils/logger.js';
+import { LLMProviderFactory } from './utils/llm-provider.js';
 
 /**
  * Intelligent Coordinator for MCP Gateway

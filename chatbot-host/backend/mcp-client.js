@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import axios from 'axios';
-import { getLogger } from '../utils/index.js';
+import { getLogger } from '../utils/logger.js';
 
 /**
  * MCP Client Implementation - Following MCP Specification 2025-06-18

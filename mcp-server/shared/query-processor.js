@@ -1,7 +1,8 @@
 /**
  * Query processing utilities for agents
  */
-import { LLMProviderFactory, getLogger } from '../../utils/index.js';
+import { getLogger } from '../utils/logger.js';
+import { LLMProviderFactory } from '../utils/llm-provider.js';
 import { ConfigManager } from './config.js';
 
 class QueryProcessor {

@@ -2,7 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
-import { initializeLogger, getLogger, initializeI18n } from './utils/index.js';
+import { getLogger } from './utils/logger.js';
+import { initializeLogger } from './utils/logger.js';
+import { initializeI18n } from './utils/i18n.js';
 
 dotenv.config();
 

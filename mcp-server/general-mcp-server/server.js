@@ -1,5 +1,5 @@
 import { MCPAgentBase } from './shared/mcp-agent-base.js';
-import { QueryProcessor } from './shared/utils/query-processor.js';
+import { QueryProcessor } from './shared/query-processor.js';
 import { GeneralService } from './service.js';
 import { config } from './config.js';
 

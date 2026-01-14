@@ -4,11 +4,11 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { randomUUID } from 'node:crypto';
-import { initializeLogger, getLogger } from './utils/logger.js';
-import { ConfigManager } from './utils/config.js';
-import { CoordinatorClient } from './utils/coordinator-client.js';
-import { MCPTransportManager } from './utils/transport-manager.js';
-import { ResourceManager } from './utils/resource-manager.js';
+import { initializeLogger, getLogger } from '../utils/logger.js';
+import { ConfigManager } from './config.js';
+import { CoordinatorClient } from './coordinator-client.js';
+import { MCPTransportManager } from './transport-manager.js';
+import { ResourceManager } from './resource-manager.js';
 
 class MCPAgentBase {
   constructor(agentName, agentDescription) {
