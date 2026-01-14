@@ -155,8 +155,8 @@ class LLMProviderFactory {
     if (process.env.AZURE_API_KEY && (process.env.AZURE_RESOURCE_NAME || process.env.AZURE_BASE_URL)) {
       const azureClient = createAzure({
         apiKey: process.env.AZURE_API_KEY,
-        resourceName: process.env.AZURE_RESOURCE_NAME,
-        baseUrl: process.env.AZURE_BASE_URL,
+        resourceName: process.env.AZURE_RESOURCE_NAME || null,
+        baseUrl: process.env.AZURE_BASE_URL || null,
         apiVersion: process.env.AZURE_API_VERSION,
         useDeploymentBasedUrls: true,
       });
@@ -335,7 +335,7 @@ class LLMProviderFactory {
     }
 
     // Check Azure OpenAI configuration
-    if (process.env.AZURE_API_KEY && process.env.AZURE_RESOURCE_NAME) {
+    if (process.env.AZURE_API_KEY && (process.env.AZURE_RESOURCE_NAME || process.env.AZURE_BASE_URL)) {
       availableProviders.push({
         id: 'azure',
         name: 'Microsoft Azure',
@@ -345,8 +345,8 @@ class LLMProviderFactory {
         configured: true,
       });
       getLogger().debug('[LLMProvider] Azure OpenAI provider detected (configured via Azure credentials)');
-    } else if (process.env.AZURE_API_KEY || process.env.AZURE_RESOURCE_NAME) {
-      getLogger().warn('[LLMProvider] Azure OpenAI partially configured - missing API key, resource name, or deployment ID');
+    } else if (process.env.AZURE_API_KEY || process.env.AZURE_RESOURCE_NAME || process.env.AZURE_BASE_URL) {
+      getLogger().warn('[LLMProvider] Azure OpenAI partially configured - missing API key, resource name, or base URL');
     }
 
     // Check Google Cloud Vertex AI configuration
