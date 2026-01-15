@@ -1541,7 +1541,8 @@ Return only the concise version:`;
           query,
           translatedQuery,
           language,
-          selectedAgent.name
+          selectedAgent.name,
+          llmProvider
         );
 
         // CHECKPOINT 4: Analyze final response security (use passed phase)
@@ -1597,7 +1598,8 @@ Return only the concise version:`;
           query,
           translatedQuery,
           language,
-          'multi-agent-coordinator'
+          'multi-agent-coordinator',
+          llmProvider
         );
 
         // CHECKPOINT 4: Analyze final response security (use passed phase)
