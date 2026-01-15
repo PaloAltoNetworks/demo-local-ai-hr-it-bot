@@ -65,6 +65,9 @@ export class I18nService {
         // Set the HTML lang attribute
         document.documentElement.lang = this.currentLanguage;
         
+        // Sync detected language to API service so requests use correct language
+        this.apiService.setLanguage(this.currentLanguage);
+        
         // Automatically populate language select if it exists
         const languageSelect = document.getElementById('userMenuLanguageSelect');
         if (languageSelect) {
