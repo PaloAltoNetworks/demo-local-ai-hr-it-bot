@@ -1033,7 +1033,7 @@ RESPOND ONLY WITH THIS JSON FORMAT:
       // Step 3: Translate back to target language if needed
       if (targetLanguage !== 'en') {
         getLogger().debug(`Translating response to ${targetLanguage}`);
-        processedResponse = await this.translateResponse(processedResponse, targetLanguage);
+        processedResponse = await this.translateResponse(processedResponse, targetLanguage, llmProvider);
       }
 
       // // Step 4: Final quality check - ensure response is concise and clear
@@ -1048,7 +1048,7 @@ RESPOND ONLY WITH THIS JSON FORMAT:
     } catch (error) {
       getLogger().error(`❌ Response processing failed:`, error);
       // Fallback to original response if processing fails
-      return targetLanguage !== 'en' ? await this.translateResponse(agentResponse, targetLanguage) : agentResponse;
+      return targetLanguage !== 'en' ? await this.translateResponse(agentResponse, targetLanguage, llmProvider) : agentResponse;
     }
   }
 
