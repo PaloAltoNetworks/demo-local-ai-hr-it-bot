@@ -129,7 +129,8 @@
   "language": {
     "code": "fr",
     "name": "Français",
-    "nativeName": "Français"
+    "nativeName": "Français",
+    "dir": "ltr"
   },
   "theme": {
     "switchToDarkMode": "Passer au mode sombre",

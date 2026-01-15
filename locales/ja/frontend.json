@@ -129,7 +129,8 @@
   "language": {
     "code": "ja",
     "name": "Japanese",
-    "nativeName": "日本語"
+    "nativeName": "日本語",
+    "dir": "ltr"
   },
   "theme": {
     "switchToDarkMode": "ダークモードに切り替える",

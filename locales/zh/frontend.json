@@ -129,7 +129,8 @@
   "language": {
     "code": "zh",
     "name": "Chinese",
-    "nativeName": "中文"
+    "nativeName": "中文",
+    "dir": "ltr"
   },
   "theme": {
     "switchToDarkMode": "切换到深色模式",
