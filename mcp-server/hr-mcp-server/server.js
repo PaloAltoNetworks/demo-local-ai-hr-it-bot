@@ -66,7 +66,7 @@ class HRAgent extends MCPAgentBase {
             }]
           };
         } catch (error) {
-          this.logger.error('Failed to fetch employee profile', error);
+          getLogger().error('Failed to fetch employee profile', error);
           return {
             contents: [{
               uri: uri.href,
@@ -92,7 +92,7 @@ class HRAgent extends MCPAgentBase {
           const query = urlObj.searchParams.get('q');
           const provider = urlObj.searchParams.get('provider');
 
-          this.logger.debug(`Processing HR query: "${query}"${provider ? ` (provider: ${provider})` : ''}`);
+          getLogger().debug(`Processing HR query: "${query}"${provider ? ` (provider: ${provider})` : ''}`);
 
           if (!query) {
             throw new Error('No query parameter provided');
@@ -107,7 +107,7 @@ class HRAgent extends MCPAgentBase {
             }]
           };
         } catch (error) {
-          this.logger.error('Query processing error', error);
+          getLogger().error('Query processing error', error);
           return {
             contents: [{
               uri: uri.href,
@@ -150,7 +150,7 @@ class HRAgent extends MCPAgentBase {
 
       return await this.queryProcessor.processWithModel(fullPrompt, query, providerOverride);
     } catch (error) {
-      this.logger.error('HR Agent processing error', error);
+      getLogger().error('HR Agent processing error', error);
       return 'I encountered an error while accessing HR information. Please try again or contact HR directly.';
     }
   }

@@ -18,7 +18,6 @@ class MCPAgentBase {
 
     // Initialize utilities
     initializeLogger(agentName);
-    this.logger = getLogger();
     this.config = ConfigManager.getConfig();
 
     // MCP Server setup
@@ -49,7 +48,7 @@ class MCPAgentBase {
    * Setup base handlers (resources and tools)
    */
   async setupBaseHandlers() {
-    this.logger.debug('Setting up base handlers');
+    getLogger().debug('Setting up base handlers');
     this.setupMCPHandlers();
   }
 
@@ -60,18 +59,18 @@ class MCPAgentBase {
     const tools = this.getTools();
 
     tools.forEach((tool) => {
-      this.logger.debug(`Registering tool: ${tool.name}`);
+      getLogger().debug(`Registering tool: ${tool.name}`);
 
       this.server.registerTool(
         tool.name,
         tool.description,
         tool.inputSchema,
         async (args) => {
-          this.logger.debug(`Executing tool: ${tool.name}`, args);
+          getLogger().debug(`Executing tool: ${tool.name}`, args);
 
           try {
             const result = await this.handleToolCall(tool.name, args);
-            this.logger.debug(`Tool ${tool.name} executed`);
+            getLogger().debug(`Tool ${tool.name} executed`);
 
             return [
               {
@@ -80,14 +79,14 @@ class MCPAgentBase {
               }
             ];
           } catch (error) {
-            this.logger.error(`Tool ${tool.name} execution failed`, error);
+            getLogger().error(`Tool ${tool.name} execution failed`, error);
             throw error;
           }
         }
       );
     });
 
-    this.logger.debug(`${tools.length} MCP tools registered`);
+    getLogger().debug(`${tools.length} MCP tools registered`);
   }
 
   /**
@@ -95,22 +94,22 @@ class MCPAgentBase {
    * Subclasses should override createService() to return their service instance
    */
   async initialize() {
-    this.logger.debug('Initializing agent');
+    getLogger().debug('Initializing agent');
     
     try {
       // Create service instance
       this.service = await this.createService();
-      this.logger.debug('Service created');
+      getLogger().debug('Service created');
       
       // Create resource manager with agent name and MCP server
       this.resourceManager = new ResourceManager(this.agentName, this.server);
-      this.logger.debug('Resource manager created');
+      getLogger().debug('Resource manager created');
       
       // Setup resources (subclass-specific)
       await this.setupResources();
-      this.logger.debug('Resources set up');
+      getLogger().debug('Resources set up');
     } catch (error) {
-      this.logger.error('Failed to initialize agent', error);
+      getLogger().error('Failed to initialize agent', error);
       throw error;
     }
   }
@@ -126,7 +125,7 @@ class MCPAgentBase {
    * Setup MCP resources - to be implemented by each agent
    */
   async setupResources() {
-    this.logger.debug('Setting up base resources');
+    getLogger().debug('Setting up base resources');
   }
 
   /**
@@ -136,7 +135,7 @@ class MCPAgentBase {
     try {
       return this.resourceManager ? this.resourceManager.getResourcesList() : [];
     } catch (error) {
-      this.logger.warn('Failed to get resources list', error);
+      getLogger().warn('Failed to get resources list', error);
       return [];
     }
   }
@@ -301,7 +300,7 @@ class MCPAgentBase {
    * Start the MCP server with HTTP transport
    */
   async start() {
-    this.logger.debug(`Starting ${this.agentName.toUpperCase()} Agent`);
+    getLogger().debug(`Starting ${this.agentName.toUpperCase()} Agent`);
 
     try {
       // Initialize agent (subclass-specific setup)
@@ -321,8 +320,8 @@ class MCPAgentBase {
       const port = this.config.agent.port;
       await new Promise((resolve) => {
         app.listen(port, () => {
-          this.logger.debug(`MCP HTTP Server started on port ${port}`);
-          this.logger.debug('Resources registered and ready');
+          getLogger().debug(`MCP HTTP Server started on port ${port}`);
+          getLogger().debug('Resources registered and ready');
           resolve();
         });
       });
@@ -332,14 +331,14 @@ class MCPAgentBase {
         try {
           await this._registerWithCoordinator();
         } catch (error) {
-          this.logger.warn('Initial registration failed, will retry automatically');
+          getLogger().warn('Initial registration failed, will retry automatically');
         }
       }, 2000);
 
       // Setup graceful shutdown
       this._setupGracefulShutdown();
     } catch (error) {
-      this.logger.error('Failed to start agent', error);
+      getLogger().error('Failed to start agent', error);
       process.exit(1);
     }
   }
@@ -355,14 +354,14 @@ class MCPAgentBase {
       const LLMProviders = this.getLLMProviders ? this.getLLMProviders() : [];
       
       await this.coordinatorClient.register(agentUrl, this.getCapabilities(), LLMProviders);
-      this.logger.debug('Agent registered with coordinator');
+      getLogger().debug('Agent registered with coordinator');
 
       // Start heartbeat to maintain registration
       this.coordinatorClient.startHeartbeat(
         () => this._registerWithCoordinator()
       );
     } catch (error) {
-      this.logger.error('Registration failed', error);
+      getLogger().error('Registration failed', error);
       this.coordinatorClient.retryRegistration(() => this._registerWithCoordinator());
     }
   }
@@ -372,7 +371,7 @@ class MCPAgentBase {
    */
   _setupGracefulShutdown() {
     const shutdown = async (signal) => {
-      this.logger.debug(`Received ${signal}, shutting down gracefully...`);
+      getLogger().debug(`Received ${signal}, shutting down gracefully...`);
       await this.coordinatorClient.unregister();
       process.exit(0);
     };
@@ -385,7 +384,7 @@ class MCPAgentBase {
    * Cleanup
    */
   async cleanup() {
-    this.logger.debug('Cleaning up agent');
+    getLogger().debug('Cleaning up agent');
     await this.coordinatorClient.unregister();
     this.initialized = false;
   }

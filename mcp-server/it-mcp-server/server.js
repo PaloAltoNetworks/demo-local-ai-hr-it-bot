@@ -74,7 +74,7 @@ ${discussionsText}
             }]
           };
         } catch (error) {
-          this.logger.error('Failed to fetch ticket', error);
+          getLogger().error('Failed to fetch ticket', error);
           return {
             contents: [{
               uri: uri.href,
@@ -132,7 +132,7 @@ ${discussionsText}
             }]
           };
         } catch (error) {
-          this.logger.error('Failed to fetch discussions', error);
+          getLogger().error('Failed to fetch discussions', error);
           return {
             contents: [{
               uri: uri.href,
@@ -158,7 +158,7 @@ ${discussionsText}
           const query = urlObj.searchParams.get('q');
           const provider = urlObj.searchParams.get('provider');
 
-          this.logger.debug(`Processing IT query: "${query}"${provider ? ` (provider: ${provider})` : ''}`);
+          getLogger().debug(`Processing IT query: "${query}"${provider ? ` (provider: ${provider})` : ''}`);
 
           if (!query) {
             throw new Error('No query parameter provided');
@@ -173,7 +173,7 @@ ${discussionsText}
             }]
           };
         } catch (error) {
-          this.logger.error('Query processing error', error);
+          getLogger().error('Query processing error', error);
           return {
             contents: [{
               uri: uri.href,
@@ -261,13 +261,13 @@ ${discussionsText}`;
 
       const fullPrompt = `${config.prompt}\n\n${context}\n\nQuestion: ${query}`;
 
-      this.logger.debug(`Fetched details for tickets: ${fullPrompt}`);
+      getLogger().debug(`Fetched details for tickets: ${fullPrompt}`);
 
       this.sendThinkingMessage('Querying IT database...');
 
       return await this.queryProcessor.processWithModel(fullPrompt, query, providerOverride);
     } catch (error) {
-      this.logger.error('IT Agent processing error', error);
+      getLogger().error('IT Agent processing error', error);
       return 'I encountered an error while accessing IT support information. Please try again or contact IT support directly.';
     }
   }

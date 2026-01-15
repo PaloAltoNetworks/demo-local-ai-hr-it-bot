@@ -48,7 +48,7 @@ class GeneralAgent extends MCPAgentBase {
           const query = urlObj.searchParams.get('q');
           const provider = urlObj.searchParams.get('provider');
 
-          this.logger.debug(`Processing general query: "${query}"${provider ? ` (provider: ${provider})` : ''}`);
+          getLogger().debug(`Processing general query: "${query}"${provider ? ` (provider: ${provider})` : ''}`);
 
           if (!query) {
             throw new Error('No query parameter provided');
@@ -63,7 +63,7 @@ class GeneralAgent extends MCPAgentBase {
             }]
           };
         } catch (error) {
-          this.logger.error('Query processing error', error);
+          getLogger().error('Query processing error', error);
           return {
             contents: [{
               uri: uri.href,
@@ -106,7 +106,7 @@ class GeneralAgent extends MCPAgentBase {
 
       return await this.queryProcessor.processWithModel(fullPrompt, query, providerOverride);
     } catch (error) {
-      this.logger.error('General Agent processing error', error);
+      getLogger().error('General Agent processing error', error);
       return 'I encountered an error while processing your request. Please try again.';
     }
   }

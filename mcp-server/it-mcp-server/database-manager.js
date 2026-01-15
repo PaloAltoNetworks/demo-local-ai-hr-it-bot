@@ -19,7 +19,6 @@ class DatabaseManager {
     this.db = null;
     this.SQL = null;
     this.initialized = false;
-    this.logger = getLogger();
   }
 
   /**
@@ -39,10 +38,10 @@ class DatabaseManager {
       this.db = new this.SQL.Database(buffer);
       this.initialized = true;
       
-      this.logger.info('Database loaded successfully');
+      getLogger().info('Database loaded successfully');
       return this;
     } catch (error) {
-      this.logger.error('Failed to load database:', error);
+      getLogger().error('Failed to load database:', error);
       throw error;
     }
   }
@@ -56,7 +55,7 @@ class DatabaseManager {
       const buffer = Buffer.from(data);
       fs.writeFileSync(this.dbPath, buffer);
     } catch (error) {
-      this.logger.error('Error saving database:', error);
+      getLogger().error('Error saving database:', error);
     }
   }
 
@@ -69,7 +68,7 @@ class DatabaseManager {
       this._saveDatabase();
       return { changes: this.db.getRowsModified() };
     } catch (error) {
-      this.logger.error('Database run error:', error);
+      getLogger().error('Database run error:', error);
       throw error;
     }
   }
@@ -89,7 +88,7 @@ class DatabaseManager {
       stmt.free();
       return undefined;
     } catch (error) {
-      this.logger.error('Database get error:', error);
+      getLogger().error('Database get error:', error);
       throw error;
     }
   }
@@ -108,7 +107,7 @@ class DatabaseManager {
       stmt.free();
       return rows;
     } catch (error) {
-      this.logger.error('Database all error:', error);
+      getLogger().error('Database all error:', error);
       throw error;
     }
   }
@@ -123,10 +122,10 @@ class DatabaseManager {
         this.db.close();
         this.db = null;
         this.initialized = false;
-        this.logger.info('Database connection closed');
+        getLogger().info('Database connection closed');
       }
     } catch (error) {
-      this.logger.error('Error closing database:', error);
+      getLogger().error('Error closing database:', error);
       throw error;
     }
   }
@@ -165,7 +164,7 @@ class DatabaseManager {
         byAssignee
       };
     } catch (error) {
-      this.logger.error('Failed to get statistics:', error);
+      getLogger().error('Failed to get statistics:', error);
       throw error;
     }
   }

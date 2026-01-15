@@ -10,7 +10,6 @@ class CoordinatorClient {
     this.agentName = agentName;
     this.agentId = agentId;
     this.agentDescription = agentDescription;
-    this.logger = getLogger();
     this.config = ConfigManager.getConfig();
     this.registrationRetries = 0;
     this.heartbeatStarted = false;
@@ -50,8 +49,8 @@ class CoordinatorClient {
       LLMProviders
     };
 
-    this.logger.info(`Registering with coordinator at ${this.config.coordinator.url}...`);
-    this.logger.debug('Registration data:', JSON.stringify(registrationData, null, 2));
+    getLogger().info(`Registering with coordinator at ${this.config.coordinator.url}...`);
+    getLogger().debug('Registration data:', JSON.stringify(registrationData, null, 2));
 
     try {
       const response = await axios.post(
@@ -64,15 +63,15 @@ class CoordinatorClient {
       );
 
       if (response.status === 200) {
-        this.logger.info('Successfully registered with coordinator');
-        this.logger.debug('Registration result:', response.data);
+        getLogger().info('Successfully registered with coordinator');
+        getLogger().debug('Registration result:', response.data);
         this.registrationRetries = 0;
         return response.data;
       } else {
         throw new Error(`Registration failed with status: ${response.status}`);
       }
     } catch (error) {
-      this.logger.error('Failed to register with coordinator', error);
+      getLogger().error('Failed to register with coordinator', error);
       throw error;
     }
   }
@@ -82,7 +81,7 @@ class CoordinatorClient {
    */
   startHeartbeat(onReconnect) {
     if (this.heartbeatStarted) {
-      this.logger.warn('Heartbeat already started');
+      getLogger().warn('Heartbeat already started');
       return;
     }
 
@@ -97,7 +96,7 @@ class CoordinatorClient {
 
         // Reset failure count on successful heartbeat
         if (this.consecutiveHeartbeatFailures > 0) {
-          this.logger.debug('Reconnected to coordinator');
+          getLogger().debug('Reconnected to coordinator');
           this.consecutiveHeartbeatFailures = 0;
           this.isConnected = true;
           if (onReconnect) onReconnect();
@@ -106,17 +105,17 @@ class CoordinatorClient {
         this.consecutiveHeartbeatFailures++;
 
         if (this.isConnected) {
-          this.logger.warn(`Lost connection to coordinator: ${error.message}`);
+          getLogger().warn(`Lost connection to coordinator: ${error.message}`);
           this.isConnected = false;
         }
 
-        this.logger.warn(
+        getLogger().warn(
           `Heartbeat failed (${this.consecutiveHeartbeatFailures} consecutive failures)`
         );
 
         // Attempt re-registration after multiple failures
         if (this.consecutiveHeartbeatFailures >= 3 && onReconnect) {
-          this.logger.warn('Multiple heartbeat failures detected, triggering reconnection...');
+          getLogger().warn('Multiple heartbeat failures detected, triggering reconnection...');
           onReconnect();
         }
       }
@@ -135,19 +134,19 @@ class CoordinatorClient {
         this.config.coordinator.retryBackoffMax
       );
 
-      this.logger.debug(
+      getLogger().debug(
         `Retrying registration in ${backoffDelay}ms (attempt ${this.registrationRetries}/${this.config.coordinator.registrationRetries})`
       );
 
       setTimeout(retryFn, backoffDelay);
     } else {
-      this.logger.error(
+      getLogger().error(
         'Max registration retries exceeded. Agent will retry periodically'
       );
 
       // Periodic retry every minute
       setTimeout(() => {
-        this.logger.debug('Periodic registration retry...');
+        getLogger().debug('Periodic registration retry...');
         this.registrationRetries = 0;
         retryFn();
       }, 60000);
@@ -158,7 +157,7 @@ class CoordinatorClient {
    * Unregister from coordinator
    */
   async unregister() {
-    this.logger.info('Unregistering from coordinator...');
+    getLogger().info('Unregistering from coordinator...');
 
     try {
       const response = await axios.post(
@@ -170,10 +169,10 @@ class CoordinatorClient {
       );
 
       if (response.status === 200) {
-        this.logger.info('Successfully unregistered from coordinator');
+        getLogger().info('Successfully unregistered from coordinator');
       }
     } catch (error) {
-      this.logger.warn('Failed to unregister from coordinator', error);
+      getLogger().warn('Failed to unregister from coordinator', error);
     }
   }
 }
