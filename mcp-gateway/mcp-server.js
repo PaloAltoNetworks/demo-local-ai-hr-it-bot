@@ -448,8 +448,7 @@ initializeI18n().catch(err => {
 
 // Import Coordinator (for routing decisions)
 import { IntelligentCoordinator } from './coordinator.js';
-const ollamaUrl = process.env.OLLAMA_HOST || 'http://localhost:11434';
-const coordinator = new IntelligentCoordinator(ollamaUrl, mcpRegistry);
+const coordinator = new IntelligentCoordinator(mcpRegistry);
 
 // Define endpoints to skip from logging
 const skipLoggingEndpoints = [
