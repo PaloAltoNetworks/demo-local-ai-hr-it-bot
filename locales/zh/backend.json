@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "cannotFulfillRequest": "我无法完成此请求。"
+  },
+  "status": {
+    "healthy": "服务运行正常",
+    "unhealthy": "服务不可用",
+    "allServicesOperational": "所有服务运行正常",
+    "mcpServicesUnavailable": "MCP服务不可用"
+  },
+  "mcp": {
+    "unavailableMessage": "抱歉，我们的AI服务目前不可用。这可能是由于：\n\n• 系统维护\n• 网络连接问题\n• 服务器过载\n\n请几分钟后重试。如需即时帮助，您可以：\n• 联系IT服务台：分机 1234\n• 联系人力资源：分机 5678\n\n感谢您的耐心等待。"
+  },
+  "security": {
+    "detections": {
+      "injection": "注入尝试",
+      "toxicContent": "有毒内容",
+      "maliciousCode": "恶意代码",
+      "dataLeak": "敏感数据泄露",
+      "topicViolation": "主题政策违规",
+      "urlCategory": "未授权的URL类别内容",
+      "suspiciousAgent": "可疑代理行为",
+      "ungrounded": "无依据响应",
+      "dbSecurity": "数据库安全问题"
+    },
+    "messages": {
+      "contentApproved": "内容已批准",
+      "cannotProcessRequest": "我无法处理此请求",
+      "cannotProvideResponse": "我无法提供此响应",
+      "containsIssues": "因为它包含：{{issues}}。",
+      "policyViolation": "因为它不符合现行的安全政策。",
+      "rephraseRequest": "请适当地重新表述您的问题。",
+      "helpWithElse": "我能帮您其他什么吗？"
+    },
+    "errors": {
+      "notConfigured": "抱歉，安全系统尚未配置。请联系管理员启用此功能。",
+      "serviceUnavailable": "抱歉，安全验证系统暂时不可用。请几分钟后重试。"
+    }
+  }
+}

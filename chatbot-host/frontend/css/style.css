@@ -3050,3 +3050,198 @@ body {
 .no-data.hidden {
   display: none;
 }
+
+/* ========================================
+   RTL (Right-to-Left) Support for Arabic, Hebrew, etc.
+   ======================================== */
+
+[dir="rtl"] {
+  text-align: right;
+}
+
+/* Header adjustments for RTL */
+[dir="rtl"] .header-container {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .header-left,
+[dir="rtl"] .header-right {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .brand-text {
+  margin-left: 0;
+  margin-right: 12px;
+}
+
+/* User menu RTL */
+[dir="rtl"] .user-menu-container {
+  right: auto;
+  left: 0;
+}
+
+[dir="rtl"] .user-menu-item {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+[dir="rtl"] .user-menu-item .material-symbols-rounded {
+  margin-right: 0;
+  margin-left: 12px;
+}
+
+/* Chat messages RTL */
+[dir="rtl"] .message {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .message.user {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .message-content {
+  text-align: right;
+}
+
+[dir="rtl"] .message.user .message-content {
+  border-radius: 18px 18px 4px 18px;
+}
+
+[dir="rtl"] .message.assistant .message-content {
+  border-radius: 18px 18px 18px 4px;
+}
+
+/* Chat input RTL */
+[dir="rtl"] .chat-input-container {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .chat-input {
+  text-align: right;
+  padding-right: 16px;
+  padding-left: 48px;
+}
+
+[dir="rtl"] .send-button {
+  right: auto;
+  left: 8px;
+}
+
+/* Sidebar/Questions RTL */
+[dir="rtl"] .sidebar {
+  border-right: none;
+  border-left: 1px solid var(--color-border);
+}
+
+[dir="rtl"] .question-card {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+[dir="rtl"] .question-card .material-symbols-rounded {
+  margin-right: 0;
+  margin-left: 12px;
+}
+
+/* User profile card RTL */
+[dir="rtl"] .user-profile-card {
+  text-align: right;
+}
+
+[dir="rtl"] .user-profile-info {
+  align-items: flex-end;
+}
+
+/* Footer RTL */
+[dir="rtl"] .footer-section {
+  text-align: right;
+}
+
+/* Phase selector RTL */
+[dir="rtl"] .phase-selector {
+  flex-direction: row-reverse;
+}
+
+/* Dropdown/Select RTL */
+[dir="rtl"] select {
+  text-align: right;
+  padding-right: 12px;
+  padding-left: 32px;
+  background-position: left 8px center;
+}
+
+/* Security panel RTL */
+[dir="rtl"] .security-dev-panel {
+  right: auto;
+  left: 20px;
+}
+
+[dir="rtl"] .security-dev-content {
+  right: auto;
+  left: 0;
+}
+
+/* Thinking section RTL */
+[dir="rtl"] .thinking-toggle {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .thinking-toggle .material-symbols-rounded {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+/* Token info RTL */
+[dir="rtl"] .token-info {
+  flex-direction: row-reverse;
+}
+
+/* Connection status RTL */
+[dir="rtl"] .connection-status {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .connection-status .material-symbols-rounded {
+  margin-right: 0;
+  margin-left: 6px;
+}
+
+/* Material symbols should maintain LTR direction */
+[dir="rtl"] .material-symbols-rounded {
+  direction: ltr;
+}
+
+/* Lists and nested content RTL */
+[dir="rtl"] ul,
+[dir="rtl"] ol {
+  padding-right: 20px;
+  padding-left: 0;
+}
+
+/* Code blocks maintain LTR */
+[dir="rtl"] pre,
+[dir="rtl"] code {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Buttons with icons RTL */
+[dir="rtl"] .btn-icon-left .material-symbols-rounded {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+[dir="rtl"] .btn-icon-right .material-symbols-rounded {
+  margin-left: 0;
+  margin-right: 8px;
+}
+
+/* LLM Provider selector RTL */
+[dir="rtl"] .llm-provider-selector {
+  flex-direction: row-reverse;
+}
+
+/* Language selector RTL */
+[dir="rtl"] .language-selector {
+  flex-direction: row-reverse;
+}

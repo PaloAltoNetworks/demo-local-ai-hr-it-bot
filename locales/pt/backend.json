@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "cannotFulfillRequest": "Não consigo atender a esta solicitação."
+  },
+  "status": {
+    "healthy": "Serviço está funcionando",
+    "unhealthy": "Serviço indisponível",
+    "allServicesOperational": "Todos os serviços operacionais",
+    "mcpServicesUnavailable": "Serviços MCP indisponíveis"
+  },
+  "mcp": {
+    "unavailableMessage": "Peço desculpas, mas nossos serviços de IA estão temporariamente indisponíveis. Isso pode ser devido a:\n\n• Manutenção do sistema\n• Problemas de conectividade de rede\n• Sobrecarga do servidor\n\nPor favor, tente novamente em alguns minutos. Para assistência imediata, você pode:\n• Contatar o Helpdesk de TI: ramal 1234\n• Contatar RH: ramal 5678\n\nObrigado pela sua paciência."
+  },
+  "security": {
+    "detections": {
+      "injection": "uma tentativa de injeção",
+      "toxicContent": "conteúdo tóxico",
+      "maliciousCode": "código malicioso",
+      "dataLeak": "vazamento de dados sensíveis",
+      "topicViolation": "violação de política de tópicos",
+      "urlCategory": "conteúdo de categoria de URL não autorizada",
+      "suspiciousAgent": "comportamento suspeito do agente",
+      "ungrounded": "uma resposta sem fundamento",
+      "dbSecurity": "um problema de segurança do banco de dados"
+    },
+    "messages": {
+      "contentApproved": "Conteúdo aprovado",
+      "cannotProcessRequest": "Não posso processar esta solicitação",
+      "cannotProvideResponse": "Não posso fornecer esta resposta",
+      "containsIssues": "porque contém: {{issues}}.",
+      "policyViolation": "porque não está em conformidade com as políticas de segurança em vigor.",
+      "rephraseRequest": "Por favor, reformule sua pergunta adequadamente.",
+      "helpWithElse": "Posso ajudá-lo com outra coisa?"
+    },
+    "errors": {
+      "notConfigured": "Desculpe, mas o sistema de segurança ainda não está configurado. Por favor, contate o administrador para habilitar este recurso.",
+      "serviceUnavailable": "Desculpe, mas o sistema de verificação de segurança está temporariamente indisponível. Por favor, tente novamente em alguns minutos."
+    }
+  }
+}

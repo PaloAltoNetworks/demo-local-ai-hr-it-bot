@@ -11,6 +11,17 @@ export class I18nService {
     }
 
     /**
+     * Update document direction based on language translations
+     * Reads dir from language.dir in frontend.json (defaults to 'ltr')
+     */
+    updateTextDirection() {
+        const translations = this.translations[this.currentLanguage];
+        const direction = translations?.language?.dir || 'ltr';
+        document.documentElement.dir = direction;
+        document.body.dir = direction;
+    }
+
+    /**
      * Detect user's preferred language
      * Priority: URL params > localStorage > browser language (if supported) > default (English)
      */
@@ -62,8 +73,9 @@ export class I18nService {
         
         await this.loadTranslations(this.currentLanguage);
         
-        // Set the HTML lang attribute
+        // Set the HTML lang attribute and text direction
         document.documentElement.lang = this.currentLanguage;
+        this.updateTextDirection();
         
         // Sync detected language to API service so requests use correct language
         this.apiService.setLanguage(this.currentLanguage);
@@ -221,8 +233,9 @@ export class I18nService {
         await this.loadTranslations(language);
         this.currentLanguage = language;
         
-        // Update HTML lang attribute
+        // Update HTML lang attribute and text direction
         document.documentElement.lang = language;
+        this.updateTextDirection();
         
         // Save to localStorage
         localStorage.setItem('chatbot-language', language);
