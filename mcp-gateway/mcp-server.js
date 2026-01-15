@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
+import { IntelligentCoordinator } from './coordinator.js';
 import { getLogger } from './utils/logger.js';
 import { initializeLogger } from './utils/logger.js';
 import { initializeI18n } from './utils/i18n.js';
@@ -447,7 +448,6 @@ initializeI18n().catch(err => {
 });
 
 // Import Coordinator (for routing decisions)
-import { IntelligentCoordinator } from './coordinator.js';
 const coordinator = new IntelligentCoordinator(mcpRegistry);
 
 // Define endpoints to skip from logging
