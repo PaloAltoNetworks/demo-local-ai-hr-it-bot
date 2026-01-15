@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { PrismaAIRSIntercept, shouldUsePrismaAIRS } from './prisma-airs.js';
-import { LLMProviderFactory, getLogger } from './utils/index.js';
+import { getLogger } from './utils/logger.js';
+import { LLMProviderFactory } from './utils/llm-provider.js';
 
 /**
  * Intelligent Coordinator for MCP Gateway
@@ -162,11 +163,10 @@ class AgentRegistry {
  * Handles ALL routing, intelligence, and security decisions for the MCP Gateway
  */
 class IntelligentCoordinator {
-  constructor(ollamaUrl, mcpServerRegistry) {
-    // Initialize LLM provider (supports both Ollama and AWS Bedrock)
-    this.llmProvider = LLMProviderFactory.create();
+  constructor(mcpServerRegistry) {
+    this.llmRegistry = LLMProviderFactory.getRegistry();
     this.mcpServerRegistry = mcpServerRegistry; // Reference to MCPServerRegistry for forwarding
-    this.registry = new AgentRegistry();
+    this.agentRegistry = new AgentRegistry();
     this.requestCounter = 0;
     this.streamThinkingCallback = null;
     this.initialized = false;
@@ -289,8 +289,8 @@ class IntelligentCoordinator {
       const availableProviders = LLMProviderFactory.getAvailableLLMProviders();
       agentData.LLMProviders = availableProviders;
     }
-    
-    this.registry.registerAgent(agentData);
+
+    this.agentRegistry.registerAgent(agentData);
     return { status: "registered", agentId: agentData.agentId };
   }
 
@@ -298,7 +298,7 @@ class IntelligentCoordinator {
    * Agent unregistration endpoint
    */
   unregisterAgent(agentId) {
-    this.registry.unregisterAgent(agentId);
+    this.agentRegistry.unregisterAgent(agentId);
     return { status: "unregistered", agentId };
   }
 
@@ -339,17 +339,17 @@ class IntelligentCoordinator {
    */
   startHealthChecks() {
     setInterval(async () => {
-      const agents = this.registry.getAllAgents();
+      const agents = this.agentRegistry.getAllAgents();
       for (const agent of agents) {
         try {
           const response = await axios.get(`${agent.url}/health`, { timeout: 3000 });
           if (response.status === 200) {
-            this.registry.updateAgentHealth(agent.agentId, true);
+            this.agentRegistry.updateAgentHealth(agent.agentId, true);
           } else {
-            this.registry.updateAgentHealth(agent.agentId, false);
+            this.agentRegistry.updateAgentHealth(agent.agentId, false);
           }
         } catch (error) {
-          this.registry.updateAgentHealth(agent.agentId, false);
+          this.agentRegistry.updateAgentHealth(agent.agentId, false);
           getLogger().warn(`Agent ${agent.name} health check failed: ${error.message}`);
         }
       }
@@ -357,9 +357,13 @@ class IntelligentCoordinator {
   }
 
   /**
-   * Translate query from foreign language to English
+   * Helper method to generate text using LLMProviderFactory
    */
-  async translateQuery(query, language = 'en') {
+  async generateWithLLM(prompt, options = {}) {
+    return LLMProviderFactory.generateText(prompt, options);
+  }
+
+  async translateQuery(query, language = 'en', llmProvider = null) {
     if (language === 'en') {
       return query; // No translation needed
     }
@@ -371,10 +375,11 @@ class IntelligentCoordinator {
 
 Query: "${query}"`;
 
-      const response = await this.llmProvider.generate(translationPrompt, {
+      const response = await this.generateWithLLM(translationPrompt, {
         system: 'You are a precise translation assistant. Only return the English translation with no additional text or explanation.',
         temperature: 0.1,
-        maxTokens: 1000
+        maxTokens: 1000,
+        provider: llmProvider
       });
 
       let translatedQuery = response.response?.trim() || query;
@@ -402,11 +407,8 @@ Query: "${query}"`;
    * Route query to appropriate agent based on registered capabilities
    */
   async routeQuery(query, language = 'en', phase = 'phase2', userContext = null, llmProvider = 'aws') {
-    // Switch LLM provider if llmProvider is explicitly requested
-    if (llmProvider) {
-      getLogger().debug(`[Coordinator] Switching LLM provider to: ${llmProvider}`);
-      this.llmProvider = LLMProviderFactory.create(llmProvider);
-    }
+    // LLM provider selection is handled via registry.languageModel()
+    // Provider parameter is used for model identifier construction
 
     getLogger().debug(`Routing query: "${query}"`);
 
@@ -431,28 +433,28 @@ Query: "${query}"`;
 
     try {
       // Log all registered agents
-      const allAgents = this.registry.getAllAgents();
+      const allAgents = this.agentRegistry.getAllAgents();
       getLogger().debug(`Total registered agents: ${allAgents.length}`);
       allAgents.forEach(agent => {
         getLogger().debug(`   - ${agent.name} (${agent.agentId}) - ${agent.description.substring(0, 60)}...`);
       });
 
       // Use registry to find matching agents
-      const candidateAgentIds = this.registry.findAgentsForQuery(query);
+      const candidateAgentIds = this.agentRegistry.findAgentsForQuery(query);
 
       if (candidateAgentIds.length === 0) {
         throw new Error('No registered agents available');
       }
 
       getLogger().debug(`Candidate agents for this query: ${candidateAgentIds.map(id => {
-        const agent = this.registry.getAgent(id);
+        const agent = this.agentRegistry.getAgent(id);
         return `${agent.name}`;
       }).join(', ')}`);
 
       // Let LLM coordinator decide routing strategy and potential query splitting
       let routingStrategy;
       try {
-        routingStrategy = await this.analyzeRoutingStrategy(query, candidateAgentIds, userContext?.history || []);
+        routingStrategy = await this.analyzeRoutingStrategy(query, candidateAgentIds, userContext?.history || [], llmProvider);
       } catch (strategyError) {
         getLogger().error('Strategy analysis failed:', { error: strategyError.message });
         throw strategyError;
@@ -477,10 +479,10 @@ Query: "${query}"`;
         const selectedAgentId = this.findAgentIdByName(selectedAgentName);
 
         if (!selectedAgentId) {
-          throw new Error(`LLM selected unknown agent: "${selectedAgentName}". LLM must select from registered agents: ${this.registry.getAllAgents().map(a => a.name).join(', ')}`);
+          throw new Error(`LLM selected unknown agent: "${selectedAgentName}". LLM must select from registered agents: ${this.agentRegistry.getAllAgents().map(a => a.name).join(', ')}`);
         }
 
-        const selectedAgent = this.registry.getAgent(selectedAgentId);
+        const selectedAgent = this.agentRegistry.getAgent(selectedAgentId);
         getLogger().debug(`Routed to: ${selectedAgent.name} agent (${selectedAgentId})`);
         return { type: 'agent-id', agentId: selectedAgentId };
       }
@@ -492,89 +494,13 @@ Query: "${query}"`;
   }
 
   /**
-   * Analyze if a query might require multiple agents (future enhancement)
-   */
-  async analyzeQueryComplexity(query, candidateAgentIds) {
-    try {
-      const agentList = candidateAgentIds.map(id => {
-        const agent = this.registry.getAgent(id);
-        return agent.name;
-      }).join(', ');
-
-      const complexityPrompt = `Analyze this user query to determine if it requires information from multiple specialist agents.
-
-Available agents: ${agentList}
-
-Query: "${query}"
-
-Does this query require information from multiple agents? Examples:
-- "Show me my manager and my IT tickets" (needs HR + IT)
-- "Who handles both payroll and network issues?" (needs HR + IT)
-- "What's my salary and computer status?" (needs HR + IT)
-
-CRITICAL: Respond ONLY with valid JSON. No thinking, no explanations outside JSON.
-
-Required format:
-{
-  "requiresMultiple": boolean,
-  "primaryAgent": "agent_name",
-  "secondaryAgents": ["agent_name"],
-  "reasoning": "brief explanation"
-}`;
-
-      const response = await this.llmProvider.generate(complexityPrompt, {
-        system: 'You are a JSON-only query analyzer. NEVER include <think> tags or explanations. Respond with raw JSON only.',
-        temperature: 0.0,
-        maxTokens: 500
-      });
-
-      // Track routing analysis tokens
-      this.trackTokens(response, 'Routing analysis');
-
-      try {
-        // Clean the response - remove thinking tags and extract JSON
-        let jsonText = response.response.trim();
-        jsonText = jsonText.replace(/<think>[\s\S]*?<\/think>/g, '');
-        jsonText = jsonText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '');
-        jsonText = jsonText.trim();
-
-        // Extract JSON if it's wrapped in other text
-        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          jsonText = jsonMatch[0];
-        }
-
-        const analysis = JSON.parse(jsonText);
-        return analysis;
-      } catch (parseError) {
-        // Fallback if JSON parsing fails
-        return {
-          requiresMultiple: false,
-          primaryAgent: candidateAgentIds[0] ? this.registry.getAgent(candidateAgentIds[0]).name : 'general',
-          secondaryAgents: [],
-          reasoning: 'JSON parsing failed, defaulting to single agent'
-        };
-      }
-    } catch (error) {
-      getLogger().warn(`⚠️ Query complexity analysis failed:`, error.message);
-      // Safe fallback
-      return {
-        requiresMultiple: false,
-        primaryAgent: candidateAgentIds[0] ? this.registry.getAgent(candidateAgentIds[0]).name : 'general',
-        secondaryAgents: [],
-        reasoning: 'Analysis failed, defaulting to single agent'
-      };
-    }
-  }
-
-  /**
    * Analyze routing strategy and determine if query splitting is needed
    */
-  async analyzeRoutingStrategy(query, candidateAgentIds, conversationHistory = []) {
+  async analyzeRoutingStrategy(query, candidateAgentIds, conversationHistory = [], llmProvider = null) {
     try {
       // Build detailed agent profiles for LLM analysis
       const agentProfiles = candidateAgentIds.map(id => {
-        const agent = this.registry.getAgent(id);
+        const agent = this.agentRegistry.getAgent(id);
         const capabilities = agent.capabilities && agent.capabilities.length > 0
           ? agent.capabilities.map(cap => `  - ${cap}`).join('\n')
           : '  - General purpose assistance';
@@ -588,7 +514,7 @@ ${capabilities}`;
 
       // Log available agents for routing
       getLogger().debug(`Available agents for routing:`, candidateAgentIds.map(id => {
-        const agent = this.registry.getAgent(id);
+        const agent = this.agentRegistry.getAgent(id);
         return `${agent.name} (${id})`;
       }).join(', '));
 
@@ -636,15 +562,18 @@ Now output the JSON:
 
       this.sendThinkingMessage(`Analyzing query routing strategy...`);
 
-      const response = await this.llmProvider.generate(strategyPrompt, {
+      const options = {
         system: `You are a JSON output formatter. You output ONLY valid JSON.
 Start with { and end with }
 Do not include any text before { or after }
 Do not think or reason
 Output JSON immediately`,
         temperature: 0.0,
-        maxTokens: 200
-      });
+        maxTokens: 200,
+        provider: llmProvider
+      };
+
+      const response = await this.generateWithLLM(strategyPrompt, options);
 
       // Track routing strategy tokens
       this.trackTokens(response, 'Routing strategy');
@@ -817,7 +746,7 @@ Output JSON immediately`,
 
       // Combine responses using LLM
       this.sendThinkingMessage(`Synthesizing responses from all specialists...`);
-      const combinedResponse = await this.synthesizeMultiAgentResponses(originalQuery, agentResponses);
+      const combinedResponse = await this.synthesizeMultiAgentResponses(originalQuery, agentResponses, llmProvider);
 
       return combinedResponse;
 
@@ -837,9 +766,10 @@ Output JSON immediately`,
    * Find agent ID by name
    */
   findAgentIdByName(agentName) {
-    for (const [agentId, agent] of this.registry.agents) {
+    const allAgents = this.agentRegistry.getAllAgents();
+    for (const agent of allAgents) {
       if (agent.name.toLowerCase() === agentName.toLowerCase()) {
-        return agentId;
+        return agent.agentId;
       }
     }
     return null;
@@ -848,7 +778,7 @@ Output JSON immediately`,
   /**
    * Synthesize multiple agent responses into a coherent answer
    */
-  async synthesizeMultiAgentResponses(originalQuery, agentResponses) {
+  async synthesizeMultiAgentResponses(originalQuery, agentResponses, llmProvider = null) {
     const responseSummary = agentResponses.map(resp =>
       `${resp.agent.toUpperCase()} SPECIALIST: "${resp.query}"\nResponse: ${resp.response}`
     ).join('\n\n');
@@ -872,10 +802,11 @@ GUIDELINES:
 SYNTHESIZED RESPONSE:`;
 
     try {
-      const response = await this.llmProvider.generate(synthesisPrompt, {
+      const response = await this.generateWithLLM(synthesisPrompt, {
         system: 'You are an expert at synthesizing information from multiple sources into clear, comprehensive responses.',
         temperature: 0.3,
-        maxTokens: 2000
+        maxTokens: 2000,
+        provider: llmProvider
       });
 
       // Track synthesis tokens
@@ -895,7 +826,7 @@ SYNTHESIZED RESPONSE:`;
    * Query an agent via MCP protocol (delegating to MCPServerRegistry)
    */
   async queryAgent(agentId, query, userContext = null, language = 'en', phase = 'phase2', llmProvider = 'aws') {
-    const agent = this.registry.getAgent(agentId);
+    const agent = this.agentRegistry.getAgent(agentId);
     if (!agent) {
       throw new Error(`Agent ${agentId} not found in registry`);
     }
@@ -956,15 +887,14 @@ SYNTHESIZED RESPONSE:`;
         }
       }
 
-      // Add llm provider context if specified
-      if (llmProvider && llmProvider !== 'aws') {
-        enrichedQuery = `${enrichedQuery}\n[llm provider: ${llmProvider}]`;
-      }
-
       // Track outbound request tokens (after enrichment)
       this.trackAgentTokens(enrichedQuery);
 
-      const queryUri = `${agent.name}://query?q=${encodeURIComponent(enrichedQuery)}`;
+      // Build query URI with llmProvider parameter
+      let queryUri = `${agent.name}://query?q=${encodeURIComponent(enrichedQuery)}`;
+      if (llmProvider) {
+        queryUri += `&provider=${encodeURIComponent(llmProvider)}`;
+      }
 
       // Make MCP resource request via MCPServerRegistry
       // Note: llmProvider is passed in userContext, not in the URI
@@ -1034,7 +964,7 @@ SYNTHESIZED RESPONSE:`;
    * Process and validate agent response
    * Verifies if response matches user request, makes it concise, and translates if needed
    */
-  async processAgentResponse(agentResponse, originalQuery, translatedQuery, targetLanguage = 'en', agentName) {
+  async processAgentResponse(agentResponse, originalQuery, translatedQuery, targetLanguage = 'en', agentName, llmProvider = null) {
     try {
       getLogger().debug(`Processing response from ${agentName}...`);
 
@@ -1061,10 +991,11 @@ RESPOND ONLY WITH THIS JSON FORMAT:
   "reasoning": "brief explanation"
 }`;
 
-      const validationResponse = await this.llmProvider.generate(validationPrompt, {
+      const validationResponse = await this.generateWithLLM(validationPrompt, {
         system: 'You are a response quality validator. You MUST respond with valid JSON only. Focus on extracting the most concise and relevant information.',
         temperature: 0.1,
-        maxTokens: 300
+        maxTokens: 300,
+        provider: llmProvider
       });
 
       // Track validation tokens
@@ -1102,7 +1033,7 @@ RESPOND ONLY WITH THIS JSON FORMAT:
       // Step 3: Translate back to target language if needed
       if (targetLanguage !== 'en') {
         getLogger().debug(`Translating response to ${targetLanguage}`);
-        processedResponse = await this.translateResponse(processedResponse, targetLanguage);
+        processedResponse = await this.translateResponse(processedResponse, targetLanguage, llmProvider);
       }
 
       // // Step 4: Final quality check - ensure response is concise and clear
@@ -1117,14 +1048,14 @@ RESPOND ONLY WITH THIS JSON FORMAT:
     } catch (error) {
       getLogger().error(`❌ Response processing failed:`, error);
       // Fallback to original response if processing fails
-      return targetLanguage !== 'en' ? await this.translateResponse(agentResponse, targetLanguage) : agentResponse;
+      return targetLanguage !== 'en' ? await this.translateResponse(agentResponse, targetLanguage, llmProvider) : agentResponse;
     }
   }
 
   /**
    * Translate response to target language
    */
-  async translateResponse(response, targetLanguage) {
+  async translateResponse(response, targetLanguage, llmProvider = null) {
     if (targetLanguage === 'en') {
       return response;
     }
@@ -1140,10 +1071,11 @@ IMPORTANT INSTRUCTIONS:
 
 Response to translate: "${response}"`;
 
-      const translationResponse = await this.llmProvider.generate(translationPrompt, {
+      const translationResponse = await this.generateWithLLM(translationPrompt, {
         system: `You are a precise translation assistant. Translate only the meaningful content, ignore technical markup. Return ONLY the ${targetLanguage} translation with no additional text, tags, or explanation.`,
         temperature: 0.1,
-        maxTokens: 2000
+        maxTokens: 2000,
+        provider: llmProvider
       });
 
       let translatedResponse = translationResponse.response?.trim() || response;
@@ -1170,7 +1102,7 @@ Response to translate: "${response}"`;
   /**
    * Make response more concise while preserving key information
    */
-  async makeConcise(response, originalQuery) {
+  async makeConcise(response, originalQuery, llmProvider = null) {
     try {
       const concisePrompt = `Make this response more concise while preserving all essential information that answers the user's question.
 
@@ -1186,10 +1118,11 @@ Requirements:
 
 Return only the concise version:`;
 
-      const conciseResponse = await this.llmProvider.generate(concisePrompt, {
+      const conciseResponse = await this.generateWithLLM(concisePrompt, {
         system: 'You are a text optimization assistant. Make responses concise while preserving all essential information.',
         temperature: 0.1,
-        maxTokens: 1000
+        maxTokens: 1000,
+        provider: llmProvider
       });
 
       // Track conciseness optimization tokens
@@ -1538,7 +1471,7 @@ Return only the concise version:`;
 
       // Step 1: Translate if needed
       this.sendThinkingMessage(`Checking language requirements...`);
-      const translatedQuery = await this.translateQuery(queryToProcess, language);
+      const translatedQuery = await this.translateQuery(queryToProcess, language, llmProvider);
       if (translatedQuery !== queryToProcess) {
         this.sendThinkingMessage(`Translated to English: "${translatedQuery}"`);
         // Track translation work as coordinator tokens
@@ -1578,7 +1511,7 @@ Return only the concise version:`;
       // routingResult is now always an object with type field
       if (routingResult.type === 'agent-id') {
         // Single agent routing
-        const selectedAgent = this.registry.getAgent(routingResult.agentId);
+        const selectedAgent = this.agentRegistry.getAgent(routingResult.agentId);
         this.sendThinkingMessage(`Connecting to ${selectedAgent.name} specialist...`);
 
         // Step 3: Query the selected agent
@@ -1608,7 +1541,8 @@ Return only the concise version:`;
           query,
           translatedQuery,
           language,
-          selectedAgent.name
+          selectedAgent.name,
+          llmProvider
         );
 
         // CHECKPOINT 4: Analyze final response security (use passed phase)
@@ -1664,7 +1598,8 @@ Return only the concise version:`;
           query,
           translatedQuery,
           language,
-          'multi-agent-coordinator'
+          'multi-agent-coordinator',
+          llmProvider
         );
 
         // CHECKPOINT 4: Analyze final response security (use passed phase)
@@ -1741,7 +1676,7 @@ Return only the concise version:`;
    * Get information about all registered agents
    */
   getAgentsInfo() {
-    return this.registry.getAllAgents().map(agent => ({
+    return this.agentRegistry.getAllAgents().map(agent => ({
       agentId: agent.agentId,
       name: agent.name,
       description: agent.description,
@@ -1757,14 +1692,14 @@ Return only the concise version:`;
    * Get available llm providers from all registered agents
    */
   getAvailableLLMProviders() {
-    return this.registry.getAvailableLLMProviders();
+    return this.agentRegistry.getAvailableLLMProviders();
   }
 
   /**
    * Health check for all registered agents
    */
   async healthCheck() {
-    const allAgents = this.registry.getAllAgents();
+    const allAgents = this.agentRegistry.getAllAgents();
     const results = {
       coordinator: {
         status: this.initialized ? 'healthy' : 'not_initialized',
@@ -1785,7 +1720,7 @@ Return only the concise version:`;
           sessionId: agent.sessionId,
           capabilities: agent.capabilities
         };
-        this.registry.updateAgentHealth(agent.agentId, true);
+        this.agentRegistry.updateAgentHealth(agent.agentId, true);
       } catch (error) {
         results.agents[agent.agentId] = {
           name: agent.name,
@@ -1793,7 +1728,7 @@ Return only the concise version:`;
           url: agent.url,
           error: error.message
         };
-        this.registry.updateAgentHealth(agent.agentId, false);
+        this.agentRegistry.updateAgentHealth(agent.agentId, false);
       }
     }
 

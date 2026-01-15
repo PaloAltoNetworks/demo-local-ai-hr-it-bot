@@ -1,29 +1,4 @@
 services:
-  # MCP Host - User-facing chatbot application
-  chatbot-host:
-    build:
-      context: .
-      dockerfile: chatbot-host/Dockerfile
-    hostname: chatbot-host
-    ports:
-      - "3002:3002"
-    env_file:
-      - ./.env
-    environment:
-      - CHATBOT_HOST_PORT=3002
-      - MCP_GATEWAY_URL=http://mcp-gateway:3001
-    depends_on:
-      - mcp-gateway
-      - hr-mcp-server
-      - it-mcp-server
-      - general-mcp-server
-    restart: unless-stopped
-    volumes:
-      - ./logs/chatbot-host:/app/logs
-      - ./credentials:/app/credentials:ro
-    networks:
-      - mcp-network
-
   # MCP Gateway - Enterprise routing and security layer
   mcp-gateway:
     build:
@@ -42,6 +17,12 @@ services:
       - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
     
   # HR MCP Server
   hr-mcp-server:
@@ -56,13 +37,20 @@ services:
     env_file:
       - ./.env
     depends_on:
-      - mcp-gateway
+      mcp-gateway:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - ./logs/hr-mcp-server:/app/logs
       - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
     
   # IT MCP Server  
   it-mcp-server:
@@ -77,13 +65,20 @@ services:
     env_file:
       - ./.env
     depends_on:
-      - mcp-gateway
+      mcp-gateway:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - ./logs/it-mcp-server:/app/logs
       - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
     
   # General MCP Server
   general-mcp-server:
@@ -98,13 +93,55 @@ services:
     env_file:
       - ./.env
     depends_on:
-      - mcp-gateway
+      mcp-gateway:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - ./logs/general-mcp-server:/app/logs
       - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # MCP Host - User-facing chatbot application
+  chatbot-host:
+    build:
+      context: .
+      dockerfile: chatbot-host/Dockerfile
+    hostname: chatbot-host
+    ports:
+      - "3002:3002"
+    env_file:
+      - ./.env
+    environment:
+      - CHATBOT_HOST_PORT=3002
+      - MCP_GATEWAY_URL=http://mcp-gateway:3001
+    depends_on:
+      mcp-gateway:
+        condition: service_healthy
+      hr-mcp-server:
+        condition: service_healthy
+      it-mcp-server:
+        condition: service_healthy
+      general-mcp-server:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./logs/chatbot-host:/app/logs
+      - ./credentials:/app/credentials:ro
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
 
   # Optional: Ollama service (uncomment if you want to run Ollama in Docker)
   # ollama:

@@ -2,13 +2,12 @@
  * Resource management utilities for agents
  */
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getLogger } from '../../utils/index.js';
+import { getLogger } from '../utils/logger.js';
 
 class ResourceManager {
   constructor(agentName, mcpServer) {
     this.agentName = agentName;
     this.mcpServer = mcpServer;
-    this.logger = getLogger();
     this.resources = [];
     this.handlers = new Map(); // Store handlers for later access
   }
@@ -17,7 +16,7 @@ class ResourceManager {
    * Register a static resource
    */
   registerStaticResource(name, uri, metadata, handler) {
-    this.logger.debug(`Registering static resource: ${name}`);
+    getLogger().debug(`Registering static resource: ${name}`);
 
     this.mcpServer.registerResource(name, uri, metadata, handler);
     this.handlers.set(uri, handler); // Store handler
@@ -34,7 +33,7 @@ class ResourceManager {
    * Register a dynamic resource with template
    */
   registerTemplateResource(name, template, metadata, handler) {
-    this.logger.debug(`Registering template resource: ${name}`);
+    getLogger().debug(`Registering template resource: ${name}`);
 
     const resourceTemplate = new ResourceTemplate(template.uri, template.params || {});
     this.mcpServer.registerResource(name, resourceTemplate, metadata, handler);
@@ -53,7 +52,7 @@ class ResourceManager {
    * Get list of registered resources
    */
   getResourcesList() {
-    this.logger.debug(`Returning ${this.resources.length} resources`);
+    getLogger().debug(`Returning ${this.resources.length} resources`);
     return this.resources;
   }
 
@@ -94,9 +93,9 @@ class ResourceManager {
    * Log resource registration summary
    */
   logResourceSummary() {
-    this.logger.info(`${this.resources.length} resources registered:`);
+    getLogger().info(`${this.resources.length} resources registered:`);
     this.resources.forEach((resource) => {
-      this.logger.debug(`  - ${resource.uri} (${resource.name})`);
+      getLogger().debug(`  - ${resource.uri} (${resource.name})`);
     });
   }
 }

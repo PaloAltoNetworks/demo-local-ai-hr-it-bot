@@ -15,17 +15,9 @@
     "./llm": "./utils/llm-provider.js"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.11",
-    "@ai-sdk/azure": "^3.0.8",
-    "@ai-sdk/google-vertex": "^4.0.13",
-    "@ai-sdk/openai": "^3.0.8",
-    "@ai-sdk/amazon-bedrock": "^4.0.15",
-    "ollama-ai-provider-v2": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
-    "ai": "^6.0.28",
     "axios": "^1.13.2",
-    "express": "^5.2.1",
-    "winston": "^3.19.0"
+    "express": "^5.2.1"
   },
   "keywords": [
     "mcp",

@@ -2,7 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
-import { initializeLogger, getLogger, initializeI18n } from './utils/index.js';
+import { IntelligentCoordinator } from './coordinator.js';
+import { getLogger } from './utils/logger.js';
+import { initializeLogger } from './utils/logger.js';
+import { initializeI18n } from './utils/i18n.js';
 
 dotenv.config();
 
@@ -445,9 +448,7 @@ initializeI18n().catch(err => {
 });
 
 // Import Coordinator (for routing decisions)
-import { IntelligentCoordinator } from './coordinator.js';
-const ollamaUrl = process.env.OLLAMA_HOST || 'http://localhost:11434';
-const coordinator = new IntelligentCoordinator(ollamaUrl, mcpRegistry);
+const coordinator = new IntelligentCoordinator(mcpRegistry);
 
 // Define endpoints to skip from logging
 const skipLoggingEndpoints = [
@@ -467,7 +468,7 @@ app.use((req, res, next) => {
   });
 
   if (!shouldSkip) {
-    getLogger().debug(`${new Date().toISOString()} [MCPGateway] ${req.method} ${req.url}`);
+    getLogger().debug(`${req.method} ${req.url}`);
   }
   next();
 });
@@ -517,7 +518,7 @@ app.post('/', async (req, res) => {
 
     // Handle notification (no response expected)
     if (jsonRpcRequest.id === undefined) {
-      getLogger().debug(`[MCPGateway] Notification: ${jsonRpcRequest.method}`);
+      getLogger().debug(`Notification: ${jsonRpcRequest.method}`);
       res.status(204).end();
       return;
     }
@@ -548,7 +549,7 @@ app.post('/', async (req, res) => {
       }
     };
 
-    getLogger().error('❌ [MCPGateway] Error:', errorResponse.error);
+    getLogger().error(`Error:`, errorResponse.error);
     res.status(500).json(errorResponse);
   }
 });
@@ -572,7 +573,7 @@ app.post('/api/agents/register', (req, res) => {
     
     res.json(result);
   } catch (error) {
-    getLogger().error('❌ [MCPGateway] Registration error:', error);
+    getLogger().error(`Registration error:`, error);
     res.status(500).json({
       success: false,
       message: 'Internal server error during registration'
@@ -590,7 +591,7 @@ app.post('/api/agents/:agentId/unregister', (req, res) => {
     
     res.json(result);
   } catch (error) {
-    getLogger().error('❌ [MCPGateway] Unregistration error:', error);
+    getLogger().error(`Unregistration error:`, error);
     res.status(500).json({
       success: false,
       message: 'Internal server error during unregistration'
@@ -604,7 +605,7 @@ app.post('/api/agents/:agentId/heartbeat', (req, res) => {
     const result = mcpRegistry.heartbeat(agentId);
     res.json(result);
   } catch (error) {
-    getLogger().error('❌ [MCPGateway] Heartbeat error:', error);
+    getLogger().error(`Heartbeat error:`, error);
     res.status(500).json({
       success: false,
       message: 'Internal server error during heartbeat'
@@ -636,7 +637,7 @@ app.get('/api/llm-providers', (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    getLogger().error('❌ [MCPGateway] llm providers endpoint error:', error);
+    getLogger().error(`llm providers endpoint error:`, error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch llm providers',
@@ -712,7 +713,7 @@ app.post('/api/query', async (req, res) => {
       }
     }
   } catch (error) {
-    getLogger().error('❌ [MCPGateway] Query processing error:', error);
+    getLogger().error(`Query processing error:`, error);
     
     if (res.headersSent) {
       // If headers already sent (streaming mode), send error as JSON line
@@ -738,15 +739,15 @@ app.post('/api/query', async (req, res) => {
 setInterval(() => {
   const cleaned = mcpServer.cleanupSessions();
   if (cleaned > 0) {
-    getLogger().debug(`🧹 [MCPGateway] Cleaned up ${cleaned} expired sessions`);
+    getLogger().debug(`Cleaned up ${cleaned} expired sessions`);
   }
 }, 300000); // Every 5 minutes
 
 // Start server
 app.listen(PORT, async () => {
-  getLogger().debug(`[MCPGateway] MCP Gateway running on http://localhost:${PORT}`);
-  getLogger().debug(`[MCPGateway] Protocol: MCP ${mcpServer.protocolVersion} (JSON-RPC 2.0)`);
-  getLogger().debug(`[MCPGateway] Ready to register MCP servers`);
+  getLogger().debug(`MCP Gateway running on http://localhost:${PORT}`);
+  getLogger().debug(`Protocol: MCP ${mcpServer.protocolVersion} (JSON-RPC 2.0)`);
+  getLogger().debug(`Ready to register MCP servers`);
   
   // Initialize coordinator
   await coordinator.initialize();
@@ -754,13 +755,13 @@ app.listen(PORT, async () => {
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  getLogger().debug('🛑 [MCPGateway] SIGTERM signal received: closing MCP Gateway...');
+  getLogger().debug(`SIGTERM signal received: closing MCP Gateway...`);
   await coordinator.cleanup();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  getLogger().debug('🛑 [MCPGateway] SIGINT signal received: closing MCP Gateway...');
+  getLogger().debug(`SIGINT signal received: closing MCP Gateway...`);
   await coordinator.cleanup();
   process.exit(0);
 });

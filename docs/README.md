@@ -25,12 +25,10 @@ Welcome to the comprehensive documentation for the AI-powered chatbot system wit
 
 ```bash
 # Option 1: Local Development (Ollama)
-export LLM_PROVIDER=ollama
 export OLLAMA_SERVER_URL=http://localhost:11434
 export COORDINATOR_MODEL=qwen2.5:1.5b
 
 # Option 2: AWS Production (Bedrock)
-export LLM_PROVIDER=aws
 export AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key
 export AWS_REGION=us-east-1
 export BEDROCK_MODEL=qwen.qwen3-32b-v1:0
@@ -136,11 +134,6 @@ MAX_SESSIONS=100
 SESSION_TTL=3600             # seconds
 ```
 
-#### LLM Provider Selection
-```bash
-LLM_PROVIDER=ollama          # or 'bedrock'
-```
-
 #### Ollama Configuration (Local Development)
 ```bash
 OLLAMA_SERVER_URL=http://localhost:11434
@@ -173,7 +166,6 @@ PRISMA_AIRS_API_KEY=...
 **From Ollama to Bedrock:**
 ```bash
 # 1. Update environment variables (or modify docker-compose.yml)
-LLM_PROVIDER=bedrock
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
@@ -300,7 +292,7 @@ DEFAULT_LANGUAGE=fr
 
 ### Architecture
 
-Both Ollama and AWS Bedrock are accessed through a **unified LLM interface** that abstracts away provider-specific details:
+LLMs are accessed through a **unified LLM interface** that abstracts away provider-specific details:
 
 ```javascript
 const llmProvider = LLMProviderFactory.create();
@@ -418,7 +410,6 @@ Track LLM token consumption:
 **Q: LLM provider not connecting?**
 - For Ollama: Ensure `ollama serve` is running
 - For Bedrock: Verify AWS credentials and region
-- Check LLM_PROVIDER environment variable is set
 
 **Q: Language translation issues?**
 - Verify `locales/` folder is mounted

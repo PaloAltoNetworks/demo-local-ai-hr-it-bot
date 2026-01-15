@@ -15,16 +15,7 @@ class ConfigManager {
         retryBackoffMax: 30000 // 30 seconds
       },
       agent: {
-        port: process.env.PORT || 3000,
-        ollamaUrl: process.env.OLLAMA_URL || 'http://host.docker.internal:11434',
-        preferredModel: process.env.AGENT_MODEL || 'llama3.2:3b',
-        temperature: 0.3
-      },
-      server: {
-        healthCheckInterval: 30,
-        healthCheckTimeout: 10,
-        healthCheckStartPeriod: 30,
-        healthCheckRetries: 3
+        port: process.env.PORT || 3000
       }
     };
   }

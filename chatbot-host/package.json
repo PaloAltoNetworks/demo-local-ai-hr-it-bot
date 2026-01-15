@@ -13,10 +13,7 @@
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "i18next": "^25.7.4",
-    "i18next-fs-backend": "^2.6.1",
-    "winston": "^3.19.0"
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { t, getLogger } from './utils/index.js';
+import { getLogger } from './utils/logger.js';
+import { t } from './utils/i18n.js';
 
 /**
  * Prisma AIRS API Intercept Module

@@ -5,13 +5,12 @@ import express from 'express';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'node:crypto';
-import { getLogger } from '../../utils/index.js';
+import { getLogger } from '../utils/logger.js';
 
 class MCPTransportManager {
   constructor(agentName, mcpServer) {
     this.agentName = agentName;
     this.mcpServer = mcpServer;
-    this.logger = getLogger();
     this.transports = {};
   }
 
@@ -24,7 +23,7 @@ class MCPTransportManager {
 
     // Request logging middleware
     app.use((req, res, next) => {
-      this.logger.debug(`${req.method} ${req.url}`);
+      getLogger().debug(`${req.method} ${req.url}`);
       next();
     });
 
@@ -33,7 +32,7 @@ class MCPTransportManager {
       try {
         await this._handleMCPRequest(req, res);
       } catch (error) {
-        this.logger.error('MCP request handling failed', error);
+        getLogger().error('MCP request handling failed', error);
         if (!res.headersSent) {
           res.status(500).json({
             jsonrpc: '2.0',
@@ -83,13 +82,13 @@ class MCPTransportManager {
 
     // Reuse existing transport or create new one
     if (sessionId && this.transports[sessionId]) {
-      this.logger.debug(`Reusing existing transport for session: ${sessionId}`);
+      getLogger().debug(`Reusing existing transport for session: ${sessionId}`);
       transport = this.transports[sessionId];
     } else if (!sessionId && isInitializeRequest(req.body)) {
-      this.logger.debug('Initialize request detected, creating new transport');
+      getLogger().debug('Initialize request detected, creating new transport');
       transport = await this._createNewTransport();
     } else {
-      this.logger.error('Invalid request: No valid session or not an initialize request');
+      getLogger().error('Invalid request: No valid session or not an initialize request');
       res.status(400).json({
         jsonrpc: '2.0',
         error: {
@@ -131,7 +130,7 @@ class MCPTransportManager {
 
     // Standard MCP transport handling
     await transport.handleRequest(req, res, req.body);
-    this.logger.debug('✓ Request completed successfully');
+    getLogger().debug('✓ Request completed successfully');
   }
 
   /**
@@ -141,13 +140,13 @@ class MCPTransportManager {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sessionId) => {
-        this.logger.debug(`Session initialized: ${sessionId}`);
+        getLogger().debug(`Session initialized: ${sessionId}`);
         this.transports[sessionId] = transport;
       }
     });
 
     transport.onclose = () => {
-      this.logger.debug(`Transport closed for session: ${transport.sessionId}`);
+      getLogger().debug(`Transport closed for session: ${transport.sessionId}`);
       if (transport.sessionId) {
         delete this.transports[transport.sessionId];
       }
@@ -155,9 +154,9 @@ class MCPTransportManager {
 
     try {
       await this.mcpServer.connect(transport);
-      this.logger.debug('Server connected to transport');
+      getLogger().debug('Server connected to transport');
     } catch (error) {
-      this.logger.error('Failed to connect server to transport', error);
+      getLogger().error('Failed to connect server to transport', error);
       throw error;
     }
 
@@ -168,7 +167,7 @@ class MCPTransportManager {
    * Handle tool/call request
    */
   async _handleToolCall(req, res, transport) {
-    this.logger.debug('Handling tools/call request');
+    getLogger().debug('Handling tools/call request');
     const { name, arguments: toolArgs } = req.body.params;
 
     try {
@@ -193,7 +192,7 @@ class MCPTransportManager {
           throw new Error(`Unknown tool: ${name}`);
       }
 
-      this.logger.debug(`Tool ${name} executed successfully`);
+      getLogger().debug(`Tool ${name} executed successfully`);
       this._sendSSEResponse(res, transport.sessionId, req.body.id, {
         content: [
           {
@@ -203,7 +202,7 @@ class MCPTransportManager {
         ]
       });
     } catch (error) {
-      this.logger.error(`Tool ${name} execution failed`, error);
+      getLogger().error(`Tool ${name} execution failed`, error);
       throw error;
     }
   }
@@ -212,17 +211,17 @@ class MCPTransportManager {
    * Handle resources/list request
    */
   async _handleResourcesList(req, res, transport) {
-    this.logger.debug('Handling resources/list request');
+    getLogger().debug('Handling resources/list request');
 
     try {
       const resources = this.mcpServer.agent.getResourcesList();
-      this.logger.debug(`Found ${resources.length} registered resources`);
+      getLogger().debug(`Found ${resources.length} registered resources`);
 
       this._sendSSEResponse(res, transport.sessionId, req.body.id, {
         resources
       });
     } catch (error) {
-      this.logger.error('Failed to list resources', error);
+      getLogger().error('Failed to list resources', error);
       throw error;
     }
   }
@@ -231,7 +230,7 @@ class MCPTransportManager {
    * Handle resources/read request
    */
   async _handleResourceRead(req, res, transport) {
-    this.logger.debug('Handling resources/read request');
+    getLogger().debug('Handling resources/read request');
 
     try {
       const { uri } = req.body.params;
@@ -240,7 +239,7 @@ class MCPTransportManager {
       const agent = this.mcpServer.agent;
       const urlObj = new URL(uri);
       
-      this.logger.debug(`Agent: ${!!agent}, ResourceManager: ${agent ? !!agent.resourceManager : 'N/A'}`);
+      getLogger().debug(`Agent: ${!!agent}, ResourceManager: ${agent ? !!agent.resourceManager : 'N/A'}`);
       
       // Get handler from the agent's resource manager
       if (!agent) {
@@ -263,7 +262,7 @@ class MCPTransportManager {
         contents: resourceContent.contents || []
       });
     } catch (error) {
-      this.logger.error('Failed to read resource', error);
+      getLogger().error('Failed to read resource', error);
       // Send error response
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',

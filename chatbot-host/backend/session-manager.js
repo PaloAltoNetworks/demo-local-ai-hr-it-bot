@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { getLogger } from '../utils/index.js';
+import { getLogger } from '../utils/logger.js';
 
 /**
  * Session Manager for MCP Client

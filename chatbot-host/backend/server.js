@@ -8,7 +8,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Import shared utils (logger and i18n)
-import { initializeLogger, getLogger, initializeI18n, changeLanguage, t, getAvailableLanguages, loadFrontendTranslations, ensureI18nInitialized } from '../utils/index.js';
+import { initializeLogger, getLogger } from '../utils/logger.js';
+import { initializeI18n, changeLanguage, t, getAvailableLanguages, loadFrontendTranslations, ensureI18nInitialized } from '../utils/i18n.js';
 
 // Initialize logger first (MUST be before i18n)
 initializeLogger('chatbot-host');

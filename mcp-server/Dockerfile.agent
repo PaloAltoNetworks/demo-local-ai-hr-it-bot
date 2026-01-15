@@ -13,17 +13,20 @@ USER mcpserver
 
 WORKDIR /app
 
-ARG AGENT_NAME
-
 # copy only package files first (cache-friendly)
 COPY --chown=mcpserver:nodejs utils/package*.json ./utils/
 COPY --chown=mcpserver:nodejs mcp-server/shared/package*.json ./shared/
+
+# install all deps in utils and shared first
+RUN npm install --prefix ./utils --only=production && \
+    npm install --prefix ./shared --only=production
+
+# then copy agent-specific package files
+ARG AGENT_NAME
 COPY --chown=mcpserver:nodejs mcp-server/${AGENT_NAME}-mcp-server/package*.json ./
 
-# install all deps in one layer
-RUN npm install --prefix ./utils --only=production && \
-    npm install --prefix ./shared --only=production && \
-    npm install --prefix . --only=production
+# install agent-specific deps
+RUN npm install --prefix . --only=production
 
 # then copy full sources
 COPY --chown=mcpserver:nodejs utils/ ./utils/
@@ -32,10 +35,6 @@ COPY --chown=mcpserver:nodejs mcp-server/${AGENT_NAME}-mcp-server/ ./
 
 # Expose port
 EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD node -e "console.log('Health Check - OK')" || exit 1
 
 # Start the application
 CMD ["npm", "start"]
