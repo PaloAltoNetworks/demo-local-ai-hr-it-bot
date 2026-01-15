@@ -746,7 +746,7 @@ Output JSON immediately`,
 
       // Combine responses using LLM
       this.sendThinkingMessage(`Synthesizing responses from all specialists...`);
-      const combinedResponse = await this.synthesizeMultiAgentResponses(originalQuery, agentResponses);
+      const combinedResponse = await this.synthesizeMultiAgentResponses(originalQuery, agentResponses, llmProvider);
 
       return combinedResponse;
 
