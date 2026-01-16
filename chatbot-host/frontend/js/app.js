@@ -83,6 +83,7 @@ class ChatBotApp {
 
         // Update UI with i18n
         this.modules.i18n.updateUI();
+        await this.modules.i18n.changeLanguage(this.modules.i18n.currentLanguage, true);
     }
 
     /**
