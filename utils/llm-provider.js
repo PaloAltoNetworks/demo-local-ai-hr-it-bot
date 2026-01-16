@@ -122,7 +122,7 @@ class LLMProviderFactory {
         resourceName: process.env.AZURE_RESOURCE_NAME || null,
         baseUrl: process.env.AZURE_BASE_URL || null,
         apiVersion: process.env.AZURE_API_VERSION,
-        useDeploymentBasedUrls: true,
+        useDeploymentBasedUrls: process.env.AZURE_USE_DEPLOYMENT_URLS || false,
       });
       providers.azure = azureClient;
       registeredKeys.push('azure');
