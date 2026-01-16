@@ -43,10 +43,10 @@ export class LLMProviderManager {
         // Cache the successful response
         this.cacheProviders(data);
         this.populateDropdown();
-        console.log('LLM providers loaded from backend and cached');
+        console.log('[LLMProviderManager] LLM providers loaded from backend and cached');
       }
     } catch (error) {
-      console.error('Failed to load providers from backend:', error);
+      console.error('[LLMProviderManager] Failed to load providers from backend:', error);
       // Fallback to cached providers
       this.loadProvidersFromCache();
     }
@@ -64,7 +64,7 @@ export class LLMProviderManager {
       const data = await this.apiService.get('/api/llm-providers');
       return data;
     } catch (error) {
-      console.error('Failed to fetch llm providers:', error);
+      console.error('[LLMProviderManager] Failed to fetch llm providers:', error);
       throw error;
     }
   }
@@ -82,9 +82,9 @@ export class LLMProviderManager {
         cached_at: new Date().toISOString()
       };
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
-      console.log('Providers cached locally');
+      console.log('[LLMProviderManager] Providers cached locally');
     } catch (error) {
-      console.warn('Failed to cache providers:', error);
+      console.warn('[LLMProviderManager] Failed to cache providers:', error);
     }
   }
 
@@ -99,11 +99,11 @@ export class LLMProviderManager {
         this.providers = cacheData.providers || [];
         this.backendDefaultProvider = cacheData.default_provider || null;
         this.populateDropdown();
-        console.log('LLM providers loaded from local cache');
+        console.log('[LLMProviderManager] LLM providers loaded from local cache');
         return true;
       }
     } catch (error) {
-      console.warn('Failed to load providers from cache:', error);
+      console.warn('[LLMProviderManager] Failed to load providers from cache:', error);
     }
     return false;
   }
@@ -139,7 +139,7 @@ export class LLMProviderManager {
       const cached = localStorage.getItem(this.CACHE_KEY);
       return cached ? JSON.parse(cached) : null;
     } catch (error) {
-      console.warn('Failed to get cache:', error);
+      console.warn('[LLMProviderManager] Failed to get cache:', error);
       return null;
     }
   }
@@ -158,7 +158,7 @@ export class LLMProviderManager {
   setProvider(provider) {
     const supportedProviderIds = this.providers.map(p => p.id);
     if (!supportedProviderIds.includes(provider)) {
-      console.warn(`Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
+      console.warn(`[LLMProviderManager] Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
       return;
     }
 
@@ -188,7 +188,7 @@ export class LLMProviderManager {
       cache.selected_provider = provider;
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
     } catch (error) {
-      console.warn('Failed to update provider in cache:', error);
+      console.warn('[LLMProviderManager] Failed to update provider in cache:', error);
     }
   }
 
@@ -350,7 +350,7 @@ export class LLMProviderManager {
   applyProviderChange(provider) {
     const supportedProviderIds = this.providers.map(p => p.id);
     if (!supportedProviderIds.includes(provider)) {
-      console.warn(`Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
+      console.warn(`[LLMProviderManager] Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
       return;
     }
 
