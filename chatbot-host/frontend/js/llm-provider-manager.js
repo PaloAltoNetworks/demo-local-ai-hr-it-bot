@@ -177,11 +177,6 @@ export class LLMProviderManager {
     if (this.isMenuOpen) {
       this.closeMenu();
     }
-    
-    // Update API service
-    if (this.apiService) {
-      this.apiService.setAIProvider(provider);
-    }
   
     this.notifyChange(provider);
   }

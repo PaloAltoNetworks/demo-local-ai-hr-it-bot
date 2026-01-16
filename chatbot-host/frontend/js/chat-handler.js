@@ -14,6 +14,8 @@ export class ChatHandler {
         this.currentPhase = 'phase1';
         this.boundHandlers = {};
         this.isInitialized = false;
+        this.currentLanguage = this.i18n.currentLanguage || 'en';
+        this.currentLLMProvider = 'aws';
         
         this.init();
     }
@@ -52,6 +54,16 @@ export class ChatHandler {
 
         // Listen for phase changes
         window.addEventListener('phaseChanged', this.boundHandlers.phaseChanged);
+        
+        window.addEventListener('languageChanged', (event) => {
+            const { language } = event.detail;
+            this.currentLanguage = language;
+        });
+
+        window.addEventListener('llmProviderChanged', (event) => {
+            const { provider } = event.detail;
+            this.currentLLMProvider = provider;
+        });
     }
 
     /**
@@ -181,8 +193,8 @@ export class ChatHandler {
                 {
                     messages: chatHistory,
                     phase: currentPhase,
-                    language: this.apiService.currentLanguage,
-                    llmProvider: this.apiService.currentLLMProvider
+                    language: this.currentLanguage,
+                    llmProvider: this.currentLLMProvider
                 },
                 {},
                 CONFIG.REQUEST_TIMEOUT

@@ -76,14 +76,14 @@ export class I18nService {
         document.documentElement.lang = this.currentLanguage;
         this.updateTextDirection();
         
-        // Emit language changed event to notify other components like API service
-        this.emitLanguageChanged(this.currentLanguage);
-        
         // Automatically populate language select if it exists
         const languageSelect = document.getElementById('userMenuLanguageSelect');
         if (languageSelect) {
             await this.populateLanguageSelect(languageSelect);
         }
+
+        // Emit language changed event to notify other components like API service
+        this.emitLanguageChanged(this.currentLanguage);
         
         console.log(`I18n initialized with language: ${this.currentLanguage}`);
         return this;
@@ -245,8 +245,6 @@ export class I18nService {
         window.history.replaceState({}, '', url);
 
         this.emitLanguageChanged(language);
-
-        console.log(`Language changed to: ${language}`);
     }
 
     /**
