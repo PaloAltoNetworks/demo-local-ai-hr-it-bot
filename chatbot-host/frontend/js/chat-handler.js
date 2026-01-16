@@ -22,7 +22,7 @@ export class ChatHandler {
      */
     init() {
         this.attachListeners();
-        console.log('ChatHandler initialized');
+        console.log('[ChatHandler] ChatHandler initialized');
     }
 
     /**
@@ -95,7 +95,7 @@ export class ChatHandler {
         window.removeEventListener('phaseChanged', this.boundHandlers.phaseChanged);
         
         this.boundHandlers = {};
-        console.log('ChatHandler destroyed');
+        console.log('[ChatHandler] ChatHandler destroyed');
     }
 
     /**
@@ -230,7 +230,7 @@ export class ChatHandler {
                 }
             }
         } catch (error) {
-            console.error('Error reading stream:', error);
+            console.error('[ChatHandler] Error reading stream:', error);
             throw error;
         }
     }
@@ -279,7 +279,7 @@ export class ChatHandler {
                 }
             }
         } catch (e) {
-            console.error('Error parsing SSE event:', e);
+            console.error('[ChatHandler] Error parsing SSE event:', e);
             throw e;
         }
     }
@@ -288,7 +288,7 @@ export class ChatHandler {
      * Handle stream errors with retry logic
      */
     async handleStreamError(error, chatHistory, currentPhase, callbacks, retryCount) {
-        console.error(`Stream Error (attempt ${retryCount + 1}):`, error);
+        console.error(`[ChatHandler] Stream Error (attempt ${retryCount + 1}):`, error);
         
         // Handle timeout errors
         if (error.name === 'AbortError') {
@@ -322,7 +322,7 @@ export class ChatHandler {
 
         // Retry other errors if attempts remain
         if (retryCount < CONFIG.MAX_RETRIES) {
-            console.warn(`Retry attempt ${retryCount + 1}:`, error.message);
+            console.warn(`[ChatHandler] Retry attempt ${retryCount + 1}:`, error.message);
             this.notifyRetry(retryCount + 1, CONFIG.MAX_RETRIES);
             await this.delay(1000 * (retryCount + 1)); // Exponential backoff
             return this.sendMessageWithRetry(chatHistory, currentPhase, callbacks, retryCount + 1);
@@ -418,7 +418,7 @@ export class ChatHandler {
         }
         
         this.uiManager.showError(errorMsg);
-        console.error('Error sending message:', error);
+        console.error('[ChatHandler] Error sending message:', error);
     }
 
     /**
