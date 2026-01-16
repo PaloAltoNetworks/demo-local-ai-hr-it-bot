@@ -21,7 +21,7 @@ export class ConnectionMonitor {
      */
     init() {
         this.attachListeners();
-        console.log('✅ ConnectionMonitor initialized');
+        console.log('ConnectionMonitor initialized');
     }
 
     /**
@@ -71,7 +71,7 @@ export class ConnectionMonitor {
         window.removeEventListener('apiTimeout', this.boundHandlers.apiTimeout);
         
         this.boundHandlers = {};
-        console.log('✅ ConnectionMonitor stopped');
+        console.log('ConnectionMonitor stopped');
     }
 
     /**

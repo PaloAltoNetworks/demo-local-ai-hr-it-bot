@@ -130,7 +130,7 @@ class MCPTransportManager {
 
     // Standard MCP transport handling
     await transport.handleRequest(req, res, req.body);
-    getLogger().debug('✓ Request completed successfully');
+    getLogger().debug('Request completed successfully');
   }
 
   /**

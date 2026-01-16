@@ -30,7 +30,7 @@ class ChatBotApp {
             await this.initializeServices();
 
             this.showLoading(false);
-            console.log('✅ ChatBot app initialized successfully');
+            console.log('ChatBot app initialized successfully');
         } catch (error) {
             this.showLoading(false);
             console.error('❌ Failed to initialize ChatBot app:', error);
@@ -112,7 +112,7 @@ class ChatBotApp {
         if (this.modules.connectionMonitor) {
             this.modules.connectionMonitor.stop();
         }
-        console.log('✅ ChatBot app cleaned up');
+        console.log('ChatBot app cleaned up');
     }
 
     /**

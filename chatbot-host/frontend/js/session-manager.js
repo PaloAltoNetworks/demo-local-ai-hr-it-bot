@@ -21,7 +21,7 @@ export class SessionManager {
             
             // Clear the server-side session
             await this.clearSession();
-            console.log('✓ Fresh page load detected, cleared server-side session');
+            console.log('Fresh page load detected, cleared server-side session');
         }
         
         this.setupLifecycleEvents();
@@ -71,7 +71,7 @@ export class SessionManager {
             setTimeout(() => {
                 // Uncomment to redirect to login page
                 // window.location.href = '/login';
-                console.log('✓ Logout complete');
+                console.log('Logout complete');
             }, 1000);
         } catch (error) {
             console.error('Error during logout:', error);
@@ -100,7 +100,7 @@ export class SessionManager {
     async clearSession() {
         try {
             const response = await this.apiService.post('/api/clear-session', {});
-            console.log('✓ Session cleared successfully');
+            console.log('Session cleared successfully');
             return response;
         } catch (error) {
             console.error('❌ Failed to clear session:', error);
@@ -122,7 +122,7 @@ export class SessionManager {
             // Clear server-side session
             await this.clearSession();
             
-            console.log('✓ User logged out and session cleared');
+            console.log('User logged out and session cleared');
             return true;
         } catch (error) {
             console.error('❌ Error during logout:', error);

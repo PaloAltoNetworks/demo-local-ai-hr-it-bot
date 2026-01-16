@@ -44,9 +44,9 @@ export const config = {
 🚫 DO NOT say "based on typical IT issues" or "similar tickets might be"
 🚫 DO NOT assume information not explicitly in the database
 🚫 DO NOT make up employee-ticket relationships
-✅ ONLY use ticket IDs from the provided database listing
-✅ ONLY use ticket data explicitly provided in the context
-✅ When in doubt about data, say "This information is not in the database"
+ONLY use ticket IDs from the provided database listing
+ONLY use ticket data explicitly provided in the context
+When in doubt about data, say "This information is not in the database"
 
 ## DATABASE STRUCTURE:
 The ticket database contains these fields:

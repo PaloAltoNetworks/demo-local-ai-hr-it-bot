@@ -152,7 +152,7 @@ https.get(googleFontsUrl, options, (res) => {
         }
 
         const fontUrl = urlMatch[1];
-        console.log('✓ Extracted font URL from Google Fonts CSS\n');
+        console.log('Extracted font URL from Google Fonts CSS\n');
 
         // Step 3: Download the WOFF2 font
         console.log('Step 2: Downloading WOFF2 font file...');
@@ -170,7 +170,7 @@ https.get(googleFontsUrl, options, (res) => {
                 fontStream.close();
 
                 const fileSize = (fs.statSync(FONT_FILE).size / 1024).toFixed(2);
-                console.log(`✓ Downloaded font (${fileSize} KB)\n`);
+                console.log(`Downloaded font (${fileSize} KB)\n`);
 
                 // Step 4: Transform Google's CSS to use local font file
                 console.log('Step 3: Generating local CSS file...');
@@ -190,9 +190,9 @@ https.get(googleFontsUrl, options, (res) => {
                 );
 
                 fs.writeFileSync(CSS_FILE, localCss);
-                console.log('✓ Created local CSS file\n');
+                console.log('Created local CSS file\n');
 
-                console.log('✅ Material Symbols font successfully downloaded and configured!\n');
+                console.log('Material Symbols font successfully downloaded and configured!\n');
                 console.log('📍 Files created:');
                 console.log(`   - ${FONT_FILE}`);
                 console.log(`   - ${CSS_FILE}\n`);

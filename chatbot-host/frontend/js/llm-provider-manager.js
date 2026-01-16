@@ -43,7 +43,7 @@ export class LLMProviderManager {
         // Cache the successful response
         this.cacheProviders(data);
         this.populateDropdown();
-        console.log('✓ LLM providers loaded from backend and cached');
+        console.log('LLM providers loaded from backend and cached');
       }
     } catch (error) {
       console.error('Failed to load providers from backend:', error);
@@ -82,7 +82,7 @@ export class LLMProviderManager {
         cached_at: new Date().toISOString()
       };
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
-      console.log('✓ Providers cached locally');
+      console.log('Providers cached locally');
     } catch (error) {
       console.warn('Failed to cache providers:', error);
     }
@@ -99,7 +99,7 @@ export class LLMProviderManager {
         this.providers = cacheData.providers || [];
         this.backendDefaultProvider = cacheData.default_provider || null;
         this.populateDropdown();
-        console.log('✓ LLM providers loaded from local cache');
+        console.log('LLM providers loaded from local cache');
         return true;
       }
     } catch (error) {

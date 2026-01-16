@@ -22,7 +22,7 @@ export class ChatHandler {
      */
     init() {
         this.attachListeners();
-        console.log('✅ ChatHandler initialized');
+        console.log('ChatHandler initialized');
     }
 
     /**
@@ -95,7 +95,7 @@ export class ChatHandler {
         window.removeEventListener('phaseChanged', this.boundHandlers.phaseChanged);
         
         this.boundHandlers = {};
-        console.log('✅ ChatHandler destroyed');
+        console.log('ChatHandler destroyed');
     }
 
     /**
