@@ -252,10 +252,6 @@ class LLMProviderFactory {
    * Convenience method that handles model lookup and generateText call
    */
   static async generateText(prompt, options = {}) {
-
-    getLogger().debug(`[LLMProvider] generateText() prompt: ${prompt.substring(0, 100)}...`);
-    getLogger().debug(`[LLMProvider] generateText() options: ${JSON.stringify(options)}`);
-
     const {
       system = '',
       temperature = 0.3,
@@ -263,13 +259,8 @@ class LLMProviderFactory {
       provider = null
     } = options;
 
-    getLogger().debug(`[LLMProvider] generateText() getting registry`);
     const registry = this.getRegistry();
-
-    getLogger().debug(`[LLMProvider] generateText() registry obtained`);
     const modelIdentifier = this.buildModelIdentifier(provider);
-
-    getLogger().debug(`[LLMProvider] generateText() using model identifier: ${modelIdentifier}`);
     const model = registry.languageModel(modelIdentifier);
 
     const { text, usage } = await generateText({
@@ -279,9 +270,6 @@ class LLMProviderFactory {
       temperature,
       maxTokens,
     });
-
-    getLogger().debug(`[LLMProvider] generateText() response: ${text.substring(0, 100)}...`);
-    getLogger().debug(`[LLMProvider] generateText() usage: ${JSON.stringify(usage)}`);
 
     return { response: text, usage };
   }
