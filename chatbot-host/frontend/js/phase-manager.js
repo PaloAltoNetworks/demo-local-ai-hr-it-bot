@@ -17,7 +17,7 @@ export class PhaseManager {
     init() {
         if (this.isInitialized) return;
         
-        // Restore phase from sessionStorage
+        // Restore phase from localStorage
         this.restorePhase();
         
         // Attach event listeners
@@ -87,31 +87,20 @@ export class PhaseManager {
     }
 
     /**
-     * Save phase to sessionStorage
+     * Save phase to localStorage
      */
     savePhase(phase) {
-        sessionStorage.setItem('currentPhase', phase);
+        localStorage.setItem('currentPhase', phase);
     }
 
     /**
-     * Restore phase from sessionStorage
+     * Restore phase from localStorage
      */
     restorePhase() {
-        const savedPhase = sessionStorage.getItem('currentPhase');
-        const returnToPhase = sessionStorage.getItem('returnToPhase');
+        const currentPhase = localStorage.getItem('currentPhase');
         
-        if (returnToPhase) {
-            this.currentPhase = returnToPhase;
-            sessionStorage.removeItem('returnToPhase');
-        } else if (savedPhase) {
-            this.currentPhase = savedPhase;
+        if (currentPhase) {
+            this.currentPhase = currentPhase;
         }
-    }
-
-    /**
-     * Mark for page refresh (saves phase before reload)
-     */
-    markForRefresh(phase = this.currentPhase) {
-        sessionStorage.setItem('returnToPhase', phase);
     }
 }

@@ -262,9 +262,9 @@ export class UIManager {
 
         questionDiv.addEventListener('click', () => {
             if (question.action === 'refresh') {
-                // Save current phase to sessionStorage before refreshing
+                // Save current phase to localStorage before refreshing
                 if (currentPhase) {
-                    sessionStorage.setItem('returnToPhase', currentPhase);
+                    localStorage.setItem('currentPhase', currentPhase);
                 }
                 // Refresh the page
                 window.location.reload();
