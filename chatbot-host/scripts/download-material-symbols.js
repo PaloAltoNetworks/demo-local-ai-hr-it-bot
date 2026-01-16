@@ -140,14 +140,14 @@ https.get(googleFontsUrl, options, (res) => {
 
     res.on('end', () => {
         if (res.statusCode !== 200) {
-            console.error(`❌ Failed to fetch CSS (status ${res.statusCode})`);
+            console.error(`Failed to fetch CSS (status ${res.statusCode})`);
             process.exit(1);
         }
 
         // Step 2: Extract the font URL from CSS
         const urlMatch = cssData.match(/src:\s*url\(([^)]+)\)\s*format/);
         if (!urlMatch) {
-            console.error('❌ Could not extract font URL from CSS');
+            console.error('Could not extract font URL from CSS');
             process.exit(1);
         }
 
@@ -158,7 +158,7 @@ https.get(googleFontsUrl, options, (res) => {
         console.log('Step 2: Downloading WOFF2 font file...');
         https.get(fontUrl, (fontRes) => {
             if (fontRes.statusCode !== 200) {
-                console.error(`❌ Failed to download font (status ${fontRes.statusCode})`);
+                console.error(`Failed to download font (status ${fontRes.statusCode})`);
                 process.exit(1);
             }
 
@@ -200,15 +200,15 @@ https.get(googleFontsUrl, options, (res) => {
             });
 
             fontStream.on('error', (err) => {
-                console.error(`❌ Error writing font file: ${err.message}`);
+                console.error(`Error writing font file: ${err.message}`);
                 process.exit(1);
             });
         }).on('error', (err) => {
-            console.error(`❌ Error downloading font: ${err.message}`);
+            console.error(`Error downloading font: ${err.message}`);
             process.exit(1);
         });
     });
 }).on('error', (err) => {
-    console.error(`❌ Error fetching Google Fonts CSS: ${err.message}`);
+    console.error(`Error fetching Google Fonts CSS: ${err.message}`);
     process.exit(1);
 });

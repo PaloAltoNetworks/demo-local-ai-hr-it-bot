@@ -194,7 +194,7 @@ class YourAgent extends MCPAgentBase {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const agent = new YourAgent();
   agent.start().catch(error => {
-    console.error('❌ Failed to start Your Agent:', error);
+    console.error('Failed to start Your Agent:', error);
     process.exit(1);
   });
 }

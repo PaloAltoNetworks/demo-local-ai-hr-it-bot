@@ -173,7 +173,7 @@ class PrismaAIRSIntercept {
             };
 
         } catch (error) {
-            getLogger().error('❌ Prisma AIRS intercept error:', error.message);
+            getLogger().error('Prisma AIRS intercept error:', error.message);
             
             const errorMessage = await t('security.errors.serviceUnavailable', { lng: metadata.language || 'en' });
             

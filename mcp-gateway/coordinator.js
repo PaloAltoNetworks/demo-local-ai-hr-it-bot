@@ -581,7 +581,7 @@ Output JSON immediately`,
       try {
         // Validate response structure
         if (!response) {
-          getLogger().error(`❌ LLM returned null/undefined response`, response);
+          getLogger().error(`LLM returned null/undefined response`, response);
           throw new Error('LLM returned null/undefined response');
         }
 
@@ -593,7 +593,7 @@ Output JSON immediately`,
         }
 
         if (!responseContent || responseContent.trim().length === 0) {
-          getLogger().error(`❌ LLM returned empty response`, {
+          getLogger().error(`LLM returned empty response`, {
             hasResponse: !!response.response,
             hasThinking: !!response.thinking,
             responseLength: response.response?.length || 0,
@@ -631,7 +631,7 @@ Output JSON immediately`,
 
         // Validate JSON is not empty
         if (!jsonText || jsonText.length === 0 || !jsonText.includes('agents')) {
-          getLogger().error(`❌ LLM response produced no valid JSON content`);
+          getLogger().error(`LLM response produced no valid JSON content`);
           getLogger().error(`   Extracted text: "${jsonText.substring(0, 200)}"`);
           throw new Error('LLM response produced no valid JSON content');
         }
@@ -658,15 +658,15 @@ Output JSON immediately`,
 
         return strategy;
       } catch (parseError) {
-        getLogger().error(`❌ Strategy JSON parsing failed:`, parseError.message);
+        getLogger().error(`Strategy JSON parsing failed:`, parseError.message);
         // Log both response and thinking fields if present
         const rawContent = response?.response || response?.thinking || 'N/A';
-        getLogger().error(`❌ Problematic jsonText:`, jsonText);
-        getLogger().error(`❌ Full error:`, parseError);
+        getLogger().error(`Problematic jsonText:`, jsonText);
+        getLogger().error(`Full error:`, parseError);
         throw new Error(`LLM routing failed - invalid JSON response: ${jsonText}`);
       }
     } catch (error) {
-      getLogger().error(`❌ Strategy analysis failed:`, error.message);
+      getLogger().error(`Strategy analysis failed:`, error.message);
       // Don't create a fallback strategy - let the error bubble up so we know LLM failed
       throw error;
     }
@@ -751,7 +751,7 @@ Output JSON immediately`,
       return combinedResponse;
 
     } catch (error) {
-      getLogger().error('❌ Multi-agent query failed:', error);
+      getLogger().error('Multi-agent query failed:', error);
       // Fallback to single agent
       const fallbackAgentId = this.findAgentIdByName(routingStrategy.agents[0].agent);
       if (fallbackAgentId) {
@@ -814,7 +814,7 @@ SYNTHESIZED RESPONSE:`;
 
       return response.response;
     } catch (error) {
-      getLogger().error('❌ Response synthesis failed:', error);
+      getLogger().error('Response synthesis failed:', error);
       // Fallback: concatenate responses
       return agentResponses.map(resp =>
         `**${resp.agent.toUpperCase()}**: ${resp.response}`
@@ -949,11 +949,11 @@ SYNTHESIZED RESPONSE:`;
 
         return responseToReturn;
       } else {
-        getLogger().error(`❌ Invalid response format from ${agent.name}:`, response);
+        getLogger().error(`Invalid response format from ${agent.name}:`, response);
         throw new Error('No valid response from agent');
       }
     } catch (error) {
-      getLogger().error(`❌ Failed to query ${agent.name}:`, {
+      getLogger().error(`Failed to query ${agent.name}:`, {
         message: error.message
       });
       throw error;
@@ -1046,7 +1046,7 @@ RESPOND ONLY WITH THIS JSON FORMAT:
       return processedResponse;
 
     } catch (error) {
-      getLogger().error(`❌ Response processing failed:`, error);
+      getLogger().error(`Response processing failed:`, error);
       // Fallback to original response if processing fails
       return targetLanguage !== 'en' ? await this.translateResponse(agentResponse, targetLanguage, llmProvider) : agentResponse;
     }
@@ -1094,7 +1094,7 @@ Response to translate: "${response}"`;
       getLogger().debug(`Translated response to ${targetLanguage}`);
       return translatedResponse;
     } catch (error) {
-      getLogger().error(`❌ Response translation failed:`, error);
+      getLogger().error(`Response translation failed:`, error);
       return response; // Return original if translation fails
     }
   }
@@ -1132,7 +1132,7 @@ Return only the concise version:`;
       getLogger().debug(`Made response more concise`);
       return conciseText;
     } catch (error) {
-      getLogger().error(`❌ Concise processing failed:`, error);
+      getLogger().error(`Concise processing failed:`, error);
       return response;
     }
   }
@@ -1433,7 +1433,7 @@ Return only the concise version:`;
       const personalKeywords = /\bmy\b|\bi\b|\bme\b|\bours\b|\bwe\b/i;
       if (personalKeywords.test(query) && !userContext?.email) {
         getLogger().debug(`Personal query detected but no user context provided`);
-        this.sendThinkingMessage(`❌ User identification required for personal queries`);
+        this.sendThinkingMessage(`User identification required for personal queries`);
 
         return {
           response: 'I need to know who you are to answer personal questions like that. Please provide your email or user identity in the request.',
@@ -1497,7 +1497,7 @@ Return only the concise version:`;
           userMessage = `I encountered a configuration issue: ${routingError.message}. Please contact your administrator to configure a supported model.`;
         }
 
-        this.sendThinkingMessage(`❌ Error: ${userMessage}`);
+        this.sendThinkingMessage(`Error: ${userMessage}`);
 
         // Return error response instead of throwing
         return {
@@ -1635,7 +1635,7 @@ Return only the concise version:`;
         };
       }
     } catch (error) {
-      getLogger().error('❌ Query processing failed:', error);
+      getLogger().error('Query processing failed:', error);
 
       // Determine if this is a model/configuration error vs a processing error
       let userMessage = error.message;
@@ -1645,7 +1645,7 @@ Return only the concise version:`;
         userMessage = 'No AI agents are currently available. Please contact your administrator.';
       }
 
-      this.sendThinkingMessage(`❌ Error: ${userMessage}`);
+      this.sendThinkingMessage(`Error: ${userMessage}`);
 
       return {
         response: userMessage,

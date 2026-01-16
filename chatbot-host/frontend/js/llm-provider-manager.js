@@ -64,7 +64,7 @@ export class LLMProviderManager {
       const data = await this.apiService.get('/api/llm-providers');
       return data;
     } catch (error) {
-      console.error('❌ Failed to fetch llm providers:', error);
+      console.error('Failed to fetch llm providers:', error);
       throw error;
     }
   }

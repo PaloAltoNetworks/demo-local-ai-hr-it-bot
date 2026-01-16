@@ -103,7 +103,7 @@ export class SessionManager {
             console.log('Session cleared successfully');
             return response;
         } catch (error) {
-            console.error('❌ Failed to clear session:', error);
+            console.error('Failed to clear session:', error);
             throw error;
         }
     }
@@ -125,7 +125,7 @@ export class SessionManager {
             console.log('User logged out and session cleared');
             return true;
         } catch (error) {
-            console.error('❌ Error during logout:', error);
+            console.error('Error during logout:', error);
             throw error;
         }
     }

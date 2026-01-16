@@ -282,7 +282,7 @@ app.post('/api/process-prompt', async (req, res) => {
                                         }
                                     } else if (data.success === false) {
                                         // Handle error response from coordinator
-                                        messageQueue.push('❌ Error from MCP Gateway');
+                                        messageQueue.push('Error from MCP Gateway');
                                         mcpResponse = {
                                             role: 'assistant',
                                             content: data.message || 'An error occurred while processing your request.'

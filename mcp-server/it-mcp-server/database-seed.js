@@ -367,7 +367,7 @@ async function initializeDatabase() {
     db.close();
 
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('Error:', error.message);
     process.exit(1);
   }
 }

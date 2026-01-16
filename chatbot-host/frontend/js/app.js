@@ -30,10 +30,10 @@ class ChatBotApp {
             await this.initializeServices();
 
             this.showLoading(false);
-            console.log('ChatBot app initialized successfully');
+            console.log('[app] ChatBot app initialized successfully');
         } catch (error) {
             this.showLoading(false);
-            console.error('❌ Failed to initialize ChatBot app:', error);
+            console.error('[app] Failed to initialize ChatBot app:', error);
             this.handleInitError(error);
         }
     }

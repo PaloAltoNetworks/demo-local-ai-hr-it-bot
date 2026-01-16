@@ -72,7 +72,7 @@ export class ApiService {
             });
             window.dispatchEvent(timeoutEvent);
         } else {
-            console.error(`❌ ${method} ${endpoint} failed:`, error);
+            console.error(`${method} ${endpoint} failed:`, error);
         }
     }
 
