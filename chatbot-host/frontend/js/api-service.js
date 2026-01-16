@@ -7,44 +7,6 @@ export class ApiService {
     constructor() {
         this.id = Math.random().toString(36).substr(2, 9);
         this.retryAttempts = new Map();
-        this.currentLanguage = 'en';
-        this.currentLLMProvider = 'aws';
-        
-        // Listen to language change events
-        window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
-        
-        // Listen to AI provider change events
-        window.addEventListener('aiProviderChanged', this.onAIProviderChanged.bind(this));
-    }
-
-    /**
-     * Handle language change event
-     */
-    onLanguageChanged(event) {
-        const { language } = event.detail;
-        this.setLanguage(language);
-    }
-
-    /**
-     * Set the current language for API requests
-     */
-    setLanguage(language) {
-        this.currentLanguage = language;
-    }
-
-    /**
-     * Handle AI provider change event
-     */
-    onAIProviderChanged(event) {
-        const { provider } = event.detail;
-        this.setAIProvider(provider);
-    }
-
-    /**
-     * Set the current llm provider for API requests
-     */
-    setAIProvider(provider) {
-        this.currentLLMProvider = provider;
     }
 
     /**
@@ -69,7 +31,6 @@ export class ApiService {
                 mode: 'cors',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-language': this.currentLanguage || 'en',
                     ...headers
                 },
                 signal: controller.signal
@@ -106,7 +67,6 @@ export class ApiService {
                 detail: {
                     endpoint: endpoint,
                     timeout: timeout,
-                    language: this.currentLanguage,
                     method: method
                 }
             });
