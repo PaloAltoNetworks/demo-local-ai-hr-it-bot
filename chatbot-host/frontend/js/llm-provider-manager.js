@@ -14,7 +14,6 @@ export class LLMProviderManager {
     this.logoElement = document.getElementById('llmProviderLogo');
     
     this.apiService = apiService;
-    this.changeCallbacks = [];
     this.providers = [];
     this.backendDefaultProvider = null;
     this.isMenuOpen = false;
@@ -68,24 +67,6 @@ export class LLMProviderManager {
       return data;
     } catch (error) {
       console.error('❌ Failed to fetch llm providers:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update LLM provider on backend
-   */
-  async updateProviderOnBackend(providerId) {
-    if (!this.apiService) {
-      throw new Error('API service not available');
-    }
-
-    try {
-      const data = await this.apiService.post('/api/llm-providers', { provider: providerId });
-      console.log('✓ llm provider updated:', providerId);
-      return data;
-    } catch (error) {
-      console.error('❌ Failed to update llm provider:', error);
       throw error;
     }
   }
@@ -146,9 +127,9 @@ export class LLMProviderManager {
     
     // Use saved preference if available, otherwise use backend's default
     if (savedProvider && supportedProviderIds.includes(savedProvider)) {
-      this.setProvider(savedProvider, true);
+      this.setProvider(savedProvider);
     } else if (this.backendDefaultProvider) {
-      this.setProvider(this.backendDefaultProvider, true);
+      this.setProvider(this.backendDefaultProvider);
     }
   }
 
@@ -176,7 +157,7 @@ export class LLMProviderManager {
   /**
    * Set provider and apply to storage (user-initiated change)
    */
-  setProvider(provider, notifyChange = true) {
+  setProvider(provider) {
     const supportedProviderIds = this.providers.map(p => p.id);
     if (!supportedProviderIds.includes(provider)) {
       console.warn(`Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
@@ -201,28 +182,8 @@ export class LLMProviderManager {
     if (this.apiService) {
       this.apiService.setAIProvider(provider);
     }
-    
-    // Dispatch aiProviderChanged event for reactive listeners
-    const providerChangedEvent = new CustomEvent('aiProviderChanged', {
-      detail: { provider }
-    });
-    window.dispatchEvent(providerChangedEvent);
-    
-    // Update provider on backend and notify if requested
-    if (notifyChange) {
-      this.updateProviderOnBackend(provider).catch(error => {
-        console.error('Failed to update provider on backend:', error);
-      });
-      
-      // Trigger change callbacks
-      this.changeCallbacks.forEach(callback => {
-        try {
-          callback(provider);
-        } catch (error) {
-          console.error('Error in llm provider change callback:', error);
-        }
-      });
-    }
+  
+    this.notifyChange(provider);
   }
 
   /**
@@ -377,15 +338,6 @@ export class LLMProviderManager {
   }
 
   /**
-   * Register a callback to be notified when provider changes
-   */
-  onProviderChange(callback) {
-    if (typeof callback === 'function') {
-      this.changeCallbacks.push(callback);
-    }
-  }
-
-  /**
    * Handle llm provider change event from external sources
    * This method can be bound as an event listener for external notifications
    */
@@ -435,15 +387,6 @@ export class LLMProviderManager {
   notifyChange(provider) {
     // Dispatch global event for app-level listeners and external systems
     window.dispatchEvent(new CustomEvent('llmProviderChanged', { detail: { provider } }));
-    
-    // Call registered callbacks
-    this.changeCallbacks.forEach(callback => {
-      try {
-        callback(provider);
-      } catch (error) {
-        console.error('Error in llm provider change callback:', error);
-      }
-    });
   }
 
   /**

@@ -9,7 +9,7 @@ dotenv.config();
 
 // Import shared utils (logger, i18n, and llm-provider)
 import { initializeLogger, getLogger } from '../utils/logger.js';
-import { initializeI18n, changeLanguage, t, getAvailableLanguages, loadFrontendTranslations, ensureI18nInitialized } from '../utils/i18n.js';
+import { initializeI18n, t, getAvailableLanguages, loadFrontendTranslations, ensureI18nInitialized } from '../utils/i18n.js';
 import { LLMProviderFactory } from '../utils/llm-provider.js';
 
 // Initialize logger first (MUST be before i18n)
@@ -95,10 +95,6 @@ app.get('/health', async (req, res) => {
         const mcpStatus = mcpClient.isInitialized ? 'connected' : 'disconnected';
         const overallStatus = mcpClient.isInitialized ? 'ok' : 'degraded';
 
-        // Use language from header or default to English
-        const requestLanguage = req.headers['x-language'] || 'en';
-        await changeLanguage(requestLanguage);
-
         res.json({
             status: overallStatus,
             service: 'chatbot-host',
@@ -159,47 +155,6 @@ app.get('/api/languages', (req, res) => {
         getLogger().error('Error loading available languages: ' + error.message);
         res.status(500).json({
             error: 'Failed to load available languages',
-            message: error.message
-        });
-    }
-});
-
-// Language change notification endpoint
-app.post('/api/language', (req, res) => {
-    const { language } = req.body;
-
-    if (!language) {
-        return res.status(400).json({
-            error: 'Language is required',
-            message: 'Please provide a language code in the request body'
-        });
-    }
-
-    try {
-        // Validate that the language is available
-        const availableLanguages = getAvailableLanguages();
-        if (!availableLanguages.includes(language)) {
-            return res.status(400).json({
-                error: 'Invalid language',
-                language: language,
-                availableLanguages: availableLanguages
-            });
-        }
-
-        // Change the backend language
-        changeLanguage(language);
-
-        getLogger().info('Language changed to: ' + language);
-
-        res.json({
-            success: true,
-            language: language,
-            message: `Language successfully changed to ${language}`
-        });
-    } catch (error) {
-        getLogger().error('Error changing language: ' + error.message);
-        res.status(500).json({
-            error: 'Failed to change language',
             message: error.message
         });
     }
@@ -584,40 +539,6 @@ app.get('/api/llm-providers', async (req, res) => {
         getLogger().error('Error loading llm providers: ' + error.message);
         res.status(500).json({
             error: 'Failed to load llm providers',
-            message: error.message
-        });
-    }
-});
-
-// llm provider selection endpoint - stores selected provider
-app.post('/api/llm-providers', (req, res) => {
-    try {
-        const { provider } = req.body;
-        const availableProviders = getAvailableLLMProviders();
-        
-        // Validate against the same providers list
-        const validProvider = availableProviders.find(p => p.id === provider);
-        
-        if (!provider || !validProvider) {
-            const validProviderIds = availableProviders.map(p => p.id).join(', ');
-            return res.status(400).json({
-                error: 'Invalid provider',
-                message: `Provider must be one of: ${validProviderIds}`
-            });
-        }
-        
-        getLogger().info(`llm provider selected: ${provider}`);
-        
-        res.json({
-            success: true,
-            message: `llm provider updated to ${provider}`,
-            default_provider: provider,
-            providers: availableProviders
-        });
-    } catch (error) {
-        getLogger().error('Error setting llm provider: ' + error.message);
-        res.status(500).json({
-            error: 'Failed to set llm provider',
             message: error.message
         });
     }

@@ -60,8 +60,7 @@ export class I18nService {
             }
         } catch (error) {
             console.warn('Failed to fetch supported languages, using defaults:', error);
-            // Fallback to common languages
-            this.supportedLanguages = ['en', 'es', 'fr', 'de', 'ja'];
+            this.supportedLanguages = ['en'];
         }
 
         // Now detect language with knowledge of supported languages
@@ -77,8 +76,8 @@ export class I18nService {
         document.documentElement.lang = this.currentLanguage;
         this.updateTextDirection();
         
-        // Sync detected language to API service so requests use correct language
-        this.apiService.setLanguage(this.currentLanguage);
+        // Emit language changed event to notify other components like API service
+        this.emitLanguageChanged(this.currentLanguage);
         
         // Automatically populate language select if it exists
         const languageSelect = document.getElementById('userMenuLanguageSelect');
@@ -244,37 +243,20 @@ export class I18nService {
         const url = new URL(window.location);
         url.searchParams.set('lang', language);
         window.history.replaceState({}, '', url);
-        
-        // Update API service language
-        this.apiService.setLanguage(language);
-        
-        // Notify backend of language change
-        try {
-            await this.notifyLanguageChange(language);
-        } catch (error) {
-            console.warn('Failed to notify backend of language change:', error);
-        }
 
-        // Trigger a custom event for other components to react
-        window.dispatchEvent(new CustomEvent('languageChanged', { 
-            detail: { language, translations: this.translations[language] }
-        }));
+        this.emitLanguageChanged(language);
 
         console.log(`Language changed to: ${language}`);
     }
 
     /**
-     * Notify backend of language change
+     * Send language changed event
      * @param {string} language - Language code
-     * @return {Promise}
      */
-    async notifyLanguageChange(language) {
-        try {
-            return await this.apiService.post('/api/language', { language });
-        } catch (error) {
-            console.error('Error notifying backend of language change:', error);
-            throw error;
-        }
+    emitLanguageChanged(language) {
+        window.dispatchEvent(new CustomEvent('languageChanged', {
+            detail: { language, translations: this.translations[language] }
+        }));
     }
 
     /**

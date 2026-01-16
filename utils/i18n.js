@@ -111,21 +111,6 @@ export function ensureI18nInitialized() {
 }
 
 /**
- * Change the current language
- * @param {string} language - The language code (e.g., 'en', 'es')
- */
-export async function changeLanguage(language) {
-  // Ensure i18next is initialized first
-  await ensureI18nInitialized();
-  
-  if (!i18next.isInitialized) {
-    getLogger().warn('i18next not fully initialized, cannot change language to: ' + language);
-    return Promise.resolve();
-  }
-  return i18next.changeLanguage(language);
-}
-
-/**
  * Get translation for a key
  * @param {string} key - Translation key (e.g., 'systemPrompt.intro')
  * @param {Object|string} options - Options object or language string
