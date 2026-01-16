@@ -32,7 +32,7 @@ export class I18nService {
         if (urlLang) return urlLang;
 
         // 2. Check localStorage
-        const savedLang = localStorage.getItem(this.STORAGE_KEY);
+        const savedLang = this.loadLangFromLocalStorage();
         if (savedLang) return savedLang;
 
         // 3. Check browser language (if supported languages are loaded)
@@ -83,29 +83,29 @@ export class I18nService {
     }
 
     /**
-     * Save translations to localStorage (for debugging purposes)
+     * Save language to localStorage (for debugging purposes)
      */
-    saveTranslationsToLocalStorage() {
+    saveLangToLocalStorage() {
         try {
             localStorage.setItem(this.STORAGE_KEY, this.currentLanguage);
-            console.log(`Translations for ${this.currentLanguage} saved to localStorage.`);
+            console.log(`Language for ${this.currentLanguage} saved to localStorage.`);
         } catch (error) {
-            console.error('Error saving translations to localStorage:', error);
+            console.error('Error saving language to localStorage:', error);
         }
     }
 
     /**
-     * Load translations from localStorage (for debugging purposes)
+     * Load language from localStorage (for debugging purposes)
      */
-    loadTranslationsFromLocalStorage() {
+    loadLangFromLocalStorage() {
         try {
-            const savedLang = localStorage.getItem(this.STORAGE_KEY);
+            const savedLang = this.loadLangFromLocalStorage();
             if (savedLang) {
                 this.currentLanguage = savedLang;
-                console.log(`Loaded translations for ${this.currentLanguage} from localStorage.`);
+                console.log(`Loaded language for ${this.currentLanguage} from localStorage.`);
             }
         } catch (error) {
-            console.error('Error loading translations from localStorage:', error);
+            console.error('Error loading language from localStorage:', error);
         }
     }
 
@@ -222,7 +222,7 @@ export class I18nService {
         this.updateTextDirection();
 
         // Save to localStorage
-        this.saveTranslationsToLocalStorage();
+        this.saveLangToLocalStorage();
 
         // Emit language changed event
         this.emitLanguageChanged();
