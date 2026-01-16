@@ -7,7 +7,7 @@ export class I18nService {
         this.supportedLanguages = null; // Will be fetched during init
         this.currentLanguage = this.detectLanguage(); // Detect on construction
         this.translations = {};
-        this.loadPromise = null;
+        this.STORAGE_KEY = 'currentLanguage';
     }
 
     /**
@@ -32,7 +32,7 @@ export class I18nService {
         if (urlLang) return urlLang;
 
         // 2. Check localStorage
-        const savedLang = localStorage.getItem('chatbot-language');
+        const savedLang = localStorage.getItem(this.STORAGE_KEY);
         if (savedLang) return savedLang;
 
         // 3. Check browser language (if supported languages are loaded)
@@ -48,11 +48,29 @@ export class I18nService {
 
     /**
      * Initialize the i18n service and load translations
-     * @param {string} language - Language code (optional, uses detected if not provided)
      * @return {Promise}
      */
-    async init(language = null) {
+    async init() {
         // Fetch supported languages from backend first
+        await this.loadSupportedLanguages();
+
+        // Now detect language with knowledge of supported languages
+        this.currentLanguage = this.detectLanguage();
+
+        // Load translations for the detected language
+        await this.loadTranslations(this.currentLanguage);
+
+        // Automatically populate language select if it exists
+        await this.populateLanguageSelect();
+
+        // Finally, update all UI elements
+        this.changeLanguage(this.currentLanguage);
+
+        console.log(`I18n initialized with language: ${this.currentLanguage}`);
+        return this;
+    }
+
+    async loadSupportedLanguages() {
         try {
             const data = await this.fetchSupportedLanguages();
             if (data.languages && Array.isArray(data.languages)) {
@@ -62,31 +80,33 @@ export class I18nService {
             console.warn('Failed to fetch supported languages, using defaults:', error);
             this.supportedLanguages = ['en'];
         }
+    }
 
-        // Now detect language with knowledge of supported languages
-        if (language) {
-            this.currentLanguage = language;
-        } else {
-            this.currentLanguage = this.detectLanguage();
+    /**
+     * Save translations to localStorage (for debugging purposes)
+     */
+    saveTranslationsToLocalStorage() {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, this.currentLanguage);
+            console.log(`Translations for ${this.currentLanguage} saved to localStorage.`);
+        } catch (error) {
+            console.error('Error saving translations to localStorage:', error);
         }
-        
-        await this.loadTranslations(this.currentLanguage);
-        
-        // Set the HTML lang attribute and text direction
-        document.documentElement.lang = this.currentLanguage;
-        this.updateTextDirection();
-        
-        // Automatically populate language select if it exists
-        const languageSelect = document.getElementById('userMenuLanguageSelect');
-        if (languageSelect) {
-            await this.populateLanguageSelect(languageSelect);
-        }
+    }
 
-        // Emit language changed event to notify other components like API service
-        this.emitLanguageChanged(this.currentLanguage);
-        
-        console.log(`I18n initialized with language: ${this.currentLanguage}`);
-        return this;
+    /**
+     * Load translations from localStorage (for debugging purposes)
+     */
+    loadTranslationsFromLocalStorage() {
+        try {
+            const savedLang = localStorage.getItem(this.STORAGE_KEY);
+            if (savedLang) {
+                this.currentLanguage = savedLang;
+                console.log(`Loaded translations for ${this.currentLanguage} from localStorage.`);
+            }
+        } catch (error) {
+            console.error('Error loading translations from localStorage:', error);
+        }
     }
 
     /**
@@ -108,19 +128,11 @@ export class I18nService {
      * @return {Promise}
      */
     async loadTranslations(language) {
-        if (this.loadPromise) {
-            await this.loadPromise;
-        }
-
         // If translations already loaded for this language, skip
         if (this.translations[language]) {
             return this.translations[language];
         }
-
-        this.loadPromise = this.fetchTranslations(language);
-        this.translations[language] = await this.loadPromise;
-        this.loadPromise = null;
-        
+        this.translations[language] = await this.fetchTranslations(language);
         return this.translations[language];
     }
 
@@ -135,43 +147,16 @@ export class I18nService {
             return data;
         } catch (error) {
             console.error(`Error fetching translations for ${language}:`, error);
-            
+
             // Fallback to English if current language fails
             if (language !== 'en') {
                 console.log('Falling back to English translations');
                 return this.fetchTranslations('en');
             }
-            
-            // Return minimal fallback translations
-            return this.getFallbackTranslations();
-        }
-    }
 
-    /**
-     * Get fallback translations when all else fails
-     * @return {Object}
-     */
-    getFallbackTranslations() {
-        return {
-            app: {
-                title: "The Otter - Enterprise Assistant",
-                brand: "The Otter"
-            },
-            phases: {
-                phase1: { label: "Normal Usage", status: "NORMAL" },
-                phase2: { label: "Risky Usage", status: "RISK" },
-                phase3: { label: "Protected Mode", status: "PROTECTED" }
-            },
-            chat: {
-                placeholder: "Type your message here...",
-                send: "Send",
-                clear: "Clear Chat"
-            },
-            errors: {
-                initError: "Failed to initialize",
-                connectionError: "Connection error"
-            }
-        };
+            // If English also fails, rethrow error
+            throw error;
+        }
     }
 
     /**
@@ -183,7 +168,7 @@ export class I18nService {
     t(keyPath, params = {}) {
         const translations = this.translations[this.currentLanguage];
         if (!translations) {
-            console.warn(`No translations loaded for language: ${this.currentLanguage}`);
+            console.warn(`No translations loaded for ${keyPath} (${JSON.stringify(params)}), language: ${this.currentLanguage}`);
             return keyPath;
         }
 
@@ -229,31 +214,34 @@ export class I18nService {
             return;
         }
 
-        await this.loadTranslations(language);
         this.currentLanguage = language;
-        
+        await this.loadTranslations(language);
+
         // Update HTML lang attribute and text direction
         document.documentElement.lang = language;
         this.updateTextDirection();
-        
+
         // Save to localStorage
-        localStorage.setItem('chatbot-language', language);
+        this.saveTranslationsToLocalStorage();
+
+        // Emit language changed event
+        this.emitLanguageChanged();
 
         // Update URL without reload
         const url = new URL(window.location);
         url.searchParams.set('lang', language);
         window.history.replaceState({}, '', url);
 
-        this.emitLanguageChanged(language);
+        // Log language change
+        console.log(`Language changed to: ${language}`);
     }
 
     /**
-     * Send language changed event
-     * @param {string} language - Language code
+     * Send language changed event to notify other components
      */
-    emitLanguageChanged(language) {
+    emitLanguageChanged() {
         window.dispatchEvent(new CustomEvent('languageChanged', {
-            detail: { language, translations: this.translations[language] }
+            detail: { language: this.currentLanguage }
         }));
     }
 
@@ -287,7 +275,7 @@ export class I18nService {
             const key = el.getAttribute('data-i18n');
             const target = el.getAttribute('data-i18n-target') || 'text'; // Default to text
             const translation = this.t(key);
-            
+
             if (target === 'placeholder') {
                 el.placeholder = translation;
             } else if (target === 'value') {
@@ -320,16 +308,19 @@ export class I18nService {
      * @param {HTMLSelectElement} selectElement - The select element to populate
      * @return {Promise<void>}
      */
-    async populateLanguageSelect(selectElement) {
+    async populateLanguageSelect() {
+
+        const selectElement = document.getElementById('userMenuLanguageSelect');
+
         if (!selectElement) return;
 
         try {
             const data = await this.fetchSupportedLanguages();
-            
+
             if (data.languages && Array.isArray(data.languages)) {
                 // Clear existing options
                 selectElement.innerHTML = '';
-                
+
                 // Add options for each language
                 data.languages.forEach(lang => {
                     const option = document.createElement('option');
@@ -359,6 +350,3 @@ export class I18nService {
         }
     }
 }
-
-// Export the class (instance creation happens in app.js with apiService dependency)
-// This allows proper dependency injection

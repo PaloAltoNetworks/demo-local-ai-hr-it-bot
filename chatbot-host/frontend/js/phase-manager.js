@@ -6,6 +6,7 @@ export class PhaseManager {
         this.i18n = i18n;
         this.currentPhase = 'phase1';
         this.isInitialized = false;
+        this.STORAGE_KEY = 'currentPhase';
         
         // Initialize in constructor
         this.init();
@@ -90,14 +91,14 @@ export class PhaseManager {
      * Save phase to localStorage
      */
     savePhase(phase) {
-        localStorage.setItem('currentPhase', phase);
+        localStorage.setItem(this.STORAGE_KEY, phase);
     }
 
     /**
      * Restore phase from localStorage
      */
     restorePhase() {
-        const currentPhase = localStorage.getItem('currentPhase');
+        const currentPhase = localStorage.getItem(this.STORAGE_KEY);
         
         if (currentPhase) {
             this.currentPhase = currentPhase;

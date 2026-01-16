@@ -4,7 +4,7 @@
  */
 export class ThemeManager {
   constructor(i18nService = null) {
-    this.STORAGE_KEY = 'theme-preference';
+    this.STORAGE_KEY = 'currentTheme';
     this.THEME_ATTRIBUTE = 'data-color-scheme';
     this.DARK_MODE = 'dark';
     this.LIGHT_MODE = 'light';
@@ -12,8 +12,6 @@ export class ThemeManager {
     this.toggleButton = document.getElementById('themeToggle');
     this.toggleIcon = document.querySelector('.theme-toggle-icon');
     this.i18nService = i18nService;
-    
-    this.init();
   }
 
   /**

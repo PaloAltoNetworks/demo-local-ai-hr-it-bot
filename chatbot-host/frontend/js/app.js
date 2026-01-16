@@ -55,6 +55,7 @@ class ChatBotApp {
      */
     async initializeServices() {
         await this.modules.i18n.init();
+        await this.modules.themeManager.init();
         await this.modules.sessionManager.init();
     }
 
