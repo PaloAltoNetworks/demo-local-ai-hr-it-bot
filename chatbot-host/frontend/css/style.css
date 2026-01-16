@@ -3080,6 +3080,11 @@ body {
   left: 0;
 }
 
+[dir="rtl"] .user-menu-dropdown {
+  right: auto;
+  left: 0;
+}
+
 [dir="rtl"] .user-menu-item {
   flex-direction: row-reverse;
   text-align: right;
