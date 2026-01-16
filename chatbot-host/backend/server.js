@@ -7,9 +7,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Import shared utils (logger and i18n)
+// Import shared utils (logger, i18n, and llm-provider)
 import { initializeLogger, getLogger } from '../utils/logger.js';
 import { initializeI18n, changeLanguage, t, getAvailableLanguages, loadFrontendTranslations, ensureI18nInitialized } from '../utils/i18n.js';
+import { LLMProviderFactory } from '../utils/llm-provider.js';
 
 // Initialize logger first (MUST be before i18n)
 initializeLogger('chatbot-host');
@@ -44,35 +45,8 @@ const mcpClient = new MCPClient(COORDINATOR_URL, {
     maxReconnectAttempts: 3
 });
 
-// llm providers configuration and state
-const LLM_PROVIDERS_CONFIG = [
-    {
-        id: 'aws',
-        name: 'AWS',
-        display_name: 'Amazon Web Services',
-        logo: './images/amazonwebservices-original-wordmark.svg'
-    },
-    {
-        id: 'gcp',
-        name: 'Google Cloud Platform',
-        display_name: 'Google Cloud Platform',
-        logo: './images/googlecloud-original.svg'
-    },
-    {
-        id: 'azure',
-        name: 'Microsoft Azure',
-        display_name: 'Microsoft Azure',
-        logo: './images/azure-original.svg'
-    },
-    {
-        id: 'ollama',
-        name: 'Ollama',
-        display_name: 'Ollama',
-        logo: './images/ollama-icon.svg'
-    }
-];
-
-let selectedAIProvider = 'aws'; // Default provider
+// Helper function to get available providers from LLMProviderFactory
+const getAvailableLLMProviders = () => LLMProviderFactory.getAvailableLLMProviders();
 
 // Middleware
 app.use(cors({
@@ -407,7 +381,7 @@ app.post('/api/process-prompt', async (req, res) => {
                 }
 
                 // Add LLM provider to metadata
-                const providerInfo = LLM_PROVIDERS_CONFIG.find(p => p.id === (llmProvider || 'aws'));
+                const providerInfo = getAvailableLLMProviders().find(p => p.id === (llmProvider || 'aws'));
                 finalResponse.metadata.llmProvider = {
                     id: llmProvider || 'aws',
                     name: providerInfo ? providerInfo.name : 'AWS',
@@ -532,7 +506,7 @@ app.post('/api/prompt', async (req, res) => {
                 }
 
                 // Add LLM provider to metadata
-                const providerInfo = LLM_PROVIDERS_CONFIG.find(p => p.id === (llmProvider || 'aws'));
+                const providerInfo = getAvailableLLMProviders().find(p => p.id === (llmProvider || 'aws'));
                 finalResponse.metadata.llmProvider = {
                     id: llmProvider || 'aws',
                     name: providerInfo ? providerInfo.name : 'AWS',
@@ -619,20 +593,18 @@ app.get('/api/llm-providers', async (req, res) => {
 app.post('/api/llm-providers', (req, res) => {
     try {
         const { provider } = req.body;
+        const availableProviders = getAvailableLLMProviders();
         
         // Validate against the same providers list
-        const validProvider = LLM_PROVIDERS_CONFIG.find(p => p.id === provider);
+        const validProvider = availableProviders.find(p => p.id === provider);
         
         if (!provider || !validProvider) {
-            const validProviders = LLM_PROVIDERS_CONFIG.map(p => p.id).join(', ');
+            const validProviderIds = availableProviders.map(p => p.id).join(', ');
             return res.status(400).json({
                 error: 'Invalid provider',
-                message: `Provider must be one of: ${validProviders}`
+                message: `Provider must be one of: ${validProviderIds}`
             });
         }
-        
-        // Update the selected provider on the server
-        selectedAIProvider = provider;
         
         getLogger().info(`llm provider selected: ${provider}`);
         
@@ -640,7 +612,7 @@ app.post('/api/llm-providers', (req, res) => {
             success: true,
             message: `llm provider updated to ${provider}`,
             default_provider: provider,
-            providers: LLM_PROVIDERS_CONFIG
+            providers: availableProviders
         });
     } catch (error) {
         getLogger().error('Error setting llm provider: ' + error.message);
