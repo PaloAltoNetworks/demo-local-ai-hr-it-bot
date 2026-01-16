@@ -14,18 +14,13 @@ export class ConnectionMonitor {
         this.lastHealthData = null;
         this.isOnline = false;
         this.boundHandlers = {};
-        this.isInitialized = false;
-        
-        this.init();
     }
 
     /**
      * Initialize connection monitor - called from constructor
      */
     init() {
-        if (this.isInitialized) return;
         this.attachListeners();
-        this.isInitialized = true;
         console.log('✅ ConnectionMonitor initialized');
     }
 
@@ -76,7 +71,6 @@ export class ConnectionMonitor {
         window.removeEventListener('apiTimeout', this.boundHandlers.apiTimeout);
         
         this.boundHandlers = {};
-        this.isInitialized = false;
         console.log('✅ ConnectionMonitor stopped');
     }
 

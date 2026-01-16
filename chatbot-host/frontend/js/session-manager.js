@@ -2,33 +2,17 @@
  * Session Manager - Handles session lifecycle and server communication
  */
 export class SessionManager {
-    constructor(apiService, uiManager = null, i18nService = null) {
+    constructor(apiService, uiManager, i18nService) {
         this.apiService = apiService;
         this.uiManager = uiManager;
         this.i18nService = i18nService;
         this.sessionId = this.generateSessionId();
-        this.isInitialized = false;
-    }
-
-    /**
-     * Set UI manager (can be called after instantiation)
-     */
-    setUIManager(uiManager) {
-        this.uiManager = uiManager;
-    }
-
-    /**
-     * Set i18n service (can be called after instantiation)
-     */
-    setI18nService(i18nService) {
-        this.i18nService = i18nService;
     }
 
     /**
      * Initialize session manager and setup lifecycle events
      */
     async init() {
-        if (this.isInitialized) return;
 
         // Check if this is a fresh page load
         if (!this.getStoredSessionId()) {
@@ -40,13 +24,10 @@ export class SessionManager {
             console.log('✓ Fresh page load detected, cleared server-side session');
         }
         
-        // Setup page lifecycle events
         this.setupLifecycleEvents();
-        
-        // Setup UI event listeners
         this.setupUIEventListeners();
-        
-        this.isInitialized = true;
+
+        console.log('SessionManager initialized');
     }
 
     /**

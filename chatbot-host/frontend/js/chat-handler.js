@@ -13,20 +13,15 @@ export class ChatHandler {
         this.isProcessing = false;
         this.currentPhase = 'phase1';
         this.boundHandlers = {};
-        this.isInitialized = false;
         this.currentLanguage = this.i18n.currentLanguage || 'en';
         this.currentLLMProvider = 'aws';
-        
-        this.init();
     }
 
     /**
      * Initialize chat handler - called from constructor
      */
     init() {
-        if (this.isInitialized) return;
         this.attachListeners();
-        this.isInitialized = true;
         console.log('✅ ChatHandler initialized');
     }
 
@@ -100,7 +95,6 @@ export class ChatHandler {
         window.removeEventListener('phaseChanged', this.boundHandlers.phaseChanged);
         
         this.boundHandlers = {};
-        this.isInitialized = false;
         console.log('✅ ChatHandler destroyed');
     }
 

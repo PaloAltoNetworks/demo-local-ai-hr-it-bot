@@ -17,14 +17,12 @@ export class SecurityDevPanel {
         this.checkpoints = [];
         this.isOpen = false;
         this.currentSize = 'medium'; // medium, large
-        
-        this.init();
     }
 
     /**
      * Initialize event listeners
      */
-    init() {
+    async init() {
         if (this.panelButton) this.panelButton.addEventListener('click', () => this.togglePanel());
         if (this.panelClear) this.panelClear.addEventListener('click', () => this.clearAll());
         if (this.panelResize) this.panelResize.addEventListener('click', () => this.toggleSize());

@@ -2,30 +2,24 @@
  * Phase Manager for handling phase switching and state management
  */
 export class PhaseManager {
-    constructor(i18n) {
-        this.i18n = i18n;
+    constructor() {
         this.currentPhase = 'phase1';
-        this.isInitialized = false;
         this.STORAGE_KEY = 'currentPhase';
-        
-        // Initialize in constructor
-        this.init();
     }
 
     /**
      * Initialize phase manager - called from constructor
      */
     init() {
-        if (this.isInitialized) return;
-        
         // Restore phase from localStorage
         this.restorePhase();
-        
+
+        // Apply the phase UI
+        this.switchPhase(this.currentPhase, true);
+
         // Attach event listeners
         this.attachListeners();
-        
-        this.isInitialized = true;
-        console.log('✅ PhaseManager initialized');
+        console.log('PhaseManager initialized');
     }
 
     /**
@@ -61,13 +55,20 @@ export class PhaseManager {
         this.savePhase(newPhase);
         this.updatePhaseUI();
 
-        // Dispatch phase change event
+        this.dispatchPhaseChangeEvent(newPhase);
+
+        console.log(`Switched to phase: ${newPhase}`);
+    }
+
+    /**
+     * Dispatch phase change event
+     * @param {*} newPhase 
+     */
+    dispatchPhaseChangeEvent(newPhase) {
         const phaseChangedEvent = new CustomEvent('phaseChanged', {
             detail: { phase: newPhase }
         });
         window.dispatchEvent(phaseChangedEvent);
-
-        console.log(`Switched to phase: ${newPhase}`);
     }
 
     /**
@@ -83,25 +84,31 @@ export class PhaseManager {
 
         // Update body class for styling
         document.body.className = `${this.currentPhase}-active`;
-
-        console.log(`UI updated for phase: ${this.currentPhase}`);
     }
 
     /**
      * Save phase to localStorage
      */
     savePhase(phase) {
-        localStorage.setItem(this.STORAGE_KEY, phase);
+        try {
+            localStorage.setItem(this.STORAGE_KEY, phase);
+        } catch (error) {
+            console.warn('PhaseManager - Failed to save phase to localStorage:', error);
+        }
     }
 
     /**
      * Restore phase from localStorage
      */
     restorePhase() {
-        const currentPhase = localStorage.getItem(this.STORAGE_KEY);
-        
-        if (currentPhase) {
-            this.currentPhase = currentPhase;
+        try {
+            const currentPhase = localStorage.getItem(this.STORAGE_KEY);
+
+            if (currentPhase) {
+                this.currentPhase = currentPhase;
+            }
+        } catch (error) {
+            console.warn('PhaseManager - Failed to restore phase from localStorage:', error);
         }
     }
 }

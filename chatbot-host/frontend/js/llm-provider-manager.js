@@ -6,19 +6,17 @@
 export class LLMProviderManager {
   constructor(apiService = null) {
     this.CACHE_KEY = 'llm-providers-cache';
-    
+
     // Dropdown elements
     this.dropdownElement = document.getElementById('llmProviderDropdown');
     this.buttonElement = document.getElementById('llmProviderButton');
     this.menuElement = document.getElementById('llmProviderMenu');
     this.logoElement = document.getElementById('llmProviderLogo');
-    
+
     this.apiService = apiService;
     this.providers = [];
     this.backendDefaultProvider = null;
     this.isMenuOpen = false;
-    
-    this.init();
   }
 
   /**
@@ -124,7 +122,7 @@ export class LLMProviderManager {
     const cache = this.getCache();
     const savedProvider = cache?.selected_provider;
     const supportedProviderIds = this.providers.map(p => p.id);
-    
+
     // Use saved preference if available, otherwise use backend's default
     if (savedProvider && supportedProviderIds.includes(savedProvider)) {
       this.setProvider(savedProvider);
@@ -163,21 +161,21 @@ export class LLMProviderManager {
       console.warn(`Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
       return;
     }
-    
+
     console.log(`[LLMProviderManager] Setting provider to: ${provider}`);
-    
+
     // Update cache
     this.updateCacheProvider(provider);
-    
+
     // Update UI
     this.updateButtonDisplay(provider);
     this.updateMenuSelection(provider);
-    
+
     // Close menu if open
     if (this.isMenuOpen) {
       this.closeMenu();
     }
-  
+
     this.notifyChange(provider);
   }
 
@@ -211,30 +209,30 @@ export class LLMProviderManager {
    */
   populateDropdown() {
     if (!this.menuElement || this.providers.length === 0) return;
-    
+
     this.menuElement.innerHTML = '';
-    
+
     this.providers.forEach(provider => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'llm-provider-option';
       button.dataset.provider = provider.id;
       button.title = provider.name;
-      
+
       const img = document.createElement('img');
       img.src = provider.logo;
       img.alt = provider.name;
       img.className = 'provider-logo';
-      
+
       button.appendChild(img);
-      
+
       button.addEventListener('click', () => {
         this.setProvider(provider.id);
       });
-      
+
       this.menuElement.appendChild(button);
     });
-    
+
     // Mark current selection
     const currentProvider = this.getCurrentProvider();
     this.updateMenuSelection(currentProvider);
@@ -246,12 +244,12 @@ export class LLMProviderManager {
   updateButtonDisplay(providerId) {
     const provider = this.providers.find(p => p.id === providerId);
     if (!provider) return;
-    
+
     if (this.logoElement) {
       this.logoElement.src = provider.logo;
       this.logoElement.alt = provider.name;
     }
-    
+
     // Update button title for hover tooltip
     if (this.buttonElement) {
       this.buttonElement.title = provider.name;
@@ -263,7 +261,7 @@ export class LLMProviderManager {
    */
   updateMenuSelection(providerId) {
     if (!this.menuElement) return;
-    
+
     this.menuElement.querySelectorAll('.llm-provider-option').forEach(option => {
       if (option.dataset.provider === providerId) {
         option.classList.add('selected');
@@ -289,11 +287,11 @@ export class LLMProviderManager {
    */
   openMenu() {
     if (!this.menuElement || !this.buttonElement) return;
-    
+
     this.menuElement.classList.add('show');
     this.buttonElement.setAttribute('aria-expanded', 'true');
     this.isMenuOpen = true;
-    
+
     // Focus on the default provider option
     const currentProvider = this.getCurrentProvider();
     const focusedOption = this.menuElement.querySelector(`[data-provider="${currentProvider}"]`);
@@ -307,7 +305,7 @@ export class LLMProviderManager {
    */
   closeMenu() {
     if (!this.menuElement || !this.buttonElement) return;
-    
+
     this.menuElement.classList.remove('show');
     this.buttonElement.setAttribute('aria-expanded', 'false');
     this.isMenuOpen = false;
@@ -321,7 +319,7 @@ export class LLMProviderManager {
     if (this.buttonElement) {
       this.buttonElement.addEventListener('click', () => this.toggleMenu());
     }
-    
+
     // UI: Close menu when clicking outside
     if (this.dropdownElement) {
       document.addEventListener('click', (e) => {
@@ -355,21 +353,21 @@ export class LLMProviderManager {
       console.warn(`Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
       return;
     }
-    
+
     console.log(`[LLMProviderManager] Applying provider change to: ${provider}`);
-    
+
     // Update cache
     this.updateCacheProvider(provider);
-    
+
     // Update UI
     this.updateButtonDisplay(provider);
     this.updateMenuSelection(provider);
-    
+
     // Close menu if open
     if (this.isMenuOpen) {
       this.closeMenu();
     }
-    
+
     // Update API service
     if (this.apiService) {
       this.apiService.setAIProvider(provider);

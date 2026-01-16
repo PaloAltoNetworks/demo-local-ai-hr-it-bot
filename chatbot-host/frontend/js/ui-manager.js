@@ -19,8 +19,6 @@ export class UIManager {
         // Cache DOM elements
         this.elements = {};
         this.cacheElements();
-        
-        this.init();
     }
 
     /**
@@ -41,7 +39,7 @@ export class UIManager {
     /**
      * Initialize event listeners
      */
-    init() {
+    async init() {
         // Listen to language change events
         window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
         
