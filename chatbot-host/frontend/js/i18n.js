@@ -63,6 +63,8 @@ export class I18nService {
         // Automatically populate language select if it exists
         await this.populateLanguageSelect();
 
+        await this.changeLanguage(this.currentLanguage, true);
+
         console.log(`I18n initialized with language: ${this.currentLanguage}`);
         return this;
     }
@@ -206,8 +208,8 @@ export class I18nService {
      * @param {string} language - Language code
      * @return {Promise}
      */
-    async changeLanguage(language, forceReload = false) {
-        if (language === this.currentLanguage && !forceReload) {
+    async changeLanguage(language, forceRender = false) {
+        if (language === this.currentLanguage && !forceRender) {
             return;
         }
 

@@ -20,12 +20,12 @@ import { PhaseManager } from './phase-manager.js';
  */
 const SERVICE_REGISTRY = [
     { name: 'apiService', class: ApiService },
+    { name: 'phaseManager', class: PhaseManager },
     { name: 'i18n', class: I18nService, deps: (m) => [m.apiService] },
     { name: 'themeManager', class: ThemeManager, deps: (m) => [m.i18n] },
-    { name: 'phaseManager', class: PhaseManager },
     { name: 'llmProviderManager', class: LLMProviderManager, deps: (m) => [m.apiService] },
-    { name: 'uiManager', class: UIManager, deps: (m) => [m.i18n] },
     { name: 'securityDevPanel', class: SecurityDevPanel, deps: (m) => [m.i18n] },
+    { name: 'uiManager', class: UIManager, deps: (m) => [m.i18n] },
     { name: 'sessionManager', class: SessionManager, deps: (m) => [m.apiService, m.uiManager, m.i18n] },
     { name: 'chatHandler', class: ChatHandler, deps: (m) => [m.apiService, m.uiManager, m.i18n] },
     { name: 'connectionMonitor', class: ConnectionMonitor, deps: (m) => [m.apiService, m.uiManager, m.i18n] },
@@ -42,10 +42,8 @@ class ChatBotApp {
     async init() {
         try {
             this.showLoading(true);
-
             this.createServices();
             await this.initializeServices();
-
             this.showLoading(false);
             console.log('[app] ChatBot app initialized successfully');
         } catch (error) {
@@ -76,9 +74,9 @@ class ChatBotApp {
             }
         }
 
-        // Post-init: Update UI with i18n
-        this.modules.i18n.updateUI();
+        // Post-init: ensure UI is in correct language
         await this.modules.i18n.changeLanguage(this.modules.i18n.currentLanguage, true);
+        await this.modules.phaseManager.switchPhase(this.modules.phaseManager.currentPhase, true);
     }
 
     /**
