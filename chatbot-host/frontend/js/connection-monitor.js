@@ -34,23 +34,10 @@ export class ConnectionMonitor {
      */
     attachListeners() {
         // Store bound handlers for proper cleanup
-        this.boundHandlers.languageChanged = this.onLanguageChanged.bind(this);
         this.boundHandlers.apiTimeout = this.onApiTimeout.bind(this);
-
-        // Listen for language changes
-        window.addEventListener('languageChanged', this.boundHandlers.languageChanged);
         
         // Listen for timeout events from api-service
         window.addEventListener('apiTimeout', this.boundHandlers.apiTimeout);
-    }
-
-    /**
-     * Handle language change event
-     */
-    onLanguageChanged(event) {
-        const { language } = event.detail;
-        this.currentLanguage = language;
-        console.log('Connection monitor language updated to:', language);
     }
 
     /**
@@ -86,7 +73,6 @@ export class ConnectionMonitor {
         }
         
         // Properly clean up event listeners using stored references
-        window.removeEventListener('languageChanged', this.boundHandlers.languageChanged);
         window.removeEventListener('apiTimeout', this.boundHandlers.apiTimeout);
         
         this.boundHandlers = {};
