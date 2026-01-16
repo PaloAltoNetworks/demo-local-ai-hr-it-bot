@@ -198,7 +198,7 @@ class LLMProviderFactory {
         return `anthropic:${process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022'}`;
 
       case 'azure':
-        return `azure:${process.env.AZURE_MODEL || ''}`;
+        return `azure:${process.env.AZURE_MODEL || 'gpt-5.2-chat'}`;
 
       case 'gcp':
         return `gcp:${process.env.GCP_MODEL || 'gemini-1.5-flash'}`;
