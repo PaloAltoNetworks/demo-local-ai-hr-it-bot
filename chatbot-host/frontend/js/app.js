@@ -41,7 +41,17 @@ import { PhaseManager } from './phase-manager.js';
  * @example Adding a new service:
  *   { name: 'myService', class: MyService, deps: (m) => [m.apiService, m.i18n] }
  * 
- * @type {Array<{name: string, class: Function, deps?: Function}>}
+ * @type {Array<{name: string, class: Function, deps?: Function}>}* 
+ * @property {ApiService} apiService - HTTP client for backend communication
+ * @property {PhaseManager} phaseManager - Application phase/state controller
+ * @property {I18nService} i18n - Internationalization service
+ * @property {ThemeManager} themeManager - UI theme controller
+ * @property {LLMProviderManager} llmProviderManager - LLM provider configuration
+ * @property {SecurityDevPanel} securityDevPanel - Developer security tools
+ * @property {UIManager} uiManager - DOM manipulation and UI state
+ * @property {SessionManager} sessionManager - User session handling
+ * @property {ChatHandler} chatHandler - Chat message processing
+ * @property {ConnectionMonitor} connectionMonitor - Backend connectivity monitoring
  */
 const SERVICE_REGISTRY = [
     { name: 'apiService', class: ApiService },
@@ -80,18 +90,13 @@ const SERVICE_REGISTRY = [
  */
 class ChatBotApp {
     /**
-     * Creates a new ChatBotApp instance
+     * Service Modules Container
      * 
-     * @constructor
-     * @description Initializes the modules container. Actual service instantiation
-     * is deferred to the init() method to support async initialization.
-     * 
-     * @note No async operations should occur in the constructor - use init() instead.
-     * This follows the async factory pattern for predictable initialization.
+     * @type {Object.<string, Object>}
+     * @description Registry of all instantiated service modules keyed by their name.
+     * Populated during createServices() and accessed throughout the application lifecycle.
      */
-    constructor() {
-        this.modules = {};
-    }
+    modules = {};
 
     /**
      * Initialize the Application
