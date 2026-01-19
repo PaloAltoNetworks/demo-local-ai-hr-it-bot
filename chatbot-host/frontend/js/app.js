@@ -49,7 +49,6 @@ class ChatBotApp {
         } catch (error) {
             this.showLoading(false);
             console.error('[app] Failed to initialize ChatBot app:', error);
-            this.handleInitError(error);
         }
     }
 
@@ -77,15 +76,6 @@ class ChatBotApp {
         // Post-init: ensure UI is in correct language
         await this.modules.i18n.changeLanguage(this.modules.i18n.currentLanguage, true);
         await this.modules.phaseManager.switchPhase(this.modules.phaseManager.currentPhase, true);
-    }
-
-    /**
-     * Handle initialization errors
-     */
-    handleInitError(error) {
-        const errorMsg = this.modules.i18n?.t('errors.initError')
-            || 'Failed to initialize the application';
-        this.modules.uiManager?.showError(errorMsg);
     }
 
     /**
