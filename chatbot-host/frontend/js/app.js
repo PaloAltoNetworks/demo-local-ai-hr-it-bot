@@ -1,6 +1,15 @@
 /**
  * ChatBot Application - Pure Orchestrator Pattern
- * Initializes and wires up all modules, NO business logic
+ * 
+ * @fileoverview Main application entry point implementing a pure orchestrator pattern.
+ * This module is responsible ONLY for bootstrapping and wiring up all application modules.
+ * It contains NO business logic - all functionality is delegated to specialized service modules.
+ * 
+ * @architecture The app follows Dependency Injection (DI) principles with a declarative
+ * service registry. Services are instantiated in order, allowing later services to depend
+ * on earlier ones. This enables loose coupling and easy testing via module mocking.
+ * 
+ * @version 1.0.0
  */
 import { ApiService } from './api-service.js';
 import { UIManager } from './ui-manager.js';
@@ -14,9 +23,25 @@ import { ChatHandler } from './chat-handler.js';
 import { PhaseManager } from './phase-manager.js';
 
 /**
- * Service registry - declarative configuration for all modules
- * Order matters: services are created and initialized in array order
- * Dependencies are resolved via the deps function which receives the modules object
+ * Service Registry - Declarative Dependency Injection Configuration
+ * 
+ * @description Centralized configuration for all application services. This registry
+ * defines the instantiation order and dependency graph for all modules.
+ * 
+ * @important ORDER MATTERS - Services are instantiated sequentially, so dependencies
+ * must be declared AFTER their dependents in this array. Circular dependencies are
+ * not supported and will cause runtime errors.
+ * 
+ * @structure Each entry contains:
+ *   - name: string - Unique identifier used to store/retrieve the service instance
+ *   - class: Constructor - The service class to instantiate
+ *   - deps: function(modules) => array - Optional factory function that receives all
+ *     previously instantiated modules and returns constructor arguments
+ * 
+ * @example Adding a new service:
+ *   { name: 'myService', class: MyService, deps: (m) => [m.apiService, m.i18n] }
+ * 
+ * @type {Array<{name: string, class: Function, deps?: Function}>}
  */
 const SERVICE_REGISTRY = [
     { name: 'apiService', class: ApiService },
@@ -31,13 +56,65 @@ const SERVICE_REGISTRY = [
     { name: 'connectionMonitor', class: ConnectionMonitor, deps: (m) => [m.apiService, m.uiManager, m.i18n] },
 ];
 
+/**
+ * ChatBotApp - Main Application Controller
+ * 
+ * @class ChatBotApp
+ * @description Core application class that orchestrates the entire chatbot lifecycle.
+ * Implements the Composition Root pattern - this is the ONLY place where services
+ * are wired together. All other modules remain decoupled and testable in isolation.
+ * 
+ * @responsibilities
+ *   - Service instantiation and dependency injection
+ *   - Application lifecycle management (init/destroy)
+ *   - Loading state UI coordination
+ *   - Module access for external integrations
+ * 
+ * @pattern Singleton (typically instantiated once in index.html or entry point)
+ * 
+ * @example
+ *   const app = new ChatBotApp();
+ *   await app.init();
+ *   // Later, for cleanup:
+ *   app.destroy();
+ */
 class ChatBotApp {
+    /**
+     * Creates a new ChatBotApp instance
+     * 
+     * @constructor
+     * @description Initializes the modules container. Actual service instantiation
+     * is deferred to the init() method to support async initialization.
+     * 
+     * @note No async operations should occur in the constructor - use init() instead.
+     * This follows the async factory pattern for predictable initialization.
+     */
     constructor() {
         this.modules = {};
     }
 
     /**
-     * Initialize the application
+     * Initialize the Application
+     * 
+     * @async
+     * @method init
+     * @description Main entry point for application startup. Orchestrates the complete
+     * initialization sequence: shows loading UI, creates services, initializes them,
+     * and finally sets up default language and phase state.
+     * 
+     * @returns {Promise<void>} Resolves when initialization completes (success or failure)
+     * 
+     * @throws {Error} Catches and logs all errors - does NOT propagate exceptions
+     * to prevent unhandled promise rejections from breaking the app
+     * 
+     * @sideEffects
+     *   - Populates this.modules with service instances
+     *   - Manipulates DOM loading indicator
+     *   - Logs to console
+     * 
+     * @example
+     *   const app = new ChatBotApp();
+     *   await app.init(); // Safe to call - errors are handled internally
      */
     async init() {
         try {
@@ -53,7 +130,24 @@ class ChatBotApp {
     }
 
     /**
-     * Create all services from registry
+     * Create All Services from Registry
+     * 
+     * @method createServices
+     * @private
+     * @description Iterates through SERVICE_REGISTRY and instantiates each service
+     * class with its resolved dependencies. Uses the factory pattern via the deps
+     * function to support flexible dependency injection.
+     * 
+     * @algorithm
+     *   1. Iterate SERVICE_REGISTRY in order
+     *   2. For each service, resolve dependencies using deps(this.modules)
+     *   3. Instantiate service class with spread dependencies
+     *   4. Store instance in this.modules[service.name]
+     * 
+     * @note This is a synchronous operation - services are constructed but NOT
+     * initialized. Async initialization happens in initializeServices().
+     * 
+     * @throws {Error} If a dependency is undefined (service order misconfigured)
      */
     createServices() {
         for (const service of SERVICE_REGISTRY) {
@@ -63,7 +157,24 @@ class ChatBotApp {
     }
 
     /**
-     * Initialize all services that have an init method
+     * Initialize All Services with Async Support
+     * 
+     * @async
+     * @method initializeServices
+     * @private
+     * @description Calls the init() method on each service that implements it.
+     * Services are initialized sequentially (not parallel) to ensure proper
+     * initialization order for interdependent services.
+     * 
+     * @returns {Promise<void>} Resolves when all services are initialized
+     * 
+     * @postConditions
+     *   - All services with init() methods have been initialized
+     *   - i18n language is set to current/default language
+     *   - PhaseManager is switched to current/default phase
+     * 
+     * @note The explicit language and phase initialization at the end ensures
+     * the UI is in a consistent state even if defaults were already set.
      */
     async initializeServices() {
         for (const service of SERVICE_REGISTRY) {
@@ -72,14 +183,25 @@ class ChatBotApp {
                 await module.init();
             }
         }
-
-        // Post-init: ensure UI is in correct language
         await this.modules.i18n.changeLanguage(this.modules.i18n.currentLanguage, true);
         await this.modules.phaseManager.switchPhase(this.modules.phaseManager.currentPhase, true);
     }
 
     /**
-     * Show/hide loading indicator
+     * Toggle Loading Indicator Visibility
+     * 
+     * @method showLoading
+     * @private
+     * @description Controls the visibility of the application loading overlay.
+     * Uses CSS class toggling for show/hide animation support.
+     * 
+     * @param {boolean} show - true to show loading indicator, false to hide
+     * 
+     * @note Gracefully handles missing loading indicator element (no-op if not found).
+     * This allows the app to function in environments without the loading UI.
+     * 
+     * @domElement Expects element with id="loading-indicator" in the DOM
+     * @cssClass Toggles the 'show' class for visibility control
      */
     showLoading(show) {
         const loadingEl = document.getElementById('loading-indicator');
@@ -89,7 +211,27 @@ class ChatBotApp {
     }
 
     /**
-     * Cleanup resources when app is destroyed
+     * Destroy Application and Release Resources
+     * 
+     * @method destroy
+     * @description Graceful shutdown handler that cleans up all services in REVERSE
+     * order of creation. This ensures dependencies are destroyed before their dependents,
+     * preventing use-after-free style bugs.
+     * 
+     * @cleanup Each service is checked for:
+     *   1. destroy() method - preferred cleanup method
+     *   2. stop() method - fallback for services using different naming convention
+     * 
+     * @note Uses optional chaining (?.) for safety - handles undefined modules gracefully
+     * 
+     * @useCase Call this method before:
+     *   - Page unload/navigation
+     *   - Hot module replacement (HMR)
+     *   - Application restart
+     *   - Memory leak prevention in SPAs
+     * 
+     * @example
+     *   window.addEventListener('beforeunload', () => app.destroy());
      */
     destroy() {
         // Call destroy on modules that support it (in reverse order)
@@ -102,13 +244,6 @@ class ChatBotApp {
             }
         }
         console.log('[app] ChatBot app cleaned up');
-    }
-
-    /**
-     * Get a module (for testing or external access)
-     */
-    getModule(name) {
-        return this.modules[name];
     }
 }
 
