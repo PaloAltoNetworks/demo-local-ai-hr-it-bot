@@ -3,7 +3,6 @@
  * Includes streaming message handling, retry logic, and chat display
  */
 import { CONFIG } from './config.js';
-import { Utils } from './utils.js';
 
 export class ChatHandler {
     constructor(apiService, uiManager, i18n) {
@@ -521,11 +520,11 @@ export class ChatHandler {
 
         if (role === 'system') {
             icon = 'warning';
-            displayContent = Utils.escapeHtml(content);
+            displayContent = this.escapeHtml(content);
         } else {
             const isUser = role === 'user';
             icon = isUser ? 'account_circle' : 'otter-icon';
-            displayContent = isUser ? Utils.escapeHtml(content) : Utils.formatBotResponse(content);
+            displayContent = isUser ? this.escapeHtml(content) : this.formatBotResponse(content);
         }
 
         messageDiv.innerHTML = `
@@ -534,7 +533,7 @@ export class ChatHandler {
             </div>
             <div class="message-content">
                 <div class="message-text">${displayContent}</div>
-                <div class="message-timestamp">${Utils.getTimestamp(this.currentLanguage)}</div>
+                <div class="message-timestamp">${this.getTimestamp()}</div>
             </div>
         `;
 
@@ -566,8 +565,8 @@ export class ChatHandler {
         }
         messageDiv.className = className;
 
-        const displayContent = Utils.formatBotResponse(content);
-        const timestamp = Utils.getTimestamp(this.currentLanguage);
+        const displayContent = this.formatBotResponse(content);
+        const timestamp = this.getTimestamp();
         
         // Create message with thinking chain button if there are thoughts
         const hasThinkingChain = this.thinkingChain.length > 0;
@@ -655,7 +654,7 @@ export class ChatHandler {
                             <span class="thinking-step-time">${thought.timestamp}</span>
                         </div>
                         <div class="thinking-step-content">
-                            ${formattedIcon} ${Utils.escapeHtml(thought.text)}
+                            ${formattedIcon} ${this.escapeHtml(thought.text)}
                         </div>
                     </div>
                 `;
@@ -689,12 +688,42 @@ export class ChatHandler {
     }
 
     /**
-     * Get thinking icon HTML based on content
-     * @param {string} text - The text to match against icon patterns
+     * Get thinking icon HTML
      * @returns {string} HTML span element with icon
      */
-    getThinkingIcon(text) {
-        return Utils.getThinkingIcon(text);
+    getThinkingIcon() {
+        return '<span class="material-symbols thinking-icon">chat</span>';
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
+     * Format bot response with basic markdown
+     */
+    formatBotResponse(text) {
+        if (!text) return '';
+        const str = typeof text === 'string' ? text : String(text);
+        return str
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
+    }
+
+    /**
+     * Get current timestamp
+     */
+    getTimestamp() {
+        return new Intl.DateTimeFormat(this.currentLanguage, {
+            hour: '2-digit',
+            minute: '2-digit'
+        }).format(new Date());
     }
 
     /**
@@ -773,16 +802,7 @@ export class ChatHandler {
         // Remove [COORDINATOR] prefix if present
         const cleanText = text.replace(/^\[COORDINATOR\]\s*/, '');
         
-        // Get icon (without HTML wrapper to build our own)
-        const iconName = Utils.getThinkingIcon(cleanText, { includeIcon: false });
-        
-        // Determine styling classes based on icon
-        let classNames = 'material-symbols thinking-icon';
-        if (iconName === 'check_circle') classNames += ' success';
-        if (iconName === 'cancel') classNames += ' error';
-        if (iconName === 'settings') classNames += ' spinning';
-        
-        return `<span class="${classNames}">${iconName}</span> ${cleanText}`;
+        return `<span class="material-symbols thinking-icon">chat</span> ${cleanText}`;
     }
 
     /**
