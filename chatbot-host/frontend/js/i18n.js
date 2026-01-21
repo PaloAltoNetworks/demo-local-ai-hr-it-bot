@@ -5,8 +5,9 @@ export class I18nService {
     constructor(apiService) {
         this.apiService = apiService;
         this.supportedLanguages = null; // Will be fetched during init
-        this.currentLanguage = this.detectLanguage(); // Detect on construction
+        this.currentLanguage = null; // Will be detected during init
         this.translations = {};
+        this.cachedLanguagesData = null; // Cache for API response
         this.STORAGE_KEY = 'currentLanguage';
     }
 
@@ -85,39 +86,44 @@ export class I18nService {
     }
 
     /**
-     * Save language to localStorage (for debugging purposes)
+     * Save language to localStorage
+     * @private
      */
     saveLangToLocalStorage() {
         try {
             localStorage.setItem(this.STORAGE_KEY, this.currentLanguage);
-            console.log(`Language for ${this.currentLanguage} saved to localStorage.`);
         } catch (error) {
             console.error('Error saving language to localStorage:', error);
         }
     }
 
     /**
-     * Load language from localStorage (for debugging purposes)
+     * Load language from localStorage
+     * @private
+     * @returns {string|null} Saved language code or null
      */
     loadLangFromLocalStorage() {
         try {
-            const savedLang = this.loadLangFromLocalStorage();
-            if (savedLang) {
-                this.currentLanguage = savedLang;
-                console.log(`Loaded language for ${this.currentLanguage} from localStorage.`);
-            }
+            return localStorage.getItem(this.STORAGE_KEY);
         } catch (error) {
             console.error('Error loading language from localStorage:', error);
+            return null;
         }
     }
 
     /**
-     * Fetch supported languages from backend
+     * Fetch supported languages from backend (cached)
      * @return {Promise<Object>}
      */
     async fetchSupportedLanguages() {
+        // Return cached data if available
+        if (this.cachedLanguagesData) {
+            return this.cachedLanguagesData;
+        }
+
         try {
-            return await this.apiService.get('/api/languages');
+            this.cachedLanguagesData = await this.apiService.get('/api/languages');
+            return this.cachedLanguagesData;
         } catch (error) {
             console.error('Error fetching supported languages:', error);
             throw error;
@@ -309,39 +315,40 @@ export class I18nService {
     }
 
     /**
-     * Fetch and populate language options in a select element
-     * @param {HTMLSelectElement} selectElement - The select element to populate
+     * Populate language options in a select element using cached supported languages
      * @return {Promise<void>}
      */
     async populateLanguageSelect() {
-
         const selectElement = document.getElementById('userMenuLanguageSelect');
 
         if (!selectElement) return;
 
         try {
+            // Use already fetched supported languages data instead of fetching again
             const data = await this.fetchSupportedLanguages();
 
             if (data.languages && Array.isArray(data.languages)) {
                 // Clear existing options
                 selectElement.innerHTML = '';
 
-                // Add options for each language
+                // Use DocumentFragment for better performance
+                const fragment = document.createDocumentFragment();
                 data.languages.forEach(lang => {
                     const option = document.createElement('option');
                     option.value = lang.code;
                     option.textContent = lang.nativeName || lang.name || lang.code;
-                    selectElement.appendChild(option);
+                    fragment.appendChild(option);
                 });
+                selectElement.appendChild(fragment);
 
                 // Set current language as selected
                 selectElement.value = this.currentLanguage;
 
-                // Setup change listener
+                // Setup change listener (bind once)
                 selectElement.addEventListener('change', this.onLanguageSelectChange.bind(this));
             }
         } catch (error) {
-            console.error('Error fetching available languages:', error);
+            console.error('Error populating language select:', error);
         }
     }
 
