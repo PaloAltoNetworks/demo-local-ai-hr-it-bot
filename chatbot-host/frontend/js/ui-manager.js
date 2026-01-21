@@ -7,7 +7,6 @@ export class UIManager {
     constructor(i18n) {
         this.i18n = i18n;
         this.currentLanguage = i18n.getCurrentLanguage();
-        this.connectionStatusCallbacks = [];
         this.thinkingMessageElement = null;
         this.isOnlineStatus = true;
         this.thinkingChain = []; // Store thinking chain
@@ -29,9 +28,6 @@ export class UIManager {
         this.elements.chatMessages = document.getElementById('chat-container');
         this.elements.chatInput = document.getElementById('chatInput');
         this.elements.sendButton = document.getElementById('sendMessage');
-        this.elements.statusIndicator = document.getElementById('statusIndicator');
-        this.elements.statusIcon = document.getElementById('statusIcon');
-        this.elements.statusText = document.getElementById('statusText');
         this.elements.loadingIndicator = document.getElementById('loading-indicator');
         this.elements.welcomeMessage = document.getElementById('welcome-message');
     }
@@ -76,10 +72,12 @@ export class UIManager {
 
     /**
      * Handle connection changed event
+     * Only handles chat availability - status indicator is updated by ConnectionMonitor
      */
     onConnectionChanged(event) {
-        const { isOnline, statusClass, statusIcon, statusText, placeholder } = event.detail;
-        this.updateConnectionStatus(isOnline, statusClass, statusIcon, statusText, placeholder);
+        const { isOnline, placeholder } = event.detail;
+        this.isOnlineStatus = isOnline;
+        this.updateChatAvailability(isOnline, placeholder);
     }
 
     /**
@@ -688,35 +686,7 @@ export class UIManager {
         }
     }
 
-    /**
-     * Update connection status UI
-     * Receives pre-computed status details from ConnectionMonitor
-     */
-    updateConnectionStatus(isOnline, statusClass, statusIcon, statusText, placeholder) {
-        if (!this.elements.statusIndicator) return;
 
-        // Track online status
-        this.isOnlineStatus = isOnline;
-
-        // Update status indicator class (for styling based on state)
-        this.elements.statusIndicator.className = `status ${statusClass}`;
-
-        // Update icon only
-        if (this.elements.statusIcon) {
-            this.elements.statusIcon.textContent = statusIcon;
-        }
-
-        // Update text only
-        if (this.elements.statusText) {
-            this.elements.statusText.textContent = statusText;
-        }
-
-        // Update chat availability with placeholder
-        this.updateChatAvailability(isOnline, placeholder);
-
-        // Notify callbacks
-        this.connectionStatusCallbacks.forEach(callback => callback(isOnline));
-    }
 
     /**
      * Update chat interface availability based on connection status
@@ -850,13 +820,6 @@ export class UIManager {
         if (this.elements.chatMessages) {
             this.elements.chatMessages.innerHTML = '';
         }
-    }
-
-    /**
-     * Register callback for connection status changes
-     */
-    onConnectionStatusChange(callback) {
-        this.connectionStatusCallbacks.push(callback);
     }
 
     /**

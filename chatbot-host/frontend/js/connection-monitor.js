@@ -91,6 +91,12 @@ class ConnectionMonitor {
      */
     #boundHandlers;
 
+    /**
+     * @type {Object}
+     * @private
+     */
+    #elements;
+
     // ═══════════════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════════════
@@ -109,6 +115,7 @@ class ConnectionMonitor {
         this.#lastHealthData = null;
         this.#isOnline = false;
         this.#boundHandlers = {};
+        this.#elements = {};
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -117,14 +124,28 @@ class ConnectionMonitor {
 
     /**
      * Initializes the connection monitor.
-     * Binds event handlers, attaches listeners, and starts monitoring.
+     * Caches DOM elements, binds event handlers, attaches listeners, and starts monitoring.
      * @returns {void}
      */
     init() {
+        this.#cacheElements();
         this.#bindEventHandlers();
         this.#attachListeners();
         this.start();
         console.log('[ConnectionMonitor] Initialized');
+    }
+
+    /**
+     * Cache DOM elements for status indicator.
+     * @private
+     * @returns {void}
+     */
+    #cacheElements() {
+        this.#elements = {
+            statusIndicator: document.getElementById('statusIndicator'),
+            statusIcon: document.getElementById('statusIcon'),
+            statusText: document.getElementById('statusText')
+        };
     }
 
     /**
@@ -381,9 +402,36 @@ class ConnectionMonitor {
      */
     #dispatchConnectionStatusEvent(isOnline, healthData) {
         const statusDetails = this.#computeConnectionStatusDetails(isOnline, healthData);
+        
+        // Update status indicator UI directly
+        this.#updateStatusIndicatorUI(statusDetails);
+        
+        // Dispatch event for other modules (e.g., chat availability)
         window.dispatchEvent(new CustomEvent('connectionChanged', {
             detail: statusDetails
         }));
+    }
+
+    /**
+     * Updates the status indicator UI elements.
+     * @param {Object} statusDetails - The computed status details
+     * @private
+     * @returns {void}
+     */
+    #updateStatusIndicatorUI(statusDetails) {
+        const { statusClass, statusIcon, statusText } = statusDetails;
+
+        if (this.#elements.statusIndicator) {
+            this.#elements.statusIndicator.className = `status ${statusClass}`;
+        }
+
+        if (this.#elements.statusIcon) {
+            this.#elements.statusIcon.textContent = statusIcon;
+        }
+
+        if (this.#elements.statusText) {
+            this.#elements.statusText.textContent = statusText;
+        }
     }
 
     /**
