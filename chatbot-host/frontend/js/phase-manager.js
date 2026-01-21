@@ -2,10 +2,9 @@
  * Phase Manager for handling phase switching and state management
  */
 export class PhaseManager {
-    constructor() {
-        this.currentPhase = 'phase1';
-        this.STORAGE_KEY = 'currentPhase';
-    }
+
+    currentPhase = 'phase1';
+    STORAGE_KEY = 'currentPhase';
 
     /**
      * Initialize phase manager - called from constructor
@@ -57,7 +56,7 @@ export class PhaseManager {
 
         this.dispatchPhaseChangeEvent(newPhase);
 
-        console.log(`Switched to phase: ${newPhase}`);
+        console.debug(`Switched to phase: ${newPhase}`);
     }
 
     /**
@@ -106,6 +105,7 @@ export class PhaseManager {
 
             if (currentPhase) {
                 this.currentPhase = currentPhase;
+                console.debug(`Restored phase from localStorage: ${currentPhase}`);
             }
         } catch (error) {
             console.warn('PhaseManager - Failed to restore phase from localStorage:', error);
