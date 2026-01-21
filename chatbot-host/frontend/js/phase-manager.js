@@ -5,6 +5,7 @@ export class PhaseManager {
 
     currentPhase = 'phase1';
     STORAGE_KEY = 'currentPhase';
+    element = document.querySelectorAll('.phase-btn');
 
     /**
      * Initialize phase manager - called from constructor
@@ -25,7 +26,7 @@ export class PhaseManager {
      * Attach phase button event listeners
      */
     attachListeners() {
-        document.querySelectorAll('.phase-btn').forEach(btn => {
+        this.element.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const phase = e.currentTarget.getAttribute('data-phase');
                 if (phase && phase !== this.currentPhase) {
@@ -75,7 +76,7 @@ export class PhaseManager {
      */
     updatePhaseUI() {
         // Update phase buttons
-        document.querySelectorAll('.phase-btn').forEach(btn => {
+        this.element.forEach(btn => {
             btn.classList.toggle('active',
                 btn.getAttribute('data-phase') === this.currentPhase
             );
