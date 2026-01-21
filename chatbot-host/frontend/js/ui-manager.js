@@ -40,15 +40,14 @@ export class UIManager {
      * Initialize event listeners
      */
     async init() {
-        // Listen to language change events
+        // Listen to app events
         window.addEventListener('languageChanged', this.onLanguageChanged.bind(this));
-        
-        // Listen to phase change events
         window.addEventListener('phaseChanged', this.onPhaseChanged.bind(this));
+        window.addEventListener('connectionChanged', this.onConnectionChanged.bind(this));
+        window.addEventListener('appNotification', this.onAppNotification.bind(this));
         
         // Setup UI listeners
         this.setupUserMenuListeners();
-        this.setupWindowListeners();
     }
 
     /**
@@ -73,6 +72,23 @@ export class UIManager {
         const { phase } = event.detail;
         this.currentPhase = phase;
         this.renderQuestions(this.currentPhase);
+    }
+
+    /**
+     * Handle connection changed event
+     */
+    onConnectionChanged(event) {
+        const { isOnline, statusClass, statusIcon, statusText, placeholder } = event.detail;
+        this.updateConnectionStatus(isOnline, statusClass, statusIcon, statusText, placeholder);
+    }
+
+    /**
+     * Handle app notification event
+     * Generic handler for notifications from any module
+     */
+    onAppNotification(event) {
+        const { message, type, duration } = event.detail;
+        this.showNotification(message, type, duration);
     }
 
     /**
@@ -128,23 +144,6 @@ export class UIManager {
         if (userMenuLabel) {
             userMenuLabel.textContent = this.i18n.t('userMenu.label') || 'User';
         }
-    }
-
-    /**
-     * Setup window-level listeners (API retry events)
-     */
-    setupWindowListeners() {
-        // Listen for API retry events
-        window.addEventListener('apiRetry', this.onApiRetry.bind(this));
-    }
-
-    /**
-     * Handle API retry event
-     */
-    onApiRetry(event) {
-        const { attempt, maxAttempts } = event.detail;
-        const retryMsg = this.i18n.t('errors.retrying', { count: attempt, max: maxAttempts });
-        this.showRetryNotification(retryMsg);
     }
 
     /**
@@ -691,33 +690,13 @@ export class UIManager {
 
     /**
      * Update connection status UI
+     * Receives pre-computed status details from ConnectionMonitor
      */
-    updateConnectionStatus(isOnline, healthData = null) {
+    updateConnectionStatus(isOnline, statusClass, statusIcon, statusText, placeholder) {
         if (!this.elements.statusIndicator) return;
 
         // Track online status
         this.isOnlineStatus = isOnline;
-
-        // Determine status based on health data
-        let statusClass = 'status--error';
-        let statusIcon = 'warning';
-        let statusText = this.i18n.t('chat.offline');
-        let customPlaceholder = null;
-
-        if (isOnline) {
-            if (healthData && healthData.status === 'degraded' && !healthData.serviceAvailable) {
-                // Service degraded - MCP unavailable but basic functionality works
-                statusClass = 'status--warning';
-                statusIcon = 'warning';
-                statusText = this.i18n.t('chat.online') + ' (Limited)';
-                customPlaceholder = this.i18n.t('errors.mcpUnavailable');
-            } else {
-                // Fully operational
-                statusClass = 'status--success';
-                statusIcon = 'check_circle';
-                statusText = this.i18n.t('chat.online');
-            }
-        }
 
         // Update status indicator class (for styling based on state)
         this.elements.statusIndicator.className = `status ${statusClass}`;
@@ -732,8 +711,8 @@ export class UIManager {
             this.elements.statusText.textContent = statusText;
         }
 
-        // Update chat availability with custom placeholder if needed
-        this.updateChatAvailability(isOnline, customPlaceholder);
+        // Update chat availability with placeholder
+        this.updateChatAvailability(isOnline, placeholder);
 
         // Notify callbacks
         this.connectionStatusCallbacks.forEach(callback => callback(isOnline));
@@ -742,7 +721,7 @@ export class UIManager {
     /**
      * Update chat interface availability based on connection status
      */
-    updateChatAvailability(isOnline, customMessage = null) {
+    updateChatAvailability(isOnline, placeholder = null) {
         if (this.elements.sendButton) {
             this.elements.sendButton.disabled = !isOnline || this.isProcessing();
         }
@@ -750,12 +729,8 @@ export class UIManager {
         if (this.elements.chatInput) {
             this.elements.chatInput.disabled = !isOnline;
             
-            if (customMessage) {
-                this.elements.chatInput.placeholder = customMessage;
-            } else {
-                this.elements.chatInput.placeholder = isOnline
-                    ? this.i18n.t('chat.placeholder')
-                    : this.i18n.t('chat.placeholderOffline');
+            if (placeholder) {
+                this.elements.chatInput.placeholder = placeholder;
             }
         }
     }
@@ -831,35 +806,6 @@ export class UIManager {
      */
     showRetryNotification(message) {
         this.showNotification(message, 'warning', 3000); // Show for 3 seconds
-    }
-
-    /**
-     * Show connection status change notification
-     */
-    showConnectionStatusChange(isOnline, healthData = null) {
-        let message;
-
-        if (isOnline) {
-            // Check if services are degraded
-            if (healthData && healthData.status === 'degraded' && !healthData.serviceAvailable) {
-                message = this.i18n.t('errors.servicesDegraded');
-                this.showNotification(message, 'warning');
-            } else {
-                message = this.i18n.t('chat.connectionRestored');
-                this.showNotification(message, 'success');
-            }
-        } else {
-            // Use specific MCP/service error message if available
-            if (healthData && healthData.message) {
-                message = healthData.message;
-            } else if (healthData && healthData.unhealthyServers && healthData.unhealthyServers.length > 0) {
-                const serverList = healthData.unhealthyServers.join(', ');
-                message = this.i18n.t('chat.ollamaServersDown').replace('{servers}', serverList);
-            } else {
-                message = this.i18n.t('chat.connectionLost');
-            }
-            this.showNotification(message, 'error');
-        }
     }
 
     /**
