@@ -21,9 +21,6 @@
 /** @type {string} Session storage key for session ID */
 const SESSION_STORAGE_KEY = 'chatbot-session-id';
 
-/** @type {string} Local storage key for session data */
-const LOCAL_STORAGE_SESSION_KEY = 'chatbot-session';
-
 /** @type {number} Delay in milliseconds before completing logout */
 const LOGOUT_COMPLETE_DELAY = 1000;
 
@@ -151,7 +148,6 @@ class SessionManager {
      */
     async logout() {
         try {
-            localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
             this.#clearStoredSessionId();
             await this.clearSession();
 
