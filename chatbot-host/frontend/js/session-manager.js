@@ -2,9 +2,8 @@
  * Session Manager - Handles session lifecycle and server communication
  */
 export class SessionManager {
-    constructor(apiService, uiManager, i18nService) {
+    constructor(apiService, i18nService) {
         this.apiService = apiService;
-        this.uiManager = uiManager;
         this.i18nService = i18nService;
         this.sessionId = this.generateSessionId();
     }
@@ -65,7 +64,9 @@ export class SessionManager {
             
             // Show confirmation message
             const successMsg = this.i18nService?.t('userMenu.logoutSuccess') || 'Logged out successfully';
-            this.uiManager?.showNotification(successMsg, 'success');
+            window.dispatchEvent(new CustomEvent('appNotification', {
+                detail: { message: successMsg, type: 'success' }
+            }));
             
             // Optional: Reload page or redirect after a delay
             setTimeout(() => {
@@ -75,8 +76,10 @@ export class SessionManager {
             }, 1000);
         } catch (error) {
             console.error('Error during logout:', error);
-            const errorMsg = 'Failed to logout';
-            this.uiManager?.showError(errorMsg);
+            const errorMsg = this.i18nService?.t('userMenu.logoutError') || 'Failed to logout';
+            window.dispatchEvent(new CustomEvent('appNotification', {
+                detail: { message: errorMsg, type: 'error' }
+            }));
         }
     }
 
