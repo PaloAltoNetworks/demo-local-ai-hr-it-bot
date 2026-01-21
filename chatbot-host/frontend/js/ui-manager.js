@@ -38,16 +38,10 @@ const NOTIFICATION_ICONS = {
 const DEFAULT_NOTIFICATION_DURATION = 4000;
 
 /**
- * @type {number}
- * @description Delay before showing notification animation in milliseconds
+ * @type {HTMLTemplateElement|null}
+ * @description Cached template element for notification creation
  */
-const NOTIFICATION_SHOW_DELAY = 100;
-
-/**
- * @type {number}
- * @description Delay for notification removal animation in milliseconds
- */
-const NOTIFICATION_REMOVE_DELAY = 300;
+let notificationTemplate = null;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLASS DEFINITION
@@ -86,6 +80,13 @@ class UIManager {
     #elements = {};
 
     /**
+     * @type {HTMLElement}
+     * @private
+     * @description Container element for notifications
+     */
+    #notificationContainer = null;
+
+    /**
      * @type {Object.<string, Function>}
      * @private
      * @description Bound event handler references for cleanup
@@ -117,6 +118,7 @@ class UIManager {
      */
     async init() {
         this.#cacheElements();
+        this.#initNotificationSystem();
         this.#bindEventHandlers();
         this.#attachListeners();
         this.#updateUserMenu();
@@ -131,6 +133,8 @@ class UIManager {
      */
     destroy() {
         this.#detachListeners();
+        this.#notificationContainer?.remove();
+        this.#notificationContainer = null;
         this.#elements = {};
         this.#boundHandlers = {};
 
@@ -156,13 +160,27 @@ class UIManager {
     showNotification(message, type = 'info', duration = DEFAULT_NOTIFICATION_DURATION) {
         const notification = this.#createNotificationElement(message, type);
 
-        document.body.appendChild(notification);
+        this.#notificationContainer.appendChild(notification);
 
-        setTimeout(() => notification.classList.add('notification--show'), NOTIFICATION_SHOW_DELAY);
+        // Use requestAnimationFrame for smoother animation start
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                notification.classList.add('notification--show');
+            });
+        });
 
         setTimeout(() => {
             notification.classList.remove('notification--show');
-            setTimeout(() => notification.remove(), NOTIFICATION_REMOVE_DELAY);
+
+            // Use transitionend for accurate removal timing
+            const onTransitionEnd = () => {
+                notification.removeEventListener('transitionend', onTransitionEnd);
+                notification.remove();
+            };
+            notification.addEventListener('transitionend', onTransitionEnd, { once: true });
+
+            // Fallback removal in case transitionend doesn't fire
+            setTimeout(() => notification.remove(), 500);
         }, duration);
     }
 
@@ -237,7 +255,37 @@ class UIManager {
     }
 
     /**
-     * Creates a notification DOM element.
+     * Initializes the notification system with container and template.
+     *
+     * @private
+     * @returns {void}
+     */
+    #initNotificationSystem() {
+        // Create container if it doesn't exist
+        this.#notificationContainer = document.getElementById('notification-container');
+        if (!this.#notificationContainer) {
+            this.#notificationContainer = document.createElement('div');
+            this.#notificationContainer.id = 'notification-container';
+            this.#notificationContainer.setAttribute('aria-live', 'polite');
+            document.body.appendChild(this.#notificationContainer);
+        }
+
+        // Create template once for reuse
+        if (!notificationTemplate) {
+            notificationTemplate = document.createElement('template');
+            notificationTemplate.innerHTML = `
+                <div class="notification">
+                    <div class="notification__content">
+                        <span class="material-symbols"></span>
+                        <span class="notification__message"></span>
+                    </div>
+                </div>
+            `.trim();
+        }
+    }
+
+    /**
+     * Creates a notification DOM element using template cloning.
      *
      * @param {string} message - The notification message
      * @param {string} type - The notification type
@@ -245,17 +293,12 @@ class UIManager {
      * @returns {HTMLDivElement} The created notification element
      */
     #createNotificationElement(message, type) {
-        const notification = document.createElement('div');
-        notification.className = `notification notification--${type}`;
+        const notification = notificationTemplate.content.firstElementChild.cloneNode(true);
+        notification.classList.add(`notification--${type}`);
 
         const icon = NOTIFICATION_ICONS[type] || NOTIFICATION_ICONS.info;
-
-        notification.innerHTML = `
-            <div class="notification__content">
-                <span class="material-symbols">${icon}</span>
-                <span>${message}</span>
-            </div>
-        `;
+        notification.querySelector('.material-symbols').textContent = icon;
+        notification.querySelector('.notification__message').textContent = message;
 
         return notification;
     }
@@ -314,7 +357,7 @@ class UIManager {
             this.#boundHandlers.userMenuTriggerClick
         );
 
-        document.addEventListener('click', this.#boundHandlers.documentClick);
+        document.addEventListener('click', this.#boundHandlers.documentClick, { passive: true });
     }
 
     /**
@@ -331,7 +374,7 @@ class UIManager {
             this.#boundHandlers.userMenuTriggerClick
         );
 
-        document.removeEventListener('click', this.#boundHandlers.documentClick);
+        document.removeEventListener('click', this.#boundHandlers.documentClick, { passive: true });
     }
 }
 
