@@ -65,6 +65,9 @@ export class I18nService {
 
         await this.changeLanguage(this.currentLanguage, true);
 
+        // Initialize question rendering
+        this.initQuestionRendering();
+
         console.log(`I18n initialized with language: ${this.currentLanguage}`);
         return this;
     }
@@ -223,6 +226,9 @@ export class I18nService {
         // Save to localStorage
         this.saveLangToLocalStorage();
 
+        // Update UI with new translations
+        this.updateUI();
+
         // Emit language changed event
         this.emitLanguageChanged();
 
@@ -347,5 +353,193 @@ export class I18nService {
         if (selectedLanguage && selectedLanguage !== this.currentLanguage) {
             await this.changeLanguage(selectedLanguage);
         }
+    }
+
+    // ========================================
+    // Question Rendering Methods
+    // ========================================
+
+    /**
+     * Initialize question rendering with container and callback
+     * Registers event listeners for phase and language changes
+     */
+    initQuestionRendering() {
+        this.questionsContainer = document.getElementById('questions-container');
+        this.chatInput = document.getElementById('chatInput');
+        this.currentPhase = null;
+
+        // Listen for phase changes
+        window.addEventListener('phaseChanged', this.onPhaseChanged.bind(this));
+        
+        // Listen for language changes to re-render questions
+        window.addEventListener('languageChanged', this.onLanguageChangedForQuestions.bind(this));
+    }
+
+    /**
+     * Handle question click - set input and focus
+     */
+    handleQuestionClick(questionText) {
+        if (this.chatInput) {
+            this.chatInput.value = questionText;
+            this.chatInput.focus();
+        }
+    }
+
+    /**
+     * Handle phase change event for question rendering
+     */
+    onPhaseChanged(event) {
+        const { phase } = event.detail;
+        this.currentPhase = phase;
+        this.renderQuestions(phase, this.questionsContainer, (text) => this.handleQuestionClick(text));
+    }
+
+    /**
+     * Handle language change event for question re-rendering
+     */
+    onLanguageChangedForQuestions(event) {
+        if (this.currentPhase && this.questionsContainer) {
+            this.renderQuestions(this.currentPhase, this.questionsContainer, (text) => this.handleQuestionClick(text));
+        }
+    }
+
+    /**
+     * Get questions for current language and phase
+     * @param {string} phase - The phase to get questions for
+     * @return {Array}
+     */
+    getQuestions(phase) {
+        try {
+            const questions = this.t(`questions.${phase}`);
+            if (!questions || !Array.isArray(questions)) {
+                console.warn(`No questions found for phase: ${phase} in language: ${this.currentLanguage}`);
+                return [];
+            }
+            return questions;
+        } catch (error) {
+            console.error(`Error getting questions for phase ${phase}:`, error);
+            return [];
+        }
+    }
+
+    /**
+     * Render example questions for a phase
+     * @param {string} phase - The phase to render questions for
+     * @param {HTMLElement} container - The container element to render into
+     * @param {Function} onQuestionClick - Callback when a question is clicked
+     */
+    renderQuestions(phase, container, onQuestionClick) {
+        if (!container) return;
+
+        const questions = this.getQuestions(phase);
+        
+        // Clear existing questions
+        container.innerHTML = '';
+        
+        if (questions.length === 0) {
+            console.warn(`No questions available for phase ${phase} in language ${this.currentLanguage}`);
+            return;
+        }
+        
+        // Create question elements
+        const fragment = document.createDocumentFragment();
+        questions.forEach(question => {
+            // Check if this is a subgroup (has a 'questions' property)
+            if (question.questions && Array.isArray(question.questions)) {
+                const subgroupElement = this.createSubgroupElement(question, phase, onQuestionClick);
+                fragment.appendChild(subgroupElement);
+            } else {
+                const questionElement = this.createQuestionElement(question, phase, onQuestionClick);
+                fragment.appendChild(questionElement);
+            }
+        });
+        
+        container.appendChild(fragment);
+    }
+
+    /**
+     * Parse icon string and return HTML
+     * @param {string} iconString - Icon string (e.g., "material-symbols:icon_name")
+     * @return {string} HTML string
+     */
+    getIconHTML(iconString) {
+        if (!iconString) return '';
+        
+        if (iconString.includes(':')) {
+            const [className, iconName] = iconString.split(':');
+            return `<span class="${className}">${iconName}</span>`;
+        }
+        
+        return `<span class="material-symbols">${iconString}</span>`;
+    }
+
+    /**
+     * Create a subgroup element with nested questions
+     * @param {Object} subgroup - Subgroup data with title, icon, and questions array
+     * @param {string} phase - Current phase
+     * @param {Function} onQuestionClick - Callback when a question is clicked
+     * @return {HTMLElement}
+     */
+    createSubgroupElement(subgroup, phase, onQuestionClick) {
+        const subgroupDiv = document.createElement('div');
+        subgroupDiv.className = 'questions-subgroup';
+        
+        // Create subgroup header
+        const header = document.createElement('div');
+        header.className = 'subgroup-header';
+        header.innerHTML = `<h3>${this.getIconHTML(subgroup.icon)}${subgroup.title}</h3>`;
+        subgroupDiv.appendChild(header);
+        
+        // Create nested questions container
+        const questionsContainer = document.createElement('div');
+        questionsContainer.className = 'subgroup-questions';
+        
+        subgroup.questions.forEach(question => {
+            const questionElement = this.createQuestionElement(question, phase, onQuestionClick);
+            questionsContainer.appendChild(questionElement);
+        });
+        
+        subgroupDiv.appendChild(questionsContainer);
+        return subgroupDiv;
+    }
+
+    /**
+     * Create a question element with click handler
+     * @param {Object} question - Question data with title, text, icon, and optional action
+     * @param {string} phase - Current phase
+     * @param {Function} onQuestionClick - Callback when a question is clicked
+     * @return {HTMLElement}
+     */
+    createQuestionElement(question, phase, onQuestionClick) {
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'example-question';
+        
+        // Check if this is an action question (like refresh)
+        if (question.action === 'refresh') {
+            questionDiv.classList.add('action-question');
+            questionDiv.setAttribute('data-action', 'refresh');
+        } else {
+            questionDiv.setAttribute('data-question', question.text);
+        }
+        
+        questionDiv.innerHTML = `
+            <h4>${this.getIconHTML(question.icon)}${question.title}</h4>
+            <p>${question.text}</p>
+        `;
+
+        questionDiv.addEventListener('click', () => {
+            if (question.action === 'refresh') {
+                // Save current phase to localStorage before refreshing
+                if (phase) {
+                    localStorage.setItem('currentPhase', phase);
+                }
+                // Refresh the page
+                window.location.reload();
+            } else if (onQuestionClick) {
+                onQuestionClick(question.text);
+            }
+        });
+
+        return questionDiv;
     }
 }

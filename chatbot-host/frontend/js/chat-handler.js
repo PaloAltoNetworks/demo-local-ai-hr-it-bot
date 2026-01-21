@@ -1,8 +1,9 @@
 /**
  * Chat Handler for managing message sending and chat operations
- * Includes streaming message handling and retry logic
+ * Includes streaming message handling, retry logic, and chat display
  */
 import { CONFIG } from './config.js';
+import { Utils } from './utils.js';
 
 export class ChatHandler {
     constructor(apiService, uiManager, i18n) {
@@ -15,6 +16,26 @@ export class ChatHandler {
         this.boundHandlers = {};
         this.currentLanguage = this.i18n.currentLanguage || 'en';
         this.currentLLMProvider = 'aws';
+        
+        // Chat display state
+        this.thinkingMessageElement = null;
+        this.thinkingChain = [];
+        this.tokenMetadata = {};
+        this.llmProviderInfo = null;
+        this.isOnlineStatus = true;
+        
+        // Cache DOM elements for chat display
+        this.elements = {};
+        this.cacheElements();
+    }
+
+    /**
+     * Cache frequently accessed DOM elements
+     */
+    cacheElements() {
+        this.elements.chatMessages = document.getElementById('chat-container');
+        this.elements.chatInput = document.getElementById('chatInput');
+        this.elements.sendButton = document.getElementById('sendMessage');
     }
 
     /**
@@ -58,6 +79,13 @@ export class ChatHandler {
         window.addEventListener('llmProviderChanged', (event) => {
             const { provider } = event.detail;
             this.currentLLMProvider = provider;
+        });
+
+        // Listen for connection changes
+        window.addEventListener('connectionChanged', (event) => {
+            const { isOnline, placeholder } = event.detail;
+            this.isOnlineStatus = isOnline;
+            this.updateChatAvailability(isOnline, placeholder);
         });
     }
 
@@ -128,19 +156,19 @@ export class ChatHandler {
 
             // Add user message to history and display
             this.addMessageToHistory('user', userMessage, this.currentPhase);
-            this.uiManager.displayMessage('user', userMessage, messagePhase);
+            this.displayMessage('user', userMessage, messagePhase);
 
             // Clear input
-            this.uiManager.clearChatInput();
+            this.clearChatInput();
 
             // Show thinking message
-            this.uiManager.showThinkingMessage('Thinking...');
+            this.showThinkingMessage('Thinking...');
 
             // Setup timeout warning
             const warningTimeout = setTimeout(() => {
                 if (this.isProcessing) {
                     const timeoutWarning = this.i18n.t('errors.agentTimeout');
-                    this.uiManager.showRetryNotification(timeoutWarning);
+                    this.showRetryNotification(timeoutWarning);
                 }
             }, 15000); // Show warning after 15 seconds
 
@@ -151,7 +179,7 @@ export class ChatHandler {
                 {
                     onThinking: (thinkingMessage, isComplete) => {
                         if (!isComplete && thinkingMessage) {
-                            this.uiManager.updateThinkingMessage(thinkingMessage);
+                            this.updateThinkingMessage(thinkingMessage);
                         }
                     },
                     onComplete: (response) => {
@@ -359,7 +387,7 @@ export class ChatHandler {
         clearTimeout(warningTimeout);
         
         // Hide thinking message
-        this.uiManager.hideThinkingAnimation();
+        this.hideThinkingAnimation();
         
         if (response && response.messages) {
             // Update chat history
@@ -367,9 +395,9 @@ export class ChatHandler {
 
             // Set token metadata if available
             if (response.metadata) {
-                this.uiManager.setTokenMetadata(response.metadata);
+                this.setTokenMetadata(response.metadata);
                 if (response.metadata.llmProvider) {
-                    this.uiManager.setLLMProviderInfo(response.metadata.llmProvider);
+                    this.setLLMProviderInfo(response.metadata.llmProvider);
                 }
             }
 
@@ -389,7 +417,7 @@ export class ChatHandler {
                 }
                 
                 // Display with thinking chain
-                this.uiManager.displayBotMessageWithThinking(contentToDisplay, messagePhase);
+                this.displayBotMessageWithThinking(contentToDisplay, messagePhase);
             }
         }
     }
@@ -399,7 +427,7 @@ export class ChatHandler {
      */
     handleMessageError(error) {
         // Hide thinking message on error
-        this.uiManager.hideThinkingAnimation();
+        this.hideThinkingAnimation();
         
         // Map error types to user-friendly messages
         let errorMsg;
@@ -417,7 +445,7 @@ export class ChatHandler {
             errorMsg = this.i18n.t('errors.agentError');
         }
         
-        this.uiManager.showError(errorMsg);
+        this.showError(errorMsg);
         console.error('[ChatHandler] Error sending message:', error);
     }
 
@@ -437,7 +465,7 @@ export class ChatHandler {
      */
     clearChat() {
         this.chatHistory = [];
-        this.uiManager.clearChat();
+        this.clearChatUI();
     }
 
     /**
@@ -459,5 +487,410 @@ export class ChatHandler {
      */
     setHistory(history) {
         this.chatHistory = history || [];
+    }
+
+    // ========================================
+    // Chat Display Methods
+    // ========================================
+
+    /**
+     * Display a message in the chat UI
+     */
+    displayMessage(role, content, phase = null) {
+        if (!this.elements.chatMessages) return;
+
+        const messageElement = this.createMessageElement(role, content, phase);
+        this.elements.chatMessages.appendChild(messageElement);
+        this.scrollToBottom();
+    }
+
+    /**
+     * Create a message element
+     */
+    createMessageElement(role, content, phase = null) {
+        const messageDiv = document.createElement('div');
+        let className = `message ${role}-message`;
+
+        if (phase) {
+            className += ` ${phase}-message`;
+        }
+
+        messageDiv.className = className;
+
+        let icon, displayContent;
+
+        if (role === 'system') {
+            icon = 'warning';
+            displayContent = Utils.escapeHtml(content);
+        } else {
+            const isUser = role === 'user';
+            icon = isUser ? 'account_circle' : 'otter-icon';
+            displayContent = isUser ? Utils.escapeHtml(content) : Utils.formatBotResponse(content);
+        }
+
+        messageDiv.innerHTML = `
+            <div class="message-avatar">
+                <span class="material-symbols">${icon}</span>
+            </div>
+            <div class="message-content">
+                <div class="message-text">${displayContent}</div>
+                <div class="message-timestamp">${Utils.getTimestamp(this.currentLanguage)}</div>
+            </div>
+        `;
+
+        return messageDiv;
+    }
+
+    /**
+     * Display error message in chat
+     */
+    displayErrorMessage(message) {
+        if (!this.elements.chatMessages) return;
+
+        const errorElement = this.createMessageElement('system', message, null);
+        errorElement.classList.add('message--error');
+        this.elements.chatMessages.appendChild(errorElement);
+        this.scrollToBottom();
+    }
+
+    /**
+     * Display bot message with thinking chain
+     */
+    displayBotMessageWithThinking(content, phase = null) {
+        if (!this.elements.chatMessages) return;
+
+        const messageDiv = document.createElement('div');
+        let className = `message bot-message`;
+        if (phase) {
+            className += ` ${phase}-message`;
+        }
+        messageDiv.className = className;
+
+        const displayContent = Utils.formatBotResponse(content);
+        const timestamp = Utils.getTimestamp(this.currentLanguage);
+        
+        // Create message with thinking chain button if there are thoughts
+        const hasThinkingChain = this.thinkingChain.length > 0;
+        const hasTokens = this.tokenMetadata && (this.tokenMetadata.total_tokens || this.tokenMetadata.coordinator_tokens);
+        const hasProvider = this.llmProviderInfo && this.llmProviderInfo.logo;
+        
+        let messageHTML = `
+            <div class="message-avatar">
+                <i class="otter-icon"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-text-wrapper">
+                    <div class="message-text">${displayContent}</div>
+        `;
+
+        // Add LLM provider badge if available
+        if (hasProvider) {
+            messageHTML += `
+                    <div class="llm-provider-badge" title="${this.llmProviderInfo.name}">
+                        <img src="${this.llmProviderInfo.logo}" alt="${this.llmProviderInfo.name}" class="provider-badge-logo">
+                    </div>
+            `;
+        }
+
+        messageHTML += `
+                </div>
+                <div class="message-timestamp">${timestamp}</div>
+        `;
+
+        // Add token information if available
+        if (hasTokens) {
+            const totalTokens = this.tokenMetadata.total_tokens || 0;
+            const coordinatorTokens = this.tokenMetadata.coordinator_tokens || 0;
+            const agentTokens = this.tokenMetadata.agent_tokens || 0;
+            
+            messageHTML += `
+                <div class="token-info">
+                    <div class="token-info-row">
+                        <span class="token-label" data-i18n="chat.totalTokens">
+                            <span class="material-symbols">memory</span> ${this.i18n.t('chat.totalTokens')}:
+                        </span>
+                        <span class="token-count">${totalTokens}</span>
+                    </div>
+            `;
+            
+            if (coordinatorTokens > 0) {
+                messageHTML += `
+                    <div class="token-info-row token-info-detail">
+                        <span class="token-label-detail" data-i18n="chat.coordinator">${this.i18n.t('chat.coordinator')}:</span>
+                        <span class="token-count-detail">${coordinatorTokens}</span>
+                    </div>
+                `;
+            }
+            
+            if (agentTokens > 0) {
+                messageHTML += `
+                    <div class="token-info-row token-info-detail">
+                        <span class="token-label-detail" data-i18n="chat.agents">${this.i18n.t('chat.agents')}:</span>
+                        <span class="token-count-detail">${agentTokens}</span>
+                    </div>
+                `;
+            }
+            
+            messageHTML += `
+                </div>
+            `;
+        }
+
+        if (hasThinkingChain) {
+            const thinkingId = `thinking-${Date.now()}`;
+            messageHTML += `
+                <button class="thinking-toggle" data-thinking-id="${thinkingId}" title="View thinking chain">
+                    <span class="material-symbols">expand_more</span>
+                    <span class="thinking-toggle-text">${this.i18n.t('chat.viewThinking')}</span>
+                </button>
+                <div class="thinking-chain hidden" id="${thinkingId}">
+            `;
+            
+            // Add each thinking step
+            this.thinkingChain.forEach((thought, index) => {
+                const formattedIcon = this.getThinkingIcon(thought.text);
+                messageHTML += `
+                    <div class="thinking-step">
+                        <div class="thinking-step-header">
+                            <span class="thinking-step-time">${thought.timestamp}</span>
+                        </div>
+                        <div class="thinking-step-content">
+                            ${formattedIcon} ${Utils.escapeHtml(thought.text)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            messageHTML += `
+                </div>
+            `;
+        }
+
+        messageHTML += `
+            </div>
+        `;
+
+        messageDiv.innerHTML = messageHTML;
+        this.elements.chatMessages.appendChild(messageDiv);
+
+        // Add event listener to toggle button
+        if (hasThinkingChain) {
+            const toggleBtn = messageDiv.querySelector('.thinking-toggle');
+            const thinkingChain = messageDiv.querySelector('.thinking-chain');
+            
+            toggleBtn.addEventListener('click', () => {
+                thinkingChain.classList.toggle('hidden');
+                toggleBtn.classList.toggle('expanded');
+            });
+        }
+
+        this.scrollToBottom();
+        this.clearThinkingData();
+    }
+
+    /**
+     * Get thinking icon HTML based on content
+     * @param {string} text - The text to match against icon patterns
+     * @returns {string} HTML span element with icon
+     */
+    getThinkingIcon(text) {
+        return Utils.getThinkingIcon(text);
+    }
+
+    /**
+     * Show thinking message with text
+     */
+    showThinkingMessage(text = 'Thinking...') {
+        if (!this.elements.chatMessages) return;
+        
+        // Remove existing thinking message if any
+        this.hideThinkingAnimation();
+
+        this.thinkingMessageElement = document.createElement('div');
+        this.thinkingMessageElement.className = 'message bot-message thinking-message';
+
+        this.thinkingMessageElement.innerHTML = `
+            <div class="message-avatar">
+                <i class="otter-icon"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-text thinking-text">
+                    ${text}
+                </div>
+            </div>
+        `;
+
+        this.elements.chatMessages.appendChild(this.thinkingMessageElement);
+        this.scrollToBottom();
+    }
+
+    /**
+     * Update thinking message text with enhanced formatting
+     * Also accumulates thinking chain for later display
+     */
+    updateThinkingMessage(text) {
+        // Store thinking in chain
+        this.addToThinkingChain(text);
+
+        if (this.thinkingMessageElement) {
+            const textElement = this.thinkingMessageElement.querySelector('.thinking-text');
+            if (textElement) {
+                // Enhanced formatting for different message types
+                let formattedText = this.formatThinkingMessage(text);
+                textElement.innerHTML = formattedText;
+                
+                // Add a subtle animation effect
+                textElement.style.opacity = '0.7';
+                setTimeout(() => {
+                    textElement.style.opacity = '1';
+                }, 100);
+            }
+        } else {
+            // Create thinking message if it doesn't exist
+            this.showThinkingMessage(text);
+        }
+    }
+
+    /**
+     * Add thinking message to chain
+     */
+    addToThinkingChain(text) {
+        const cleanText = text.replace(/^\[COORDINATOR\]\s*/, '');
+        const timestamp = new Date().toLocaleTimeString(this.currentLanguage);
+        this.thinkingChain.push({
+            text: cleanText,
+            timestamp: timestamp,
+            timestamp_ms: Date.now()
+        });
+    }
+
+    /**
+     * Format thinking messages with icons and styling
+     * @param {string} text - The thinking message text to format
+     * @returns {string} HTML string with formatted text and icon
+     */
+    formatThinkingMessage(text) {
+        // Remove [COORDINATOR] prefix if present
+        const cleanText = text.replace(/^\[COORDINATOR\]\s*/, '');
+        
+        // Get icon (without HTML wrapper to build our own)
+        const iconName = Utils.getThinkingIcon(cleanText, { includeIcon: false });
+        
+        // Determine styling classes based on icon
+        let classNames = 'material-symbols thinking-icon';
+        if (iconName === 'check_circle') classNames += ' success';
+        if (iconName === 'cancel') classNames += ' error';
+        if (iconName === 'settings') classNames += ' spinning';
+        
+        return `<span class="${classNames}">${iconName}</span> ${cleanText}`;
+    }
+
+    /**
+     * Hide thinking animation
+     */
+    hideThinkingAnimation() {
+        if (this.thinkingMessageElement && this.thinkingMessageElement.parentNode) {
+            this.thinkingMessageElement.parentNode.removeChild(this.thinkingMessageElement);
+            this.thinkingMessageElement = null;
+        }
+    }
+
+    /**
+     * Set token metadata
+     */
+    setTokenMetadata(metadata) {
+        this.tokenMetadata = metadata;
+    }
+
+    /**
+     * Set LLM provider info
+     */
+    setLLMProviderInfo(providerInfo) {
+        this.llmProviderInfo = providerInfo;
+    }
+
+    /**
+     * Clear all thinking data (chain + metadata)
+     */
+    clearThinkingData() {
+        this.thinkingChain = [];
+        this.tokenMetadata = {};
+        this.llmProviderInfo = null;
+    }
+
+    /**
+     * Scroll chat to bottom
+     */
+    scrollToBottom() {
+        if (this.elements.chatMessages) {
+            this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
+        }
+    }
+
+    /**
+     * Clear the chat input field
+     */
+    clearChatInput() {
+        if (this.elements.chatInput) {
+            this.elements.chatInput.value = '';
+        }
+    }
+
+    /**
+     * Clear all chat messages from UI
+     */
+    clearChatUI() {
+        if (this.elements.chatMessages) {
+            this.elements.chatMessages.innerHTML = '';
+        }
+    }
+
+    /**
+     * Show error message to user
+     */
+    showError(message) {
+        console.error(message);
+        this.uiManager.showNotification(message, 'error');
+
+        // Also display error in chat if it's a communication error
+        if (message.includes('server') || message.includes('connection') || message.includes('serveur') || message.includes('connexion') ||
+            message.includes('timeout') || message.includes('network') || message.includes('agent') || message.includes('overload')) {
+            this.displayErrorMessage(message);
+        }
+    }
+
+    /**
+     * Show retry notification to user
+     */
+    showRetryNotification(message) {
+        this.uiManager.showNotification(message, 'warning', 3000);
+    }
+
+    /**
+     * Update chat interface availability based on connection status
+     */
+    updateChatAvailability(isOnline, placeholder = null) {
+        if (this.elements.sendButton) {
+            this.elements.sendButton.disabled = !isOnline || this.isProcessing;
+        }
+
+        if (this.elements.chatInput) {
+            this.elements.chatInput.disabled = !isOnline;
+            
+            if (placeholder) {
+                this.elements.chatInput.placeholder = placeholder;
+            }
+        }
+    }
+
+    /**
+     * Temporarily disable chat with custom message
+     */
+    temporarilyDisableChat(message, duration = 5000) {
+        this.updateChatAvailability(false, message);
+        
+        setTimeout(() => {
+            this.updateChatAvailability(this.isOnlineStatus);
+        }, duration);
     }
 }
