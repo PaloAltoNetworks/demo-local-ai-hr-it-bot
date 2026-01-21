@@ -62,7 +62,7 @@ const SERVICE_REGISTRY = [
     { name: 'securityDevPanel', class: SecurityDevPanel, deps: (m) => [m.i18n] },
     { name: 'uiManager', class: UIManager, deps: (m) => [m.i18n] },
     { name: 'sessionManager', class: SessionManager, deps: (m) => [m.apiService, m.i18n] },
-    { name: 'chatHandler', class: ChatHandler, deps: (m) => [m.apiService, m.uiManager, m.i18n] },
+    { name: 'chatHandler', class: ChatHandler, deps: (m) => [m.apiService, m.i18n] },
     { name: 'connectionMonitor', class: ConnectionMonitor, deps: (m) => [m.apiService, m.i18n] },
 ];
 

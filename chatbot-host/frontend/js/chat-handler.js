@@ -5,9 +5,8 @@
 import { CONFIG } from './config.js';
 
 export class ChatHandler {
-    constructor(apiService, uiManager, i18n) {
+    constructor(apiService, i18n) {
         this.apiService = apiService;
-        this.uiManager = uiManager;
         this.i18n = i18n;
         this.chatHistory = [];
         this.isProcessing = false;
@@ -870,7 +869,9 @@ export class ChatHandler {
      */
     showError(message) {
         console.error(message);
-        this.uiManager.showNotification(message, 'error');
+        window.dispatchEvent(new CustomEvent('appNotification', {
+            detail: { message, type: 'error' }
+        }));
 
         // Also display error in chat if it's a communication error
         if (message.includes('server') || message.includes('connection') || message.includes('serveur') || message.includes('connexion') ||
@@ -883,7 +884,9 @@ export class ChatHandler {
      * Show retry notification to user
      */
     showRetryNotification(message) {
-        this.uiManager.showNotification(message, 'warning', 3000);
+        window.dispatchEvent(new CustomEvent('appNotification', {
+            detail: { message, type: 'warning', duration: 3000 }
+        }));
     }
 
     /**
