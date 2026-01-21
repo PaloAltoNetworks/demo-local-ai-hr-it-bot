@@ -1187,7 +1187,8 @@ Return only the concise version:`;
         status: result.approved ? 'approved' : 'blocked',
         latency_ms: latency,
         input: checkpointData.input,
-        output: checkpointData.output
+        output: checkpointData.output,
+        tsg_id: process.env.PRISMA_AIRS_TSG_ID || null
       };
       this.streamThinkingCallback(`[CHECKPOINT_DATA]${JSON.stringify(checkpointMessage)}`);
     }

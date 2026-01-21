@@ -124,7 +124,8 @@
     "viewDetails": "Ver JSON de Solicitação/Resposta",
     "checkpoint": "Checkpoint",
     "inputLabel": "ENTRADA",
-    "outputLabel": "SAÍDA (Resposta Bruta do Prisma AIRS)"
+    "outputLabel": "SAÍDA (Resposta Bruta do Prisma AIRS)",
+    "viewInConsole": "Ver no Strata Cloud Manager"
   },
   "language": {
     "code": "pt",

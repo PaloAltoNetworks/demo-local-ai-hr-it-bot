@@ -124,7 +124,8 @@
     "viewDetails": "Anfrage-/Antwort-JSON anzeigen",
     "checkpoint": "Kontrollpunkt",
     "inputLabel": "EINGABE",
-    "outputLabel": "AUSGABE (Rohe Prisma AIRS-Antwort)"
+    "outputLabel": "AUSGABE (Rohe Prisma AIRS-Antwort)",
+    "viewInConsole": "In Strata Cloud Manager anzeigen"
   },
   "language": {
     "code": "de",

@@ -2871,6 +2871,25 @@ body {
   font-weight: 500;
 }
 
+.checkpoint-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.checkpoint-link:hover {
+  text-decoration: underline;
+  color: var(--color-accent-hover, var(--color-accent));
+}
+
+.checkpoint-link::after {
+  content: '↗';
+  font-size: 0.7rem;
+  margin-left: 3px;
+  opacity: 0.7;
+}
+
 .checkpoint-latency {
   margin-left: auto;
   font-size: 0.8rem;

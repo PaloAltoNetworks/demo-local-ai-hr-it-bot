@@ -124,7 +124,8 @@
     "viewDetails": "عرض JSON الطلب/الاستجابة",
     "checkpoint": "نقطة تفتيش",
     "inputLabel": "الإدخال",
-    "outputLabel": "الإخراج (استجابة Prisma AIRS الخام)"
+    "outputLabel": "الإخراج (استجابة Prisma AIRS الخام)",
+    "viewInConsole": "عرض في Strata Cloud Manager"
   },
   "language": {
     "code": "ar",
