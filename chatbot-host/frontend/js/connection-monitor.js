@@ -117,12 +117,13 @@ class ConnectionMonitor {
 
     /**
      * Initializes the connection monitor.
-     * Binds event handlers and attaches listeners.
+     * Binds event handlers, attaches listeners, and starts monitoring.
      * @returns {void}
      */
     init() {
         this.#bindEventHandlers();
         this.#attachListeners();
+        this.start();
         console.log('[ConnectionMonitor] Initialized');
     }
 
