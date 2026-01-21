@@ -308,7 +308,7 @@ class ConnectionMonitor {
         try {
             const healthData = await this.#apiService.get('/health');
 
-            console.log('[ConnectionMonitor] Health check response:', healthData);
+            console.debug('[ConnectionMonitor] Health check response:', healthData);
             this.#lastHealthData = healthData;
 
             const isBasicallyOnline = healthData.status === 'ok' || healthData.status === 'degraded';
