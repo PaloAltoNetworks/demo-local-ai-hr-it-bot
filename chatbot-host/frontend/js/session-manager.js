@@ -37,7 +37,6 @@ const LOGOUT_COMPLETE_DELAY = 1000;
  * @example
  * const sessionManager = new SessionManager(apiService, i18n);
  * await sessionManager.init();
- * const sessionId = sessionManager.getSessionId();
  */
 class SessionManager {
     // ═══════════════════════════════════════════════════════════════════════
@@ -88,7 +87,7 @@ class SessionManager {
     async init() {
         if (!this.#getStoredSessionId()) {
             this.#storeSessionId();
-            await this.clearSession();
+            await this.#clearSession();
             console.log('[SessionManager] Fresh page load detected, cleared server-side session');
         }
 
@@ -109,54 +108,6 @@ class SessionManager {
         this.#boundHandlers = {};
 
         console.log('[SessionManager] Destroyed');
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // PUBLIC API METHODS
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Get the current session ID
-     * @returns {string} The current session identifier
-     */
-    getSessionId() {
-        return this.#sessionId;
-    }
-
-    /**
-     * Clear session on the backend
-     * @async
-     * @returns {Promise<Object>} Response from the server
-     * @throws {Error} If the API call fails
-     */
-    async clearSession() {
-        try {
-            const response = await this.#apiService.post('/api/clear-session', {});
-            console.log('[SessionManager] Session cleared successfully');
-            return response;
-        } catch (error) {
-            console.error('[SessionManager] Failed to clear session:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Logout user - clears both client and server session
-     * @async
-     * @returns {Promise<boolean>} True if logout was successful
-     * @throws {Error} If logout fails
-     */
-    async logout() {
-        try {
-            this.#clearStoredSessionId();
-            await this.clearSession();
-
-            console.log('[SessionManager] User logged out and session cleared');
-            return true;
-        } catch (error) {
-            console.error('[SessionManager] Error during logout:', error);
-            throw error;
-        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -184,7 +135,7 @@ class SessionManager {
         console.log('[SessionManager] Logout initiated');
 
         try {
-            await this.logout();
+            await this.#logout();
 
             const successMsg = this.#i18n?.t('userMenu.logoutSuccess') || 'Logged out successfully';
             window.dispatchEvent(new CustomEvent('appNotification', {
@@ -265,6 +216,44 @@ class SessionManager {
      */
     #generateSessionId() {
         return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    /**
+     * Clear session on the backend
+     * @async
+     * @private
+     * @returns {Promise<Object>} Response from the server
+     * @throws {Error} If the API call fails
+     */
+    async #clearSession() {
+        try {
+            const response = await this.#apiService.post('/api/clear-session', {});
+            console.log('[SessionManager] Session cleared successfully');
+            return response;
+        } catch (error) {
+            console.error('[SessionManager] Failed to clear session:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Logout user - clears both client and server session
+     * @async
+     * @private
+     * @returns {Promise<boolean>} True if logout was successful
+     * @throws {Error} If logout fails
+     */
+    async #logout() {
+        try {
+            this.#clearStoredSessionId();
+            await this.#clearSession();
+
+            console.log('[SessionManager] User logged out and session cleared');
+            return true;
+        } catch (error) {
+            console.error('[SessionManager] Error during logout:', error);
+            throw error;
+        }
     }
 
     /**
