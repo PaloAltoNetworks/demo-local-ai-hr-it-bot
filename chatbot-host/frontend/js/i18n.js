@@ -1,182 +1,156 @@
 /**
- * Frontend I18n Service - Loads translations from backend
+ * @fileoverview Frontend I18n Service - Loads translations from backend
+ *
+ * @responsibilities
+ * - Detect and manage user's preferred language
+ * - Fetch and cache translations from backend API
+ * - Provide translation lookup with interpolation support
+ * - Update UI elements with translated content
+ * - Handle RTL/LTR text direction
+ * - Render phase-based example questions
+ * - Manage language selector dropdown
+ *
+ * @dependencies
+ * - apiService: API communication service for fetching translations
+ *
+ * @events
+ * - Listens: 'phaseChanged' - Re-renders questions for new phase
+ * - Dispatches: 'languageChanged' - When user changes language
+ *
+ * @version 1.0.0
  */
-export class I18nService {
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODULE CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** @type {string} LocalStorage key for persisting language preference */
+const STORAGE_KEY = 'currentLanguage';
+
+/** @type {string} Default fallback language code */
+const DEFAULT_LANGUAGE = 'en';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLASS DEFINITION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * @class I18nService
+ * @description Manages internationalization including language detection, translation loading,
+ * UI updates, and question rendering. Supports RTL languages and parameter interpolation.
+ *
+ * @pattern Service/Manager
+ *
+ * @example
+ * const i18n = new I18nService(apiService);
+ * await i18n.init();
+ * const greeting = i18n.t('chat.greeting', { name: 'John' });
+ * await i18n.changeLanguage('es');
+ */
+class I18nService {
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE INSTANCE PROPERTIES
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /** @type {Object|null} API service for backend communication */
+    #apiService;
+
+    /** @type {string|null} Currently active language code */
+    #currentLanguage;
+
+    /** @type {Object} Cached translations keyed by language code */
+    #translations;
+
+    /** @type {Object|null} Cached languages API response */
+    #cachedLanguagesData;
+
+    /** @type {string|null} Current phase for question rendering */
+    #currentPhase;
+
+    /** @type {Object} Cached DOM element references */
+    #elements;
+
+    /** @type {Object} Bound event handler references for cleanup */
+    #boundHandlers;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONSTRUCTOR
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Creates a new I18nService instance
+     * @param {Object} apiService - API service for backend communication
+     */
     constructor(apiService) {
-        this.apiService = apiService;
-        this.supportedLanguages = null; // Will be fetched during init
-        this.currentLanguage = null; // Will be detected during init
-        this.translations = {};
-        this.cachedLanguagesData = null; // Cache for API response
-        this.STORAGE_KEY = 'currentLanguage';
+        this.#apiService = apiService;
+        this.#currentLanguage = null;
+        this.#translations = {};
+        this.#cachedLanguagesData = null;
+        this.#currentPhase = null;
+        this.#elements = {};
+        this.#boundHandlers = {};
     }
 
-    /**
-     * Update document direction based on language translations
-     * Reads dir from language.dir in frontend.json (defaults to 'ltr')
-     */
-    updateTextDirection() {
-        const translations = this.translations[this.currentLanguage];
-        const direction = translations?.language?.dir || 'ltr';
-        document.documentElement.dir = direction;
-        document.body.dir = direction;
-    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // LIFECYCLE METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Detect user's preferred language
-     * Priority: URL params > localStorage > browser language (if supported) > default (English)
-     */
-    detectLanguage() {
-        // 1. Check URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlLang = urlParams.get('lang');
-        if (urlLang) return urlLang;
-
-        // 2. Check localStorage
-        const savedLang = this.loadLangFromLocalStorage();
-        if (savedLang) return savedLang;
-
-        // 3. Check browser language (if supported languages are loaded)
-        // Browser language format is typically 'en-US', we extract the base language code
-        const browserLang = navigator.language?.substring(0, 2).toLowerCase();
-        if (browserLang && this.supportedLanguages && this.supportedLanguages.includes(browserLang)) {
-            return browserLang;
-        }
-
-        // 4. Default to English
-        return 'en';
-    }
-
-    /**
-     * Initialize the i18n service and load translations
-     * @return {Promise}
+     * Initializes the i18n service and loads translations
+     * @async
+     * @returns {Promise<I18nService>} This instance for chaining
      */
     async init() {
-        // Fetch supported languages from backend first
-        await this.loadSupportedLanguages();
+        this.#cacheElements();
+        this.#bindEventHandlers();
 
-        // Now detect language with knowledge of supported languages
-        this.currentLanguage = this.detectLanguage();
+        await this.#fetchSupportedLanguages();
+        this.#currentLanguage = this.#detectLanguage();
 
-        // Load translations for the detected language
-        await this.loadTranslations(this.currentLanguage);
+        this.#populateLanguageSelect();
+        await this.changeLanguage(this.#currentLanguage, true);
 
-        // Automatically populate language select if it exists
-        await this.populateLanguageSelect();
+        this.#attachListeners();
 
-        await this.changeLanguage(this.currentLanguage, true);
-
-        // Initialize question rendering
-        this.initQuestionRendering();
-
-        console.log(`I18n initialized with language: ${this.currentLanguage}`);
+        console.log(`[I18nService] Initialized with language: ${this.#currentLanguage}`);
         return this;
     }
 
-    async loadSupportedLanguages() {
-        try {
-            const data = await this.fetchSupportedLanguages();
-            if (data.languages && Array.isArray(data.languages)) {
-                this.supportedLanguages = data.languages.map(lang => lang.code);
-            }
-        } catch (error) {
-            console.warn('Failed to fetch supported languages, using defaults:', error);
-            this.supportedLanguages = ['en'];
-        }
-    }
-
     /**
-     * Save language to localStorage
-     * @private
+     * Destroys the service and cleans up resources
+     * @returns {void}
      */
-    saveLangToLocalStorage() {
-        try {
-            localStorage.setItem(this.STORAGE_KEY, this.currentLanguage);
-        } catch (error) {
-            console.error('Error saving language to localStorage:', error);
-        }
+    destroy() {
+        this.#detachListeners();
+
+        this.#currentLanguage = null;
+        this.#translations = {};
+        this.#cachedLanguagesData = null;
+        this.#currentPhase = null;
+        this.#elements = {};
+        this.#boundHandlers = {};
+
+        console.log('[I18nService] Destroyed');
     }
 
-    /**
-     * Load language from localStorage
-     * @private
-     * @returns {string|null} Saved language code or null
-     */
-    loadLangFromLocalStorage() {
-        try {
-            return localStorage.getItem(this.STORAGE_KEY);
-        } catch (error) {
-            console.error('Error loading language from localStorage:', error);
-            return null;
-        }
-    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PUBLIC API METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Fetch supported languages from backend (cached)
-     * @return {Promise<Object>}
-     */
-    async fetchSupportedLanguages() {
-        // Return cached data if available
-        if (this.cachedLanguagesData) {
-            return this.cachedLanguagesData;
-        }
-
-        try {
-            this.cachedLanguagesData = await this.apiService.get('/api/languages');
-            return this.cachedLanguagesData;
-        } catch (error) {
-            console.error('Error fetching supported languages:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Load translations from backend
-     * @param {string} language - Language code
-     * @return {Promise}
-     */
-    async loadTranslations(language) {
-        // If translations already loaded for this language, skip
-        if (this.translations[language]) {
-            return this.translations[language];
-        }
-        this.translations[language] = await this.fetchTranslations(language);
-        return this.translations[language];
-    }
-
-    /**
-     * Fetch translations from backend API
-     * @param {string} language - Language code
-     * @return {Promise<Object>}
-     */
-    async fetchTranslations(language) {
-        try {
-            const data = await this.apiService.get(`/api/translations/${language}`);
-            return data;
-        } catch (error) {
-            console.error(`Error fetching translations for ${language}:`, error);
-
-            // Fallback to English if current language fails
-            if (language !== 'en') {
-                console.log('Falling back to English translations');
-                return this.fetchTranslations('en');
-            }
-
-            // If English also fails, rethrow error
-            throw error;
-        }
-    }
-
-    /**
-     * Get translation for a key path (e.g., 'app.title')
-     * @param {string} keyPath - Dot-separated key path
+     * Gets translation for a key path with optional interpolation
+     * @param {string} keyPath - Dot-separated key path (e.g., 'app.title')
      * @param {Object} params - Optional parameters for interpolation
-     * @return {string|Object}
+     * @returns {string|Object} Translated value or keyPath if not found
+     * @example
+     * i18n.t('chat.greeting', { name: 'John' }); // "Hello, John!"
      */
     t(keyPath, params = {}) {
-        const translations = this.translations[this.currentLanguage];
+        const translations = this.#translations[this.#currentLanguage];
+
         if (!translations) {
-            console.warn(`No translations loaded for ${keyPath} (${JSON.stringify(params)}), language: ${this.currentLanguage}`);
+            console.warn(`[I18nService] No translations loaded for language: ${this.#currentLanguage}`);
             return keyPath;
         }
 
@@ -187,104 +161,215 @@ export class I18nService {
             if (value && typeof value === 'object' && key in value) {
                 value = value[key];
             } else {
-                console.warn(`Translation key not found: ${keyPath}`);
+                console.warn(`[I18nService] Translation key not found: ${keyPath}`);
                 return keyPath;
             }
         }
 
-        // Handle parameter substitution if needed
         if (typeof value === 'string' && Object.keys(params).length > 0) {
-            return this.interpolate(value, params);
+            return this.#interpolate(value, params);
         }
 
         return value;
     }
 
     /**
-     * Simple parameter interpolation
-     * @param {string} template - Template string with {{key}} placeholders
-     * @param {Object} params - Parameters to substitute
-     * @return {string}
-     */
-    interpolate(template, params) {
-        return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-            return params[key] !== undefined ? params[key] : match;
-        });
-    }
-
-    /**
-     * Change the current language
-     * @param {string} language - Language code
-     * @return {Promise}
+     * Changes the current language and updates UI
+     * @async
+     * @param {string} language - Language code to switch to
+     * @param {boolean} forceRender - Force UI update even if same language
+     * @returns {Promise<void>}
      */
     async changeLanguage(language, forceRender = false) {
-        if (language === this.currentLanguage && !forceRender) {
+        if (language === this.#currentLanguage && !forceRender) {
             return;
         }
 
-        this.currentLanguage = language;
-        await this.loadTranslations(language);
+        this.#currentLanguage = language;
+        await this.#loadTranslations(language);
 
-        // Update HTML lang attribute and text direction
         document.documentElement.lang = language;
-        this.updateTextDirection();
+        this.#updateTextDirection();
+        this.#saveLangToLocalStorage();
+        this.#updateUI();
+        this.#emitLanguageChanged();
+        this.#updateURLLanguageParam(language);
 
-        // Save to localStorage
-        this.saveLangToLocalStorage();
-
-        // Update UI with new translations
-        this.updateUI();
-
-        // Emit language changed event
-        this.emitLanguageChanged();
-
-        // Update URL without reload
-        const url = new URL(window.location);
-        url.searchParams.set('lang', language);
-        window.history.replaceState({}, '', url);
-
-        // Log language change
-        console.log(`Language changed to: ${language}`);
+        console.log(`[I18nService] Language changed to: ${language}`);
     }
 
     /**
-     * Send language changed event to notify other components
+     * Re-applies current language settings and updates UI
+     * Useful for refreshing translations after dynamic content changes
+     * @async
+     * @returns {Promise<void>}
      */
-    emitLanguageChanged() {
-        window.dispatchEvent(new CustomEvent('languageChanged', {
-            detail: { language: this.currentLanguage }
-        }));
-    }
-
-    /**
-     * Get the current language
-     * @return {string}
-     */
-    getCurrentLanguage() {
-        return this.currentLanguage;
-    }
-
-    /**
-     * Update all UI elements based on current language
-     * Single entry point for all UI translations
-     * Supports both textContent and placeholder attributes via data-i18n-target
-     * @return {void}
-     */
-    updateUI() {
-        // Update page title
-        document.title = this.t('app.title');
-
-        // Update brand text
-        const brandText = document.getElementById('brand-text');
-        if (brandText) {
-            brandText.textContent = this.t('app.brand');
+    async reapply() {
+        if (!this.#currentLanguage) {
+            console.warn('[I18nService] No language set to reapply');
+            return;
         }
 
-        // Update all elements with data-i18n attribute
-        // Each element can specify target: 'text' (default), 'placeholder', or 'value'
+        await this.changeLanguage(this.#currentLanguage, true);
+    }
+
+    /**
+     * Gets the current language code
+     * @returns {string} Current language code
+     */
+    getCurrentLanguage() {
+        return this.#currentLanguage;
+    }
+
+    /**
+     * Gets questions for a specific phase
+     * @param {string} phase - The phase to get questions for
+     * @returns {Array} Array of question objects
+     */
+    getQuestions(phase) {
+        try {
+            const questions = this.t(`questions.${phase}`);
+
+            if (!questions || !Array.isArray(questions)) {
+                console.warn(`[I18nService] No questions found for phase: ${phase}`);
+                return [];
+            }
+
+            return questions;
+        } catch (error) {
+            console.error(`[I18nService] Error getting questions for phase ${phase}:`, error);
+            return [];
+        }
+    }
+
+    /**
+     * Renders example questions for a phase into a container
+     * @param {string} phase - The phase to render questions for
+     * @param {HTMLElement} container - The container element to render into
+     * @param {Function} onQuestionClick - Callback when a question is clicked
+     * @returns {void}
+     */
+    renderQuestions(phase, container, onQuestionClick) {
+        if (!container) return;
+
+        const questions = this.getQuestions(phase);
+        container.innerHTML = '';
+
+        if (questions.length === 0) {
+            console.warn(`[I18nService] No questions available for phase ${phase}`);
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        questions.forEach(question => {
+            if (question.questions && Array.isArray(question.questions)) {
+                const subgroupElement = this.#createSubgroupElement(question, phase, onQuestionClick);
+                fragment.appendChild(subgroupElement);
+            } else {
+                const questionElement = this.#createQuestionElement(question, phase, onQuestionClick);
+                fragment.appendChild(questionElement);
+            }
+        });
+
+        container.appendChild(fragment);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EVENT HANDLERS (PRIVATE)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Handles phase change event for question rendering
+     * @private
+     * @param {CustomEvent} event - Phase change event
+     * @returns {void}
+     */
+    #onPhaseChanged(event) {
+        const { phase } = event.detail;
+        this.#currentPhase = phase;
+        this.renderQuestions(phase, this.#elements.questionsContainer, (text) => this.#handleQuestionClick(text));
+    }
+
+    /**
+     * Handles language change event for question re-rendering
+     * @private
+     * @returns {void}
+     */
+    #onLanguageChangedForQuestions() {
+        if (this.#currentPhase && this.#elements.questionsContainer) {
+            this.renderQuestions(this.#currentPhase, this.#elements.questionsContainer, (text) => this.#handleQuestionClick(text));
+        }
+    }
+
+    /**
+     * Handles language select dropdown change
+     * @private
+     * @param {Event} event - Change event from select element
+     * @returns {Promise<void>}
+     */
+    async #onLanguageSelectChange(event) {
+        const selectedLanguage = event.target.value;
+
+        if (selectedLanguage && selectedLanguage !== this.#currentLanguage) {
+            await this.changeLanguage(selectedLanguage);
+        }
+    }
+
+    /**
+     * Handles question click - sets input value and focuses
+     * @private
+     * @param {string} questionText - The question text to set
+     * @returns {void}
+     */
+    #handleQuestionClick(questionText) {
+        if (this.#elements.chatInput) {
+            this.#elements.chatInput.value = questionText;
+            this.#elements.chatInput.focus();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DOM OPERATIONS (PRIVATE)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Caches DOM element references
+     * @private
+     * @returns {void}
+     */
+    #cacheElements() {
+        this.#elements = {
+            welcomeMessage: document.getElementById('welcome-message'),
+            languageSelect: document.getElementById('userMenuLanguageSelect'),
+            questionsContainer: document.getElementById('questions-container'),
+            chatInput: document.getElementById('chatInput')
+        };
+    }
+
+    /**
+     * Updates document direction based on language translations
+     * @private
+     * @returns {void}
+     */
+    #updateTextDirection() {
+        const translations = this.#translations[this.#currentLanguage];
+        const direction = translations?.language?.dir || 'ltr';
+        document.documentElement.dir = direction;
+        document.body.dir = direction;
+    }
+
+    /**
+     * Updates all UI elements with current translations
+     * @private
+     * @returns {void}
+     */
+    #updateUI() {
+        document.title = this.t('app.title');
+
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
-            const target = el.getAttribute('data-i18n-target') || 'text'; // Default to text
+            const target = el.getAttribute('data-i18n-target') || 'text';
             const translation = this.t(key);
 
             if (target === 'placeholder') {
@@ -292,255 +377,105 @@ export class I18nService {
             } else if (target === 'value') {
                 el.value = translation;
             } else {
-                // target === 'text' or default
-                // Check if element contains an icon (for token labels)
                 const existingIcon = el.querySelector('i');
+
                 if (existingIcon && el.classList.contains('token-label')) {
-                    // Preserve the icon, update text
                     const iconHTML = existingIcon.outerHTML;
                     el.innerHTML = iconHTML + ' ' + translation + ':';
                 } else {
-                    // Regular text update
                     el.textContent = translation;
                 }
             }
         });
 
-        // Update welcome message with user name interpolation
-        const welcomeMessage = document.getElementById('welcome-message');
-        if (welcomeMessage) {
+        if (this.#elements.welcomeMessage) {
             const userName = this.t('userProfile.name');
-            welcomeMessage.textContent = this.t('chat.greeting', { name: userName });
+            this.#elements.welcomeMessage.textContent = this.t('chat.greeting', { name: userName });
         }
     }
 
     /**
-     * Populate language options in a select element using cached supported languages
-     * @return {Promise<void>}
+     * Populates language selector dropdown with available languages
+     * @private
+     * @returns {void}
      */
-    async populateLanguageSelect() {
-        const selectElement = document.getElementById('userMenuLanguageSelect');
+    #populateLanguageSelect() {
+        if (!this.#elements.languageSelect || !this.#cachedLanguagesData?.languages) return;
 
-        if (!selectElement) return;
+        const languages = this.#cachedLanguagesData.languages;
+        this.#elements.languageSelect.innerHTML = '';
 
-        try {
-            // Use already fetched supported languages data instead of fetching again
-            const data = await this.fetchSupportedLanguages();
-
-            if (data.languages && Array.isArray(data.languages)) {
-                // Clear existing options
-                selectElement.innerHTML = '';
-
-                // Use DocumentFragment for better performance
-                const fragment = document.createDocumentFragment();
-                data.languages.forEach(lang => {
-                    const option = document.createElement('option');
-                    option.value = lang.code;
-                    option.textContent = lang.nativeName || lang.name || lang.code;
-                    fragment.appendChild(option);
-                });
-                selectElement.appendChild(fragment);
-
-                // Set current language as selected
-                selectElement.value = this.currentLanguage;
-
-                // Setup change listener (bind once)
-                selectElement.addEventListener('change', this.onLanguageSelectChange.bind(this));
-            }
-        } catch (error) {
-            console.error('Error populating language select:', error);
-        }
-    }
-
-    /**
-     * Handle language select change event
-     */
-    async onLanguageSelectChange(event) {
-        const selectedLanguage = event.target.value;
-        if (selectedLanguage && selectedLanguage !== this.currentLanguage) {
-            await this.changeLanguage(selectedLanguage);
-        }
-    }
-
-    // ========================================
-    // Question Rendering Methods
-    // ========================================
-
-    /**
-     * Initialize question rendering with container and callback
-     * Registers event listeners for phase and language changes
-     */
-    initQuestionRendering() {
-        this.questionsContainer = document.getElementById('questions-container');
-        this.chatInput = document.getElementById('chatInput');
-        this.currentPhase = null;
-
-        // Listen for phase changes
-        window.addEventListener('phaseChanged', this.onPhaseChanged.bind(this));
-        
-        // Listen for language changes to re-render questions
-        window.addEventListener('languageChanged', this.onLanguageChangedForQuestions.bind(this));
-    }
-
-    /**
-     * Handle question click - set input and focus
-     */
-    handleQuestionClick(questionText) {
-        if (this.chatInput) {
-            this.chatInput.value = questionText;
-            this.chatInput.focus();
-        }
-    }
-
-    /**
-     * Handle phase change event for question rendering
-     */
-    onPhaseChanged(event) {
-        const { phase } = event.detail;
-        this.currentPhase = phase;
-        this.renderQuestions(phase, this.questionsContainer, (text) => this.handleQuestionClick(text));
-    }
-
-    /**
-     * Handle language change event for question re-rendering
-     */
-    onLanguageChangedForQuestions(event) {
-        if (this.currentPhase && this.questionsContainer) {
-            this.renderQuestions(this.currentPhase, this.questionsContainer, (text) => this.handleQuestionClick(text));
-        }
-    }
-
-    /**
-     * Get questions for current language and phase
-     * @param {string} phase - The phase to get questions for
-     * @return {Array}
-     */
-    getQuestions(phase) {
-        try {
-            const questions = this.t(`questions.${phase}`);
-            if (!questions || !Array.isArray(questions)) {
-                console.warn(`No questions found for phase: ${phase} in language: ${this.currentLanguage}`);
-                return [];
-            }
-            return questions;
-        } catch (error) {
-            console.error(`Error getting questions for phase ${phase}:`, error);
-            return [];
-        }
-    }
-
-    /**
-     * Render example questions for a phase
-     * @param {string} phase - The phase to render questions for
-     * @param {HTMLElement} container - The container element to render into
-     * @param {Function} onQuestionClick - Callback when a question is clicked
-     */
-    renderQuestions(phase, container, onQuestionClick) {
-        if (!container) return;
-
-        const questions = this.getQuestions(phase);
-        
-        // Clear existing questions
-        container.innerHTML = '';
-        
-        if (questions.length === 0) {
-            console.warn(`No questions available for phase ${phase} in language ${this.currentLanguage}`);
-            return;
-        }
-        
-        // Create question elements
         const fragment = document.createDocumentFragment();
-        questions.forEach(question => {
-            // Check if this is a subgroup (has a 'questions' property)
-            if (question.questions && Array.isArray(question.questions)) {
-                const subgroupElement = this.createSubgroupElement(question, phase, onQuestionClick);
-                fragment.appendChild(subgroupElement);
-            } else {
-                const questionElement = this.createQuestionElement(question, phase, onQuestionClick);
-                fragment.appendChild(questionElement);
-            }
+
+        languages.forEach(lang => {
+            const option = document.createElement('option');
+            option.value = lang.code;
+            option.textContent = lang.nativeName || lang.name || lang.code;
+            fragment.appendChild(option);
         });
-        
-        container.appendChild(fragment);
+
+        this.#elements.languageSelect.appendChild(fragment);
+        this.#elements.languageSelect.value = this.#currentLanguage;
     }
 
     /**
-     * Parse icon string and return HTML
-     * @param {string} iconString - Icon string (e.g., "material-symbols:icon_name")
-     * @return {string} HTML string
-     */
-    getIconHTML(iconString) {
-        if (!iconString) return '';
-        
-        if (iconString.includes(':')) {
-            const [className, iconName] = iconString.split(':');
-            return `<span class="${className}">${iconName}</span>`;
-        }
-        
-        return `<span class="material-symbols">${iconString}</span>`;
-    }
-
-    /**
-     * Create a subgroup element with nested questions
+     * Creates a subgroup element with nested questions
+     * @private
      * @param {Object} subgroup - Subgroup data with title, icon, and questions array
      * @param {string} phase - Current phase
      * @param {Function} onQuestionClick - Callback when a question is clicked
-     * @return {HTMLElement}
+     * @returns {HTMLElement} The subgroup element
      */
-    createSubgroupElement(subgroup, phase, onQuestionClick) {
+    #createSubgroupElement(subgroup, phase, onQuestionClick) {
         const subgroupDiv = document.createElement('div');
         subgroupDiv.className = 'questions-subgroup';
-        
-        // Create subgroup header
+
         const header = document.createElement('div');
         header.className = 'subgroup-header';
-        header.innerHTML = `<h3>${this.getIconHTML(subgroup.icon)}${subgroup.title}</h3>`;
+        header.innerHTML = `<h3>${this.#getIconHTML(subgroup.icon)}${subgroup.title}</h3>`;
         subgroupDiv.appendChild(header);
-        
-        // Create nested questions container
+
         const questionsContainer = document.createElement('div');
         questionsContainer.className = 'subgroup-questions';
-        
+
         subgroup.questions.forEach(question => {
-            const questionElement = this.createQuestionElement(question, phase, onQuestionClick);
+            const questionElement = this.#createQuestionElement(question, phase, onQuestionClick);
             questionsContainer.appendChild(questionElement);
         });
-        
+
         subgroupDiv.appendChild(questionsContainer);
         return subgroupDiv;
     }
 
     /**
-     * Create a question element with click handler
+     * Creates a question element with click handler
+     * @private
      * @param {Object} question - Question data with title, text, icon, and optional action
      * @param {string} phase - Current phase
      * @param {Function} onQuestionClick - Callback when a question is clicked
-     * @return {HTMLElement}
+     * @returns {HTMLElement} The question element
      */
-    createQuestionElement(question, phase, onQuestionClick) {
+    #createQuestionElement(question, phase, onQuestionClick) {
         const questionDiv = document.createElement('div');
         questionDiv.className = 'example-question';
-        
-        // Check if this is an action question (like refresh)
+
         if (question.action === 'refresh') {
             questionDiv.classList.add('action-question');
             questionDiv.setAttribute('data-action', 'refresh');
         } else {
             questionDiv.setAttribute('data-question', question.text);
         }
-        
+
         questionDiv.innerHTML = `
-            <h4>${this.getIconHTML(question.icon)}${question.title}</h4>
+            <h4>${this.#getIconHTML(question.icon)}${question.title}</h4>
             <p>${question.text}</p>
         `;
 
         questionDiv.addEventListener('click', () => {
             if (question.action === 'refresh') {
-                // Save current phase to localStorage before refreshing
                 if (phase) {
                     localStorage.setItem('currentPhase', phase);
                 }
-                // Refresh the page
                 window.location.reload();
             } else if (onQuestionClick) {
                 onQuestionClick(question.text);
@@ -549,4 +484,224 @@ export class I18nService {
 
         return questionDiv;
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EVENT LISTENER MANAGEMENT (PRIVATE)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Binds event handlers to preserve context
+     * @private
+     * @returns {void}
+     */
+    #bindEventHandlers() {
+        this.#boundHandlers = {
+            phaseChanged: this.#onPhaseChanged.bind(this),
+            languageChangedForQuestions: this.#onLanguageChangedForQuestions.bind(this),
+            languageSelectChange: this.#onLanguageSelectChange.bind(this)
+        };
+    }
+
+    /**
+     * Attaches all event listeners
+     * @private
+     * @returns {void}
+     */
+    #attachListeners() {
+        window.addEventListener('phaseChanged', this.#boundHandlers.phaseChanged);
+        window.addEventListener('languageChanged', this.#boundHandlers.languageChangedForQuestions);
+        this.#elements.languageSelect?.addEventListener('change', this.#boundHandlers.languageSelectChange);
+    }
+
+    /**
+     * Detaches all event listeners
+     * @private
+     * @returns {void}
+     */
+    #detachListeners() {
+        window.removeEventListener('phaseChanged', this.#boundHandlers.phaseChanged);
+        window.removeEventListener('languageChanged', this.#boundHandlers.languageChangedForQuestions);
+        this.#elements.languageSelect?.removeEventListener('change', this.#boundHandlers.languageSelectChange);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE HELPERS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Detects user's preferred language from various sources
+     * @private
+     * @returns {string} Detected language code
+     */
+    #detectLanguage() {
+        const supportedCodes = this.#cachedLanguagesData?.languages?.map(l => l.code) || [DEFAULT_LANGUAGE];
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlLang = urlParams.get('lang');
+        if (urlLang && supportedCodes.includes(urlLang)) {
+            return urlLang;
+        }
+
+        const savedLang = this.#loadLangFromLocalStorage();
+        if (savedLang && supportedCodes.includes(savedLang)) {
+            return savedLang;
+        }
+
+        const browserLang = navigator.language?.substring(0, 2).toLowerCase();
+        if (browserLang && supportedCodes.includes(browserLang)) {
+            return browserLang;
+        }
+
+        return supportedCodes.includes(DEFAULT_LANGUAGE) ? DEFAULT_LANGUAGE : supportedCodes[0];
+    }
+
+    /**
+     * Fetches supported languages from backend API (cached)
+     * @private
+     * @async
+     * @returns {Promise<Object>} Languages data from API
+     * @throws {Error} When API request fails
+     */
+    async #fetchSupportedLanguages() {
+        if (this.#cachedLanguagesData) {
+            return this.#cachedLanguagesData;
+        }
+
+        try {
+            this.#cachedLanguagesData = await this.#apiService.get('/api/languages');
+            return this.#cachedLanguagesData;
+        } catch (error) {
+            console.error('[I18nService] Error fetching supported languages:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Loads translations for a specific language
+     * @private
+     * @async
+     * @param {string} language - Language code to load
+     * @returns {Promise<Object>} Translations object
+     */
+    async #loadTranslations(language) {
+        if (this.#translations[language]) {
+            return this.#translations[language];
+        }
+
+        this.#translations[language] = await this.#fetchTranslations(language);
+        return this.#translations[language];
+    }
+
+    /**
+     * Fetches translations from backend API
+     * @private
+     * @async
+     * @param {string} language - Language code to fetch
+     * @returns {Promise<Object>} Translations data
+     * @throws {Error} When API request fails and no fallback available
+     */
+    async #fetchTranslations(language) {
+        try {
+            return await this.#apiService.get(`/api/translations/${language}`);
+        } catch (error) {
+            console.error(`[I18nService] Error fetching translations for ${language}:`, error);
+
+            if (language !== DEFAULT_LANGUAGE) {
+                console.log(`[I18nService] Falling back to ${DEFAULT_LANGUAGE} translations`);
+                return this.#fetchTranslations(DEFAULT_LANGUAGE);
+            }
+
+            throw error;
+        }
+    }
+
+    /**
+     * Saves current language to localStorage
+     * @private
+     * @returns {void}
+     */
+    #saveLangToLocalStorage() {
+        try {
+            localStorage.setItem(STORAGE_KEY, this.#currentLanguage);
+        } catch (error) {
+            console.error('[I18nService] Error saving language to localStorage:', error);
+        }
+    }
+
+    /**
+     * Loads language from localStorage
+     * @private
+     * @returns {string|null} Saved language code or null
+     */
+    #loadLangFromLocalStorage() {
+        try {
+            return localStorage.getItem(STORAGE_KEY);
+        } catch (error) {
+            console.error('[I18nService] Error loading language from localStorage:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Emits language changed event to notify other components
+     * @private
+     * @returns {void}
+     */
+    #emitLanguageChanged() {
+        window.dispatchEvent(new CustomEvent('languageChanged', {
+            detail: { language: this.#currentLanguage }
+        }));
+    }
+
+    /**
+     * Updates URL with current language parameter
+     * @private
+     * @param {string} language - Language code to set in URL
+     * @returns {void}
+     */
+    #updateURLLanguageParam(language) {
+        const url = new URL(window.location);
+        url.searchParams.set('lang', language);
+        window.history.replaceState({}, '', url);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // UTILITY METHODS (PRIVATE)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Interpolates parameters into a template string
+     * @private
+     * @param {string} template - Template with {{key}} placeholders
+     * @param {Object} params - Parameters to substitute
+     * @returns {string} Interpolated string
+     */
+    #interpolate(template, params) {
+        return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+            return params[key] !== undefined ? params[key] : match;
+        });
+    }
+
+    /**
+     * Parses icon string and returns HTML
+     * @private
+     * @param {string} iconString - Icon string (e.g., "material-symbols:icon_name")
+     * @returns {string} HTML string for the icon
+     */
+    #getIconHTML(iconString) {
+        if (!iconString) return '';
+
+        if (iconString.includes(':')) {
+            const [className, iconName] = iconString.split(':');
+            return `<span class="${className}">${iconName}</span>`;
+        }
+
+        return `<span class="material-symbols">${iconString}</span>`;
+    }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { I18nService };

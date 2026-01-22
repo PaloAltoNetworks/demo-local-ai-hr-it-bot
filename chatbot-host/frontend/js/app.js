@@ -188,7 +188,7 @@ class ChatBotApp {
                 await module.init();
             }
         }
-        await this.modules.i18n.changeLanguage(this.modules.i18n.currentLanguage, true);
+        await this.modules.i18n.reapply();
         await this.modules.phaseManager.switchPhase(this.modules.phaseManager.currentPhase, true);
     }
 
