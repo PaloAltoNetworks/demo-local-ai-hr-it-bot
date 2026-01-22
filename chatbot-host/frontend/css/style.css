@@ -1957,6 +1957,20 @@ body {
   line-height: var(--line-height-tight);
 }
 
+.thinking-step--error {
+  border-color: var(--color-red-250);
+  background: rgba(var(--color-red-rgb, 221, 102, 82), 0.05);
+}
+
+.thinking-step--error .thinking-step-time {
+  color: var(--color-red-250);
+}
+
+.thinking-step--error .thinking-step-content {
+  color: var(--color-red-500);
+  font-weight: var(--font-weight-medium);
+}
+
 /* LLM Provider Badge Styles */
 .message-text-wrapper {
   position: relative;
@@ -2333,10 +2347,6 @@ body {
 }
 
 /* System messages in chat */
-.message--error {
-  align-self: center;
-  max-width: 100%;
-}
 
 .message--error .message-avatar {
   background-color: rgba(var(--color-error-rgb, 192, 21, 47), 0.1);
@@ -2356,8 +2366,7 @@ body {
 
 /* System message styling */
 .system-message {
-  align-self: center;
-  max-width: 100%;
+  position: relative;
 }
 
 .system-message .message-avatar {

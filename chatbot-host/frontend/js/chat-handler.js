@@ -522,7 +522,15 @@ export class ChatHandler {
                     contentToDisplay = contentToDisplay.text;
                 }
                 
-                this.#displayBotMessageWithThinking(contentToDisplay, messagePhase);
+                // Check if response is actually an error message
+                const isErrorResponse = this.#isErrorResponse(contentToDisplay);
+                
+                if (isErrorResponse) {
+                    // Display as error instead of normal message
+                    this.#displayErrorMessage(`Backend error: ${contentToDisplay}`);
+                } else {
+                    this.#displayBotMessageWithThinking(contentToDisplay, messagePhase);
+                }
             }
         }
     }
@@ -698,8 +706,9 @@ export class ChatHandler {
             `;
             
             this.#thinkingChain.forEach((thought) => {
+                const errorClass = thought.isError ? ' thinking-step--error' : '';
                 messageHTML += `
-                    <div class="thinking-step">
+                    <div class="thinking-step${errorClass}">
                         <div class="thinking-step-header">
                             <span class="thinking-step-time">${thought.timestamp}</span>
                         </div>
@@ -801,9 +810,12 @@ export class ChatHandler {
     #addToThinkingChain(text) {
         const cleanText = text.replace(/^\[COORDINATOR\]\s*/, '');
         const timestamp = new Date().toLocaleTimeString(this.#currentLanguage);
+        const isError = /^Error:/i.test(cleanText);
+        
         this.#thinkingChain.push({
             text: cleanText,
-            timestamp
+            timestamp,
+            isError
         });
     }
 
@@ -1000,6 +1012,32 @@ export class ChatHandler {
         window.dispatchEvent(new CustomEvent('appNotification', {
             detail: { message, type: 'warning', duration: 3000 }
         }));
+    }
+
+    /**
+     * @description Check if response content is actually an error message
+     * @param {string} content - Response content to check
+     * @returns {boolean} True if content appears to be an error
+     * @private
+     */
+    #isErrorResponse(content) {
+        if (!content || typeof content !== 'string') {
+            return false;
+        }
+        
+        // Check for common error patterns
+        const errorPatterns = [
+            /^Error:/i,
+            /\.\w+ is not a function$/,
+            /^TypeError:/i,
+            /^ReferenceError:/i,
+            /^SyntaxError:/i,
+            /^Cannot read property/i,
+            /^Cannot read properties of/i,
+            /^Unexpected token/i
+        ];
+        
+        return errorPatterns.some(pattern => pattern.test(content.trim()));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
