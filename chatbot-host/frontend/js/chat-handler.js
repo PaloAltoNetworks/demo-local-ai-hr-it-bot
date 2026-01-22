@@ -500,7 +500,20 @@ export class ChatHandler {
         this.#hideThinkingAnimation();
         
         if (response && response.messages) {
-            this.#chatHistory = response.messages;
+            // Backend now returns only the assistant message
+            // Add it to chat history if not already present
+            response.messages.forEach(msg => {
+                // Only add if not already in history
+                const isDuplicate = this.#chatHistory.some(histMsg =>
+                    histMsg.role === msg.role &&
+                    histMsg.content === msg.content &&
+                    Math.abs(new Date(histMsg.timestamp).getTime() - new Date(msg.timestamp).getTime()) < 1000
+                );
+                
+                if (!isDuplicate) {
+                    this.#chatHistory.push(msg);
+                }
+            });
 
             if (response.metadata) {
                 this.#setTokenMetadata(response.metadata);
@@ -509,9 +522,10 @@ export class ChatHandler {
                 }
             }
 
-            const lastMessage = response.messages[response.messages.length - 1];
-            if (lastMessage && lastMessage.role === 'assistant') {
-                let contentToDisplay = lastMessage.content;
+            // Get the assistant message (should be the only one)
+            const assistantMsg = response.messages.find(msg => msg.role === 'assistant');
+            if (assistantMsg) {
+                let contentToDisplay = assistantMsg.content;
                 
                 if (Array.isArray(contentToDisplay)) {
                     contentToDisplay = contentToDisplay

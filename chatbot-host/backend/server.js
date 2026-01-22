@@ -183,11 +183,20 @@ app.post('/api/process-prompt', async (req, res) => {
             language: language
         });
 
-        // Add messages to session history
-        messages.forEach(msg => sessionManager.addMessageToHistory(session.sessionId, msg));
-
-        // Get the latest user message
+        // Add only the latest user message to session history (frontend sends full history for context, but we only add new messages)
         const userMessage = messages[messages.length - 1];
+        if (userMessage && userMessage.role === 'user') {
+            // Check if this exact message is already in history to prevent duplicates
+            const isDuplicate = session.messageHistory.some(msg => 
+                msg.role === 'user' && 
+                msg.content === userMessage.content && 
+                Math.abs(new Date(msg.timestamp).getTime() - new Date(userMessage.timestamp).getTime()) < 1000
+            );
+            
+            if (!isDuplicate) {
+                sessionManager.addMessageToHistory(session.sessionId, userMessage);
+            }
+        }
 
         // Set SSE headers - these force Chrome to NOT buffer
         res.setHeader('Content-Type', 'text/event-stream');
@@ -323,7 +332,9 @@ app.post('/api/process-prompt', async (req, res) => {
                 sessionManager.addMessageToHistory(session.sessionId, mcpResponse);
                 const finalResponse = {
                     type: 'response',
-                    messages: session.messageHistory,
+                    messages: [
+                        mcpResponse
+                    ],
                     sessionId: session.sessionId,
                     source: 'mcp-gateway'
                 };
@@ -448,7 +459,9 @@ app.post('/api/prompt', async (req, res) => {
 
                 const finalResponse = {
                     type: 'response',
-                    messages: session.messageHistory,
+                    messages: [
+                        assistantMessage
+                    ],
                     sessionId: session.sessionId,
                     source: 'mcp-gateway'
                 };
