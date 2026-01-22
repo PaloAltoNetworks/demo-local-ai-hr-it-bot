@@ -4,8 +4,7 @@
  * @responsibilities
  * - Manage LLM provider selection (AWS, Google Cloud, Azure, etc.)
  * - Handle provider dropdown UI interactions
- * - Cache provider preferences in localStorage
- * - Sync provider selection with backend API
+ * - Persist provider preference in localStorage
  * - Dispatch provider change events to the application
  *
  * @dependencies
@@ -22,8 +21,8 @@
 // MODULE CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** @type {string} LocalStorage key for caching provider data */
-const CACHE_KEY = 'llm-providers-cache';
+/** @type {string} LocalStorage key for storing current provider */
+const STORAGE_KEY = 'currentLLMProvider';
 
 /** @type {string} Default fallback provider ID */
 const DEFAULT_PROVIDER_ID = 'aws';
@@ -55,7 +54,10 @@ class LLMProviderManager {
   /** @type {Array<Object>} Available LLM providers from backend */
   #providers;
 
-  /** @type {string|null} Backend-defined default provider ID */
+  /** @type {string|null} Currently active provider ID */
+  #currentProvider;
+
+  /** @type {string|null} Backend default provider ID */
   #backendDefaultProvider;
 
   /** @type {boolean} Current state of dropdown menu */
@@ -78,6 +80,7 @@ class LLMProviderManager {
   constructor(apiService = null) {
     this.#apiService = apiService;
     this.#providers = [];
+    this.#currentProvider = null;
     this.#backendDefaultProvider = null;
     this.#isMenuOpen = false;
     this.#elements = {};
@@ -96,9 +99,15 @@ class LLMProviderManager {
   async init() {
     this.#cacheElements();
     this.#bindEventHandlers();
-    await this.#loadProvidersFromBackend();
-    this.#loadProviderPreference();
+
+    await this.#fetchLLMProviders();
+    this.#currentProvider = this.#detectProvider();
+
+    this.#populateDropdown();
+    this.setProvider(this.#currentProvider, true);
+
     this.#attachListeners();
+
     console.log('[LLMProviderManager] Initialized');
   }
 
@@ -112,6 +121,7 @@ class LLMProviderManager {
       this.#elements.menu.innerHTML = '';
     }
     this.#providers = [];
+    this.#currentProvider = null;
     this.#backendDefaultProvider = null;
     this.#isMenuOpen = false;
     this.#elements = {};
@@ -124,20 +134,11 @@ class LLMProviderManager {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Sets the API service dependency
-   * @param {Object} apiService - API service for backend communication
-   * @returns {void}
-   */
-  setApiService(apiService) {
-    this.#apiService = apiService;
-  }
-
-  /**
    * Sets the active provider and persists the selection
    * @param {string} provider - Provider ID to set as active
    * @returns {void}
    */
-  setProvider(provider) {
+  setProvider(provider, forceRender = false) {
     const supportedProviderIds = this.#providers.map(p => p.id);
 
     if (!supportedProviderIds.includes(provider)) {
@@ -145,9 +146,14 @@ class LLMProviderManager {
       return;
     }
 
+    if (provider === this.#currentProvider && !forceRender) {
+      return;
+    }
+
     console.log(`[LLMProviderManager] Setting provider to: ${provider}`);
 
-    this.#updateCacheProvider(provider);
+    this.#currentProvider = provider;
+    this.#saveProviderToLocalStorage();
     this.#updateButtonDisplay(provider);
     this.#updateMenuSelection(provider);
 
@@ -163,34 +169,7 @@ class LLMProviderManager {
    * @returns {string} Current provider ID
    */
   getCurrentProvider() {
-    const stored = this.#getStoredProvider();
-
-    if (stored) {
-      return stored;
-    }
-
-    return this.#backendDefaultProvider || (this.#providers.length > 0 ? this.#providers[0].id : DEFAULT_PROVIDER_ID);
-  }
-
-  /**
-   * Gets metadata for a specific provider or the current provider
-   * @param {string|null} providerId - Provider ID to get metadata for, or null for current
-   * @returns {Object} Provider metadata object
-   */
-  getProviderMetadata(providerId = null) {
-    const targetId = providerId || this.getCurrentProvider();
-    return this.#providers.find(p => p.id === targetId) || this.#getDefaultProviderMetadata();
-  }
-
-  /**
-   * Handles external provider change events
-   * @param {CustomEvent} event - Event containing provider change details
-   * @returns {void}
-   */
-  onChanged(event) {
-    if (event?.detail?.provider) {
-      this.#applyProviderChange(event.detail.provider);
-    }
+    return this.#currentProvider || DEFAULT_PROVIDER_ID;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -400,30 +379,56 @@ class LLMProviderManager {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Loads providers from backend API with cache fallback
+   * Fetches LLM providers from backend API
    * @private
    * @async
    * @returns {Promise<void>}
    */
-  async #loadProvidersFromBackend() {
+  async #fetchLLMProviders() {
     try {
       const data = await this.#fetchProvidersFromAPI();
 
       if (data?.providers) {
         this.#providers = data.providers;
-
+        
+        // Store backend default for detection
         if (data.default_provider) {
           this.#backendDefaultProvider = data.default_provider;
         }
 
-        this.#cacheProviders(data);
-        this.#populateDropdown();
-        console.log('[LLMProviderManager] LLM providers loaded from backend and cached');
+        console.log('[LLMProviderManager] LLM providers fetched from backend');
       }
     } catch (error) {
-      console.error('[LLMProviderManager] Failed to load providers from backend:', error);
-      this.#loadProvidersFromCache();
+      console.error('[LLMProviderManager] Failed to fetch providers from backend:', error);
     }
+  }
+
+  /**
+   * Detects which provider to use based on localStorage and backend default
+   * @private
+   * @returns {string} Provider ID to use
+   */
+  #detectProvider() {
+    const savedProvider = this.#loadProviderFromLocalStorage();
+    const supportedProviderIds = this.#providers.map(p => p.id);
+
+    if (savedProvider && supportedProviderIds.includes(savedProvider)) {
+      return savedProvider;
+    }
+
+    if (this.#backendDefaultProvider && supportedProviderIds.includes(this.#backendDefaultProvider)) {
+      return this.#backendDefaultProvider;
+    }
+
+    if (this.#providers.length > 0) {
+      return this.#providers[0].id;
+    }
+
+    if (savedProvider) {
+      console.warn(`[LLMProviderManager] Saved provider '${savedProvider}' is no longer available, using default`);
+    }
+
+    return DEFAULT_PROVIDER_ID;
   }
 
   /**
@@ -447,136 +452,32 @@ class LLMProviderManager {
   }
 
   /**
-   * Caches providers data to localStorage
+   * Saves provider to localStorage
    * @private
-   * @param {Object} data - Provider data to cache
    * @returns {void}
    */
-  #cacheProviders(data) {
+  #saveProviderToLocalStorage() {
     try {
-      const existingCache = this.#getCache() || {};
-      const cacheData = {
-        providers: data.providers || [],
-        default_provider: data.default_provider || null,
-        selected_provider: existingCache.selected_provider || null,
-        cached_at: new Date().toISOString()
-      };
-
-      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-      console.log('[LLMProviderManager] Providers cached locally');
-    } catch (error) {
-      console.warn('[LLMProviderManager] Failed to cache providers:', error);
-    }
-  }
-
-  /**
-   * Loads providers from localStorage cache
-   * @private
-   * @returns {boolean} True if cache was loaded successfully
-   */
-  #loadProvidersFromCache() {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-
-      if (cached) {
-        const cacheData = JSON.parse(cached);
-        this.#providers = cacheData.providers || [];
-        this.#backendDefaultProvider = cacheData.default_provider || null;
-        this.#populateDropdown();
-        console.log('[LLMProviderManager] LLM providers loaded from local cache');
-        return true;
+      if (!this.#currentProvider) {
+        throw new Error('[LLMProviderManager] Cannot save provider: currentProvider is not set');
       }
+      localStorage.setItem(STORAGE_KEY, this.#currentProvider);
     } catch (error) {
-      console.warn('[LLMProviderManager] Failed to load providers from cache:', error);
-    }
-
-    return false;
-  }
-
-  /**
-   * Loads provider preference from cache or uses default
-   * @private
-   * @returns {void}
-   */
-  #loadProviderPreference() {
-    const cache = this.#getCache();
-    const savedProvider = cache?.selected_provider;
-    const supportedProviderIds = this.#providers.map(p => p.id);
-
-    if (savedProvider && supportedProviderIds.includes(savedProvider)) {
-      this.setProvider(savedProvider);
-    } else if (this.#backendDefaultProvider) {
-      this.setProvider(this.#backendDefaultProvider);
+      console.error('[LLMProviderManager] Error saving provider to localStorage:', error);
     }
   }
 
   /**
-   * Gets cache object from localStorage
+   * Loads provider from localStorage
    * @private
-   * @returns {Object|null} Cached data or null
+   * @returns {string|null} Saved provider ID or null
    */
-  #getCache() {
+  #loadProviderFromLocalStorage() {
     try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      return cached ? JSON.parse(cached) : null;
+      return localStorage.getItem(STORAGE_KEY);
     } catch (error) {
-      console.warn('[LLMProviderManager] Failed to get cache:', error);
+      console.error('[LLMProviderManager] Error loading provider from localStorage:', error);
       return null;
-    }
-  }
-
-  /**
-   * Gets stored provider from cache
-   * @private
-   * @returns {string|null} Stored provider ID or null
-   */
-  #getStoredProvider() {
-    const cache = this.#getCache();
-    return cache?.selected_provider || null;
-  }
-
-  /**
-   * Updates cache with selected provider
-   * @private
-   * @param {string} provider - Provider ID to store
-   * @returns {void}
-   */
-  #updateCacheProvider(provider) {
-    try {
-      const cache = this.#getCache() || {};
-      cache.selected_provider = provider;
-      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-    } catch (error) {
-      console.warn('[LLMProviderManager] Failed to update provider in cache:', error);
-    }
-  }
-
-  /**
-   * Applies provider change without triggering backend update
-   * @private
-   * @param {string} provider - Provider ID to apply
-   * @returns {void}
-   */
-  #applyProviderChange(provider) {
-    const supportedProviderIds = this.#providers.map(p => p.id);
-
-    if (!supportedProviderIds.includes(provider)) {
-      console.warn(`[LLMProviderManager] Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
-      return;
-    }
-
-    console.log(`[LLMProviderManager] Applying provider change to: ${provider}`);
-
-    this.#updateCacheProvider(provider);
-    this.#updateButtonDisplay(provider);
-    this.#updateMenuSelection(provider);
-
-    if (this.#isMenuOpen) {
-      this.#closeMenu();
-    }
-
-    if (this.#apiService) {
-      this.#apiService.setAIProvider(provider);
     }
   }
 
@@ -588,15 +489,6 @@ class LLMProviderManager {
    */
   #notifyChange(provider) {
     window.dispatchEvent(new CustomEvent('llmProviderChanged', { detail: { provider } }));
-  }
-
-  /**
-   * Gets default provider metadata
-   * @private
-   * @returns {Object} Default provider metadata or empty object
-   */
-  #getDefaultProviderMetadata() {
-    return this.#providers.find(p => p.id === this.#backendDefaultProvider) || {};
   }
 }
 
