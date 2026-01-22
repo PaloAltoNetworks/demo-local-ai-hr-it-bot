@@ -277,7 +277,7 @@ ${discussionsText}`;
 if (import.meta.url === `file://${process.argv[1]}`) {
   const agent = new ITAgent();
   agent.start().catch(error => {
-    console.error('❌ Failed to start IT Agent:', error);
+    console.error('Failed to start IT Agent:', error);
     process.exit(1);
   });
 }

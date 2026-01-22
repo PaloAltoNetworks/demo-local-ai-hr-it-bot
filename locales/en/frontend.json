@@ -124,7 +124,8 @@
     "viewDetails": "View Request/Response JSON",
     "checkpoint": "Checkpoint",
     "inputLabel": "INPUT",
-    "outputLabel": "OUTPUT (Raw Prisma AIRS Response)"
+    "outputLabel": "OUTPUT (Raw Prisma AIRS Response)",
+    "viewInConsole": "View in Strata Cloud Manager"
   },
   "language": {
     "code": "en",

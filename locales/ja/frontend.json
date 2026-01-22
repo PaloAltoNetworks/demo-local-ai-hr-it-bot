@@ -124,7 +124,8 @@
     "viewDetails": "リクエスト/レスポンスJSONを表示",
     "checkpoint": "チェックポイント",
     "inputLabel": "入力",
-    "outputLabel": "出力 (Prisma AIRSの生のレスポンス)"
+    "outputLabel": "出力 (Prisma AIRSの生のレスポンス)",
+    "viewInConsole": "Strata Cloud Managerで表示"
   },
   "language": {
     "code": "ja",

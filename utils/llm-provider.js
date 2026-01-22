@@ -122,7 +122,7 @@ class LLMProviderFactory {
         resourceName: process.env.AZURE_RESOURCE_NAME || null,
         baseUrl: process.env.AZURE_BASE_URL || null,
         apiVersion: process.env.AZURE_API_VERSION,
-        useDeploymentBasedUrls: true,
+        useDeploymentBasedUrls: process.env.AZURE_USE_DEPLOYMENT_URLS || false,
       });
       providers.azure = azureClient;
       registeredKeys.push('azure');
@@ -198,7 +198,7 @@ class LLMProviderFactory {
         return `anthropic:${process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022'}`;
 
       case 'azure':
-        return `azure:${process.env.AZURE_MODEL || ''}`;
+        return `azure:${process.env.AZURE_MODEL || 'gpt-5.2-chat'}`;
 
       case 'gcp':
         return `gcp:${process.env.GCP_MODEL || 'gemini-1.5-flash'}`;
@@ -252,10 +252,6 @@ class LLMProviderFactory {
    * Convenience method that handles model lookup and generateText call
    */
   static async generateText(prompt, options = {}) {
-
-    getLogger().debug(`[LLMProvider] generateText() prompt: ${prompt.substring(0, 100)}...`);
-    getLogger().debug(`[LLMProvider] generateText() options: ${JSON.stringify(options)}`);
-
     const {
       system = '',
       temperature = 0.3,
@@ -263,13 +259,8 @@ class LLMProviderFactory {
       provider = null
     } = options;
 
-    getLogger().debug(`[LLMProvider] generateText() getting registry`);
     const registry = this.getRegistry();
-
-    getLogger().debug(`[LLMProvider] generateText() registry obtained`);
     const modelIdentifier = this.buildModelIdentifier(provider);
-
-    getLogger().debug(`[LLMProvider] generateText() using model identifier: ${modelIdentifier}`);
     const model = registry.languageModel(modelIdentifier);
 
     const { text, usage } = await generateText({
@@ -279,9 +270,6 @@ class LLMProviderFactory {
       temperature,
       maxTokens,
     });
-
-    getLogger().debug(`[LLMProvider] generateText() response: ${text.substring(0, 100)}...`);
-    getLogger().debug(`[LLMProvider] generateText() usage: ${JSON.stringify(usage)}`);
 
     return { response: text, usage };
   }

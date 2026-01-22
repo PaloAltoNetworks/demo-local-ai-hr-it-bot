@@ -1,463 +1,499 @@
 /**
- * llm provider Manager for handling llm provider selection
- * Supports AWS, Google Cloud (GCP), and Azure with custom dropdown
- * Handles integration with API service for llm provider updates
+ * @fileoverview LLM Provider Manager for handling LLM provider selection
+ *
+ * @responsibilities
+ * - Manage LLM provider selection (AWS, Google Cloud, Azure, etc.)
+ * - Handle provider dropdown UI interactions
+ * - Persist provider preference in localStorage
+ * - Dispatch provider change events to the application
+ *
+ * @dependencies
+ * - apiService: API communication service for fetching providers
+ *
+ * @events
+ * - Listens: None
+ * - Dispatches: 'llmProviderChanged' - When user selects a different provider
+ *
+ * @version 1.0.0
  */
-export class LLMProviderManager {
-  constructor(apiService = null) {
-    this.CACHE_KEY = 'llm-providers-cache';
-    
-    // Dropdown elements
-    this.dropdownElement = document.getElementById('llmProviderDropdown');
-    this.buttonElement = document.getElementById('llmProviderButton');
-    this.menuElement = document.getElementById('llmProviderMenu');
-    this.logoElement = document.getElementById('llmProviderLogo');
-    
-    this.apiService = apiService;
-    this.changeCallbacks = [];
-    this.providers = [];
-    this.backendDefaultProvider = null;
-    this.isMenuOpen = false;
-    
-    this.init();
-  }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODULE CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** @type {string} LocalStorage key for storing current provider */
+const STORAGE_KEY = 'currentLLMProvider';
+
+/** @type {string} Default fallback provider ID */
+const DEFAULT_PROVIDER_ID = 'aws';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLASS DEFINITION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * @class LLMProviderManager
+ * @description Manages LLM provider selection with dropdown UI, caching, and API integration.
+ * Supports multiple cloud providers (AWS, Google Cloud, Azure) with custom dropdown interface.
+ *
+ * @pattern Singleton-like Manager
+ *
+ * @example
+ * const llmProviderManager = new LLMProviderManager(apiService);
+ * await llmProviderManager.init();
+ * const currentProvider = llmProviderManager.getCurrentProvider();
+ */
+class LLMProviderManager {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIVATE INSTANCE PROPERTIES
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** @type {Object|null} API service for backend communication */
+  #apiService;
+
+  /** @type {Array<Object>} Available LLM providers from backend */
+  #providers;
+
+  /** @type {string|null} Currently active provider ID */
+  #currentProvider;
+
+  /** @type {string|null} Backend default provider ID */
+  #backendDefaultProvider;
+
+  /** @type {boolean} Current state of dropdown menu */
+  #isMenuOpen;
+
+  /** @type {Object} Cached DOM element references */
+  #elements;
+
+  /** @type {Object} Bound event handler references for cleanup */
+  #boundHandlers;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CONSTRUCTOR
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Initialize llm provider manager
+   * Creates a new LLMProviderManager instance
+   * @param {Object|null} apiService - API service for backend communication
+   */
+  constructor(apiService = null) {
+    this.#apiService = apiService;
+    this.#providers = [];
+    this.#currentProvider = null;
+    this.#backendDefaultProvider = null;
+    this.#isMenuOpen = false;
+    this.#elements = {};
+    this.#boundHandlers = {};
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LIFECYCLE METHODS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Initializes the LLM provider manager
+   * @async
+   * @returns {Promise<void>}
    */
   async init() {
-    await this.loadProvidersFromBackend();
-    this.loadProviderPreference();
-    this.attachListeners();
+    this.#cacheElements();
+    this.#bindEventHandlers();
+
+    await this.#fetchLLMProviders();
+    this.#currentProvider = this.#detectProvider();
+
+    this.#populateDropdown();
+    this.setProvider(this.#currentProvider, true);
+
+    this.#attachListeners();
+
+    console.log('[LLMProviderManager] Initialized');
   }
 
   /**
-   * Fetch providers from backend API with cache fallback
+   * Destroys the manager and cleans up resources
+   * @returns {void}
    */
-  async loadProvidersFromBackend() {
-    try {
-      const data = await this.fetchProvidersFromAPI();
-      if (data && data.providers) {
-        this.providers = data.providers;
-        // Store the backend's default provider
-        if (data.default_provider) {
-          this.backendDefaultProvider = data.default_provider;
-        }
-        // Cache the successful response
-        this.cacheProviders(data);
-        this.populateDropdown();
-        console.log('✓ LLM providers loaded from backend and cached');
-      }
-    } catch (error) {
-      console.error('Failed to load providers from backend:', error);
-      // Fallback to cached providers
-      this.loadProvidersFromCache();
+  destroy() {
+    this.#detachListeners();
+    if (this.#elements.menu) {
+      this.#elements.menu.innerHTML = '';
     }
+    this.#providers = [];
+    this.#currentProvider = null;
+    this.#backendDefaultProvider = null;
+    this.#isMenuOpen = false;
+    this.#elements = {};
+    this.#boundHandlers = {};
+    console.log('[LLMProviderManager] Destroyed');
   }
 
-  /**
-   * Fetch LLM providers from API endpoint
-   */
-  async fetchProvidersFromAPI() {
-    if (!this.apiService) {
-      throw new Error('API service not available');
-    }
-
-    try {
-      const data = await this.apiService.get('/api/llm-providers');
-      return data;
-    } catch (error) {
-      console.error('❌ Failed to fetch llm providers:', error);
-      throw error;
-    }
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PUBLIC API METHODS
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Update LLM provider on backend
+   * Sets the active provider and persists the selection
+   * @param {string} provider - Provider ID to set as active
+   * @returns {void}
    */
-  async updateProviderOnBackend(providerId) {
-    if (!this.apiService) {
-      throw new Error('API service not available');
-    }
+  setProvider(provider, forceRender = false) {
+    const supportedProviderIds = this.#providers.map(p => p.id);
 
-    try {
-      const data = await this.apiService.post('/api/llm-providers', { provider: providerId });
-      console.log('✓ llm provider updated:', providerId);
-      return data;
-    } catch (error) {
-      console.error('❌ Failed to update llm provider:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Cache providers data to localStorage (only providers and defaults, not selected_provider)
-   */
-  cacheProviders(data) {
-    try {
-      const existingCache = this.getCache() || {};
-      const cacheData = {
-        providers: data.providers || [],
-        default_provider: data.default_provider || null,
-        selected_provider: existingCache.selected_provider || null,
-        cached_at: new Date().toISOString()
-      };
-      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
-      console.log('✓ Providers cached locally');
-    } catch (error) {
-      console.warn('Failed to cache providers:', error);
-    }
-  }
-
-  /**
-   * Load providers from localStorage cache
-   */
-  loadProvidersFromCache() {
-    try {
-      const cached = localStorage.getItem(this.CACHE_KEY);
-      if (cached) {
-        const cacheData = JSON.parse(cached);
-        this.providers = cacheData.providers || [];
-        this.backendDefaultProvider = cacheData.default_provider || null;
-        this.populateDropdown();
-        console.log('✓ LLM providers loaded from local cache');
-        return true;
-      }
-    } catch (error) {
-      console.warn('Failed to load providers from cache:', error);
-    }
-    return false;
-  }
-
-  /**
-   * Set API service
-   */
-  setApiService(apiService) {
-    this.apiService = apiService;
-  }
-
-  /**
-   * Load llm provider preference from cache or use default
-   */
-  loadProviderPreference() {
-    const cache = this.getCache();
-    const savedProvider = cache?.selected_provider;
-    const supportedProviderIds = this.providers.map(p => p.id);
-    
-    // Use saved preference if available, otherwise use backend's default
-    if (savedProvider && supportedProviderIds.includes(savedProvider)) {
-      this.setProvider(savedProvider, true);
-    } else if (this.backendDefaultProvider) {
-      this.setProvider(this.backendDefaultProvider, true);
-    }
-  }
-
-  /**
-   * Get cache object from localStorage
-   */
-  getCache() {
-    try {
-      const cached = localStorage.getItem(this.CACHE_KEY);
-      return cached ? JSON.parse(cached) : null;
-    } catch (error) {
-      console.warn('Failed to get cache:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Get provider preference from cache
-   */
-  getStoredProvider() {
-    const cache = this.getCache();
-    return cache?.selected_provider || null;
-  }
-
-  /**
-   * Set provider and apply to storage (user-initiated change)
-   */
-  setProvider(provider, notifyChange = true) {
-    const supportedProviderIds = this.providers.map(p => p.id);
     if (!supportedProviderIds.includes(provider)) {
-      console.warn(`Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
+      console.warn(`[LLMProviderManager] Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
       return;
     }
-    
+
+    if (provider === this.#currentProvider && !forceRender) {
+      return;
+    }
+
     console.log(`[LLMProviderManager] Setting provider to: ${provider}`);
-    
-    // Update cache
-    this.updateCacheProvider(provider);
-    
-    // Update UI
-    this.updateButtonDisplay(provider);
-    this.updateMenuSelection(provider);
-    
-    // Close menu if open
-    if (this.isMenuOpen) {
-      this.closeMenu();
+
+    this.#currentProvider = provider;
+    this.#saveProviderToLocalStorage();
+    this.#updateButtonDisplay(provider);
+    this.#updateMenuSelection(provider);
+
+    if (this.#isMenuOpen) {
+      this.#closeMenu();
     }
-    
-    // Update API service
-    if (this.apiService) {
-      this.apiService.setAIProvider(provider);
-    }
-    
-    // Dispatch aiProviderChanged event for reactive listeners
-    const providerChangedEvent = new CustomEvent('aiProviderChanged', {
-      detail: { provider }
-    });
-    window.dispatchEvent(providerChangedEvent);
-    
-    // Update provider on backend and notify if requested
-    if (notifyChange) {
-      this.updateProviderOnBackend(provider).catch(error => {
-        console.error('Failed to update provider on backend:', error);
-      });
-      
-      // Trigger change callbacks
-      this.changeCallbacks.forEach(callback => {
-        try {
-          callback(provider);
-        } catch (error) {
-          console.error('Error in llm provider change callback:', error);
-        }
-      });
-    }
+
+    this.#notifyChange(provider);
   }
 
   /**
-   * Update cache with selected provider
-   */
-  updateCacheProvider(provider) {
-    try {
-      const cache = this.getCache() || {};
-      cache.selected_provider = provider;
-      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
-    } catch (error) {
-      console.warn('Failed to update provider in cache:', error);
-    }
-  }
-
-  /**
-   * Get current provider
+   * Gets the currently selected provider ID
+   * @returns {string} Current provider ID
    */
   getCurrentProvider() {
-    const stored = this.getStoredProvider();
-    if (stored) {
-      return stored;
-    }
-    // Fallback to backend default or first available provider
-    return this.backendDefaultProvider || (this.providers.length > 0 ? this.providers[0].id : 'aws');
+    return this.#currentProvider || DEFAULT_PROVIDER_ID;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EVENT HANDLERS (PRIVATE)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Handles button click to toggle dropdown menu
+   * @private
+   * @returns {void}
+   */
+  #onButtonClick() {
+    this.#toggleMenu();
   }
 
   /**
-   * Populate dropdown menu with provider options from backend
+   * Handles clicks outside the dropdown to close it
+   * @private
+   * @param {MouseEvent} event - Click event
+   * @returns {void}
    */
-  populateDropdown() {
-    if (!this.menuElement || this.providers.length === 0) return;
-    
-    this.menuElement.innerHTML = '';
-    
-    this.providers.forEach(provider => {
+  #onOutsideClick(event) {
+    if (!this.#elements.dropdown?.contains(event.target) && this.#isMenuOpen) {
+      this.#closeMenu();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DOM OPERATIONS (PRIVATE)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Caches DOM element references
+   * @private
+   * @returns {void}
+   */
+  #cacheElements() {
+    this.#elements = {
+      dropdown: document.getElementById('llmProviderDropdown'),
+      button: document.getElementById('llmProviderButton'),
+      menu: document.getElementById('llmProviderMenu'),
+      logo: document.getElementById('llmProviderLogo')
+    };
+  }
+
+  /**
+   * Populates dropdown menu with provider options
+   * @private
+   * @returns {void}
+   */
+  #populateDropdown() {
+    if (!this.#elements.menu || this.#providers.length === 0) {
+      return;
+    }
+
+    this.#elements.menu.innerHTML = '';
+
+    this.#providers.forEach(provider => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'llm-provider-option';
       button.dataset.provider = provider.id;
       button.title = provider.name;
-      
+
       const img = document.createElement('img');
       img.src = provider.logo;
       img.alt = provider.name;
       img.className = 'provider-logo';
-      
+
       button.appendChild(img);
-      
-      button.addEventListener('click', () => {
-        this.setProvider(provider.id);
-      });
-      
-      this.menuElement.appendChild(button);
+      button.addEventListener('click', () => this.setProvider(provider.id));
+
+      this.#elements.menu.appendChild(button);
     });
-    
-    // Mark current selection
+
     const currentProvider = this.getCurrentProvider();
-    this.updateMenuSelection(currentProvider);
+    this.#updateMenuSelection(currentProvider);
   }
 
   /**
-   * Update button display with selected provider info
+   * Updates the button display with selected provider info
+   * @private
+   * @param {string} providerId - Provider ID to display
+   * @returns {void}
    */
-  updateButtonDisplay(providerId) {
-    const provider = this.providers.find(p => p.id === providerId);
-    if (!provider) return;
-    
-    if (this.logoElement) {
-      this.logoElement.src = provider.logo;
-      this.logoElement.alt = provider.name;
+  #updateButtonDisplay(providerId) {
+    const provider = this.#providers.find(p => p.id === providerId);
+
+    if (!provider) {
+      return;
     }
-    
-    // Update button title for hover tooltip
-    if (this.buttonElement) {
-      this.buttonElement.title = provider.name;
+
+    if (this.#elements.logo) {
+      this.#elements.logo.src = provider.logo;
+      this.#elements.logo.alt = provider.name;
+    }
+
+    if (this.#elements.button) {
+      this.#elements.button.title = provider.name;
     }
   }
 
   /**
-   * Update menu selection styling
+   * Updates menu selection styling
+   * @private
+   * @param {string} providerId - Selected provider ID
+   * @returns {void}
    */
-  updateMenuSelection(providerId) {
-    if (!this.menuElement) return;
-    
-    this.menuElement.querySelectorAll('.llm-provider-option').forEach(option => {
-      if (option.dataset.provider === providerId) {
-        option.classList.add('selected');
-      } else {
-        option.classList.remove('selected');
-      }
+  #updateMenuSelection(providerId) {
+    if (!this.#elements.menu) {
+      return;
+    }
+
+    this.#elements.menu.querySelectorAll('.llm-provider-option').forEach(option => {
+      option.classList.toggle('selected', option.dataset.provider === providerId);
     });
   }
 
   /**
-   * Toggle dropdown menu
+   * Toggles dropdown menu visibility
+   * @private
+   * @returns {void}
    */
-  toggleMenu() {
-    if (this.isMenuOpen) {
-      this.closeMenu();
+  #toggleMenu() {
+    if (this.#isMenuOpen) {
+      this.#closeMenu();
     } else {
-      this.openMenu();
+      this.#openMenu();
     }
   }
 
   /**
-   * Open dropdown menu
+   * Opens the dropdown menu
+   * @private
+   * @returns {void}
    */
-  openMenu() {
-    if (!this.menuElement || !this.buttonElement) return;
-    
-    this.menuElement.classList.add('show');
-    this.buttonElement.setAttribute('aria-expanded', 'true');
-    this.isMenuOpen = true;
-    
-    // Focus on the default provider option
+  #openMenu() {
+    if (!this.#elements.menu || !this.#elements.button) {
+      return;
+    }
+
+    this.#elements.menu.classList.add('show');
+    this.#elements.button.setAttribute('aria-expanded', 'true');
+    this.#isMenuOpen = true;
+
     const currentProvider = this.getCurrentProvider();
-    const focusedOption = this.menuElement.querySelector(`[data-provider="${currentProvider}"]`);
+    const focusedOption = this.#elements.menu.querySelector(`[data-provider="${currentProvider}"]`);
+
     if (focusedOption) {
       focusedOption.focus();
     }
   }
 
   /**
-   * Close dropdown menu
+   * Closes the dropdown menu
+   * @private
+   * @returns {void}
    */
-  closeMenu() {
-    if (!this.menuElement || !this.buttonElement) return;
-    
-    this.menuElement.classList.remove('show');
-    this.buttonElement.setAttribute('aria-expanded', 'false');
-    this.isMenuOpen = false;
-  }
-
-  /**
-   * Attach all event listeners (UI and global)
-   */
-  attachListeners() {
-    // UI: Button click to toggle menu
-    if (this.buttonElement) {
-      this.buttonElement.addEventListener('click', () => this.toggleMenu());
-    }
-    
-    // UI: Close menu when clicking outside
-    if (this.dropdownElement) {
-      document.addEventListener('click', (e) => {
-        if (!this.dropdownElement.contains(e.target) && this.isMenuOpen) {
-          this.closeMenu();
-        }
-      });
-    }
-  }
-
-  /**
-   * Register a callback to be notified when provider changes
-   */
-  onProviderChange(callback) {
-    if (typeof callback === 'function') {
-      this.changeCallbacks.push(callback);
-    }
-  }
-
-  /**
-   * Handle llm provider change event from external sources
-   * This method can be bound as an event listener for external notifications
-   */
-  onChanged(event) {
-    // This method handles external llm provider change notifications
-    // If called as event listener, extract provider from event detail
-    if (event && event.detail && event.detail.provider) {
-      const provider = event.detail.provider;
-      // Apply the provider change without backend update
-      this.applyProviderChange(provider);
-    }
-  }
-
-  /**
-   * Apply provider change without triggering backend update (for external events)
-   */
-  applyProviderChange(provider) {
-    const supportedProviderIds = this.providers.map(p => p.id);
-    if (!supportedProviderIds.includes(provider)) {
-      console.warn(`Invalid provider: ${provider}. Supported providers: ${supportedProviderIds.join(', ')}`);
+  #closeMenu() {
+    if (!this.#elements.menu || !this.#elements.button) {
       return;
     }
-    
-    console.log(`[LLMProviderManager] Applying provider change to: ${provider}`);
-    
-    // Update cache
-    this.updateCacheProvider(provider);
-    
-    // Update UI
-    this.updateButtonDisplay(provider);
-    this.updateMenuSelection(provider);
-    
-    // Close menu if open
-    if (this.isMenuOpen) {
-      this.closeMenu();
-    }
-    
-    // Update API service
-    if (this.apiService) {
-      this.apiService.setAIProvider(provider);
-    }
+
+    this.#elements.menu.classList.remove('show');
+    this.#elements.button.setAttribute('aria-expanded', 'false');
+    this.#isMenuOpen = false;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EVENT LISTENER MANAGEMENT (PRIVATE)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Binds event handlers to preserve context
+   * @private
+   * @returns {void}
+   */
+  #bindEventHandlers() {
+    this.#boundHandlers = {
+      buttonClick: this.#onButtonClick.bind(this),
+      outsideClick: this.#onOutsideClick.bind(this)
+    };
   }
 
   /**
-   * Notify all registered callbacks of provider change
+   * Attaches all event listeners
+   * @private
+   * @returns {void}
    */
-  notifyChange(provider) {
-    // Dispatch global event for app-level listeners and external systems
-    window.dispatchEvent(new CustomEvent('llmProviderChanged', { detail: { provider } }));
-    
-    // Call registered callbacks
-    this.changeCallbacks.forEach(callback => {
-      try {
-        callback(provider);
-      } catch (error) {
-        console.error('Error in llm provider change callback:', error);
+  #attachListeners() {
+    this.#elements.button?.addEventListener('click', this.#boundHandlers.buttonClick);
+    document.addEventListener('click', this.#boundHandlers.outsideClick);
+  }
+
+  /**
+   * Detaches all event listeners
+   * @private
+   * @returns {void}
+   */
+  #detachListeners() {
+    this.#elements.button?.removeEventListener('click', this.#boundHandlers.buttonClick);
+    document.removeEventListener('click', this.#boundHandlers.outsideClick);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIVATE HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Fetches LLM providers from backend API
+   * @private
+   * @async
+   * @returns {Promise<void>}
+   */
+  async #fetchLLMProviders() {
+    try {
+      const data = await this.#fetchProvidersFromAPI();
+
+      if (data?.providers) {
+        this.#providers = data.providers;
+        
+        // Store backend default for detection
+        if (data.default_provider) {
+          this.#backendDefaultProvider = data.default_provider;
+        }
+
+        console.log('[LLMProviderManager] LLM providers fetched from backend');
       }
-    });
+    } catch (error) {
+      console.error('[LLMProviderManager] Failed to fetch providers from backend:', error);
+    }
   }
 
   /**
-   * Get llm provider metadata by ID
+   * Detects which provider to use based on localStorage and backend default
+   * @private
+   * @returns {string} Provider ID to use
    */
-  getProviderMetadata(providerId = null) {
-    providerId = providerId || this.getCurrentProvider();
-    return this.providers.find(p => p.id === providerId) || this.getDefaultProviderMetadata();
+  #detectProvider() {
+    const savedProvider = this.#loadProviderFromLocalStorage();
+    const supportedProviderIds = this.#providers.map(p => p.id);
+
+    if (savedProvider && supportedProviderIds.includes(savedProvider)) {
+      return savedProvider;
+    }
+
+    if (this.#backendDefaultProvider && supportedProviderIds.includes(this.#backendDefaultProvider)) {
+      return this.#backendDefaultProvider;
+    }
+
+    if (this.#providers.length > 0) {
+      return this.#providers[0].id;
+    }
+
+    if (savedProvider) {
+      console.warn(`[LLMProviderManager] Saved provider '${savedProvider}' is no longer available, using default`);
+    }
+
+    return DEFAULT_PROVIDER_ID;
   }
 
   /**
-   * Get default provider metadata
+   * Fetches LLM providers from API endpoint
+   * @private
+   * @async
+   * @returns {Promise<Object>} Provider data from API
+   * @throws {Error} When API service is unavailable or request fails
    */
-  getDefaultProviderMetadata() {
-    return this.providers.find(p => p.id === this.backendDefaultProvider) || {};
+  async #fetchProvidersFromAPI() {
+    if (!this.#apiService) {
+      throw new Error('API service not available');
+    }
+
+    try {
+      return await this.#apiService.get('/api/llm-providers');
+    } catch (error) {
+      console.error('[LLMProviderManager] Failed to fetch LLM providers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Saves provider to localStorage
+   * @private
+   * @returns {void}
+   */
+  #saveProviderToLocalStorage() {
+    try {
+      if (!this.#currentProvider) {
+        throw new Error('[LLMProviderManager] Cannot save provider: currentProvider is not set');
+      }
+      localStorage.setItem(STORAGE_KEY, this.#currentProvider);
+    } catch (error) {
+      console.error('[LLMProviderManager] Error saving provider to localStorage:', error);
+    }
+  }
+
+  /**
+   * Loads provider from localStorage
+   * @private
+   * @returns {string|null} Saved provider ID or null
+   */
+  #loadProviderFromLocalStorage() {
+    try {
+      return localStorage.getItem(STORAGE_KEY);
+    } catch (error) {
+      console.error('[LLMProviderManager] Error loading provider from localStorage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Notifies listeners of provider change
+   * @private
+   * @param {string} provider - New provider ID
+   * @returns {void}
+   */
+  #notifyChange(provider) {
+    window.dispatchEvent(new CustomEvent('llmProviderChanged', { detail: { provider } }));
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { LLMProviderManager };

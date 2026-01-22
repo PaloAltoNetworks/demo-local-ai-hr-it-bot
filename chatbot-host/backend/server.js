@@ -7,9 +7,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Import shared utils (logger and i18n)
+// Import shared utils (logger, i18n, and llm-provider)
 import { initializeLogger, getLogger } from '../utils/logger.js';
-import { initializeI18n, changeLanguage, t, getAvailableLanguages, loadFrontendTranslations, ensureI18nInitialized } from '../utils/i18n.js';
+import { initializeI18n, t, getAvailableLanguages, loadFrontendTranslations, ensureI18nInitialized } from '../utils/i18n.js';
+import { LLMProviderFactory } from '../utils/llm-provider.js';
 
 // Initialize logger first (MUST be before i18n)
 initializeLogger('chatbot-host');
@@ -44,42 +45,15 @@ const mcpClient = new MCPClient(COORDINATOR_URL, {
     maxReconnectAttempts: 3
 });
 
-// llm providers configuration and state
-const LLM_PROVIDERS_CONFIG = [
-    {
-        id: 'aws',
-        name: 'AWS',
-        display_name: 'Amazon Web Services',
-        logo: './images/amazonwebservices-original-wordmark.svg'
-    },
-    {
-        id: 'gcp',
-        name: 'Google Cloud Platform',
-        display_name: 'Google Cloud Platform',
-        logo: './images/googlecloud-original.svg'
-    },
-    {
-        id: 'azure',
-        name: 'Microsoft Azure',
-        display_name: 'Microsoft Azure',
-        logo: './images/azure-original.svg'
-    },
-    {
-        id: 'ollama',
-        name: 'Ollama',
-        display_name: 'Ollama',
-        logo: './images/ollama-icon.svg'
-    }
-];
-
-let selectedAIProvider = 'aws'; // Default provider
+// Helper function to get available providers from LLMProviderFactory
+const getAvailableLLMProviders = () => LLMProviderFactory.getAvailableLLMProviders();
 
 // Middleware
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:3002'],
     credentials: true
 }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '1mb' }));
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../frontend')));
@@ -120,10 +94,6 @@ app.get('/health', async (req, res) => {
         
         const mcpStatus = mcpClient.isInitialized ? 'connected' : 'disconnected';
         const overallStatus = mcpClient.isInitialized ? 'ok' : 'degraded';
-
-        // Use language from header or default to English
-        const requestLanguage = req.headers['x-language'] || 'en';
-        await changeLanguage(requestLanguage);
 
         res.json({
             status: overallStatus,
@@ -190,47 +160,6 @@ app.get('/api/languages', (req, res) => {
     }
 });
 
-// Language change notification endpoint
-app.post('/api/language', (req, res) => {
-    const { language } = req.body;
-
-    if (!language) {
-        return res.status(400).json({
-            error: 'Language is required',
-            message: 'Please provide a language code in the request body'
-        });
-    }
-
-    try {
-        // Validate that the language is available
-        const availableLanguages = getAvailableLanguages();
-        if (!availableLanguages.includes(language)) {
-            return res.status(400).json({
-                error: 'Invalid language',
-                language: language,
-                availableLanguages: availableLanguages
-            });
-        }
-
-        // Change the backend language
-        changeLanguage(language);
-
-        getLogger().info('Language changed to: ' + language);
-
-        res.json({
-            success: true,
-            language: language,
-            message: `Language successfully changed to ${language}`
-        });
-    } catch (error) {
-        getLogger().error('Error changing language: ' + error.message);
-        res.status(500).json({
-            error: 'Failed to change language',
-            message: error.message
-        });
-    }
-});
-
 // Server-Sent Events endpoint for streaming prompt processing
 app.post('/api/process-prompt', async (req, res) => {
     const { messages, language = 'en', phase, llmProvider } = req.body;
@@ -254,11 +183,20 @@ app.post('/api/process-prompt', async (req, res) => {
             language: language
         });
 
-        // Add messages to session history
-        messages.forEach(msg => sessionManager.addMessageToHistory(session.sessionId, msg));
-
-        // Get the latest user message
+        // Add only the latest user message to session history (frontend sends full history for context, but we only add new messages)
         const userMessage = messages[messages.length - 1];
+        if (userMessage && userMessage.role === 'user') {
+            // Check if this exact message is already in history to prevent duplicates
+            const isDuplicate = session.messageHistory.some(msg => 
+                msg.role === 'user' && 
+                msg.content === userMessage.content && 
+                Math.abs(new Date(msg.timestamp).getTime() - new Date(userMessage.timestamp).getTime()) < 1000
+            );
+            
+            if (!isDuplicate) {
+                sessionManager.addMessageToHistory(session.sessionId, userMessage);
+            }
+        }
 
         // Set SSE headers - these force Chrome to NOT buffer
         res.setHeader('Content-Type', 'text/event-stream');
@@ -353,7 +291,7 @@ app.post('/api/process-prompt', async (req, res) => {
                                         }
                                     } else if (data.success === false) {
                                         // Handle error response from coordinator
-                                        messageQueue.push('❌ Error from MCP Gateway');
+                                        messageQueue.push('Error from MCP Gateway');
                                         mcpResponse = {
                                             role: 'assistant',
                                             content: data.message || 'An error occurred while processing your request.'
@@ -394,7 +332,9 @@ app.post('/api/process-prompt', async (req, res) => {
                 sessionManager.addMessageToHistory(session.sessionId, mcpResponse);
                 const finalResponse = {
                     type: 'response',
-                    messages: session.messageHistory,
+                    messages: [
+                        mcpResponse
+                    ],
                     sessionId: session.sessionId,
                     source: 'mcp-gateway'
                 };
@@ -407,7 +347,7 @@ app.post('/api/process-prompt', async (req, res) => {
                 }
 
                 // Add LLM provider to metadata
-                const providerInfo = LLM_PROVIDERS_CONFIG.find(p => p.id === (llmProvider || 'aws'));
+                const providerInfo = getAvailableLLMProviders().find(p => p.id === (llmProvider || 'aws'));
                 finalResponse.metadata.llmProvider = {
                     id: llmProvider || 'aws',
                     name: providerInfo ? providerInfo.name : 'AWS',
@@ -519,7 +459,9 @@ app.post('/api/prompt', async (req, res) => {
 
                 const finalResponse = {
                     type: 'response',
-                    messages: session.messageHistory,
+                    messages: [
+                        assistantMessage
+                    ],
                     sessionId: session.sessionId,
                     source: 'mcp-gateway'
                 };
@@ -532,7 +474,7 @@ app.post('/api/prompt', async (req, res) => {
                 }
 
                 // Add LLM provider to metadata
-                const providerInfo = LLM_PROVIDERS_CONFIG.find(p => p.id === (llmProvider || 'aws'));
+                const providerInfo = getAvailableLLMProviders().find(p => p.id === (llmProvider || 'aws'));
                 finalResponse.metadata.llmProvider = {
                     id: llmProvider || 'aws',
                     name: providerInfo ? providerInfo.name : 'AWS',
@@ -610,42 +552,6 @@ app.get('/api/llm-providers', async (req, res) => {
         getLogger().error('Error loading llm providers: ' + error.message);
         res.status(500).json({
             error: 'Failed to load llm providers',
-            message: error.message
-        });
-    }
-});
-
-// llm provider selection endpoint - stores selected provider
-app.post('/api/llm-providers', (req, res) => {
-    try {
-        const { provider } = req.body;
-        
-        // Validate against the same providers list
-        const validProvider = LLM_PROVIDERS_CONFIG.find(p => p.id === provider);
-        
-        if (!provider || !validProvider) {
-            const validProviders = LLM_PROVIDERS_CONFIG.map(p => p.id).join(', ');
-            return res.status(400).json({
-                error: 'Invalid provider',
-                message: `Provider must be one of: ${validProviders}`
-            });
-        }
-        
-        // Update the selected provider on the server
-        selectedAIProvider = provider;
-        
-        getLogger().info(`llm provider selected: ${provider}`);
-        
-        res.json({
-            success: true,
-            message: `llm provider updated to ${provider}`,
-            default_provider: provider,
-            providers: LLM_PROVIDERS_CONFIG
-        });
-    } catch (error) {
-        getLogger().error('Error setting llm provider: ' + error.message);
-        res.status(500).json({
-            error: 'Failed to set llm provider',
             message: error.message
         });
     }

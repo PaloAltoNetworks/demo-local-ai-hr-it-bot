@@ -116,7 +116,7 @@ class MCPServer {
           };
       }
     } catch (error) {
-      getLogger().error(`❌ [MCPServer] Request ${method} (${id}) failed:`, error);
+      getLogger().error(`[MCPServer] Request ${method} (${id}) failed:`, error);
       throw error;
     }
   }
@@ -209,7 +209,7 @@ class MCPServerRegistry {
           try {
             return JSON.parse(eventData);
           } catch (error) {
-            getLogger().error(`❌ [MCPServerRegistry] Failed to parse SSE JSON:`, error);
+            getLogger().error(`[MCPServerRegistry] Failed to parse SSE JSON:`, error);
             throw error;
           }
         }
@@ -222,7 +222,7 @@ class MCPServerRegistry {
     try {
       return JSON.parse(text);
     } catch (error) {
-      getLogger().error(`❌ [MCPServerRegistry] Failed to parse response:`, error);
+      getLogger().error(`[MCPServerRegistry] Failed to parse response:`, error);
       throw new Error(`Failed to parse response: ${text.substring(0, 100)}...`);
     }
   }
@@ -370,7 +370,7 @@ class MCPServerRegistry {
       
       return sessionId;
     } catch (error) {
-      getLogger().error(`❌ [MCPServerRegistry] Failed to initialize session with ${server.name}:`, error.message);
+      getLogger().error(`[MCPServerRegistry] Failed to initialize session with ${server.name}:`, error.message);
       throw error;
     }
   }
@@ -423,7 +423,7 @@ class MCPServerRegistry {
       return result;
       
     } catch (error) {
-      getLogger().error(`❌ [MCPServerRegistry] Error forwarding to ${server.name}:`, error.message);
+      getLogger().error(`[MCPServerRegistry] Error forwarding to ${server.name}:`, error.message);
       server.status = 'unhealthy';
       throw error;
     }

@@ -116,7 +116,7 @@ class GeneralAgent extends MCPAgentBase {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const agent = new GeneralAgent();
   agent.start().catch(error => {
-    console.error('❌ Failed to start General Agent:', error);
+    console.error('Failed to start General Agent:', error);
     process.exit(1);
   });
 }

@@ -1957,6 +1957,20 @@ body {
   line-height: var(--line-height-tight);
 }
 
+.thinking-step--error {
+  border-color: var(--color-red-250);
+  background: rgba(var(--color-red-rgb, 221, 102, 82), 0.05);
+}
+
+.thinking-step--error .thinking-step-time {
+  color: var(--color-red-250);
+}
+
+.thinking-step--error .thinking-step-content {
+  color: var(--color-red-500);
+  font-weight: var(--font-weight-medium);
+}
+
 /* LLM Provider Badge Styles */
 .message-text-wrapper {
   position: relative;
@@ -2188,11 +2202,19 @@ body {
 }
 
 /* Notification system */
-.notification {
+#notification-container {
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  pointer-events: none;
+}
+
+.notification {
+  position: relative;
   min-width: 300px;
   max-width: 450px;
   padding: var(--space-16);
@@ -2200,9 +2222,10 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   opacity: 0;
   transform: translateX(100%);
-  transition: all 0.3s var(--ease-standard);
+  transition: opacity 0.3s var(--ease-standard), transform 0.3s var(--ease-standard);
   font-size: var(--font-size-sm);
   line-height: 1.4;
+  pointer-events: auto;
 }
 
 .notification--show {
@@ -2324,10 +2347,6 @@ body {
 }
 
 /* System messages in chat */
-.message--error {
-  align-self: center;
-  max-width: 100%;
-}
 
 .message--error .message-avatar {
   background-color: rgba(var(--color-error-rgb, 192, 21, 47), 0.1);
@@ -2347,8 +2366,7 @@ body {
 
 /* System message styling */
 .system-message {
-  align-self: center;
-  max-width: 100%;
+  position: relative;
 }
 
 .system-message .message-avatar {
@@ -2871,6 +2889,25 @@ body {
   font-weight: 500;
 }
 
+.checkpoint-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.checkpoint-link:hover {
+  text-decoration: underline;
+  color: var(--color-accent-hover, var(--color-accent));
+}
+
+.checkpoint-link::after {
+  content: '↗';
+  font-size: 0.7rem;
+  margin-left: 3px;
+  opacity: 0.7;
+}
+
 .checkpoint-latency {
   margin-left: auto;
   font-size: 0.8rem;
@@ -3076,6 +3113,11 @@ body {
 
 /* User menu RTL */
 [dir="rtl"] .user-menu-container {
+  right: auto;
+  left: 0;
+}
+
+[dir="rtl"] .user-menu-dropdown {
   right: auto;
   left: 0;
 }

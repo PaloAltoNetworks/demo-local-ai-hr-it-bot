@@ -160,7 +160,7 @@ class HRAgent extends MCPAgentBase {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const agent = new HRAgent();
   agent.start().catch(error => {
-    console.error('❌ Failed to start HR Agent:', error);
+    console.error('Failed to start HR Agent:', error);
     process.exit(1);
   });
 }

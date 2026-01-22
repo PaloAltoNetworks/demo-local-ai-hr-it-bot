@@ -140,25 +140,25 @@ https.get(googleFontsUrl, options, (res) => {
 
     res.on('end', () => {
         if (res.statusCode !== 200) {
-            console.error(`❌ Failed to fetch CSS (status ${res.statusCode})`);
+            console.error(`Failed to fetch CSS (status ${res.statusCode})`);
             process.exit(1);
         }
 
         // Step 2: Extract the font URL from CSS
         const urlMatch = cssData.match(/src:\s*url\(([^)]+)\)\s*format/);
         if (!urlMatch) {
-            console.error('❌ Could not extract font URL from CSS');
+            console.error('Could not extract font URL from CSS');
             process.exit(1);
         }
 
         const fontUrl = urlMatch[1];
-        console.log('✓ Extracted font URL from Google Fonts CSS\n');
+        console.log('Extracted font URL from Google Fonts CSS\n');
 
         // Step 3: Download the WOFF2 font
         console.log('Step 2: Downloading WOFF2 font file...');
         https.get(fontUrl, (fontRes) => {
             if (fontRes.statusCode !== 200) {
-                console.error(`❌ Failed to download font (status ${fontRes.statusCode})`);
+                console.error(`Failed to download font (status ${fontRes.statusCode})`);
                 process.exit(1);
             }
 
@@ -170,7 +170,7 @@ https.get(googleFontsUrl, options, (res) => {
                 fontStream.close();
 
                 const fileSize = (fs.statSync(FONT_FILE).size / 1024).toFixed(2);
-                console.log(`✓ Downloaded font (${fileSize} KB)\n`);
+                console.log(`Downloaded font (${fileSize} KB)\n`);
 
                 // Step 4: Transform Google's CSS to use local font file
                 console.log('Step 3: Generating local CSS file...');
@@ -190,9 +190,9 @@ https.get(googleFontsUrl, options, (res) => {
                 );
 
                 fs.writeFileSync(CSS_FILE, localCss);
-                console.log('✓ Created local CSS file\n');
+                console.log('Created local CSS file\n');
 
-                console.log('✅ Material Symbols font successfully downloaded and configured!\n');
+                console.log('Material Symbols font successfully downloaded and configured!\n');
                 console.log('📍 Files created:');
                 console.log(`   - ${FONT_FILE}`);
                 console.log(`   - ${CSS_FILE}\n`);
@@ -200,15 +200,15 @@ https.get(googleFontsUrl, options, (res) => {
             });
 
             fontStream.on('error', (err) => {
-                console.error(`❌ Error writing font file: ${err.message}`);
+                console.error(`Error writing font file: ${err.message}`);
                 process.exit(1);
             });
         }).on('error', (err) => {
-            console.error(`❌ Error downloading font: ${err.message}`);
+            console.error(`Error downloading font: ${err.message}`);
             process.exit(1);
         });
     });
 }).on('error', (err) => {
-    console.error(`❌ Error fetching Google Fonts CSS: ${err.message}`);
+    console.error(`Error fetching Google Fonts CSS: ${err.message}`);
     process.exit(1);
 });
