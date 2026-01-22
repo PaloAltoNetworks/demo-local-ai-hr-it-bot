@@ -172,6 +172,24 @@ export class PhaseManager {
         console.debug(`[PhaseManager] Switched to phase: ${newPhase}`);
     }
 
+    /**
+     * Re-applies current phase settings and updates UI
+     * Useful for refreshing phase-related UI after dynamic content changes
+     *
+     * @returns {void}
+     *
+     * @description Forces a re-render of the current phase without changing it.
+     * Useful when external components need to refresh phase-dependent UI.
+     */
+    reapply() {
+        if (!this.currentPhase) {
+            console.warn('[PhaseManager] No phase set to reapply');
+            return;
+        }
+
+        this.switchPhase(this.currentPhase, true);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // EVENT HANDLERS
     // ═══════════════════════════════════════════════════════════════════════════

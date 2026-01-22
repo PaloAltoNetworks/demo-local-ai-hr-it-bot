@@ -189,7 +189,7 @@ class ChatBotApp {
             }
         }
         await this.modules.i18n.reapply();
-        await this.modules.phaseManager.switchPhase(this.modules.phaseManager.currentPhase, true);
+        this.modules.phaseManager.reapply();
     }
 
     /**
