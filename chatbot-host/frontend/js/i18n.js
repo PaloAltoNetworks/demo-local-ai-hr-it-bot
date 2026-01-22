@@ -622,6 +622,9 @@ class I18nService {
      */
     #saveLangToLocalStorage() {
         try {
+            if (!this.#currentLanguage) {
+                throw new Error('[I18nService] Cannot save language: currentLanguage is not set');
+            }
             localStorage.setItem(STORAGE_KEY, this.#currentLanguage);
         } catch (error) {
             console.error('[I18nService] Error saving language to localStorage:', error);
