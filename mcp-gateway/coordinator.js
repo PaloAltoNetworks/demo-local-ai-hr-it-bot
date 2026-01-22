@@ -839,7 +839,7 @@ SYNTHESIZED RESPONSE:`;
       // CHECKPOINT 2: Analyze outbound request security (use passed phase)
       if (shouldUsePrismaAIRS(phase)) {
         getLogger().debug(`Phase 3 active - Running Security Checkpoint 2: Outbound Request to ${agent.name}`);
-        securityCheckResult = await this.analyzeOutboundRequest(query, agent.name, language, userContext?.email, agent.name);
+        securityCheckResult = await this.analyzeOutboundRequest(query, agent.name, language, userContext?.email, agent.name, userContext?.sessionId);
         if (!securityCheckResult.approved) {
           getLogger().warn(`🚫 Security Checkpoint 2 BLOCKED: ${securityCheckResult.category}`);
           throw new Error(`Security blocked outbound request to ${agent.name}: ${securityCheckResult.message}`);
@@ -927,7 +927,7 @@ SYNTHESIZED RESPONSE:`;
         let responseToReturn = responseText;
         if (shouldUsePrismaAIRS(phase)) {
           getLogger().debug(`Phase 3 active - Running Security Checkpoint 3: Inbound Response from ${agent.name}`);
-          const inboundSecurity = await this.analyzeInboundResponse(query, responseText, agent.name, language, userContext?.email, agent.name);
+          const inboundSecurity = await this.analyzeInboundResponse(query, responseText, agent.name, language, userContext?.email, agent.name, userContext?.sessionId);
           if (!inboundSecurity.approved) {
             getLogger().warn(`Security Checkpoint 3 BLOCKED: ${inboundSecurity.category}`);
             // Return the security block info - don't throw, let processQuery handle it
@@ -1313,7 +1313,7 @@ Return only the concise version:`;
   /**
    * Prisma AIRS Security Analysis - Checkpoint 1: Initial User Input
    */
-  async analyzeUserInput(query, language = 'en', userEmail = null, agentName = null) {
+  async analyzeUserInput(query, language = 'en', userEmail = null, agentName = null, sessionId = null) {
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 1,
       checkpointLabel: 'Analyzing user input',
@@ -1326,7 +1326,7 @@ Return only the concise version:`;
       input: query,
       detectionField: 'promptDetected',
       maskingField: 'prompt',
-      trId: `user-input-${Date.now()}`,
+      trId: sessionId ? `${sessionId}` : `user-input-${Date.now()}`,
       successMessage: 'User input passed security checks',
       blockMessage: '🚫 User input BLOCKED by security',
       originalKey: 'originalQuery',
@@ -1337,7 +1337,7 @@ Return only the concise version:`;
   /**
    * Prisma AIRS Security Analysis - Checkpoint 2: Outbound Request to MCP Server
    */
-  async analyzeOutboundRequest(subQuery, serverName, language = 'en', userEmail = null, agentName = null) {
+  async analyzeOutboundRequest(subQuery, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null) {
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 2,
       checkpointLabel: `Analyzing outbound request to ${serverName}`,
@@ -1350,7 +1350,7 @@ Return only the concise version:`;
       input: subQuery,
       detectionField: 'promptDetected',
       maskingField: 'prompt',
-      trId: `outbound-${serverName}-${Date.now()}`,
+      trId: sessionId ? `${sessionId}` : `outbound-${serverName}-${Date.now()}`,
       successMessage: `Request to ${serverName} passed security checks`,
       blockMessage: `🚫 Outbound request to ${serverName} BLOCKED by security`,
       originalKey: 'originalQuery',
@@ -1361,7 +1361,7 @@ Return only the concise version:`;
   /**
    * Prisma AIRS Security Analysis - Checkpoint 3: Inbound Response from MCP Server
    */
-  async analyzeInboundResponse(prompt, response, serverName, language = 'en', userEmail = null, agentName = null) {
+  async analyzeInboundResponse(prompt, response, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null) {
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 3,
       checkpointLabel: `Analyzing inbound response from ${serverName}`,
@@ -1375,7 +1375,7 @@ Return only the concise version:`;
       secondaryInput: response,
       detectionField: 'responseDetected',
       maskingField: 'response',
-      trId: `inbound-${serverName}-${Date.now()}`,
+      trId: sessionId ? `${sessionId}` : `inbound-${serverName}-${Date.now()}`,
       successMessage: `Response from ${serverName} passed security checks`,
       blockMessage: `🚫 Inbound response from ${serverName} BLOCKED by security`,
       originalKey: 'originalResponse',
@@ -1386,7 +1386,7 @@ Return only the concise version:`;
   /**
    * Prisma AIRS Security Analysis - Checkpoint 4: Final Coordinated Response
    */
-  async analyzeFinalResponse(prompt, response, language = 'en', userEmail = null, agentName = null) {
+  async analyzeFinalResponse(prompt, response, language = 'en', userEmail = null, agentName = null, sessionId = null) {
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 4,
       checkpointLabel: 'Analyzing final coordinated response',
@@ -1400,9 +1400,9 @@ Return only the concise version:`;
       secondaryInput: response,
       detectionField: 'responseDetected',
       maskingField: 'response',
-      trId: `final-output-${Date.now()}`,
+      trId: sessionId ? `${sessionId}` : `final-output-${Date.now()}`,
       successMessage: 'Final response passed security checks',
-      blockMessage: '� Final response BLOCKED by security',
+      blockMessage: '🚫 Final response BLOCKED by security',
       originalKey: 'originalResponse',
       maskedKey: 'maskedResponse'
     });
@@ -1448,7 +1448,7 @@ Return only the concise version:`;
       // CHECKPOINT 1: Analyze user input security (use passed phase, not instance variable)
       if (shouldUsePrismaAIRS(phase)) {
         getLogger().debug(`Phase 3 active - Running Security Checkpoint 1: User Input Analysis`);
-        const inputSecurity = await this.analyzeUserInput(query, language, userContext?.email);
+        const inputSecurity = await this.analyzeUserInput(query, language, userContext?.email, null, userContext?.sessionId);
         if (!inputSecurity.approved) {
           getLogger().warn(`Security Checkpoint 1 BLOCKED: ${inputSecurity.category}`);
           // Return security block message
@@ -1549,7 +1549,7 @@ Return only the concise version:`;
         // CHECKPOINT 4: Analyze final response security (use passed phase)
         let finalResponseToReturn = processedResponse;
         if (shouldUsePrismaAIRS(phase)) {
-          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, selectedAgent.name);
+          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, selectedAgent.name, userContext?.sessionId);
           if (!finalSecurity.approved) {
             return {
               response: finalSecurity.message,
@@ -1606,7 +1606,7 @@ Return only the concise version:`;
         // CHECKPOINT 4: Analyze final response security (use passed phase)
         let finalResponseToReturn = processedResponse;
         if (shouldUsePrismaAIRS(phase)) {
-          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, 'multi-agent-coordinator');
+          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, 'multi-agent-coordinator', userContext?.sessionId);
           if (!finalSecurity.approved) {
 
             return {
