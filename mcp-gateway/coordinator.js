@@ -676,7 +676,7 @@ Output JSON immediately`,
    * Handle multi-agent queries by coordinating across multiple specialists
    */
   async handleMultiAgentQuery(originalQuery, routingStrategy, phase = 'phase2', userContext = null, llmProvider = 'aws') {
-    this.sendThinkingMessage(`🔀 Coordinating multi-agent response across ${routingStrategy.agents.length} specialists...`);
+    this.sendThinkingMessage(`Coordinating multi-agent response across ${routingStrategy.agents.length} specialists...`);
 
     try {
       const agentResponses = [];
