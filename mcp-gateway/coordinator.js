@@ -1821,9 +1821,11 @@ Return only the concise version:`;
     getLogger().debug('🧹 Cleaning up...');
 
     // Clear registry
-    const allAgents = this.registry.getAllAgents();
-    for (const agent of allAgents) {
-      this.registry.unregisterAgent(agent.agentId);
+    if (this.agentRegistry) {
+      const allAgents = this.agentRegistry.getAllAgents();
+      for (const agent of allAgents) {
+        this.agentRegistry.unregisterAgent(agent.agentId);
+      }
     }
 
     this.initialized = false;
