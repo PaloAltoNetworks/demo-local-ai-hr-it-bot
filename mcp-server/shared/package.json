@@ -15,8 +15,8 @@
     "./llm": "./utils/llm-provider.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.2",
-    "axios": "^1.13.2",
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "axios": "^1.13.3",
     "express": "^5.2.1"
   },
   "keywords": [
