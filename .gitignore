@@ -151,3 +151,6 @@ vite.config.ts.timestamp-*
 .DS_Store
 
 BrandGuidelines.md
+
+# Ignore GitHub folder
+.github
