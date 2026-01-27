@@ -1198,7 +1198,7 @@ Return only the concise version:`;
    * Generic Prisma AIRS security checkpoint analyzer
    * @private
    */
-  async _analyzeSecurityCheckpoint(config) {
+  async _analyzeSecurityCheckpoint(config, llmProvider = null) {
     const {
       checkpointNumber,
       checkpointLabel,
@@ -1236,7 +1236,7 @@ Return only the concise version:`;
         language: config.language,
         appName,
         appUser: userEmail || appUser,
-        aiModel: this.coordinatorModel,
+        aiModel: llmProvider ? LLMProviderFactory.buildModelIdentifier(llmProvider) : this.coordinatorModel,
         trId
       });
     } else if (analyzeMethod === 'promptAndResponse') {
@@ -1244,7 +1244,7 @@ Return only the concise version:`;
         language: config.language,
         appName,
         appUser: userEmail || appUser,
-        aiModel: this.coordinatorModel,
+        aiModel: llmProvider ? LLMProviderFactory.buildModelIdentifier(llmProvider) : this.coordinatorModel,
         trId
       });
     }
@@ -1313,7 +1313,7 @@ Return only the concise version:`;
   /**
    * Prisma AIRS Security Analysis - Checkpoint 1: Initial User Input
    */
-  async analyzeUserInput(query, language = 'en', userEmail = null, agentName = null, sessionId = null) {
+  async analyzeUserInput(query, language = 'en', userEmail = null, agentName = null, sessionId = null, llmProvider = null) {
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 1,
       checkpointLabel: 'Analyzing user input',
@@ -1331,13 +1331,13 @@ Return only the concise version:`;
       blockMessage: '🚫 User input BLOCKED by security',
       originalKey: 'originalQuery',
       maskedKey: 'maskedQuery'
-    });
+    }, llmProvider);
   }
 
   /**
    * Prisma AIRS Security Analysis - Checkpoint 2: Outbound Request to MCP Server
    */
-  async analyzeOutboundRequest(subQuery, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null) {
+  async analyzeOutboundRequest(subQuery, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null, llmProvider = null) {
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 2,
       checkpointLabel: `Analyzing outbound request to ${serverName}`,
@@ -1355,13 +1355,13 @@ Return only the concise version:`;
       blockMessage: `🚫 Outbound request to ${serverName} BLOCKED by security`,
       originalKey: 'originalQuery',
       maskedKey: 'maskedQuery'
-    });
+    }, llmProvider);
   }
 
   /**
    * Prisma AIRS Security Analysis - Checkpoint 3: Inbound Response from MCP Server
    */
-  async analyzeInboundResponse(prompt, response, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null) {
+  async analyzeInboundResponse(prompt, response, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null, llmProvider = null) {
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 3,
       checkpointLabel: `Analyzing inbound response from ${serverName}`,
@@ -1380,13 +1380,13 @@ Return only the concise version:`;
       blockMessage: `🚫 Inbound response from ${serverName} BLOCKED by security`,
       originalKey: 'originalResponse',
       maskedKey: 'maskedResponse'
-    });
+    }, llmProvider);
   }
 
   /**
    * Prisma AIRS Security Analysis - Checkpoint 4: Final Coordinated Response
    */
-  async analyzeFinalResponse(prompt, response, language = 'en', userEmail = null, agentName = null, sessionId = null) {
+  async analyzeFinalResponse(prompt, response, language = 'en', userEmail = null, agentName = null, sessionId = null, llmProvider = null) {
     return this._analyzeSecurityCheckpoint({
       checkpointNumber: 4,
       checkpointLabel: 'Analyzing final coordinated response',
@@ -1405,7 +1405,7 @@ Return only the concise version:`;
       blockMessage: '🚫 Final response BLOCKED by security',
       originalKey: 'originalResponse',
       maskedKey: 'maskedResponse'
-    });
+    }, llmProvider);
   }
 
   /**
@@ -1448,7 +1448,7 @@ Return only the concise version:`;
       // CHECKPOINT 1: Analyze user input security (use passed phase, not instance variable)
       if (shouldUsePrismaAIRS(phase)) {
         getLogger().debug(`Phase 3 active - Running Security Checkpoint 1: User Input Analysis`);
-        const inputSecurity = await this.analyzeUserInput(query, language, userContext?.email, null, userContext?.sessionId);
+        const inputSecurity = await this.analyzeUserInput(query, language, userContext?.email, null, userContext?.sessionId, llmProvider);
         if (!inputSecurity.approved) {
           getLogger().warn(`Security Checkpoint 1 BLOCKED: ${inputSecurity.category}`);
           // Return security block message
@@ -1549,7 +1549,7 @@ Return only the concise version:`;
         // CHECKPOINT 4: Analyze final response security (use passed phase)
         let finalResponseToReturn = processedResponse;
         if (shouldUsePrismaAIRS(phase)) {
-          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, selectedAgent.name, userContext?.sessionId);
+          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, selectedAgent.name, userContext?.sessionId, llmProvider);
           if (!finalSecurity.approved) {
             return {
               response: finalSecurity.message,
@@ -1606,7 +1606,7 @@ Return only the concise version:`;
         // CHECKPOINT 4: Analyze final response security (use passed phase)
         let finalResponseToReturn = processedResponse;
         if (shouldUsePrismaAIRS(phase)) {
-          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, 'multi-agent-coordinator', userContext?.sessionId);
+          const finalSecurity = await this.analyzeFinalResponse(queryToProcess, processedResponse, language, userContext?.email, 'multi-agent-coordinator', userContext?.sessionId, llmProvider);
           if (!finalSecurity.approved) {
 
             return {
