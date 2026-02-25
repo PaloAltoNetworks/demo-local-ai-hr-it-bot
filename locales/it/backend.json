@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "cannotFulfillRequest": "Non sono in grado di soddisfare questa richiesta."
+  },
+  "status": {
+    "healthy": "Servizio funzionante",
+    "unhealthy": "Servizio non disponibile",
+    "allServicesOperational": "Tutti i servizi operativi",
+    "mcpServicesUnavailable": "Servizi MCP non disponibili"
+  },
+  "mcp": {
+    "unavailableMessage": "Mi scuso, ma i nostri servizi IA sono attualmente non disponibili. Ciò potrebbe essere dovuto a:\n\n• Manutenzione del sistema\n• Problemi di connettività di rete\n• Sovraccarico del server\n\nRiprova tra qualche minuto. Per assistenza immediata, puoi:\n• Contattare l'Helpdesk IT: int. 1234\n• Contattare le Risorse Umane: int. 5678\n\nGrazie per la pazienza."
+  },
+  "security": {
+    "detections": {
+      "injection": "un tentativo di injection",
+      "toxicContent": "contenuto tossico",
+      "maliciousCode": "codice malevolo",
+      "dataLeak": "una fuga di dati sensibili",
+      "topicViolation": "una violazione della policy tematica",
+      "urlCategory": "contenuto di categoria URL non autorizzata",
+      "suspiciousAgent": "un comportamento sospetto dell'agente",
+      "ungrounded": "una risposta non verificata",
+      "dbSecurity": "un problema di sicurezza del database"
+    },
+    "messages": {
+      "contentApproved": "Contenuto approvato",
+      "cannotProcessRequest": "Non posso elaborare questa richiesta",
+      "cannotProvideResponse": "Non posso fornire questa risposta",
+      "containsIssues": "perché contiene: {{issues}}.",
+      "policyViolation": "perché non è conforme alle policy di sicurezza in vigore.",
+      "rephraseRequest": "Per favore, riformula la tua domanda in modo appropriato.",
+      "helpWithElse": "Posso aiutarti con qualcos'altro?"
+    },
+    "errors": {
+      "notConfigured": "Mi dispiace, ma il sistema di sicurezza non è ancora configurato. Contatta l'amministratore per abilitare questa funzionalità.",
+      "serviceUnavailable": "Mi dispiace, ma il sistema di verifica della sicurezza è temporaneamente non disponibile. Riprova tra qualche minuto."
+    }
+  }
+}
