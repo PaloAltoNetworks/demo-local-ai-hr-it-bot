@@ -4,6 +4,184 @@ import { getLogger } from './utils/logger.js';
 import { LLMProviderFactory } from './utils/llm-provider.js';
 
 /**
+ * Utility class for common coordinator operations
+ */
+class CoordinatorUtils {
+  static buildUserIdentityInfo(userContext) {
+    if (!userContext) return [];
+    
+    const identityInfo = [];
+    if (userContext.name) identityInfo.push(`name: ${userContext.name}`);
+    if (userContext.email) identityInfo.push(`email: ${userContext.email}`);
+    if (userContext.role) identityInfo.push(`role: ${userContext.role}`);
+    if (userContext.department) identityInfo.push(`dept: ${userContext.department}`);
+    if (userContext.employeeId) identityInfo.push(`empId: ${userContext.employeeId}`);
+    
+    return identityInfo;
+  }
+
+  static buildConversationContext(conversationHistory) {
+    if (!conversationHistory || !Array.isArray(conversationHistory) || conversationHistory.length === 0) {
+      return '';
+    }
+
+    const recentMessages = conversationHistory.slice(-3);
+    const contextMessages = recentMessages.map(msg => 
+      `${msg.role}: "${msg.content?.substring(0, 100) || ''}"`
+    ).join('\n');
+
+    return `\n\nCONVERSATION CONTEXT (last ${recentMessages.length} messages):\n${contextMessages}`;
+  }
+
+  static cleanQuotes(text) {
+    if (!text) return text;
+    
+    // Remove surrounding quotes if present
+    if ((text.startsWith('"') && text.endsWith('"')) || 
+        (text.startsWith("'") && text.endsWith("'"))) {
+      return text.slice(1, -1);
+    }
+    return text;
+  }
+
+  static estimateTokens(text) {
+    if (!text) return 0;
+    return Math.ceil(text.trim().length / 4);
+  }
+
+  // LLM Prompt Templates
+  static getPromptTemplate(type, params = {}) {
+    const templates = {
+      translation: (query, language) => `Translate this query from ${language} to English. Only return the English translation, nothing else.
+
+Query: "${query}"`,
+
+      routingStrategy: (agentProfiles, conversationContext, query) => `You are a JSON-only router. Output ONLY the JSON object below. No thinking, no explanation.
+
+AVAILABLE AGENTS:
+${agentProfiles}${conversationContext}
+
+CURRENT USER QUERY: "${query}"
+
+CRITICAL INSTRUCTIONS:
+1. Review each agent's description and specialties carefully
+2. Consider the conversation history context to understand the full context of what the user is asking
+3. Determine if the query requires information from MULTIPLE agents
+4. If the query has distinct parts that belong to different specialties, route to MULTIPLE agents
+5. For example:
+   - "Who is my manager and which tickets require his approval?" → ["hr", "it"] (manager info from HR, tickets from IT)
+   - "What's my salary and computer status?" → ["hr", "it"] (salary from HR, computer from IT)
+   - "Show me my projects" → ["general"] (single agent)
+6. If routing to multiple agents, split the query into appropriate sub-queries for each
+
+Output this JSON format exactly (replace values in quotes):
+{"agents": [{"agent": "agent_name", "subQuery": "specific query for this agent"}], "reasoning": "brief"}
+
+For multiple agents:
+{"agents": [{"agent": "agent1", "subQuery": "query part 1"}, {"agent": "agent2", "subQuery": "query part 2"}], "reasoning": "brief"}
+
+Now output the JSON:
+{`,
+
+      synthesis: (originalQuery, responseSummary) => `You are a response synthesizer. The user asked: "${originalQuery}"
+
+Multiple specialist agents provided the following responses:
+
+${responseSummary}
+
+TASK: Combine these specialist responses into a single, coherent, and comprehensive answer that fully addresses the user's original question. 
+
+GUIDELINES:
+- Present information in a logical order
+- Avoid redundancy
+- Maintain the specialist expertise from each response
+- Use clear formatting (bullets, sections) if helpful
+- If responses conflict, note the discrepancy
+- Be concise but complete
+
+SYNTHESIZED RESPONSE:`,
+
+      validation: (originalQuery, translatedQuery, response, agentName) => `Analyze if this agent response properly answers the user's question.
+
+Original question: "${originalQuery}"
+${translatedQuery !== originalQuery ? `Translated question: "${translatedQuery}"` : ''}
+Agent: ${agentName}
+Response: "${response}"
+
+TASK: Determine if the response adequately addresses the user's question.
+
+Return JSON format:
+{"isRelevant": true/false, "reasoning": "brief explanation", "suggestedImprovement": "optional suggestion if not relevant"}`,
+
+      conciseness: (originalQuery, response) => `Make this response more concise while preserving all essential information that answers the user's question.
+
+User question: "${originalQuery}"
+Response: "${response}"
+
+Requirements:
+- Keep all factual information
+- Remove verbose explanations and filler text
+- Maintain professional tone
+- Ensure the answer is still complete and clear
+- Maximum 3-4 sentences
+
+Return only the concise version:`
+    };
+
+    const template = templates[type];
+    if (!template) {
+      throw new Error(`Unknown prompt template: ${type}`);
+    }
+
+    return template(...Object.values(params));
+  }
+
+  // Common LLM options
+  static getLLMOptions(type, llmProvider = null) {
+    const optionSets = {
+      translation: {
+        system: 'You are a precise translation assistant. Only return the English translation with no additional text or explanation.',
+        temperature: 0.1,
+        maxTokens: 1000,
+        provider: llmProvider
+      },
+      routing: {
+        system: `You are a JSON output formatter. You output ONLY valid JSON.
+Start with { and end with }
+Do not include any text before { or after }
+Do not think or reason
+Output JSON immediately`,
+        temperature: 0.0,
+        maxTokens: 200,
+        provider: llmProvider
+      },
+      synthesis: {
+        system: 'You are an expert at synthesizing information from multiple sources into clear, comprehensive responses.',
+        temperature: 0.3,
+        maxTokens: 2000,
+        provider: llmProvider
+      },
+      validation: {
+        system: 'You are a response quality analyzer. Output only valid JSON with the specified format.',
+        temperature: 0.1,
+        maxTokens: 300,
+        provider: llmProvider
+      },
+      conciseness: {
+        system: 'You are a text optimization assistant. Make responses concise while preserving all essential information.',
+        temperature: 0.1,
+        maxTokens: 1000,
+        provider: llmProvider
+      }
+    };
+
+    return optionSets[type] || { provider: llmProvider };
+  }
+
+
+}
+
+/**
  * Intelligent Coordinator for MCP Gateway
  * 
  * RESPONSIBILITY: ALL routing decisions and intelligence
@@ -22,7 +200,6 @@ import { LLMProviderFactory } from './utils/llm-provider.js';
 class AgentRegistry {
   constructor() {
     this.agents = new Map(); // agentId -> agent metadata
-    this.capabilities = new Map(); // capability -> Set of agentIds
   }
 
   registerAgent(agentData) {
@@ -41,33 +218,17 @@ class AgentRegistry {
       sessionId: null
     });
 
-    // Index capabilities for routing (using agent specialties)
-    const agentCapabilities = capabilities.length > 0 ? capabilities : [name]; // fallback to agent name
-    agentCapabilities.forEach(capability => {
-      if (!this.capabilities.has(capability)) {
-        this.capabilities.set(capability, new Set());
-      }
-      this.capabilities.get(capability).add(agentId);
-    });
+
 
     const llmProviderInfo = LLMProviders.length > 0 ? ` with providers: ${LLMProviders.map(p => p.id).join(', ')}` : '';
-    getLogger().debug(`Agent ${name} (${agentId}) registered with capabilities: ${JSON.stringify(agentCapabilities)}${llmProviderInfo}`);
+    getLogger().debug(`Agent ${name} (${agentId}) registered with capabilities: ${JSON.stringify(capabilities)}${llmProviderInfo}`);
   }
 
   unregisterAgent(agentId) {
     const agent = this.agents.get(agentId);
     if (agent) {
       // Remove from capability index
-      const agentCapabilities = agent.capabilities.length > 0 ? agent.capabilities : [agent.name];
-      agentCapabilities.forEach(capability => {
-        const capabilitySet = this.capabilities.get(capability);
-        if (capabilitySet) {
-          capabilitySet.delete(agentId);
-          if (capabilitySet.size === 0) {
-            this.capabilities.delete(capability);
-          }
-        }
-      });
+
 
       this.agents.delete(agentId);
       getLogger().debug(`Agent ${agent.name} (${agentId}) unregistered`);
@@ -76,49 +237,16 @@ class AgentRegistry {
 
   findAgentsForQuery(query) {
     // Return all healthy agents - delegate routing decision entirely to LLM
-    // This removes hardcoded keyword matching and relies on agent-announced capabilities
-    const availableAgents = [];
-
-    for (const [agentId, agent] of this.agents) {
-      if (agent.healthy) {
-        availableAgents.push(agentId);
-      }
-    }
-
-    // Return all available agents if we have them, otherwise fallback to default
-    return availableAgents.length > 0 ? availableAgents : this.getDefaultAgent();
-  }
-
-  isSemanticMatch(query, agentId) {
-    // Use agent-provided capabilities for semantic matching
-    const agent = this.agents.get(agentId);
-    if (!agent || !agent.healthy) return false;
-
-    const queryLower = query.toLowerCase();
-
-    // Check if query matches any of the agent's registered capabilities
-    if (agent.capabilities && agent.capabilities.length > 0) {
-      return agent.capabilities.some(capability =>
-        queryLower.includes(capability.toLowerCase()) ||
-        capability.toLowerCase().includes(queryLower.split(' ')[0]) // Check first word
-      );
-    }
-
-    // Fallback to agent name matching
-    return queryLower.includes(agent.name.toLowerCase());
+    return Array.from(this.agents.values())
+      .filter(agent => agent.healthy)
+      .map(agent => agent.agentId);
   }
 
   getDefaultAgent() {
     // Return first available agent as default, prefer 'general' if available
-    for (const [agentId, agent] of this.agents) {
-      if (agent.name === 'general') {
-        return [agentId];
-      }
-    }
-
-    // Return first available agent
-    const firstAgent = this.agents.values().next().value;
-    return firstAgent ? [firstAgent.agentId] : [];
+    const agents = Array.from(this.agents.values()).filter(agent => agent.healthy);
+    const generalAgent = agents.find(agent => agent.name === 'general');
+    return generalAgent ? [generalAgent.agentId] : (agents.length > 0 ? [agents[0].agentId] : []);
   }
 
   getAgent(agentId) {
@@ -181,10 +309,6 @@ class IntelligentCoordinator {
     // Security checkpoint data tracking for phase 3
     this.securityCheckpoints = [];
 
-    // LLM Models
-    this.coordinatorModel = process.env.COORDINATOR_MODEL || 'qwen2.5:1.5b';
-    this.translationModel = process.env.TRANSLATION_MODEL || 'qwen2.5-translator';
-
     // Security Phase 3 Integration
     // NOTE: Phase selection is done per-request via frontend UI, not at initialization
     // Always initialize Prisma AIRS if credentials are available (needed for dynamic phase selection)
@@ -237,48 +361,43 @@ class IntelligentCoordinator {
    * Estimate tokens from text (approximation: 1 token ≈ 4 characters)
    */
   estimateTokens(text) {
-    if (!text) return 0;
-    // Remove extra whitespace and estimate
-    const cleanText = text.trim();
-    return Math.ceil(cleanText.length / 4);
+    return CoordinatorUtils.estimateTokens(text);
   }
 
   /**
-   * Track coordinator tokens used
+   * Unified token tracking method
    */
-  trackCoordinatorTokens(text) {
-    const tokens = this.estimateTokens(text);
-    this.tokenUsage.coordinator_tokens += tokens;
-    this.tokenUsage.total_tokens += tokens;
-  }
-
-  /**
-   * Track agent tokens used
-   */
-  trackAgentTokens(text) {
-    const tokens = this.estimateTokens(text);
-    this.tokenUsage.agent_tokens += tokens;
-    this.tokenUsage.total_tokens += tokens;
-  }
-
-  /**
-   * Track real tokens from LLM response (works with both Ollama and Bedrock)
-   */
-  trackTokens(response, operationType = 'Operation') {
-    const promptTokens = response.usage?.prompt_tokens || response.prompt_eval_count || 0;
-    const completionTokens = response.usage?.completion_tokens || response.eval_count || 0;
-    const totalTokens = response.usage?.total_tokens || promptTokens + completionTokens;
-    if (totalTokens > 0) {
-      this.tokenUsage.coordinator_tokens += totalTokens;
-      this.tokenUsage.total_tokens += totalTokens;
-      getLogger().debug(`${operationType} tokens: ${promptTokens} (prompt) + ${completionTokens} (completion) = ${totalTokens}`);
+  trackTokens(input, type = 'coordinator', operationType = 'Operation') {
+    let tokens = 0;
+    
+    if (typeof input === 'string') {
+      // Text-based estimation
+      tokens = this.estimateTokens(input);
+    } else if (input && typeof input === 'object') {
+      // LLM response object
+      const promptTokens = input.usage?.prompt_tokens || input.prompt_eval_count || 0;
+      const completionTokens = input.usage?.completion_tokens || input.eval_count || 0;
+      tokens = input.usage?.total_tokens || promptTokens + completionTokens;
+      
+      if (tokens > 0) {
+        getLogger().debug(`${operationType} tokens: ${promptTokens} (prompt) + ${completionTokens} (completion) = ${tokens}`);
+      }
+    }
+    
+    if (tokens > 0) {
+      if (type === 'agent') {
+        this.tokenUsage.agent_tokens += tokens;
+      } else {
+        this.tokenUsage.coordinator_tokens += tokens;
+      }
+      this.tokenUsage.total_tokens += tokens;
     }
   }
 
-  // Keep legacy method name for backward compatibility
-  trackOllamaTokens(response, operationType = 'Operation') {
-    this.trackTokens(response, operationType);
-  }
+  // Legacy methods for backward compatibility
+  trackCoordinatorTokens(text) { this.trackTokens(text, 'coordinator'); }
+  trackAgentTokens(text) { this.trackTokens(text, 'agent'); }
+  trackOllamaTokens(response, operationType = 'Operation') { this.trackTokens(response, 'coordinator', operationType); }
 
   /**
    * Agent registration endpoint
@@ -311,15 +430,6 @@ class IntelligentCoordinator {
     try {
       this.initialized = true;
       getLogger().debug('Initialized - waiting for agent registrations...');
-      getLogger().debug(`Using coordinator model: ${this.coordinatorModel}`);
-      getLogger().debug(`Using translation model: ${this.translationModel}`);
-
-      // Warn if using extended thinking model
-      if (this.coordinatorModel.includes('qwen3') || this.coordinatorModel.includes('deepseek')) {
-        getLogger().warn(`Using extended thinking model (${this.coordinatorModel})`);
-        getLogger().warn(`Extended thinking may cause routing JSON to appear in the 'thinking' field`);
-        getLogger().warn(`This is handled by the coordinator but may use more tokens`);
-      }
 
       if (this.prismaAIRS && this.prismaAIRS.isConfigured()) {
         getLogger().debug('Prisma AIRS security active');
@@ -371,29 +481,17 @@ class IntelligentCoordinator {
     getLogger().debug(`Translating "${query}" from ${language} to English`);
 
     try {
-      const translationPrompt = `Translate this query from ${language} to English. Only return the English translation, nothing else.
-
-Query: "${query}"`;
-
-      const response = await this.generateWithLLM(translationPrompt, {
-        system: 'You are a precise translation assistant. Only return the English translation with no additional text or explanation.',
-        temperature: 0.1,
-        maxTokens: 1000,
-        provider: llmProvider
-      });
-
+      const prompt = CoordinatorUtils.getPromptTemplate('translation', { query, language });
+      const options = CoordinatorUtils.getLLMOptions('translation', llmProvider);
+      
+      const response = await this.generateWithLLM(prompt, options);
       let translatedQuery = response.response?.trim() || query;
 
       // Track actual tokens from LLM response
-      this.trackTokens(response, 'Translation');
+      this.trackTokens(response, 'coordinator', 'Translation');
 
-      // Remove surrounding quotes if present (LLM sometimes adds them)
-      if (translatedQuery.startsWith('"') && translatedQuery.endsWith('"')) {
-        translatedQuery = translatedQuery.slice(1, -1);
-      }
-      if (translatedQuery.startsWith("'") && translatedQuery.endsWith("'")) {
-        translatedQuery = translatedQuery.slice(1, -1);
-      }
+      // Remove surrounding quotes if present
+      translatedQuery = CoordinatorUtils.cleanQuotes(translatedQuery);
 
       getLogger().debug(`Translated: "${translatedQuery}"`);
       return translatedQuery;
@@ -414,13 +512,7 @@ Query: "${query}"`;
 
     // Log received user identity
     if (userContext) {
-      const identityInfo = [];
-      if (userContext.name) identityInfo.push(`name: ${userContext.name}`);
-      if (userContext.email) identityInfo.push(`email: ${userContext.email}`);
-      if (userContext.role) identityInfo.push(`role: ${userContext.role}`);
-      if (userContext.department) identityInfo.push(`dept: ${userContext.department}`);
-      if (userContext.employeeId) identityInfo.push(`empId: ${userContext.employeeId}`);
-
+      const identityInfo = CoordinatorUtils.buildUserIdentityInfo(userContext);
       if (identityInfo.length > 0) {
         getLogger().debug(`User identity received: ${identityInfo.join(', ')}`);
       }
@@ -519,61 +611,17 @@ ${capabilities}`;
       }).join(', '));
 
       // Build conversation context from history
-      let conversationContext = '';
-      if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-        getLogger().debug(`Including ${conversationHistory.length} messages from conversation history in routing analysis`);
-        const historyLines = conversationHistory
-          .map(msg => {
-            const role = msg.role === 'user' ? 'User' : 'Assistant';
-            return `${role}: ${msg.content}`;
-          })
-          .join('\n');
+      const conversationContext = CoordinatorUtils.buildConversationContext(conversationHistory);
 
-        conversationContext = `\n\nCONVERSATION HISTORY:
-${historyLines}\n`;
-      }
-
-      const strategyPrompt = `You are a JSON-only router. Output ONLY the JSON object below. No thinking, no explanation.
-
-AVAILABLE AGENTS:
-${agentProfiles}${conversationContext}
-
-CURRENT USER QUERY: "${query}"
-
-CRITICAL INSTRUCTIONS:
-1. Review each agent's description and specialties carefully
-2. Consider the conversation history context to understand the full context of what the user is asking
-3. Determine if the query requires information from MULTIPLE agents
-4. If the query has distinct parts that belong to different specialties, route to MULTIPLE agents
-5. For example:
-   - "Who is my manager and which tickets require his approval?" → ["hr", "it"] (manager info from HR, tickets from IT)
-   - "What's my salary and computer status?" → ["hr", "it"] (salary from HR, computer from IT)
-   - "Show me my projects" → ["general"] (single agent)
-6. If routing to multiple agents, split the query into appropriate sub-queries for each
-
-Output this JSON format exactly (replace values in quotes):
-{"agents": [{"agent": "agent_name", "subQuery": "specific query for this agent"}], "reasoning": "brief"}
-
-For multiple agents:
-{"agents": [{"agent": "agent1", "subQuery": "query part 1"}, {"agent": "agent2", "subQuery": "query part 2"}], "reasoning": "brief"}
-
-Now output the JSON:
-{`;
+      const prompt = CoordinatorUtils.getPromptTemplate('routingStrategy', { 
+        agentProfiles, 
+        conversationContext, 
+        query 
+      });
+      const options = CoordinatorUtils.getLLMOptions('routing', llmProvider);
 
       this.sendThinkingMessage(`Analyzing query routing strategy...`);
-
-      const options = {
-        system: `You are a JSON output formatter. You output ONLY valid JSON.
-Start with { and end with }
-Do not include any text before { or after }
-Do not think or reason
-Output JSON immediately`,
-        temperature: 0.0,
-        maxTokens: 200,
-        provider: llmProvider
-      };
-
-      const response = await this.generateWithLLM(strategyPrompt, options);
+      const response = await this.generateWithLLM(prompt, options);
 
       // Track routing strategy tokens
       this.trackTokens(response, 'Routing strategy');
@@ -783,31 +831,11 @@ Output JSON immediately`,
       `${resp.agent.toUpperCase()} SPECIALIST: "${resp.query}"\nResponse: ${resp.response}`
     ).join('\n\n');
 
-    const synthesisPrompt = `You are a response synthesizer. The user asked: "${originalQuery}"
-
-Multiple specialist agents provided the following responses:
-
-${responseSummary}
-
-TASK: Combine these specialist responses into a single, coherent, and comprehensive answer that fully addresses the user's original question. 
-
-GUIDELINES:
-- Present information in a logical order
-- Avoid redundancy
-- Maintain the specialist expertise from each response
-- Use clear formatting (bullets, sections) if helpful
-- If responses conflict, note the discrepancy
-- Be concise but complete
-
-SYNTHESIZED RESPONSE:`;
+    const prompt = CoordinatorUtils.getPromptTemplate('synthesis', { originalQuery, responseSummary });
+    const options = CoordinatorUtils.getLLMOptions('synthesis', llmProvider);
 
     try {
-      const response = await this.generateWithLLM(synthesisPrompt, {
-        system: 'You are an expert at synthesizing information from multiple sources into clear, comprehensive responses.',
-        temperature: 0.3,
-        maxTokens: 2000,
-        provider: llmProvider
-      });
+      const response = await this.generateWithLLM(prompt, options);
 
       // Track synthesis tokens
       this.trackTokens(response, 'Response synthesis');
@@ -1228,6 +1256,7 @@ Return only the concise version:`;
     getLogger().debug(`Security Checkpoint ${checkpointNumber}: ${checkpointLabel}${agentInfo}`);
 
     const startTime = Date.now();
+    const aiModel = llmProvider ? LLMProviderFactory.buildModelIdentifier(llmProvider) : null;
 
     // Call appropriate Prisma AIRS method
     let result;
@@ -1236,7 +1265,7 @@ Return only the concise version:`;
         language: config.language,
         appName,
         appUser: userEmail || appUser,
-        aiModel: llmProvider ? LLMProviderFactory.buildModelIdentifier(llmProvider) : this.coordinatorModel,
+        aiModel: aiModel,
         trId
       });
     } else if (analyzeMethod === 'promptAndResponse') {
@@ -1244,7 +1273,7 @@ Return only the concise version:`;
         language: config.language,
         appName,
         appUser: userEmail || appUser,
-        aiModel: llmProvider ? LLMProviderFactory.buildModelIdentifier(llmProvider) : this.coordinatorModel,
+        aiModel: aiModel,
         trId
       });
     }
@@ -1311,101 +1340,106 @@ Return only the concise version:`;
   }
 
   /**
-   * Prisma AIRS Security Analysis - Checkpoint 1: Initial User Input
+   * Unified Prisma AIRS Security Analysis
    */
+  async analyzeSecurityCheckpoint(checkpointType, ...args) {
+    const configs = {
+      userInput: (query, language = 'en', userEmail = null, agentName = null, sessionId = null) => ({
+        checkpointNumber: 1,
+        checkpointLabel: 'Analyzing user input',
+        appName: 'theotter-coordinator',
+        appUser: 'user',
+        userEmail,
+        agentName,
+        language,
+        analyzeMethod: 'prompt',
+        input: query,
+        detectionField: 'promptDetected',
+        maskingField: 'prompt',
+        trId: sessionId ? `${sessionId}` : `user-input-${Date.now()}`,
+        successMessage: 'User input passed security checks',
+        blockMessage: '🚫 User input BLOCKED by security',
+        originalKey: 'originalQuery',
+        maskedKey: 'maskedQuery'
+      }),
+      outboundRequest: (subQuery, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null) => ({
+        checkpointNumber: 2,
+        checkpointLabel: `Analyzing outbound request to ${serverName}`,
+        appName: 'theotter-coordinator',
+        appUser: 'user',
+        userEmail,
+        agentName,
+        language,
+        analyzeMethod: 'prompt',
+        input: subQuery,
+        detectionField: 'promptDetected',
+        maskingField: 'prompt',
+        trId: sessionId ? `${sessionId}` : `outbound-${serverName}-${Date.now()}`,
+        successMessage: `Request to ${serverName} passed security checks`,
+        blockMessage: `🚫 Outbound request to ${serverName} BLOCKED by security`,
+        originalKey: 'originalQuery',
+        maskedKey: 'maskedQuery'
+      }),
+      inboundResponse: (prompt, response, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null) => ({
+        checkpointNumber: 3,
+        checkpointLabel: `Analyzing inbound response from ${serverName}`,
+        appName: `theotter-mcp-agent-${agentName}`,
+        appUser: 'agent',
+        userEmail,
+        agentName,
+        language,
+        analyzeMethod: 'promptAndResponse',
+        input: prompt,
+        secondaryInput: response,
+        detectionField: 'responseDetected',
+        maskingField: 'response',
+        trId: sessionId ? `${sessionId}` : `inbound-${serverName}-${Date.now()}`,
+        successMessage: `Response from ${serverName} passed security checks`,
+        blockMessage: `🚫 Inbound response from ${serverName} BLOCKED by security`,
+        originalKey: 'originalResponse',
+        maskedKey: 'maskedResponse'
+      }),
+      finalResponse: (prompt, response, language = 'en', userEmail = null, agentName = null, sessionId = null) => ({
+        checkpointNumber: 4,
+        checkpointLabel: 'Analyzing final coordinated response',
+        appName: `theotter-mcp-agent-${agentName}`,
+        appUser: 'agent',
+        userEmail,
+        agentName,
+        language,
+        analyzeMethod: 'promptAndResponse',
+        input: prompt,
+        secondaryInput: response,
+        detectionField: 'responseDetected',
+        maskingField: 'response',
+        trId: sessionId ? `${sessionId}` : `final-output-${Date.now()}`,
+        successMessage: 'Final response passed security checks',
+        blockMessage: '🚫 Final response BLOCKED by security',
+        originalKey: 'originalResponse',
+        maskedKey: 'maskedResponse'
+      })
+    };
+
+    const llmProvider = args[args.length - 1]; // Last argument is always llmProvider
+    const config = configs[checkpointType](...args.slice(0, -1));
+    return this._analyzeSecurityCheckpoint(config, llmProvider);
+  }
+
+  // Legacy methods for backward compatibility
   async analyzeUserInput(query, language = 'en', userEmail = null, agentName = null, sessionId = null, llmProvider = null) {
-    return this._analyzeSecurityCheckpoint({
-      checkpointNumber: 1,
-      checkpointLabel: 'Analyzing user input',
-      appName: 'theotter-coordinator',
-      appUser: 'user',
-      userEmail,
-      agentName,
-      language,
-      analyzeMethod: 'prompt',
-      input: query,
-      detectionField: 'promptDetected',
-      maskingField: 'prompt',
-      trId: sessionId ? `${sessionId}` : `user-input-${Date.now()}`,
-      successMessage: 'User input passed security checks',
-      blockMessage: '🚫 User input BLOCKED by security',
-      originalKey: 'originalQuery',
-      maskedKey: 'maskedQuery'
-    }, llmProvider);
+    return this.analyzeSecurityCheckpoint('userInput', query, language, userEmail, agentName, sessionId, llmProvider);
   }
 
-  /**
-   * Prisma AIRS Security Analysis - Checkpoint 2: Outbound Request to MCP Server
-   */
   async analyzeOutboundRequest(subQuery, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null, llmProvider = null) {
-    return this._analyzeSecurityCheckpoint({
-      checkpointNumber: 2,
-      checkpointLabel: `Analyzing outbound request to ${serverName}`,
-      appName: 'theotter-coordinator',
-      appUser: 'user',
-      userEmail,
-      agentName,
-      language,
-      analyzeMethod: 'prompt',
-      input: subQuery,
-      detectionField: 'promptDetected',
-      maskingField: 'prompt',
-      trId: sessionId ? `${sessionId}` : `outbound-${serverName}-${Date.now()}`,
-      successMessage: `Request to ${serverName} passed security checks`,
-      blockMessage: `🚫 Outbound request to ${serverName} BLOCKED by security`,
-      originalKey: 'originalQuery',
-      maskedKey: 'maskedQuery'
-    }, llmProvider);
+    return this.analyzeSecurityCheckpoint('outboundRequest', subQuery, serverName, language, userEmail, agentName, sessionId, llmProvider);
   }
 
-  /**
-   * Prisma AIRS Security Analysis - Checkpoint 3: Inbound Response from MCP Server
-   */
   async analyzeInboundResponse(prompt, response, serverName, language = 'en', userEmail = null, agentName = null, sessionId = null, llmProvider = null) {
-    return this._analyzeSecurityCheckpoint({
-      checkpointNumber: 3,
-      checkpointLabel: `Analyzing inbound response from ${serverName}`,
-      appName: `theotter-mcp-agent-${agentName}`,
-      appUser: 'agent',
-      userEmail,
-      agentName,
-      language,
-      analyzeMethod: 'promptAndResponse',
-      input: prompt,
-      secondaryInput: response,
-      detectionField: 'responseDetected',
-      maskingField: 'response',
-      trId: sessionId ? `${sessionId}` : `inbound-${serverName}-${Date.now()}`,
-      successMessage: `Response from ${serverName} passed security checks`,
-      blockMessage: `🚫 Inbound response from ${serverName} BLOCKED by security`,
-      originalKey: 'originalResponse',
-      maskedKey: 'maskedResponse'
-    }, llmProvider);
+    return this.analyzeSecurityCheckpoint('inboundResponse', prompt, response, serverName, language, userEmail, agentName, sessionId, llmProvider);
   }
 
-  /**
-   * Prisma AIRS Security Analysis - Checkpoint 4: Final Coordinated Response
-   */
   async analyzeFinalResponse(prompt, response, language = 'en', userEmail = null, agentName = null, sessionId = null, llmProvider = null) {
-    return this._analyzeSecurityCheckpoint({
-      checkpointNumber: 4,
-      checkpointLabel: 'Analyzing final coordinated response',
-      appName: `theotter-mcp-agent-${agentName}`,
-      appUser: 'agent',
-      userEmail,
-      agentName,
-      language,
-      analyzeMethod: 'promptAndResponse',
-      input: prompt,
-      secondaryInput: response,
-      detectionField: 'responseDetected',
-      maskingField: 'response',
-      trId: sessionId ? `${sessionId}` : `final-output-${Date.now()}`,
-      successMessage: 'Final response passed security checks',
-      blockMessage: '🚫 Final response BLOCKED by security',
-      originalKey: 'originalResponse',
-      maskedKey: 'maskedResponse'
-    }, llmProvider);
+    return this.analyzeSecurityCheckpoint('finalResponse', prompt, response, language, userEmail, agentName, sessionId, llmProvider);
   }
 
   /**
@@ -1436,10 +1470,9 @@ Return only the concise version:`;
         getLogger().debug(`Personal query detected but no user context provided`);
         this.sendThinkingMessage(`User identification required for personal queries`);
 
+        const resp = this.buildErrorResponse('I need to know who you are to answer personal questions like that. Please provide your email or user identity in the request.');
         return {
-          response: 'I need to know who you are to answer personal questions like that. Please provide your email or user identity in the request.',
-          error: true,
-          success: false,
+          ...resp,
           requiresUserContext: true,
           originalQuery: query
         };
@@ -1501,12 +1534,9 @@ Return only the concise version:`;
         this.sendThinkingMessage(`Error: ${userMessage}`);
 
         // Return error response instead of throwing
-        return {
-          response: userMessage,
-          error: true,
-          errorType: routingError.message,
-          success: false
-        };
+        const errResp = this.buildErrorResponse(userMessage);
+        errResp.errorType = routingError.message;
+        return errResp;
       }
 
       // routingResult is now always an object with type field
@@ -1648,21 +1678,34 @@ Return only the concise version:`;
 
       this.sendThinkingMessage(`Error: ${userMessage}`);
 
-      return {
-        response: userMessage,
-        error: true,
-        errorType: error.message,
-        success: false,
-        metadata: this.buildResultMetadata(phase)
-      };
+      const errResp = this.buildErrorResponse(userMessage, phase);
+      errResp.errorType = error.message;
+      return errResp;
     }
   }
 
   /**
-   * Helper to build result metadata object for responses.
-   * @param {string} phase - The current processing phase (e.g., 'phase3').
-   * @returns {Object} An object containing token usage and security checkpoint information.
+   * Helper to build successful response with metadata
    */
+  buildSuccessResponse(response, phase = 'phase2') {
+    return {
+      success: true,
+      response,
+      metadata: this.buildResultMetadata(phase)
+    };
+  }
+
+  /**
+   * Helper to build error response with metadata
+   */
+  buildErrorResponse(message, phase = 'phase2') {
+    return {
+      success: false,
+      response: message,
+      error: true,
+      metadata: this.buildResultMetadata(phase)
+    };
+  }
   buildResultMetadata(phase) {
     return {
       total_tokens: this.tokenUsage.total_tokens,
@@ -1734,84 +1777,6 @@ Return only the concise version:`;
     }
 
     return results;
-  }
-
-  /**
-   * Process messages array through the MCP system (for MCP protocol compatibility)
-   */
-  async processMessages(messages, language = 'en', userContext = null) {
-    if (!this.initialized) {
-      throw new Error('MCPGateway not initialized');
-    }
-
-    if (!Array.isArray(messages) || messages.length === 0) {
-      throw new Error('Messages array is required and must not be empty');
-    }
-
-    getLogger().debug(`💬 Processing message array with ${messages.length} messages (${language})`);
-
-    // Extract the most recent user message for processing
-    const userMessages = messages.filter(msg => msg.role === 'user');
-    const lastUserMessage = userMessages[userMessages.length - 1];
-
-    if (!lastUserMessage || !lastUserMessage.content) {
-      throw new Error('No valid user message found in messages array');
-    }
-
-    // Use the existing processQuery method with the latest user message
-    const query = lastUserMessage.content;
-    const result = await this.processQuery(query, language, {
-      ...userContext,
-      messageHistory: messages,
-      conversationContext: this.extractConversationContext(messages)
-    });
-
-    // Add session update information for MCP protocol
-    return {
-      ...result,
-      sessionUpdate: {
-        lastProcessedMessage: lastUserMessage,
-        messageCount: messages.length,
-        timestamp: new Date().toISOString()
-      }
-    };
-  }
-
-  /**
-   * Extract conversation context from message history
-   */
-  extractConversationContext(messages) {
-    const context = {
-      totalMessages: messages.length,
-      userMessageCount: messages.filter(msg => msg.role === 'user').length,
-      assistantMessageCount: messages.filter(msg => msg.role === 'assistant').length,
-      topics: new Set(),
-      recentContext: []
-    };
-
-    // Keep last 5 messages for context
-    const recentMessages = messages.slice(-5);
-    context.recentContext = recentMessages.map(msg => ({
-      role: msg.role,
-      content: msg.content?.substring(0, 200) || '', // Truncate for context
-      timestamp: msg.timestamp
-    }));
-
-    // Extract potential topics from user messages
-    const userMessages = messages.filter(msg => msg.role === 'user');
-    userMessages.forEach(msg => {
-      if (msg.content) {
-        // Simple keyword extraction
-        const words = msg.content.toLowerCase().split(/\s+/)
-          .filter(word => word.length > 3)
-          .slice(0, 5);
-        words.forEach(word => context.topics.add(word));
-      }
-    });
-
-    context.topics = Array.from(context.topics);
-
-    return context;
   }
 
   /**
