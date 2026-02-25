@@ -868,19 +868,6 @@ ${capabilities}`;
       const queryToSend = securityCheckResult.maskedQuery || query;
       let enrichedQuery = queryToSend;
 
-      // Add conversation history context if available
-      if (userContext?.history && Array.isArray(userContext.history) && userContext.history.length > 0) {
-        const conversationSummary = userContext.history
-          .map(msg => {
-            const role = msg.role === 'user' ? 'User' : 'Assistant';
-            return `${role}: ${msg.content}`;
-          })
-          .join('\n');
-
-        enrichedQuery = `[Conversation context]\n${conversationSummary}\n\n[Current query]\n${enrichedQuery}`;
-        getLogger().debug(`Added conversation history (${userContext.history.length} messages) to query for ${agent.name}`);
-      }
-
       // Add user context to the query as natural language if provided
       if (userContext) {
         const contextInfo = [];
