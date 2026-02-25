@@ -113,19 +113,6 @@ TASK: Determine if the response adequately addresses the user's question.
 Return JSON format:
 {"isRelevant": true/false, "reasoning": "brief explanation", "suggestedImprovement": "optional suggestion if not relevant"}`,
 
-      conciseness: (originalQuery, response) => `Make this response more concise while preserving all essential information that answers the user's question.
-
-User question: "${originalQuery}"
-Response: "${response}"
-
-Requirements:
-- Keep all factual information
-- Remove verbose explanations and filler text
-- Maintain professional tone
-- Ensure the answer is still complete and clear
-- Maximum 3-4 sentences
-
-Return only the concise version:`
     };
 
     const template = templates[type];
@@ -152,7 +139,7 @@ Do not include any text before { or after }
 Do not think or reason
 Output JSON immediately`,
         temperature: 0.0,
-        maxTokens: 200,
+        maxTokens: 1000,
         provider: llmProvider
       },
       synthesis: {
@@ -165,12 +152,6 @@ Output JSON immediately`,
         system: 'You are a response quality analyzer. Output only valid JSON with the specified format.',
         temperature: 0.1,
         maxTokens: 300,
-        provider: llmProvider
-      },
-      conciseness: {
-        system: 'You are a text optimization assistant. Make responses concise while preserving all essential information.',
-        temperature: 0.1,
-        maxTokens: 1000,
         provider: llmProvider
       }
     };
@@ -709,9 +690,9 @@ ${capabilities}`;
         getLogger().error(`Strategy JSON parsing failed:`, parseError.message);
         // Log both response and thinking fields if present
         const rawContent = response?.response || response?.thinking || 'N/A';
-        getLogger().error(`Problematic jsonText:`, jsonText);
+        getLogger().error(`Problematic LLM response:`, rawContent);
         getLogger().error(`Full error:`, parseError);
-        throw new Error(`LLM routing failed - invalid JSON response: ${jsonText}`);
+        throw new Error(`LLM routing failed - invalid JSON response: ${rawContent}`);
       }
     } catch (error) {
       getLogger().error(`Strategy analysis failed:`, error.message);
@@ -1064,12 +1045,6 @@ RESPOND ONLY WITH THIS JSON FORMAT:
         processedResponse = await this.translateResponse(processedResponse, targetLanguage, llmProvider);
       }
 
-      // // Step 4: Final quality check - ensure response is concise and clear
-      // if (processedResponse.length > 500) {
-      //   getLogger().debug(`Response is lengthy, making it more concise...`);
-      //   processedResponse = await this.makeConcise(processedResponse, originalQuery);
-      // }
-
       getLogger().debug(`Response processing completed`);
       return processedResponse;
 
@@ -1124,44 +1099,6 @@ Response to translate: "${response}"`;
     } catch (error) {
       getLogger().error(`Response translation failed:`, error);
       return response; // Return original if translation fails
-    }
-  }
-
-  /**
-   * Make response more concise while preserving key information
-   */
-  async makeConcise(response, originalQuery, llmProvider = null) {
-    try {
-      const concisePrompt = `Make this response more concise while preserving all essential information that answers the user's question.
-
-User question: "${originalQuery}"
-Response: "${response}"
-
-Requirements:
-- Keep all factual information
-- Remove verbose explanations and filler text
-- Maintain professional tone
-- Ensure the answer is still complete and clear
-- Maximum 3-4 sentences
-
-Return only the concise version:`;
-
-      const conciseResponse = await this.generateWithLLM(concisePrompt, {
-        system: 'You are a text optimization assistant. Make responses concise while preserving all essential information.',
-        temperature: 0.1,
-        maxTokens: 1000,
-        provider: llmProvider
-      });
-
-      // Track conciseness optimization tokens
-      this.trackTokens(conciseResponse, 'Conciseness optimization');
-
-      const conciseText = conciseResponse.response?.trim() || response;
-      getLogger().debug(`Made response more concise`);
-      return conciseText;
-    } catch (error) {
-      getLogger().error(`Concise processing failed:`, error);
-      return response;
     }
   }
 
