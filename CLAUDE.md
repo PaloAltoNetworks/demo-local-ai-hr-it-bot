@@ -143,3 +143,4 @@ Shared rules for both projects:
 - PR body: concise, describe the **spirit** of the change (not the code diff)
 - PR body: write to `/tmp/pr-body-<branch>.md` file — do not use heredoc in shell (quotes break it)
 - Run `npm run lint` and `npm run build` before pushing
+- no co-authored
