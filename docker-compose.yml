@@ -130,6 +130,28 @@ services:
       retries: 3
       start_period: 5s
 
+  # HR Tools MCP Server (standalone — no coordinator, pure data tools)
+  hr-tools-mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/hr-tools-mcp-server/Dockerfile
+    hostname: hr-tools-mcp-server
+    ports:
+      - "3007:3000"
+    env_file:
+      - ./.env
+    restart: unless-stopped
+    volumes:
+      - ./logs/hr-tools-mcp-server:/app/logs
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
   # MCP Host - User-facing chatbot application
   chatbot-host:
     build:

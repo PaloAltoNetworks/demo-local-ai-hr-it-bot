@@ -46,6 +46,7 @@ curl http://localhost:3003/health    # HR agent
 curl http://localhost:3004/health    # IT agent
 curl http://localhost:3005/health    # General agent
 curl http://localhost:3006/health    # IT Tools (standalone MCP)
+curl http://localhost:3007/health    # HR Tools (standalone MCP)
 
 # Test full query pipeline
 curl -X POST http://localhost:3001/api/query \
@@ -80,6 +81,7 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 | it-mcp-server | 3004 | 3000 |
 | general-mcp-server | 3005 | 3000 |
 | it-tools-mcp-server | 3006 | 3000 |
+| hr-tools-mcp-server | 3007 | 3000 |
 
 ### Workspace Layout
 - `utils/` — Shared: logger (Winston), LLM provider factory (Vercel AI SDK), i18n (i18next)
@@ -90,6 +92,7 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 - `mcp-server/it-mcp-server/` — IT agent, data source: SQLite via sql.js (`ticket-db.js`)
 - `mcp-server/general-mcp-server/` — General/fallback agent, built-in policy knowledge base
 - `mcp-server/it-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes IT ticket DB for external LLM hosts
+- `mcp-server/hr-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes HR employee DB for external LLM hosts
 
 ### Agent Pattern
 Each agent in `mcp-server/{name}-mcp-server/` follows the same structure:
@@ -98,6 +101,15 @@ Each agent in `mcp-server/{name}-mcp-server/` follows the same structure:
 3. `server.js` — Extends `MCPAgentBase`, registers MCP tools/resources, starts HTTP server
 
 To create a new agent: copy an existing agent directory, update `config.js`/`service.js`, add a new service block in `docker-compose.yml` with a unique `AGENT_NAME` build arg.
+
+### Standalone Tools Server Pattern
+Standalone tools servers in `mcp-server/{name}-tools-mcp-server/` are pure data/tools MCP servers — no LLM, no coordinator registration. They expose data directly as MCP tools for external LLM hosts (e.g. Claude Desktop, Cursor, LiteLLM) to consume. Each follows this structure:
+1. `service.js` — Data loading and querying logic (self-contained, no shared base classes)
+2. `server.js` — Express + MCP SDK server, registers tools via `McpServer`, supports both Streamable HTTP (`POST /mcp`) and SSE (`GET /sse` + `POST /messages`) transports
+3. `Dockerfile` — Own Dockerfile (not `Dockerfile.agent`), copies data files from the original agent and `utils/` for logging
+4. `package.json` — Dependencies: `@modelcontextprotocol/sdk`, `express`; no LLM or coordinator deps
+
+To create a new tools server: copy `it-tools-mcp-server` or `hr-tools-mcp-server`, update `service.js`/`server.js`, add a Dockerfile and a new service block in `docker-compose.yml` with a unique host port.
 
 ### LLM Provider System
 `utils/llm-provider.js` uses Vercel AI SDK to abstract across providers. Provider is auto-detected from environment variables (first match wins): Ollama, OpenAI, Anthropic, AWS Bedrock, Azure OpenAI, Google Vertex AI. Set `USE_LITELLM=true` to route all calls through a LiteLLM proxy instead.
@@ -132,7 +144,7 @@ Provider switching requires container restart. All services read from the same `
 ## Gotchas
 
 - All services communicate via Docker `mcp-network` bridge. Use Docker hostnames (e.g., `http://mcp-gateway:3001`) in inter-service calls.
-- Agents run on internal port 3000 but are mapped to different host ports (3003-3005).
+- Agents and standalone tools servers run on internal port 3000 but are mapped to different host ports (3003-3007).
 - MCP requests must include proper JSON-RPC 2.0 fields (`jsonrpc`, `id`, `method`, `params`).
 - The chatbot-host depends on all other services being healthy before starting.
 - Logs are volume-mounted to `./logs/{service-name}/` on the host.
