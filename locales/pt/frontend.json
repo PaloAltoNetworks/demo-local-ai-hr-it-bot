@@ -35,7 +35,7 @@
   "questions": {
     "title": "Perguntas de Exemplo",
     "phase1": [
-      { "icon": "help", "title": "Capacidades", "text": "Como você pode me ajudar?" },
+      { "icon": "help", "title": "Capacidades", "text": "Como pode me ajudar?" },
       { "icon": "event", "title": "Férias Restantes", "text": "Quantos dias de férias eu ainda tenho?" },
       { "icon": "laptop", "title": "Solicitação AutoCAD", "text": "Qual é o status da minha solicitação de AutoCAD?" },
       { "icon": "build", "title": "Incidentes de TI", "text": "Quais são meus incidentes de TI recentes?" },
