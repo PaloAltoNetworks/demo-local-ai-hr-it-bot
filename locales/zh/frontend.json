@@ -35,6 +35,7 @@
   "questions": {
     "title": "示例问题",
     "phase1": [
+      { "icon": "help", "title": "功能", "text": "你能怎么帮助我？" },
       { "icon": "event", "title": "剩余假期", "text": "我还有多少天假期？" },
       { "icon": "laptop", "title": "AutoCAD申请", "text": "我的AutoCAD申请状态如何？" },
       { "icon": "build", "title": "IT事件", "text": "我最近的IT事件有哪些？" },

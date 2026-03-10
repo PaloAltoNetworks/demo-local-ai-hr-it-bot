@@ -35,6 +35,7 @@
   "questions": {
     "title": "Domande di Esempio",
     "phase1": [
+      { "icon": "help", "title": "Funzionalità", "text": "Come puoi aiutarmi?" },
       { "icon": "event", "title": "Ferie Residue", "text": "Quanti giorni di ferie mi restano?" },
       { "icon": "laptop", "title": "Richiesta AutoCAD", "text": "Qual è lo stato della mia richiesta AutoCAD?" },
       { "icon": "build", "title": "Incidenti IT", "text": "Quali sono i miei ultimi incidenti IT?" },
