@@ -136,15 +136,15 @@ Provider switching requires container restart. All services read from the same `
 
 ## Git Workflow
 
-Shared rules for both projects:
+Rules:
 
 - Branch naming: `fix/`, `feat/`, `chore/` prefix
 - Commit per logical step (group dependent changes together)
 - Commit messages: single line, describe the **spirit** of the change (not the code diff)
 - PR body: concise, describe the **spirit** of the change (not the code diff)
 - PR body: write to `/tmp/pr-body-<branch>.md` file — do not use heredoc in shell (quotes break it)
-- Run `npm run lint` and `npm run build` before pushing
 - No co-authored-by in commits
+- No formal lint/build/test scripts — testing is manual via curl and the web UI
 
 ### Versioning
 
