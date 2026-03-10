@@ -167,6 +167,14 @@ async function main() {
   console.log('IT Tools service initialized');
 
   const app = express();
+
+  // Log all incoming requests
+  app.use((req, _res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from ${req.ip}`);
+    console.log(`  Headers: ${JSON.stringify(req.headers)}`);
+    next();
+  });
+
   // Ensure MCP clients can always reach Streamable HTTP transport
   // (some clients like LiteLLM don't send the required Accept header)
   // Must patch both headers object AND rawHeaders array since @hono/node-server reads rawHeaders
@@ -187,27 +195,36 @@ async function main() {
 
   // --- Streamable HTTP transport (POST /mcp) ---
   app.post('/mcp', async (req, res) => {
+    console.log(`[MCP] Streamable HTTP request received`);
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     await server.connect(transport);
     await transport.handleRequest(req, res);
+    console.log(`[MCP] Streamable HTTP request completed — status: ${res.statusCode}`);
   });
 
   // --- SSE transport (GET /sse + POST /messages) ---
   const sseTransports = {};
 
-  app.get('/sse', async (_req, res) => {
+  app.get('/sse', async (req, res) => {
+    console.log(`[MCP] SSE connection opened from ${req.ip}`);
     const server = createServer();
     const transport = new SSEServerTransport('/messages', res);
     sseTransports[transport.sessionId] = transport;
-    res.on('close', () => { delete sseTransports[transport.sessionId]; });
+    console.log(`[MCP] SSE session: ${transport.sessionId}`);
+    res.on('close', () => {
+      console.log(`[MCP] SSE session closed: ${transport.sessionId}`);
+      delete sseTransports[transport.sessionId];
+    });
     await server.connect(transport);
   });
 
   app.post('/messages', async (req, res) => {
     const sessionId = req.query.sessionId;
+    console.log(`[MCP] SSE message for session: ${sessionId}`);
     const transport = sseTransports[sessionId];
     if (!transport) {
+      console.log(`[MCP] SSE session not found: ${sessionId}`);
       return res.status(400).json({ error: 'Invalid or expired session' });
     }
     await transport.handlePostMessage(req, res);
