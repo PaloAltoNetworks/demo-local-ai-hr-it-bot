@@ -17,6 +17,10 @@ const PORT = process.env.PORT || 3000;
 
 const service = new ITService();
 
+function json(data) {
+  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+}
+
 function registerTools(server) {
   server.tool(
     'get_ticket',
@@ -27,34 +31,10 @@ function registerTools(server) {
     async ({ ticket_id }) => {
       const ticket = service.getTicketById(ticket_id);
       if (!ticket) {
-        return { content: [{ type: 'text', text: `Ticket ${ticket_id} not found` }] };
+        return json({ error: 'not_found', message: `Ticket ${ticket_id} not found` });
       }
-
       const discussions = service.getTicketDiscussions(ticket_id);
-      const discussionsText = discussions.length > 0
-        ? discussions.map(d => {
-          const flag = d.is_internal ? '[INTERNAL]' : '[PUBLIC]';
-          return `${flag} ${d.author_name} (${d.author_email}) - ${d.created_at}\nType: ${d.comment_type}\n${d.content}`;
-        }).join('\n\n')
-        : 'No discussions yet';
-
-      const text = `TICKET: ${ticket.ticket_id}
-Employee: ${ticket.employee_name} (${ticket.employee_email})
-Date: ${ticket.date}
-Status: ${ticket.status}
-Priority: ${ticket.priority}
-Category: ${ticket.category}
-Assigned To: ${ticket.assigned_to} (${ticket.assigned_to_email})
-Resolution Time: ${ticket.resolution_time || 'N/A'}
-Tags: ${ticket.tags || 'N/A'}
-
-DESCRIPTION:
-${ticket.description}
-
-DISCUSSIONS:
-${discussionsText}`;
-
-      return { content: [{ type: 'text', text }] };
+      return json({ ...ticket, discussions });
     }
   );
 
@@ -66,15 +46,7 @@ ${discussionsText}`;
     },
     async ({ query }) => {
       const tickets = service.searchTickets(query);
-      if (tickets.length === 0) {
-        return { content: [{ type: 'text', text: `No tickets found matching "${query}"` }] };
-      }
-
-      const text = `Found ${tickets.length} ticket(s):\n\n` + tickets.map(t =>
-        `${t.ticket_id} | ${t.employee_name} (${t.employee_email}) | ${t.status} | ${t.priority} | ${t.category} | ${t.description.substring(0, 100)}...`
-      ).join('\n');
-
-      return { content: [{ type: 'text', text }] };
+      return json({ count: tickets.length, tickets });
     }
   );
 
@@ -97,16 +69,7 @@ ${discussionsText}`;
       } else {
         tickets = service.getAllTickets();
       }
-
-      if (tickets.length === 0) {
-        return { content: [{ type: 'text', text: 'No tickets found' }] };
-      }
-
-      const text = `${tickets.length} ticket(s):\n\n` + tickets.map(t =>
-        `${t.ticket_id} | ${t.employee_name} | ${t.status} | ${t.priority} | ${t.category}`
-      ).join('\n');
-
-      return { content: [{ type: 'text', text }] };
+      return json({ count: tickets.length, filters: { status, priority, category }, tickets });
     }
   );
 
@@ -118,15 +81,7 @@ ${discussionsText}`;
     },
     async ({ employee_email }) => {
       const tickets = service.getTicketsByEmployee(employee_email);
-      if (tickets.length === 0) {
-        return { content: [{ type: 'text', text: `No tickets found for ${employee_email}` }] };
-      }
-
-      const text = `${tickets.length} ticket(s) for ${employee_email}:\n\n` + tickets.map(t =>
-        `${t.ticket_id} | ${t.status} | ${t.priority} | ${t.category} | ${t.description.substring(0, 100)}...`
-      ).join('\n');
-
-      return { content: [{ type: 'text', text }] };
+      return json({ count: tickets.length, employee_email, tickets });
     }
   );
 
@@ -135,21 +90,7 @@ ${discussionsText}`;
     'Get IT ticket statistics: totals by status, priority, category, and assignee.',
     {},
     async () => {
-      const stats = service.getStatistics();
-      const text = `IT Ticket Statistics:
-
-Total: ${stats.total}
-
-By Status:
-${stats.byStatus.map(s => `  ${s.status}: ${s.count}`).join('\n')}
-
-By Priority:
-${stats.byPriority.map(p => `  ${p.priority}: ${p.count}`).join('\n')}
-
-By Assignee:
-${stats.byAssignee.map(a => `  ${a.name} (${a.email}): ${a.count}`).join('\n')}`;
-
-      return { content: [{ type: 'text', text }] };
+      return json(service.getStatistics());
     }
   );
 }

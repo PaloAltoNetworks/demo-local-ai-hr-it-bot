@@ -17,6 +17,10 @@ const PORT = process.env.PORT || 3000;
 
 const service = new HRService();
 
+function json(data) {
+  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+}
+
 function registerTools(server) {
   server.tool(
     'get_employee',
@@ -27,21 +31,9 @@ function registerTools(server) {
     async ({ identifier }) => {
       const employee = service.getEmployeeByEmail(identifier) || service.getEmployeeByName(identifier);
       if (!employee) {
-        return { content: [{ type: 'text', text: `Employee "${identifier}" not found` }] };
+        return json({ error: 'not_found', message: `Employee "${identifier}" not found` });
       }
-
-      const text = `EMPLOYEE: ${employee.name}
-Role: ${employee.role}
-Department: ${employee.department}
-Email: ${employee.email}
-Phone: ${employee.phone}
-Salary: ${employee.salary}
-Manager: ${employee.manager || 'N/A'}
-Leave: ${employee.remaining_leave}/${employee.total_leave} days remaining (${employee.leave_taken} taken)
-Last Leave: ${employee.last_leave || 'N/A'}
-Manager Comments: ${employee.manager_comments || 'N/A'}`;
-
-      return { content: [{ type: 'text', text }] };
+      return json(employee);
     }
   );
 
@@ -53,15 +45,7 @@ Manager Comments: ${employee.manager_comments || 'N/A'}`;
     },
     async ({ query }) => {
       const employees = service.searchEmployees(query);
-      if (employees.length === 0) {
-        return { content: [{ type: 'text', text: `No employees found matching "${query}"` }] };
-      }
-
-      const text = `Found ${employees.length} employee(s):\n\n` + employees.map(e =>
-        `${e.name} | ${e.role} | ${e.department} | ${e.email}`
-      ).join('\n');
-
-      return { content: [{ type: 'text', text }] };
+      return json({ count: employees.length, employees });
     }
   );
 
@@ -75,16 +59,7 @@ Manager Comments: ${employee.manager_comments || 'N/A'}`;
       const employees = department
         ? service.getEmployeesByDepartment(department)
         : service.getAllEmployees();
-
-      if (employees.length === 0) {
-        return { content: [{ type: 'text', text: department ? `No employees found in "${department}" department` : 'No employees found' }] };
-      }
-
-      const text = `${employees.length} employee(s):\n\n` + employees.map(e =>
-        `${e.name} | ${e.role} | ${e.department} | ${e.email}`
-      ).join('\n');
-
-      return { content: [{ type: 'text', text }] };
+      return json({ count: employees.length, department: department || 'all', employees });
     }
   );
 
@@ -96,15 +71,7 @@ Manager Comments: ${employee.manager_comments || 'N/A'}`;
     },
     async ({ manager_name }) => {
       const reports = service.getEmployeesByManager(manager_name);
-      if (reports.length === 0) {
-        return { content: [{ type: 'text', text: `No direct reports found for "${manager_name}"` }] };
-      }
-
-      const text = `${reports.length} direct report(s) for ${manager_name}:\n\n` + reports.map(e =>
-        `${e.name} | ${e.role} | ${e.department} | ${e.email}`
-      ).join('\n');
-
-      return { content: [{ type: 'text', text }] };
+      return json({ count: reports.length, manager: manager_name, direct_reports: reports });
     }
   );
 
@@ -113,18 +80,7 @@ Manager Comments: ${employee.manager_comments || 'N/A'}`;
     'Get HR statistics: total headcount, breakdown by department, and breakdown by manager.',
     {},
     async () => {
-      const stats = service.getStatistics();
-      const text = `HR Statistics:
-
-Total Employees: ${stats.total}
-
-By Department:
-${stats.byDepartment.map(d => `  ${d.department}: ${d.count}`).join('\n')}
-
-By Manager (direct reports):
-${stats.byManager.map(m => `  ${m.name}: ${m.count}`).join('\n')}`;
-
-      return { content: [{ type: 'text', text }] };
+      return json(service.getStatistics());
     }
   );
 }
