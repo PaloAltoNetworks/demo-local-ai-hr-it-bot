@@ -108,6 +108,28 @@ services:
       retries: 3
       start_period: 5s
 
+  # IT Tools MCP Server (standalone — no coordinator, pure data tools)
+  it-tools-mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/it-tools-mcp-server/Dockerfile
+    hostname: it-tools-mcp-server
+    ports:
+      - "3006:3000"
+    env_file:
+      - ./.env
+    restart: unless-stopped
+    volumes:
+      - ./logs/it-tools-mcp-server:/app/logs
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
   # MCP Host - User-facing chatbot application
   chatbot-host:
     build:
