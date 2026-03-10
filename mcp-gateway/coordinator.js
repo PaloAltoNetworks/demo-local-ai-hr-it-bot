@@ -113,6 +113,23 @@ TASK: Determine if the response adequately addresses the user's question.
 Return JSON format:
 {"isRelevant": true/false, "reasoning": "brief explanation", "suggestedImprovement": "optional suggestion if not relevant"}`,
 
+      capabilities: (agentSummaries, query) => `The user asked: "${query}"
+
+You are the coordinator assistant for this system. Based on the currently connected specialist agents, describe what you can help with.
+
+CONNECTED SPECIALISTS:
+${agentSummaries}
+
+INSTRUCTIONS:
+- Present the capabilities in a clear, friendly, and organized way
+- Group by specialist area
+- Be concise but comprehensive
+- Do not mention internal agent names or technical details
+- Respond as if you are the assistant describing your own capabilities
+- If the user asked in a specific way (e.g. "can you help with X?"), tailor your answer accordingly
+
+RESPONSE:`,
+
     };
 
     const template = templates[type];
@@ -483,6 +500,49 @@ class IntelligentCoordinator {
   }
 
   /**
+   * Handle capability queries by describing what the coordinator can do
+   * based on the currently registered agents
+   */
+  async handleCapabilityQuery(query, language = 'en', llmProvider = null) {
+    const agents = this.agentRegistry.getAllAgents().filter(a => a.healthy);
+
+    if (agents.length === 0) {
+      return 'No specialist agents are currently connected. Please try again later.';
+    }
+
+    const agentSummaries = agents.map(agent => {
+      const caps = agent.capabilities && agent.capabilities.length > 0
+        ? agent.capabilities.map(c => `  - ${c}`).join('\n')
+        : '  - General assistance';
+      return `${agent.name.toUpperCase()} Specialist:\n${agent.description}\nCapabilities:\n${caps}`;
+    }).join('\n\n');
+
+    const prompt = CoordinatorUtils.getPromptTemplate('capabilities', { agentSummaries, query });
+
+    try {
+      const response = await this.generateWithLLM(prompt, {
+        system: 'You are a helpful assistant describing your own capabilities to a user. Be friendly, clear, and concise.',
+        temperature: 0.3,
+        maxTokens: 1500,
+        provider: llmProvider
+      });
+
+      this.trackTokens(response, 'coordinator', 'Capabilities');
+
+      let result = response.response?.trim() || agentSummaries;
+
+      if (language !== 'en') {
+        result = await this.translateResponse(result, language, llmProvider);
+      }
+
+      return result;
+    } catch (error) {
+      getLogger().error('Capability response generation failed:', error);
+      return agentSummaries;
+    }
+  }
+
+  /**
    * Route query to appropriate agent based on registered capabilities
    */
   async routeQuery(query, language = 'en', phase = 'phase2', userContext = null, llmProvider = 'aws') {
@@ -549,6 +609,13 @@ class IntelligentCoordinator {
       } else {
         // Single agent routing - use the agent specified in the JSON response
         const selectedAgentName = routingStrategy.agents[0].agent;
+
+        // Handle coordinator self-route for capability queries
+        if (selectedAgentName.toLowerCase() === 'coordinator') {
+          getLogger().debug('Routed to coordinator for capability query');
+          return { type: 'coordinator' };
+        }
+
         const selectedAgentId = this.findAgentIdByName(selectedAgentName);
 
         if (!selectedAgentId) {
@@ -572,7 +639,7 @@ class IntelligentCoordinator {
   async analyzeRoutingStrategy(query, candidateAgentIds, conversationHistory = [], llmProvider = null) {
     try {
       // Build detailed agent profiles for LLM analysis
-      const agentProfiles = candidateAgentIds.map(id => {
+      let agentProfiles = candidateAgentIds.map(id => {
         const agent = this.agentRegistry.getAgent(id);
         const capabilities = agent.capabilities && agent.capabilities.length > 0
           ? agent.capabilities.map(cap => `  - ${cap}`).join('\n')
@@ -584,6 +651,25 @@ Description: ${agent.description}
 Specializes in:
 ${capabilities}`;
       }).join('\n');
+
+      // Add coordinator as a virtual agent for self-describing queries
+      const allAgents = this.agentRegistry.getAllAgents().filter(a => a.healthy);
+      const coordinatorCapabilities = allAgents.map(a => {
+        const caps = a.capabilities && a.capabilities.length > 0
+          ? a.capabilities.slice(0, 3).join(', ')
+          : 'general assistance';
+        return `  - ${a.name}: ${caps}`;
+      }).join('\n');
+
+      agentProfiles += `
+Agent: coordinator
+Description: The coordinator itself — use this when the user asks about what this assistant can do, its capabilities, available services, or how it can help. It knows about all connected specialist agents.
+Specializes in:
+  - Describing available capabilities and services
+  - Explaining what kind of questions can be answered
+  - Providing an overview of connected specialists
+Currently connected specialists:
+${coordinatorCapabilities}`;
 
       // Log available agents for routing
       getLogger().debug(`Available agents for routing:`, candidateAgentIds.map(id => {
@@ -1464,7 +1550,18 @@ Response to translate: "${response}"`;
       }
 
       // routingResult is now always an object with type field
-      if (routingResult.type === 'agent-id') {
+      if (routingResult.type === 'coordinator') {
+        // Coordinator self-route — describe capabilities based on registered agents
+        getLogger().debug('Handling coordinator capability query');
+        this.sendThinkingMessage('Describing available capabilities...');
+        const capabilityResponse = await this.handleCapabilityQuery(translatedQuery, language, llmProvider);
+        return {
+          response: capabilityResponse,
+          agentUsed: 'coordinator',
+          translatedQuery: translatedQuery !== query ? translatedQuery : null,
+          metadata: this.buildResultMetadata(phase)
+        };
+      } else if (routingResult.type === 'agent-id') {
         // Single agent routing
         const selectedAgent = this.agentRegistry.getAgent(routingResult.agentId);
         this.sendThinkingMessage(`Connecting to ${selectedAgent.name} specialist...`);
