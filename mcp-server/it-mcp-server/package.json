@@ -1,6 +1,6 @@
 {
   "name": "it-mcp-server-mcp",
-  "version": "1.0.0",
+  "version": "0.0.22",
   "description": "IT Agent MCP Server - Specialized agent for IT support and technical issues",
   "main": "server.js",
   "type": "module",

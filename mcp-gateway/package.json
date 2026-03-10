@@ -1,6 +1,6 @@
 {
   "name": "mcp-gateway",
-  "version": "1.0.0",
+  "version": "0.0.22",
   "description": "MCP Gateway - Enterprise routing and security layer for MCP servers",
   "type": "module",
   "main": "mcp-server.js",

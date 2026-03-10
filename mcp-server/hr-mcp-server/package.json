@@ -1,6 +1,6 @@
 {
   "name": "hr-mcp-server-mcp",
-  "version": "1.0.0",
+  "version": "0.0.22",
   "description": "HR Agent MCP Server - Specialized agent for HR-related queries",
   "main": "server.js",
   "type": "module",

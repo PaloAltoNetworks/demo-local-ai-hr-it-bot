@@ -13,9 +13,13 @@
  * Usage: npm install (runs automatically via postinstall)
  */
 
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ============================================================================
 // MATERIAL SYMBOLS FONT CONFIGURATION
@@ -67,10 +71,11 @@ const ICONS = [
     'warning',             // Warning/alert icon
     'dark_mode',           // Dark mode icon
     'light_mode',          // Light mode icon
-    'unfold_less',        // Collapse icon
-    'unfold_more',        // Expand icon
-    'open_in_full',       // Open fullscreen icon
-    'close_fullscreen',   // Close fullscreen icon
+    'unfold_less',         // Collapse icon
+    'unfold_more',         // Expand icon
+    'open_in_full',        // Open fullscreen icon
+    'close_fullscreen',    // Close fullscreen icon
+    'help',                // Help icon
 ];
 
 // Sort icons alphabetically
