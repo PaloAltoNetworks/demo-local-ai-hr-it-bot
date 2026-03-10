@@ -109,8 +109,9 @@ The coordinator (`mcp-gateway/coordinator.js`) and each agent independently call
 ### Internationalization
 - Backend: `utils/i18n.js` with `locales/{lang}/backend.json`
 - Frontend: `chatbot-host/frontend/js/i18n.js` with `locales/{lang}/frontend.json`
-- Supported languages: en, fr, es, de, ja, pt, zh, ar
+- Supported languages: en, fr, es, de, ja, pt, zh, ar, it
 - Default: `DEFAULT_LANGUAGE=en`
+- Always use **formal register** (vous/Sie/usted/Lei/您) in user-facing translations — this is a corporate assistant
 
 ## Environment Configuration
 
@@ -135,12 +136,34 @@ Provider switching requires container restart. All services read from the same `
 
 ## Git Workflow
 
-Shared rules for both projects:
+Rules:
 
 - Branch naming: `fix/`, `feat/`, `chore/` prefix
 - Commit per logical step (group dependent changes together)
 - Commit messages: single line, describe the **spirit** of the change (not the code diff)
 - PR body: concise, describe the **spirit** of the change (not the code diff)
 - PR body: write to `/tmp/pr-body-<branch>.md` file — do not use heredoc in shell (quotes break it)
-- Run `npm run lint` and `npm run build` before pushing
-- no co-authored
+- No co-authored-by in commits
+- No formal lint/build/test scripts — testing is manual via curl and the web UI
+
+### Versioning
+
+- All `package.json` files (root + all workspaces) must have the **same version**, matching the release tag (e.g. `0.0.23`)
+- Bump versions as a separate commit: `chore: Bump all package versions to X.Y.Z`
+
+### Release Flow
+
+When asked to merge, release and prep next version, follow this exact sequence:
+
+1. Push branch, create PR (write body to `/tmp/pr-body-<branch>.md`)
+2. Merge PR: `gh pr merge <num> --merge --delete-branch --admin`
+3. `git checkout main && git pull origin main && git remote prune origin`
+4. Delete local branch if still present: `git branch -D <branch>`
+5. Tag: `git tag v<version> main && git push origin v<version>`
+6. Release notes to `/tmp/release-notes-v<version>.md`, then `gh release create`
+7. Prep next: `git checkout -b v.0.0.<next> && git push -u origin v.0.0.<next>`
+
+### Working Branch Convention
+
+- Development branches use dot notation: `v.0.0.XX` (e.g. `v.0.0.23`)
+- Tags/releases use standard semver: `v0.0.XX` (e.g. `v0.0.23`)
