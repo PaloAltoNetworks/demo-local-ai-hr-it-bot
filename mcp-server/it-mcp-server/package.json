@@ -10,10 +10,10 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "sql.js": "^1.13.0"
+    "sql.js": "^1.14.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.14"
   },
   "keywords": [
     "mcp",
