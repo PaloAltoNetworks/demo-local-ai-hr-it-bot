@@ -1,6 +1,6 @@
 {
   "name": "@shared/utils",
-  "version": "1.0.0",
+  "version": "0.0.22",
   "description": "Shared utilities for chatbot-host, mcp-gateway, and mcp-server",
   "type": "module",
   "exports": {

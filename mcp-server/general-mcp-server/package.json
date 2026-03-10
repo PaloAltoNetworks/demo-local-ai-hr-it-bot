@@ -1,6 +1,6 @@
 {
   "name": "general-agent-mcp",
-  "version": "1.0.0",
+  "version": "0.0.22",
   "description": "General Agent MCP Server - Fallback agent for general workplace questions",
   "main": "server.js",
   "type": "module",

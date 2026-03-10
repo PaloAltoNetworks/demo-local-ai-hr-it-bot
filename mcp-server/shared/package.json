@@ -1,6 +1,6 @@
 {
   "name": "chatbot-shared",
-  "version": "2.0.0",
+  "version": "0.0.22",
   "description": "Shared utilities and base classes for MCP agents",
   "main": "mcp-agent-base.js",
   "type": "module",
