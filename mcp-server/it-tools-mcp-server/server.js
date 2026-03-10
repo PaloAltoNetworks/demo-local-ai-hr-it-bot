@@ -5,6 +5,7 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 import { z } from 'zod';
 import { initializeLogger } from './utils/logger.js';
@@ -166,21 +167,50 @@ async function main() {
   console.log('IT Tools service initialized');
 
   const app = express();
-  app.use((req, res, next) => {
-    if (req.path === '/mcp') return next();
-    express.json()(req, res, next);
+  // Ensure MCP clients can always reach Streamable HTTP transport
+  // (some clients like LiteLLM don't send the required Accept header)
+  // Must patch both headers object AND rawHeaders array since @hono/node-server reads rawHeaders
+  app.use('/mcp', (req, _res, next) => {
+    req.headers['accept'] = 'application/json, text/event-stream';
+    const idx = req.rawHeaders.findIndex(h => h.toLowerCase() === 'accept');
+    if (idx !== -1) {
+      req.rawHeaders[idx + 1] = 'application/json, text/event-stream';
+    } else {
+      req.rawHeaders.push('Accept', 'application/json, text/event-stream');
+    }
+    next();
   });
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'healthy', name: 'it-tools', timestamp: new Date().toISOString() });
   });
 
-  // MCP Streamable HTTP endpoint — stateless: new server + transport per request
+  // --- Streamable HTTP transport (POST /mcp) ---
   app.post('/mcp', async (req, res) => {
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     await server.connect(transport);
     await transport.handleRequest(req, res);
+  });
+
+  // --- SSE transport (GET /sse + POST /messages) ---
+  const sseTransports = {};
+
+  app.get('/sse', async (_req, res) => {
+    const server = createServer();
+    const transport = new SSEServerTransport('/messages', res);
+    sseTransports[transport.sessionId] = transport;
+    res.on('close', () => { delete sseTransports[transport.sessionId]; });
+    await server.connect(transport);
+  });
+
+  app.post('/messages', async (req, res) => {
+    const sessionId = req.query.sessionId;
+    const transport = sseTransports[sessionId];
+    if (!transport) {
+      return res.status(400).json({ error: 'Invalid or expired session' });
+    }
+    await transport.handlePostMessage(req, res);
   });
 
   app.get('/mcp', async (_req, res) => {
