@@ -32,7 +32,7 @@ export class ITService {
   }
 
   getTicketsByEmployee(employeeEmail) {
-    return this.ticketService?.getTicketsByEmployee(employeeEmail) || [];
+    return this.ticketService?.getTicketsByEmployeeEmail(employeeEmail) || [];
   }
 
   getTicketsByCategory(category) {
