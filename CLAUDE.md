@@ -45,6 +45,7 @@ curl http://localhost:3002/health    # Chatbot host
 curl http://localhost:3003/health    # HR agent
 curl http://localhost:3004/health    # IT agent
 curl http://localhost:3005/health    # General agent
+curl http://localhost:3006/health    # IT Tools (standalone MCP)
 
 # Test full query pipeline
 curl -X POST http://localhost:3001/api/query \
@@ -78,6 +79,7 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 | hr-mcp-server | 3003 | 3000 |
 | it-mcp-server | 3004 | 3000 |
 | general-mcp-server | 3005 | 3000 |
+| it-tools-mcp-server | 3006 | 3000 |
 
 ### Workspace Layout
 - `utils/` — Shared: logger (Winston), LLM provider factory (Vercel AI SDK), i18n (i18next)
@@ -87,6 +89,7 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 - `mcp-server/hr-mcp-server/` — HR agent, data source: `employees.csv`
 - `mcp-server/it-mcp-server/` — IT agent, data source: SQLite via sql.js (`ticket-db.js`)
 - `mcp-server/general-mcp-server/` — General/fallback agent, built-in policy knowledge base
+- `mcp-server/it-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes IT ticket DB for external LLM hosts
 
 ### Agent Pattern
 Each agent in `mcp-server/{name}-mcp-server/` follows the same structure:
