@@ -11,6 +11,10 @@ export class HRService {
     this.rawCsvData = null;
   }
 
+  _normalize(str) {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
   async init() {
     const csvPath = path.join(__dirname, 'employees.csv');
     this.rawCsvData = await fs.readFile(csvPath, 'utf8');
@@ -26,28 +30,31 @@ export class HRService {
   }
 
   getEmployeeByName(name) {
-    return this.employees.find(emp => emp.name.toLowerCase() === name.toLowerCase());
+    const normalized = this._normalize(name);
+    return this.employees.find(emp => this._normalize(emp.name) === normalized);
   }
 
   searchEmployees(query) {
-    const queryLower = query.toLowerCase();
+    const normalized = this._normalize(query);
     return this.employees.filter(emp =>
-      emp.name.toLowerCase().includes(queryLower) ||
-      emp.email.toLowerCase().includes(queryLower) ||
-      emp.role.toLowerCase().includes(queryLower) ||
-      emp.department.toLowerCase().includes(queryLower)
+      this._normalize(emp.name).includes(normalized) ||
+      emp.email.toLowerCase().includes(normalized) ||
+      this._normalize(emp.role).includes(normalized) ||
+      this._normalize(emp.department).includes(normalized)
     );
   }
 
   getEmployeesByDepartment(department) {
+    const normalized = this._normalize(department);
     return this.employees.filter(emp =>
-      emp.department.toLowerCase() === department.toLowerCase()
+      this._normalize(emp.department) === normalized
     );
   }
 
   getEmployeesByManager(managerName) {
+    const normalized = this._normalize(managerName);
     return this.employees.filter(emp =>
-      emp.manager.toLowerCase() === managerName.toLowerCase()
+      this._normalize(emp.manager) === normalized
     );
   }
 
