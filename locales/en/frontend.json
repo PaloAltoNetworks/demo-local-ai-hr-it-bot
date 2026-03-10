@@ -35,6 +35,7 @@
   "questions": {
     "title": "Example Questions",
     "phase1": [
+      { "icon": "help", "title": "Capabilities", "text": "How can you help me?" },
       { "icon": "event", "title": "Remaining Leave", "text": "How many leave days do I have left?" },
       { "icon": "laptop", "title": "AutoCAD Request", "text": "What is the status of my AutoCAD request?" },
       { "icon": "build", "title": "IT Incidents", "text": "What are my recent IT incidents?" },

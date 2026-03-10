@@ -35,6 +35,7 @@
   "questions": {
     "title": "質問例",
     "phase1": [
+      { "icon": "help", "title": "機能", "text": "どのように助けてくれますか？" },
       { "icon": "event", "title": "残り休暇", "text": "残りの休暇日数はどのくらいですか?" },
       { "icon": "laptop", "title": "AutoCADリクエスト", "text": "AutoCADリクエストのステータスはどうなっていますか?" },
       { "icon": "build", "title": "ITインシデント", "text": "最近のITインシデントはどのようなものですか?" },
