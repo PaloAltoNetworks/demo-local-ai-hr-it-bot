@@ -1455,6 +1455,72 @@ Response to translate: "${response}"`;
   /**
    * Process user query through the MCP system with full security integration
    */
+  /**
+   * Check if LiteLLM direct mode is available
+   * When USE_LITELLM=true and LITELLM_MCP_TOOLS=true, the coordinator can bypass
+   * agent routing and let LiteLLM handle tool calling directly via its registered MCP servers.
+   */
+  canUseLiteLLMDirect() {
+    return process.env.USE_LITELLM === 'true' && process.env.LITELLM_MCP_TOOLS === 'true';
+  }
+
+  /**
+   * Query LiteLLM directly, letting it handle MCP tool calling.
+   * LiteLLM has MCP servers registered in its config and will execute tool calls
+   * against them automatically during chat completion.
+   */
+  async queryLiteLLMDirect(query, language = 'en', userContext = null, llmProvider = null) {
+    getLogger().info(`[LiteLLM Direct] Processing query with integrated MCP tools`);
+
+    // Build user context string
+    const contextParts = [];
+    if (userContext?.name) contextParts.push(`Name: ${userContext.name}`);
+    if (userContext?.email) contextParts.push(`Email: ${userContext.email}`);
+    if (userContext?.role) contextParts.push(`Role: ${userContext.role}`);
+    if (userContext?.department) contextParts.push(`Department: ${userContext.department}`);
+
+    const userInfo = contextParts.length > 0
+      ? `\n\nCURRENT USER:\n${contextParts.join('\n')}`
+      : '';
+
+    const systemPrompt = `You are a helpful corporate assistant with access to HR and IT tools.
+Use the available tools to look up employee information, IT tickets, and other data to answer the user's question.
+When the user refers to "my", "me", or "I", use the current user's identity to look up their information.
+Always base your answers on actual data from the tools — never guess or make up information.
+Be concise and professional.${userInfo}`;
+
+    const prompt = query;
+
+    this.sendThinkingMessage(`LLM processing with MCP tools...`);
+
+    try {
+      const response = await this.generateWithLLM(prompt, {
+        system: systemPrompt,
+        temperature: 0.3,
+        maxTokens: 2000,
+        provider: llmProvider
+      });
+
+      this.trackTokens(response, 'coordinator', 'LiteLLM Direct');
+
+      let result = response.response?.trim();
+      if (!result) {
+        throw new Error('LiteLLM returned empty response');
+      }
+
+      // Translate if needed
+      if (language !== 'en') {
+        result = await this.translateResponse(result, language, llmProvider);
+      }
+
+      getLogger().info(`[LiteLLM Direct] Query processed successfully`);
+      return result;
+    } catch (error) {
+      getLogger().error(`[LiteLLM Direct] Failed:`, error.message);
+      throw error;
+    }
+  }
+
   async processQuery(query, language = 'en', phase = 'phase2', userContext = null, llmProvider = 'aws') {
     if (!this.initialized) {
       throw new Error('IntelligentCoordinator not initialized');
@@ -1524,7 +1590,19 @@ Response to translate: "${response}"`;
         this.sendThinkingMessage(`No translation needed`);
       }
 
-      // Step 2: Route to appropriate agent(s) using registry
+      // Step 2: Check if LiteLLM direct mode is available (tools registered in LiteLLM)
+      if (this.canUseLiteLLMDirect()) {
+        this.sendThinkingMessage(`Querying LLM with integrated tools...`);
+        const directResult = await this.queryLiteLLMDirect(translatedQuery, language, userContext, llmProvider);
+        return {
+          response: directResult,
+          agentUsed: 'litellm-direct',
+          translatedQuery: translatedQuery !== query ? translatedQuery : null,
+          metadata: this.buildResultMetadata(phase)
+        };
+      }
+
+      // Step 3: Route to appropriate agent(s) using registry
       this.sendThinkingMessage(`Determining the best routing strategy for your query...`);
       // Track routing analysis as coordinator work
       this.trackCoordinatorTokens("Analyzing query semantics and determining best routing strategy");
@@ -1754,9 +1832,14 @@ Response to translate: "${response}"`;
   }
 
   /**
-   * Get available llm providers from all registered agents
+   * Get available llm providers
+   * In LiteLLM mode, providers come from LiteLLM directly.
+   * Otherwise, providers come from registered agents.
    */
   getAvailableLLMProviders() {
+    if (process.env.USE_LITELLM === 'true') {
+      return LLMProviderFactory.getAvailableLLMProviders();
+    }
     return this.agentRegistry.getAvailableLLMProviders();
   }
 

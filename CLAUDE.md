@@ -111,6 +111,9 @@ Standalone tools servers in `mcp-server/{name}-tools-mcp-server/` are pure data/
 
 To create a new tools server: copy `it-tools-mcp-server` or `hr-tools-mcp-server`, update `service.js`/`server.js`, add a Dockerfile and a new service block in `docker-compose.yml` with a unique host port.
 
+### LiteLLM Direct Mode
+When `USE_LITELLM=true` and `LITELLM_MCP_TOOLS=true`, the coordinator bypasses agent routing entirely. Instead, it sends the user query directly to LiteLLM, which has the standalone MCP tools servers (hr-tools, it-tools) registered in its config. LiteLLM handles tool calling, data retrieval, and answer generation in one shot — no multi-hop agent routing needed. The existing agents (HR, IT, General) remain available as fallback when this mode is off.
+
 ### LLM Provider System
 `utils/llm-provider.js` uses Vercel AI SDK to abstract across providers. Provider is auto-detected from environment variables (first match wins): Ollama, OpenAI, Anthropic, AWS Bedrock, Azure OpenAI, Google Vertex AI. Set `USE_LITELLM=true` to route all calls through a LiteLLM proxy instead.
 
@@ -135,6 +138,7 @@ Copy `.env.example` to `.env`. Key variables:
 - `AWS_BEARER_TOKEN_BEDROCK` / `BEDROCK_MODEL` — AWS Bedrock
 - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `AZURE_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS` — Other providers
 - `USE_LITELLM` / `LITELLM_BASE_URL` — LiteLLM proxy mode
+- `LITELLM_MCP_TOOLS=true` — When set with `USE_LITELLM=true`, coordinator bypasses agent routing and lets LiteLLM handle MCP tool calling directly
 - `LOG_LEVEL` — error, warn, info, debug
 - `SESSION_TTL` — Session timeout in seconds
 - `PRISMA_AIRS_*` — Optional security integration
