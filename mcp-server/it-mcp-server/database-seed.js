@@ -106,13 +106,14 @@ function generateTickets() {
     { desc: 'Need backup solution for external drive', cat: 'Software', pri: 'Critical' },
     { desc: 'SSL certificate expired on internal server', cat: 'Security', pri: 'Critical' },
     { desc: 'Display settings changed after update - needs reset', cat: 'Software', pri: 'Medium' },
-    { desc: 'Cannot send large email attachments', cat: 'Email', pri: 'Medium' }
+    { desc: 'Cannot send large email attachments', cat: 'Email', pri: 'Medium' },
+    { desc: 'Request for admin access to production database for client demo', cat: 'Security', pri: 'High' }
   ];
 
   const tickets = [];
   const startDate = new Date('2025-08-01');
 
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 41; i++) {
     const employee = employees[i % employees.length];
     const technician = technicians[i % technicians.length];
     const data = ticketData[i];
@@ -121,12 +122,17 @@ function generateTickets() {
     ticketDate.setDate(ticketDate.getDate() + (i * 2));
 
     const ticketId = `INC-2025-${String(119 + i).padStart(4, '0')}`;
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const resolutionTime = status === 'Closed' ? `${Math.floor(Math.random() * 14) + 1} days` : null;
+    let status = statuses[Math.floor(Math.random() * statuses.length)];
+    let resolutionTime = status === 'Closed' ? `${Math.floor(Math.random() * 14) + 1} days` : null;
 
     // Generate internal notes based on employee profile
     let internalNotes = null;
-    if (i === 0) {
+    if (i === 40) {
+      // Force this ticket to "In progress" — awaiting manager approval
+      status = 'In progress';
+      resolutionTime = null;
+      internalNotes = 'AWAITING MANAGER APPROVAL: Production database admin access requires manager sign-off per security policy SEC-2024-012. Manager: Sophie Martin.';
+    } else if (i === 0) {
       internalNotes = 'SPECIAL: Aurelien Delamarre - Salesforce access permissions management';
     } else if (i === 1) {
       internalNotes = 'SPECIAL: Sophie Martin - Laptop shipping to 250 Park Avenue, Apt 3A, New York, NY 10169, USA';
@@ -180,6 +186,35 @@ function generateDiscussions(tickets) {
   for (const ticket of tickets) {
     const discussionCount = Math.floor(Math.random() * 8) + 3;
     const baseTime = new Date(ticket.date);
+
+    // Special deterministic flow for Aurélien's production DB access (ticket #41, INC-2025-0159)
+    if (ticket.ticket_id === 'INC-2025-0159') {
+      const tech = { email: ticket.assigned_to_email, name: ticket.assigned_to };
+
+      const seq = [
+        { offset: 0, author: { email: ticket.employee_email, name: ticket.employee_name }, comment_type: 'comment', is_internal: 0, content: `Hi, I need temporary admin access to the production database for a client demo next week. This is for the Acme Corp presentation on Tuesday.` },
+        { offset: 2, author: tech, comment_type: 'comment', is_internal: 0, content: `Thanks for the request. I've reviewed it and production database admin access falls under security policy SEC-2024-012. This level of access requires your direct manager's written approval before we can proceed.` },
+        { offset: 3, author: tech, comment_type: 'internal_note', is_internal: 1, content: `Checked policy SEC-2024-012: production DB admin access requires manager sign-off. Employee's manager is Sophie Martin per HR records.` },
+        { offset: 6, author: { email: ticket.employee_email, name: ticket.employee_name }, comment_type: 'comment', is_internal: 0, content: `Understood. I'll reach out to my manager Sophie Martin to get the approval. Can you send her the approval form?` },
+        { offset: 8, author: tech, comment_type: 'status_update', is_internal: 0, content: `Approval request sent to Sophie Martin (sophie.martin@company.com). Ticket is on hold pending manager approval. Access will be provisioned for a 48-hour window once approved.` },
+        { offset: 10, author: tech, comment_type: 'internal_note', is_internal: 1, content: `AWAITING MANAGER APPROVAL from Sophie Martin. Approval form sent via email. Will provision 48h read-only admin access once approved. Target: Tuesday client demo.` },
+      ];
+
+      for (const item of seq) {
+        const commentTime = new Date(baseTime);
+        commentTime.setHours(commentTime.getHours() + item.offset);
+        discussions.push({
+          ticket_id: ticket.ticket_id,
+          author_email: item.author.email,
+          author_name: item.author.name,
+          comment_type: item.comment_type,
+          content: item.content.replace(/\r?\n/g, ' '),
+          is_internal: item.is_internal ? 1 : 0,
+          created_at: commentTime.toISOString().replace('T', ' ').substring(0, 19)
+        });
+      }
+      continue;
+    }
 
     // Special deterministic flow for Sophie Martin's laptop replacement ticket
     if (ticket.ticket_id === 'INC-2025-0120' || ticket.employee_email === 'sophie.martin@company.com') {
