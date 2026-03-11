@@ -187,6 +187,38 @@ services:
       retries: 3
       start_period: 5s
 
+  # Chatbot V2 — AI SDK + native MCP tool calling (replaces chatbot-host + mcp-gateway)
+  chatbot-v2:
+    build:
+      context: .
+      dockerfile: chatbot-v2/Dockerfile
+    hostname: chatbot-v2
+    ports:
+      - "3008:3008"
+    env_file:
+      - ./.env
+    environment:
+      - CHATBOT_V2_PORT=3008
+      - HR_TOOLS_MCP_URL=http://hr-tools-mcp-server:3000/mcp
+      - IT_TOOLS_MCP_URL=http://it-tools-mcp-server:3000/mcp
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+    depends_on:
+      hr-tools-mcp-server:
+        condition: service_healthy
+      it-tools-mcp-server:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./logs/chatbot-v2:/app/logs
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3008/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   # Optional: Ollama service (uncomment if you want to run Ollama in Docker)
   # ollama:
   #   image: ollama/ollama:latest

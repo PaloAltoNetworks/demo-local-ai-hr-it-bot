@@ -47,6 +47,7 @@ curl http://localhost:3004/health    # IT agent
 curl http://localhost:3005/health    # General agent
 curl http://localhost:3006/health    # IT Tools (standalone MCP)
 curl http://localhost:3007/health    # HR Tools (standalone MCP)
+curl http://localhost:3008/health    # Chatbot V2 (AI SDK + MCP)
 
 # Test full query pipeline
 curl -X POST http://localhost:3001/api/query \
@@ -82,6 +83,7 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 | general-mcp-server | 3005 | 3000 |
 | it-tools-mcp-server | 3006 | 3000 |
 | hr-tools-mcp-server | 3007 | 3000 |
+| chatbot-v2 | 3008 | 3008 |
 
 ### Workspace Layout
 - `utils/` — Shared: logger (Winston), LLM provider factory (Vercel AI SDK), i18n (i18next)
@@ -93,6 +95,7 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 - `mcp-server/general-mcp-server/` — General/fallback agent, built-in policy knowledge base
 - `mcp-server/it-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes IT ticket DB for external LLM hosts
 - `mcp-server/hr-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes HR employee DB for external LLM hosts
+- `chatbot-v2/` — AI SDK chatbot host with native MCP tool calling, connects directly to standalone tools servers (no coordinator/gateway needed)
 
 ### Agent Pattern
 Each agent in `mcp-server/{name}-mcp-server/` follows the same structure:
@@ -113,6 +116,18 @@ To create a new tools server: copy `it-tools-mcp-server` or `hr-tools-mcp-server
 
 ### LiteLLM Direct Mode
 When `USE_LITELLM=true` and `LITELLM_MCP_TOOLS=true`, the coordinator bypasses agent routing entirely. Instead, it sends the user query directly to LiteLLM, which has the standalone MCP tools servers (hr-tools, it-tools) registered in its config. LiteLLM handles tool calling, data retrieval, and answer generation in one shot — no multi-hop agent routing needed. The existing agents (HR, IT, General) remain available as fallback when this mode is off.
+
+### Chatbot V2 (AI SDK Direct)
+`chatbot-v2/` is a drop-in replacement for chatbot-host + mcp-gateway. It uses Vercel AI SDK `streamText` with `@ai-sdk/mcp` to call standalone MCP tools servers directly — no coordinator, no agent routing. The same vanilla JS frontend is served unchanged. Architecture:
+```
+Chatbot V2 (port 3008)           Frontend (vanilla JS) + Express + AI SDK
+       ↓ streamText + MCP tools
+       ├── hr-tools-mcp-server    HR data (CSV)
+       └── it-tools-mcp-server    IT data (SQLite)
+       ↓ LLM
+       LiteLLM proxy              OpenAI-compatible endpoint
+```
+Config: `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `CHATBOT_V2_MODEL` (or `LITELLM_MODEL`), `HR_TOOLS_MCP_URL`, `IT_TOOLS_MCP_URL`.
 
 ### LLM Provider System
 `utils/llm-provider.js` uses Vercel AI SDK to abstract across providers. Provider is auto-detected from environment variables (first match wins): Ollama, OpenAI, Anthropic, AWS Bedrock, Azure OpenAI, Google Vertex AI. Set `USE_LITELLM=true` to route all calls through a LiteLLM proxy instead.
@@ -148,7 +163,7 @@ Provider switching requires container restart. All services read from the same `
 ## Gotchas
 
 - All services communicate via Docker `mcp-network` bridge. Use Docker hostnames (e.g., `http://mcp-gateway:3001`) in inter-service calls.
-- Agents and standalone tools servers run on internal port 3000 but are mapped to different host ports (3003-3007).
+- Agents and standalone tools servers run on internal port 3000 but are mapped to different host ports (3003-3007). Chatbot V2 runs on 3008.
 - MCP requests must include proper JSON-RPC 2.0 fields (`jsonrpc`, `id`, `method`, `params`).
 - The chatbot-host depends on all other services being healthy before starting.
 - Logs are volume-mounted to `./logs/{service-name}/` on the host.

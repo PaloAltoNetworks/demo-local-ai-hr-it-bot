@@ -1,0 +1,29 @@
+{
+  "name": "chatbot-v2",
+  "version": "0.0.26",
+  "description": "AI SDK chatbot host with native MCP tool calling",
+  "type": "module",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js"
+  },
+  "dependencies": {
+    "ai": "^6.0.116",
+    "@ai-sdk/mcp": "^1.0.25",
+    "@ai-sdk/openai": "^3.0.41",
+    "@ai-sdk/anthropic": "^3.0.58",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "keywords": [
+    "chatbot",
+    "ai-sdk",
+    "mcp"
+  ],
+  "license": "MIT"
+}
