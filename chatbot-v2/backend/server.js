@@ -10,7 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { streamText, convertToModelMessages } from 'ai';
+import { streamText, convertToModelMessages, stepCountIs } from 'ai';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
 
@@ -179,7 +179,7 @@ app.post('/api/chat', async (req, res) => {
     system: SYSTEM_PROMPT,
     messages,
     tools,
-    maxSteps: 10,
+    stopWhen: stepCountIs(10),
   });
 
   result.pipeUIMessageStreamToResponse(res, {

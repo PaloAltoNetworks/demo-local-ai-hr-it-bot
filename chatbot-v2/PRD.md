@@ -43,7 +43,7 @@ app.post('/api/chat', async (req, res) => {
   const result = streamText({
     model: getModel(requestedModel, guarded),
     system: SYSTEM_PROMPT,
-    messages, tools, maxSteps: 10,
+    messages, tools, stopWhen: stepCountIs(10),
   });
 
   result.pipeUIMessageStreamToResponse(res);
