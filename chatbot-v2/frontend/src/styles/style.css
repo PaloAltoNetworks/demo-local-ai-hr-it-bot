@@ -130,6 +130,18 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .tool-state { font-size: 11px; opacity: 0.7; }
 .tool-state.result { color: var(--green); }
 
+/* Guardrail / Error blocks */
+.guardrail-block { background: color-mix(in srgb, var(--red) 6%, var(--surface-alt)) !important; border-color: color-mix(in srgb, var(--red) 20%, transparent) !important; }
+.guardrail-block p { margin: 4px 0; font-size: 13px; line-height: 1.5; }
+.guardrail-flags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px !important; }
+.guardrail-flag { display: inline-block; background: color-mix(in srgb, var(--red) 10%, transparent); color: var(--red); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
+.guardrail-report-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 4px 10px; border-radius: 6px; background: color-mix(in srgb, var(--red) 8%, transparent); color: var(--red); font-size: 12px; font-weight: 500; text-decoration: none; transition: all var(--transition); }
+.guardrail-report-link:hover { background: color-mix(in srgb, var(--red) 15%, transparent); text-decoration: none; }
+.guardrail-report-link .material-symbols { font-size: 14px; }
+.guardrail-icon { color: var(--red) !important; font-size: 18px; }
+.error-block { background: color-mix(in srgb, var(--orange) 8%, var(--surface-alt)) !important; border-color: color-mix(in srgb, var(--orange) 30%, transparent) !important; }
+.error-icon { color: var(--orange) !important; font-size: 18px; }
+
 /* Thinking indicator */
 .thinking-indicator { display: flex; align-items: center; gap: 8px; padding: 0 44px; }
 .thinking-dots { display: flex; gap: 3px; }

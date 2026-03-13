@@ -128,6 +128,11 @@
     "outputLabel": "AUSGABE (Rohe Prisma AIRS-Antwort)",
     "viewInConsole": "In Strata Cloud Manager anzeigen"
   },
+  "guardrail": {
+    "blocked": "Es tut uns leid, aber wir können diese Anfrage nicht bearbeiten. Unser KI-Sicherheitssystem hat potenzielle Risiken in diesem Prompt identifiziert.",
+    "viewReport": "Sicherheitsbericht anzeigen",
+    "error": "Bei der Bearbeitung Ihrer Anfrage ist ein Fehler aufgetreten."
+  },
   "language": {
     "code": "de",
     "name": "Deutsch",

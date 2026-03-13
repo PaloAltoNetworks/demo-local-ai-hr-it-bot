@@ -128,6 +128,11 @@
     "outputLabel": "出力 (Prisma AIRSの生のレスポンス)",
     "viewInConsole": "Strata Cloud Managerで表示"
   },
+  "guardrail": {
+    "blocked": "申し訳ございませんが、このリクエストを処理することができません。当社のAIセキュリティシステムがこのプロンプトに潜在的なリスクを特定いたしました。",
+    "viewReport": "セキュリティレポートを表示",
+    "error": "リクエストの処理中にエラーが発生いたしました。"
+  },
   "language": {
     "code": "ja",
     "name": "Japanese",

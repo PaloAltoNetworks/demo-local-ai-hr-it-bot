@@ -57,6 +57,8 @@ services:
       - CHATBOT_V2_PORT=3008
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       - MCP_URL=${LITELLM_BASE_URL:-http://localhost:8080}/mcp/
+      - PRISMA_AIRS_TSG_ID=${PRISMA_AIRS_TSG_ID:-}
+      - PRISMA_AIRS_APP_ID=${PRISMA_AIRS_APP_ID:-}
     restart: unless-stopped
     volumes:
       - ./logs/chatbot-v2:/app/logs

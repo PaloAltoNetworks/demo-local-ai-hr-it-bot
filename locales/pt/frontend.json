@@ -128,6 +128,11 @@
     "outputLabel": "SAÍDA (Resposta Bruta do Prisma AIRS)",
     "viewInConsole": "Ver no Strata Cloud Manager"
   },
+  "guardrail": {
+    "blocked": "Pedimos desculpas, mas não podemos processar esta solicitação. Nosso sistema de segurança de IA identificou riscos potenciais neste prompt.",
+    "viewReport": "Ver relatório de segurança",
+    "error": "Ocorreu um erro ao processar sua solicitação."
+  },
   "language": {
     "code": "pt",
     "name": "Portuguese",

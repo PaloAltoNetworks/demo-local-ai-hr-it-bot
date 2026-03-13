@@ -22,7 +22,7 @@ export default function App() {
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   return (
-    <ChatProvider model={model}>
+    <ChatProvider model={model} phase={phase}>
       <div className={`app ${phase}-active`}>
         <Header
           phase={phase} setPhase={setPhase}

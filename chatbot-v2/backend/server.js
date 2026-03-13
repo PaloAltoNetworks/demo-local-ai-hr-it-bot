@@ -50,13 +50,32 @@ Always be professional, concise, and helpful.`;
 
 // --- LLM ---
 
+const GUARDRAIL_NAME = 'PANW';
+const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
+const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
+
 const openai = createOpenAI({
   baseURL: `${LITELLM_BASE_URL}/v1`,
   apiKey: LITELLM_API_KEY,
 });
 
-function getModel(modelId) {
-  return openai.chat(modelId || MODEL_ID);
+// Provider that injects LiteLLM guardrails into every request
+const openaiGuarded = createOpenAI({
+  baseURL: `${LITELLM_BASE_URL}/v1`,
+  apiKey: LITELLM_API_KEY,
+  fetch: async (url, init) => {
+    if (init?.body) {
+      const body = JSON.parse(init.body);
+      body.metadata = { ...body.metadata, guardrails: [GUARDRAIL_NAME] };
+      init = { ...init, body: JSON.stringify(body) };
+    }
+    return fetch(url, init);
+  },
+});
+
+function getModel(modelId, guarded = false) {
+  const provider = guarded ? openaiGuarded : openai;
+  return provider.chat(modelId || MODEL_ID);
 }
 
 // --- MCP Client ---
@@ -119,11 +138,13 @@ app.get('/health', (_req, res) => {
 // AI SDK native chat endpoint — useChat on frontend consumes this automatically
 app.post('/api/chat', async (req, res) => {
   const requestedModel = req.body.model;
+  const phase = req.body.phase;
+  const guarded = phase === 'phase3';
   const tools = await getMCPTools();
   const messages = await convertToModelMessages(req.body.messages, { tools });
 
   const result = streamText({
-    model: getModel(requestedModel),
+    model: getModel(requestedModel, guarded),
     system: SYSTEM_PROMPT,
     messages,
     tools,
@@ -161,6 +182,15 @@ app.get('/api/models', async (_req, res) => {
     console.warn(`Failed to fetch models: ${err.message}`);
     res.json({ models: [{ id: MODEL_ID, name: MODEL_ID, provider: 'unknown' }], default: MODEL_ID });
   }
+});
+
+// AIRS config for building report links in the frontend
+app.get('/api/airs-config', (_req, res) => {
+  res.json({
+    tsgId: AIRS_TSG_ID,
+    appId: AIRS_APP_ID,
+    baseUrl: 'https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions',
+  });
 });
 
 // i18n

@@ -128,6 +128,11 @@
     "outputLabel": "OUTPUT (Raw Prisma AIRS Response)",
     "viewInConsole": "View in Strata Cloud Manager"
   },
+  "guardrail": {
+    "blocked": "I'm sorry, but I can't process this request. Our AI security system has identified potential risks in this prompt.",
+    "viewReport": "View security report",
+    "error": "An error occurred while processing your request."
+  },
   "language": {
     "code": "en",
     "name": "English",

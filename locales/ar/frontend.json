@@ -128,6 +128,11 @@
     "outputLabel": "الإخراج (استجابة Prisma AIRS الخام)",
     "viewInConsole": "عرض في Strata Cloud Manager"
   },
+  "guardrail": {
+    "blocked": "نعتذر، ولكن لا يمكننا معالجة هذا الطلب. لقد حدد نظام الأمان الخاص بالذكاء الاصطناعي مخاطر محتملة في هذا الموجه.",
+    "viewReport": "عرض تقرير الأمان",
+    "error": "حدث خطأ أثناء معالجة طلبكم."
+  },
   "language": {
     "code": "ar",
     "name": "Arabic",

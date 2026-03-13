@@ -128,6 +128,11 @@
     "outputLabel": "输出（原始Prisma AIRS响应）",
     "viewInConsole": "在 Strata Cloud Manager 中查看"
   },
+  "guardrail": {
+    "blocked": "很抱歉，我们无法处理此请求。我们的AI安全系统已识别出此提示中的潜在风险。",
+    "viewReport": "查看安全报告",
+    "error": "处理您的请求时发生错误。"
+  },
   "language": {
     "code": "zh",
     "name": "Chinese",

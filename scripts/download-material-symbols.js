@@ -78,6 +78,8 @@ const ICONS = [
     'help',                // Help icon
     'signature',           // Signature icon
     'balance',             // Balance icon (legal/HR icon)
+    'gpp_bad',             // GPP/privacy icon (used in guardrail error message)
+    'open_in_new',        // Open in new tab/window icon
 ];
 
 // Sort icons alphabetically
