@@ -76,13 +76,15 @@ export default function ChatPanel() {
                       ? <div key={i} className="message-text">{part.text}</div>
                       : <div key={i} className="message-text"><Markdown>{part.text}</Markdown></div>;
                   }
-                  if (part.type === 'tool-invocation') {
+                  if (part.type === 'tool-invocation' || part.type === 'dynamic-tool') {
+                    const toolName = part.type === 'tool-invocation' ? part.toolInvocation.toolName : part.toolName;
+                    const toolState = part.type === 'tool-invocation' ? part.toolInvocation.state : part.state;
                     return (
                       <div key={i} className="tool-call">
                         <span className="material-symbols">build</span>
-                        <span className="tool-name">{part.toolInvocation.toolName}</span>
-                        <span className={`tool-state ${part.toolInvocation.state}`}>
-                          {part.toolInvocation.state === 'result' ? 'done' : part.toolInvocation.state}
+                        <span className="tool-name">{toolName}</span>
+                        <span className={`tool-state ${toolState}`}>
+                          {toolState === 'result' ? 'done' : toolState}
                         </span>
                       </div>
                     );

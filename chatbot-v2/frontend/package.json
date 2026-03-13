@@ -8,14 +8,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ai-sdk/react": "^3.0.0",
-    "ai": "^5.0.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "@ai-sdk/react": "^3.0.118",
+    "ai": "^6.0.116",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.5.2",
-    "vite": "^6.3.5"
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.0"
   }
 }

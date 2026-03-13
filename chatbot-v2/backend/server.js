@@ -1,6 +1,6 @@
 /**
  * Chatbot V2 — AI SDK Native Backend
- * Uses streamText + pipeDataStreamToResponse (AI SDK's native protocol).
+ * Uses streamText + pipeUIMessageStreamToResponse (AI SDK's native protocol).
  * MCP tools fetched from LiteLLM's MCP aggregator.
  * Frontend: React + useChat (consumes the data stream automatically).
  */

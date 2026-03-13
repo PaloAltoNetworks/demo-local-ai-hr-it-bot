@@ -114,7 +114,7 @@ Returns `{ models: [{ id, name, provider }], default: MODEL_ID }`.
 `useChat` v3 differs from v2:
 - Returns `sendMessage({ text })` instead of `append()`
 - No built-in `input`/`handleInputChange`/`handleSubmit` — use local state
-- Messages use `parts` array (not `content` string): `part.type` is `'text'` or `'tool-invocation'`
+- Messages use `parts` array (not `content` string): `part.type` is `'text'`, `'tool-invocation'` (static tools), or `'dynamic-tool'` (MCP/dynamic tools)
 - `status` is `'streaming'` | `'submitted'` | `'ready'` | `'error'` (no `isLoading`)
 - Transport configured via `DefaultChatTransport`, not `body` option on `useChat`
 
