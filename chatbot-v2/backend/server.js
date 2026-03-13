@@ -51,7 +51,7 @@ Always be professional, concise, and helpful.`;
 
 // --- LLM ---
 
-const GUARDRAIL_NAME = 'PANW';
+const GUARDRAIL_NAME = process.env.LITELLM_GUARDRAIL_NAME || '';
 const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
 
