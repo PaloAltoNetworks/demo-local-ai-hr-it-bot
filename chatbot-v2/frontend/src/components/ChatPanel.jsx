@@ -6,7 +6,7 @@ import { useAirsConfig, buildReportUrl } from '../hooks/useAirsConfig.js';
 
 export default function ChatPanel() {
   const { t } = useLanguage();
-  const { messages, sendMessage, status, error } = useChatContext();
+  const { messages, sendMessage, status, error, phaseMap } = useChatContext();
   const airsConfig = useAirsConfig();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -24,6 +24,18 @@ export default function ChatPanel() {
     setInput('');
   };
 
+  // Build render list with phase dividers
+  const renderItems = [];
+  let prevPhase = null;
+  for (const msg of messages) {
+    const msgPhase = phaseMap[msg.id] || 'phase1';
+    if (msg.role === 'user' && msgPhase !== prevPhase) {
+      renderItems.push({ type: 'divider', phase: msgPhase, key: `divider-${msg.id}` });
+    }
+    renderItems.push({ type: 'message', msg, phase: msgPhase, key: msg.id });
+    prevPhase = msgPhase;
+  }
+
   return (
     <section className="chat">
       <div className="chat-messages">
@@ -39,36 +51,48 @@ export default function ChatPanel() {
           </div>
         )}
 
-        {messages.map(msg => (
-          <div key={msg.id} className={`message ${msg.role === 'user' ? 'user' : 'bot'}`}>
-            <div className="message-avatar">
-              {msg.role === 'user'
-                ? <span className="material-symbols">person</span>
-                : <i className="otter-icon" />}
+        {renderItems.map(item => {
+          if (item.type === 'divider') {
+            return (
+              <div key={item.key} className={`phase-divider ${item.phase}`}>
+                <span className="phase-divider-dot" />
+                <span className="phase-divider-label">{t(`phases.${item.phase}.label`)}</span>
+                <span className="phase-divider-line" />
+              </div>
+            );
+          }
+          const { msg, phase: msgPhase } = item;
+          return (
+            <div key={msg.id} className={`message ${msg.role === 'user' ? 'user' : 'bot'} ${msgPhase}`}>
+              <div className="message-avatar">
+                {msg.role === 'user'
+                  ? <span className="material-symbols">person</span>
+                  : <i className="otter-icon" />}
+              </div>
+              <div className="message-body">
+                {msg.parts?.map((part, i) => {
+                  if (part.type === 'text' && part.text) {
+                    return msg.role === 'user'
+                      ? <div key={i} className="message-text">{part.text}</div>
+                      : <div key={i} className="message-text"><Markdown>{part.text}</Markdown></div>;
+                  }
+                  if (part.type === 'tool-invocation') {
+                    return (
+                      <div key={i} className="tool-call">
+                        <span className="material-symbols">build</span>
+                        <span className="tool-name">{part.toolInvocation.toolName}</span>
+                        <span className={`tool-state ${part.toolInvocation.state}`}>
+                          {part.toolInvocation.state === 'result' ? 'done' : part.toolInvocation.state}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
             </div>
-            <div className="message-body">
-              {msg.parts?.map((part, i) => {
-                if (part.type === 'text' && part.text) {
-                  return msg.role === 'user'
-                    ? <div key={i} className="message-text">{part.text}</div>
-                    : <div key={i} className="message-text"><Markdown>{part.text}</Markdown></div>;
-                }
-                if (part.type === 'tool-invocation') {
-                  return (
-                    <div key={i} className="tool-call">
-                      <span className="material-symbols">build</span>
-                      <span className="tool-name">{part.toolInvocation.toolName}</span>
-                      <span className={`tool-state ${part.toolInvocation.state}`}>
-                        {part.toolInvocation.state === 'result' ? 'done' : part.toolInvocation.state}
-                      </span>
-                    </div>
-                  );
-                }
-                return null;
-              })}
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Guardrail / error display */}
         {error && <GuardrailError error={error} airsConfig={airsConfig} t={t} />}

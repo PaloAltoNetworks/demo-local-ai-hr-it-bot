@@ -142,6 +142,36 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .error-block { background: color-mix(in srgb, var(--orange) 8%, var(--surface-alt)) !important; border-color: color-mix(in srgb, var(--orange) 30%, transparent) !important; }
 .error-icon { color: var(--orange) !important; font-size: 18px; }
 
+/* Phase dividers */
+.phase-divider { display: flex; align-items: center; gap: 8px; padding: 4px 0; margin: 8px 0; }
+.phase-divider-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.phase-divider-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.phase-divider-line { flex: 1; height: 1px; }
+.phase-divider.phase1 .phase-divider-dot, .phase-divider.phase1 .phase-divider-label { color: var(--green); background: var(--green); -webkit-background-clip: unset; }
+.phase-divider.phase1 .phase-divider-dot { background: var(--green); }
+.phase-divider.phase1 .phase-divider-label { color: var(--green); background: none; }
+.phase-divider.phase1 .phase-divider-line { background: color-mix(in srgb, var(--green) 25%, transparent); }
+.phase-divider.phase2 .phase-divider-dot { background: var(--red); }
+.phase-divider.phase2 .phase-divider-label { color: var(--red); }
+.phase-divider.phase2 .phase-divider-line { background: color-mix(in srgb, var(--red) 25%, transparent); }
+.phase-divider.phase3 .phase-divider-dot { background: var(--blue); }
+.phase-divider.phase3 .phase-divider-label { color: var(--blue); }
+.phase-divider.phase3 .phase-divider-line { background: color-mix(in srgb, var(--blue) 25%, transparent); }
+
+/* Per-message phase colors */
+.message.phase1.user .message-text { background: var(--green); }
+.message.phase1.user .message-avatar { background: var(--green); }
+.message.phase1.bot .message-avatar { background: color-mix(in srgb, var(--green) 8%, transparent); }
+.message.phase1.bot .message-avatar .otter-icon { color: var(--green); }
+.message.phase2.user .message-text { background: var(--red); }
+.message.phase2.user .message-avatar { background: var(--red); }
+.message.phase2.bot .message-avatar { background: color-mix(in srgb, var(--red) 8%, transparent); }
+.message.phase2.bot .message-avatar .otter-icon { color: var(--red); }
+.message.phase3.user .message-text { background: var(--blue); }
+.message.phase3.user .message-avatar { background: var(--blue); }
+.message.phase3.bot .message-avatar { background: color-mix(in srgb, var(--blue) 8%, transparent); }
+.message.phase3.bot .message-avatar .otter-icon { color: var(--blue); }
+
 /* Thinking indicator */
 .thinking-indicator { display: flex; align-items: center; gap: 8px; padding: 0 44px; }
 .thinking-dots { display: flex; gap: 3px; }
