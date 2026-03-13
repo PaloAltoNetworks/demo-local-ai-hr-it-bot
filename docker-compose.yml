@@ -1,114 +1,5 @@
 services:
-  # MCP Gateway - Enterprise routing and security layer
-  mcp-gateway:
-    build:
-      context: .
-      dockerfile: mcp-gateway/Dockerfile
-    hostname: mcp-gateway
-    ports:
-      - "3001:3001"
-    env_file:
-      - ./.env
-    environment:
-      - MCP_GATEWAY_PORT=3001
-    restart: unless-stopped
-    volumes:
-      - ./logs/mcp-gateway:/app/logs
-      - ./credentials:/app/credentials:ro
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    
-  # HR MCP Server
-  hr-mcp-server:
-    build:
-      context: .
-      dockerfile: mcp-server/Dockerfile.agent
-      args:
-        AGENT_NAME: hr
-    hostname: hr-mcp-server
-    ports:
-      - "3003:3000"
-    env_file:
-      - ./.env
-    depends_on:
-      mcp-gateway:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ./logs/hr-mcp-server:/app/logs
-      - ./credentials:/app/credentials:ro
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    
-  # IT MCP Server  
-  it-mcp-server:
-    build:
-      context: .
-      dockerfile: mcp-server/Dockerfile.agent
-      args:
-        AGENT_NAME: it
-    hostname: it-mcp-server
-    ports:
-      - "3004:3000"
-    env_file:
-      - ./.env
-    depends_on:
-      mcp-gateway:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ./logs/it-mcp-server:/app/logs
-      - ./credentials:/app/credentials:ro
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    
-  # General MCP Server
-  general-mcp-server:
-    build:
-      context: .
-      dockerfile: mcp-server/Dockerfile.agent
-      args:
-        AGENT_NAME: general
-    hostname: general-mcp-server
-    ports:
-      - "3005:3000"
-    env_file:
-      - ./.env
-    depends_on:
-      mcp-gateway:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ./logs/general-mcp-server:/app/logs
-      - ./credentials:/app/credentials:ro
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-
-  # IT Tools MCP Server (standalone — no coordinator, pure data tools)
+  # IT Tools MCP Server (standalone — pure data tools)
   it-tools-mcp-server:
     build:
       context: .
@@ -130,7 +21,7 @@ services:
       retries: 3
       start_period: 5s
 
-  # HR Tools MCP Server (standalone — no coordinator, pure data tools)
+  # HR Tools MCP Server (standalone — pure data tools)
   hr-tools-mcp-server:
     build:
       context: .
@@ -152,42 +43,7 @@ services:
       retries: 3
       start_period: 5s
 
-  # MCP Host - User-facing chatbot application
-  chatbot-host:
-    build:
-      context: .
-      dockerfile: chatbot-host/Dockerfile
-    hostname: chatbot-host
-    ports:
-      - "3002:3002"
-    env_file:
-      - ./.env
-    environment:
-      - CHATBOT_HOST_PORT=3002
-      - MCP_GATEWAY_URL=http://mcp-gateway:3001
-    depends_on:
-      mcp-gateway:
-        condition: service_healthy
-      hr-mcp-server:
-        condition: service_healthy
-      it-mcp-server:
-        condition: service_healthy
-      general-mcp-server:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ./logs/chatbot-host:/app/logs
-      - ./credentials:/app/credentials:ro
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-
-  # Chatbot V2 — AI SDK + native MCP tool calling (replaces chatbot-host + mcp-gateway)
+  # Chatbot V2 — AI SDK + native MCP tool calling via LiteLLM
   chatbot-v2:
     build:
       context: .
@@ -213,21 +69,9 @@ services:
       retries: 3
       start_period: 10s
 
-  # Optional: Ollama service (uncomment if you want to run Ollama in Docker)
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
-
 networks:
   mcp-network:
     driver: bridge
 
 volumes:
   it-db:
-
-# Uncomment if using Ollama service
-# volumes:
-#   ollama_data:
