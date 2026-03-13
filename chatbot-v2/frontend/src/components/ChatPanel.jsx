@@ -6,7 +6,7 @@ import { useAirsConfig, buildReportUrl } from '../hooks/useAirsConfig.js';
 
 export default function ChatPanel() {
   const { t } = useLanguage();
-  const { messages, sendMessage, status, error, phaseMap, sessionUsage } = useChatContext();
+  const { messages, sendMessage, status, error, phaseMap, errorMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -24,7 +24,7 @@ export default function ChatPanel() {
     setInput('');
   };
 
-  // Build render list with phase dividers
+  // Build render list with phase dividers and persistent errors
   const renderItems = [];
   let prevPhase = null;
   for (const msg of messages) {
@@ -33,6 +33,10 @@ export default function ChatPanel() {
       renderItems.push({ type: 'divider', phase: msgPhase, key: `divider-${msg.id}` });
     }
     renderItems.push({ type: 'message', msg, phase: msgPhase, key: msg.id });
+    // Show captured error after the user message that triggered it
+    if (msg.role === 'user' && errorMap[msg.id]) {
+      renderItems.push({ type: 'error', error: errorMap[msg.id], phase: msgPhase, key: `error-${msg.id}` });
+    }
     prevPhase = msgPhase;
   }
 
@@ -60,6 +64,9 @@ export default function ChatPanel() {
                 <span className="phase-divider-line" />
               </div>
             );
+          }
+          if (item.type === 'error') {
+            return <GuardrailError key={item.key} error={item.error} airsConfig={airsConfig} t={t} />;
           }
           const { msg, phase: msgPhase } = item;
           return (
@@ -102,9 +109,6 @@ export default function ChatPanel() {
             </div>
           );
         })}
-
-        {/* Guardrail / error display */}
-        {error && <GuardrailError error={error} airsConfig={airsConfig} t={t} />}
 
         {/* Streaming indicator */}
         {isStreaming && (
