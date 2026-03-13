@@ -1,647 +1,152 @@
-# Chatbot2 MCP Gateway - Complete Documentation
+# MCP HR/IT Chatbot — Documentation
 
-Welcome to the comprehensive documentation for the AI-powered chatbot system with MCP (Model Context Protocol) gateway architecture.
+AI-powered HR/IT chatbot using Vercel AI SDK with native MCP (Model Context Protocol) tool calling via LiteLLM.
 
 ---
 
-## 📚 Documentation Overview
+## Architecture
 
-### Quick Navigation
-- **[Getting Started](#-getting-started)** - Setup and first steps
-- **[Architecture](#-architecture)** - System design and components
-- **[Configuration](#-configuration)** - Environment setup
-- **[Code Quality](#-code-quality)** - Reviews and improvements
+```
+Chatbot V2 (port 3008)           React + Express + AI SDK (streamText)
+       |  AI SDK + @ai-sdk/mcp   Single MCP connection
+LiteLLM /mcp                     MCP aggregator (proxies to registered servers)
+       |--- hr-tools-mcp-server  HR data (CSV) — port 3007
+       |--- it-tools-mcp-server  IT data (SQLite) — port 3006
+       |  LLM
+LiteLLM /v1                      OpenAI-compatible endpoint
+       |--- AWS Bedrock, GCP Vertex AI, Azure OpenAI, Anthropic, OpenAI, Ollama
+       |  Guardrails (Phase 3)
+LiteLLM guardrails               Prisma AIRS (pre_call input scanning)
+```
+
+A single `streamText` call handles everything. AI SDK manages the tool calling loop (up to 10 steps). LiteLLM acts as both the LLM proxy and MCP tool aggregator.
+
+### Standalone Tools Servers
+
+Pure data/tools MCP servers — no LLM, no routing. They expose data directly as MCP tools for LiteLLM to aggregate.
+
+| Server | Port | Data Source | Tools |
+|--------|------|-------------|-------|
+| it-tools-mcp-server | 3006 | SQLite (tickets) | get_ticket, search_tickets, ticket_stats |
+| hr-tools-mcp-server | 3007 | CSV (employees) | get_employee, search_employees, get_direct_reports |
+
+Transports: Streamable HTTP (`POST /mcp`) and SSE (`GET /sse` + `POST /messages`).
+
+### Service Ports
+
+| Service | Port | Description |
+|---------|------|-------------|
+| it-tools-mcp-server | 3006 | Standalone IT tools |
+| hr-tools-mcp-server | 3007 | Standalone HR tools |
+| chatbot-v2 | 3008 | Web UI + API |
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 22
 - Docker & Docker Compose
-- (Optional) Ollama for local LLM, or AWS Bedrock credentials
+- LiteLLM proxy with MCP servers registered
 
-### Installation - Quick Start
+### Quick Start
 
 ```bash
-# Option 1: Local Development (Ollama)
-export OLLAMA_SERVER_URL=http://localhost:11434
-export COORDINATOR_MODEL=qwen2.5:1.5b
+# Install dependencies
+npm install
 
-# Option 2: AWS Production (Bedrock)
-export AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key
-export AWS_REGION=us-east-1
-export BEDROCK_MODEL=qwen.qwen3-32b-v1:0
+# Configure environment
+cp .env.example .env
+# Edit .env with your LiteLLM and LLM provider credentials
 
-# Start services
+# Start all services
 docker compose up -d
+
+# Verify
+curl http://localhost:3008/health
 ```
 
-### Verify Installation
-
-```bash
-# Test the API
-curl -X POST http://localhost:3001/api/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "Who is my manager?", "language": "en"}'
-```
+Open `http://localhost:3008` in a browser. The 3-phase demo:
+- **Phase 1** (green) — Normal HR/IT queries
+- **Phase 2** (red) — Risky/attack prompts
+- **Phase 3** (blue) — Guardrails enforced via LiteLLM
 
 ---
 
-## 🏗️ Architecture
+## Configuration
 
-### System Overview
+All services read from the same `.env` file via `env_file` in docker-compose.
 
-The chatbot system follows the **MCP (Model Context Protocol) standard** with enterprise-grade security, routing, and flexibility.
+### LiteLLM
 
-```
-┌────────────────────────────────────────────────────────────┐
-│                   CHATBOT HOST                             │
-│            (Web Interface + Backend API)                   │
-└──────────────────────┬─────────────────────────────────────┘
-                       │ HTTP
-┌──────────────────────▼─────────────────────────────────────┐
-│                  MCP GATEWAY                               │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ • Request Routing & Load Balancing                   │  │
-│  │ • Intelligent Agent Selection                        │  │
-│  │ • Security & Access Control                          │  │
-│  │ • Session Management                                 │  │
-│  │ • LLM Provider Abstraction (Ollama/Bedrock)          │  │
-│  │ • Token Tracking & Usage Monitoring                  │  │
-│  │ • i18n Support (English/French)                      │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─┬──────────────────────┬──────────────────────┬────────────┘
-  │ MCP Protocol         │ MCP Protocol         │ MCP Protocol
-  │                      │                      │
-┌─▼──────────────┐  ┌────▼──────────────┐  ┌───▼──────────────┐
-│ HR MCP Server  │  │ IT MCP Server     │  │ General MCP      │
-│                │  │                   │  │ Server           │
-│ Tools:         │  │ Tools:            │  │                  │
-│ • get_employee │  │ • get_ticket      │  │ Tools:           │
-│ • search_hr    │  │ • update_ticket   │  │ • search_docs    │
-│ • create_report│  │ • it_query        │  │ • general_qa     │
-│                │  │                   │  │ • knowledge_base │
-│ Data:          │  │ Data:             │  │                  │
-│ • employees.csv│  │ • tickets.db      │  │ Data:            │
-│ • HR policies  │  │ • IT systems      │  │ • Knowledge base │
-└────────────────┘  └───────────────────┘  └──────────────────┘
+```bash
+LITELLM_BASE_URL=http://localhost:8080
+LITELLM_API_KEY=sk-your-key
+CHATBOT_V2_MODEL=qwen.qwen3-32b-v1:0
+MCP_URL=http://localhost:8080/mcp/
 ```
 
-### Key Components
+### Guardrails (Phase 3)
 
-#### 1. **Chatbot Host** (`chatbot-host/`)
-- **Frontend** (`frontend/`) - React-based web interface
-- **Backend API** (`backend/`) - Node.js server
-  - Session management
-  - MCP client
-  - Request translation & response formatting
+```bash
+LITELLM_GUARDRAIL_NAME=PANW              # LiteLLM guardrail name
+PRISMA_AIRS_TSG_ID=your_tsg_id           # For report links
+PRISMA_AIRS_APP_ID=your_app_id           # For report links
+```
 
-#### 2. **MCP Gateway** (`mcp-gateway/`)
-- **Coordinator** - Intelligent routing using LLM-based decision making
-- **MCP Server** - Protocol handler for MCP standard compliance
-- **LLM Provider** - Abstraction for Ollama/Bedrock switching
-- **Prisma AIRS** - Security integration (enterprise feature)
-
-#### 3. **MCP Servers** (`mcp-server/`)
-- **HR Server** - Employee and HR data access
-- **IT Server** - Ticket management and IT systems
-- **General Server** - General knowledge and Q&A
-
-#### 4. **Shared Utilities** (`mcp-server/shared/`)
-- Common LLM interfaces
-- Query processing
-- Configuration management
-- Logging
+Phase 3 injects `body.guardrails` into LiteLLM requests. LiteLLM runs them through the configured Prisma AIRS profile. Currently only `pre_call` (input scanning) is effective — see [known issues](#known-issues).
 
 ---
 
-## ⚙️ Configuration
+## Internationalization
 
-### Environment Variables
+9 locales: en, fr, es, de, ja, pt, zh, ar, it — all use formal register (vous/Sie/usted/Lei).
 
-#### Universal Settings
-```bash
-# Logging
-LOG_LEVEL=debug              # debug, info, warn, error
-NODE_ENV=production          # production, development
-
-# Internationalization
-DEFAULT_LANGUAGE=en          # en, fr
-
-# Session Management
-MAX_SESSIONS=100
-SESSION_TTL=3600             # seconds
-```
-
-#### Ollama Configuration (Local Development)
-```bash
-OLLAMA_SERVER_URL=http://localhost:11434
-COORDINATOR_MODEL=qwen2.5:1.5b
-AGENT_MODEL=qwen2.5:1.5b
-```
-
-#### AWS Bedrock Configuration (Production)
-```bash
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-BEDROCK_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
-```
-
-#### Gateway Settings
-```bash
-MCP_GATEWAY_PORT=3001
-MCP_GATEWAY_HOST=0.0.0.0
-COORDINATOR_TIMEOUT=30000    # milliseconds
-
-# Optional: Prisma AIRS Security Integration
-PRISMA_AIRS_ENABLED=false
-PRISMA_AIRS_API_URL=https://...
-PRISMA_AIRS_API_KEY=...
-```
-
-### Switching Between Providers
-
-**From Ollama to Bedrock:**
-```bash
-# 1. Update environment variables (or modify docker-compose.yml)
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-BEDROCK_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
-
-# 2. Restart containers
-docker compose restart mcp-gateway hr-mcp-server it-mcp-server general-mcp-server
-```
-
-### Provider Comparison
-
-| Aspect | Ollama | AWS Bedrock |
-|--------|--------|-----------|
-| **Cost** | Free | ~$0.0045/query |
-| **Latency** | 500ms-2s | 1-3s |
-| **Setup** | Download & run | AWS account + IAM |
-| **Ideal For** | Development, offline work | Production, scaling |
-| **GPU Required** | Recommended | No |
-| **Models Available** | 1.5b-70b | Various (Claude, Llama) |
+React context `LanguageProvider` with `t('key')` interpolation. Language persisted to `localStorage`.
 
 ---
 
-## 🔌 API Reference
+## Tech Stack
 
-### Query Endpoint
-```bash
-POST /api/query
-Content-Type: application/json
-
-{
-  "query": "What are my current tasks?",
-  "language": "en",
-  "context": {
-    "userId": "user123",
-    "department": "Engineering"
-  }
-}
-```
-
-### Response Format
-```json
-{
-  "response": "You have 3 current tasks...",
-  "agent": "hr",
-  "language": "en",
-  "tokens": {
-    "prompt": 234,
-    "completion": 156,
-    "total": 390
-  },
-  "timestamp": "2025-10-31T12:00:00Z"
-}
-```
-
-### Health Check
-```bash
-GET /health
-```
-
-Returns:
-```json
-{
-  "status": "healthy",
-  "services": {
-    "hr-server": "connected",
-    "it-server": "connected",
-    "general-server": "connected"
-  },
-  "uptime": 12345
-}
-```
+| Component | Stack |
+|-----------|-------|
+| Runtime | Node.js 22, ES modules, npm workspaces |
+| Frontend | React 19, Vite, @ai-sdk/react v3 |
+| Backend | Express 5, AI SDK v6 (streamText, convertToModelMessages, stepCountIs) |
+| MCP | @ai-sdk/mcp (native tool calling via LiteLLM /mcp aggregator) |
+| LLM | @ai-sdk/openai pointing at LiteLLM /v1 |
+| Data | CSV (HR), SQLite via sql.js (IT) |
+| Containers | Docker Compose |
 
 ---
 
-## Security Features
-
-### Access Control
-- RBAC (Role-Based Access Control) support
-- Session-based authentication
-- Request validation and sanitization
-
-### Data Protection
-- Optional Prisma AIRS integration for enterprise security
-- Session isolation
-- Secure token tracking
-
-### Best Practices
-- All credentials stored in environment variables
-- No sensitive data in logs
-- HTTPS recommended for production
-
----
-
-## 💬 Internationalization (i18n)
-
-The system supports multiple languages through centralized locale files:
+## Common Commands
 
 ```bash
-locales/
-├── en/
-│   ├── backend.json
-│   └── frontend.json
-└── fr/
-    ├── backend.json
-    └── frontend.json
-```
-
-**Switch Language:**
-```bash
-# In request
-POST /api/query
-{
-  "query": "...",
-  "language": "fr"
-}
-
-# Or environment variable
-DEFAULT_LANGUAGE=fr
-```
-
----
-
-## � LLM Provider Implementation
-
-### Architecture
-
-LLMs are accessed through a **unified LLM interface** that abstracts away provider-specific details:
-
-```javascript
-const llmProvider = LLMProviderFactory.create();
-
-const response = await llmProvider.generate(prompt, {
-  system: "You are a helpful assistant",
-  temperature: 0.3,
-  maxTokens: 1000
-});
-
-// Returns consistent format:
-{
-  response: "...",
-  usage: {
-    prompt_tokens: 234,
-    completion_tokens: 156,
-    total_tokens: 390
-  }
-}
-```
-
-### How It Works
-
-**Ollama**: Uses OpenAI-compatible API endpoint at `http://localhost:11434/v1/`
-
-**AWS Bedrock**: Uses AWS SDK with automatic format conversion
-
-**Result**: Same code paths, seamless provider switching
-
-### Token Tracking
-
-All LLM calls automatically track token usage:
-- Prompt tokens (input)
-- Completion tokens (output)
-- Total tokens (combined)
-
-Tracking works consistently across both providers.
-
----
-
-## Agent Types
-
-### HR Agent
-**Purpose**: Employee information and HR queries
-
-**Tools**:
-- Get employee information
-- Search HR database
-- Generate reports
-- Access HR policies
-
-**Data Source**: `employees.csv`
-
-### IT Agent
-**Purpose**: IT support and ticket management
-
-**Tools**:
-- Get ticket information
-- Create/update tickets
-- IT system queries
-- Technical support
-
-**Data Source**: SQLite Database (`tickets.db`)
-
-### General Agent
-**Purpose**: General knowledge and questions
-
-**Tools**:
-- Search knowledge base
-- General Q&A
-- Document retrieval
-- Information lookup
-
----
-
-## 📈 Monitoring & Observability
-
-### Logging
-
-All components produce structured logs with:
-- Timestamp
-- Log level (DEBUG, INFO, WARN, ERROR)
-- Component name
-- Request ID for tracing
-- Performance metrics
-
-**Access logs:**
-```bash
-tail -f docker-compose logs mcp-gateway
-```
-
-### Token Usage Monitoring
-
-Track LLM token consumption:
-```bash
-# View in API response
-"tokens": {
-  "prompt": 234,
-  "completion": 156,
-  "total": 390
-}
-```
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Q: Agents not responding?**
-- Check `/health` endpoint
-- Verify all MCP servers are running: `docker ps`
-- Check logs: `docker compose logs`
-
-**Q: LLM provider not connecting?**
-- For Ollama: Ensure `ollama serve` is running
-- For Bedrock: Verify AWS credentials and region
-
-**Q: Language translation issues?**
-- Verify `locales/` folder is mounted
-- Check DEFAULT_LANGUAGE setting
-- Restart gateway: `docker compose restart mcp-gateway`
-
-### Debug Mode
-
-Enable verbose logging:
-```bash
-LOG_LEVEL=debug docker compose up
-```
-
----
-
-## 🏛️ Gateway Architecture
-
-### Component Separation
-
-The MCP Gateway is organized into three focused components:
-
-#### 1. **mcp-server.js** - Protocol Handler
-- Handles ONLY MCP protocol communication (JSON-RPC 2.0)
-- Session management (create, validate, cleanup)
-- Protocol validation and compliance
-- Message forwarding to/from MCP servers
-- MCP Server Registry
-
-#### 2. **coordinator.js** - Intelligent Routing
-- Language detection and translation
-- Security analysis via Prisma AIRS (Phase 3)
-- LLM-based routing decisions
-- Single vs multi-agent coordination
-- Query decomposition and response synthesis
-
-#### 3. **prisma-airs.js** - Security API Client
-- Prisma AIRS integration for security analysis
-- Four security checkpoints:
-  1. User input validation
-  2. Outbound request analysis
-  3. Inbound response analysis
-  4. Final output validation
-
-### Data Flow
-
-```
-User Query → MCP Protocol Handling → Security Analysis → 
-LLM Routing → Agent Selection → Response Synthesis → User
-```
-
----
-
-## Complete API Reference
-
-### Base URL
-```
-http://localhost:3001
-```
-
-### Health Check
-```bash
-GET /health
-```
-Returns gateway status and registered servers.
-
-### Query Processing
-```bash
-POST /api/query
-{
-  "query": "Who is my manager?",
-  "language": "en",
-  "userContext": { "employeeId": "EMP123", "department": "Engineering" }
-}
-```
-
-### MCP Protocol Endpoint
-```bash
-POST /
-Content-Type: application/json
-mcp-session-id: <session-id>
-
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "initialize",
-  "params": {
-    "protocolVersion": "2025-06-18",
-    "clientInfo": { "name": "client-name", "version": "1.0.0" }
-  }
-}
-```
-
-### Supported MCP Methods
-- `initialize` - Start new MCP session
-- `tools/list` - List available tools
-- `resources/list` - List available resources
-- `prompts/list` - List available prompts
-- `ping` - Connectivity check
-
-### Agent Registration
-```bash
-POST /api/agents/register
-{
-  "agentId": "hr-server-001",
-  "name": "hr",
-  "description": "HR Management Server",
-  "url": "http://hr-mcp-server:3002",
-  "capabilities": ["employee_lookup", "manager_hierarchy"]
-}
-```
-
-### Response Format
-```json
-{
-  "success": true,
-  "response": "Your manager is Jane Smith...",
-  "agentUsed": "hr",
-  "tokens": {
-    "prompt": 234,
-    "completion": 156,
-    "total": 390
-  }
-}
-```
-
-### Error Responses
-```json
-{
-  "success": false,
-  "error": "Agent not found",
-  "details": "hr-server not registered"
-}
-```
-
-### Security Response (Phase 3)
-```json
-{
-  "success": true,
-  "response": "Cannot process this request. Contains: data leak attempt.",
-  "securityBlock": true,
-  "category": "dlp",
-  "reportId": "abc123-def456"
-}
-```
-
----
-
-## System Quality
-
-The system has undergone comprehensive improvements including:
-
-- **Code Cleanup**: Dead code removal, unused function elimination
-- **Memory Management**: EventEmitter cleanup, resource leak fixes
-- **Session Stability**: Proper session limit enforcement
-- **Error Handling**: Improved error messages and consistency
-- **Request Handling**: AbortController for proper timeout cancellation
-- **Security**: Input validation and sanitization
-
-### Known Enhancements
-
-- Removed unreachable code paths
-- Fixed memory leaks in event listeners
-- Enforced session limits correctly
-- Implemented proper request cancellation
-- Added security checkpoints
-- Standardized error handling
-
-### Architectural Strengths
-
-- Clean modular architecture
-- Separation of concerns (protocol, routing, security)
-- Comprehensive i18n support
-- Enterprise security integration
-- Well-documented components
-
----
-
-## 🚢 Deployment
-
-### Docker Compose
-```bash
+# Start all services
 docker compose up -d
-```
-
-### Production Considerations
-- Use AWS Bedrock for scalability
-- Enable logging aggregation
-- Set up monitoring and alerts
-- Use HTTPS with proper SSL certificates
-- Store credentials securely (AWS Secrets Manager)
-
----
-
-## 📞 Support
-
-### Common Commands
-
-```bash
-# View all services
-docker compose ps
-
-# View logs
-docker compose logs -f mcp-gateway
-
-# Restart a service
-docker compose restart mcp-gateway
-
-# Stop all services
-docker compose down
 
 # Rebuild and start
-docker compose up --build -d
-```
+docker compose up -d --build
 
-### Health Checks
-```bash
-# Check gateway health
-curl http://localhost:3001/health
+# Start a single service
+docker compose up chatbot-v2 --build -d
 
-# Test query
-curl -X POST http://localhost:3001/api/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "test", "language": "en"}'
+# View logs
+docker compose logs -f chatbot-v2
+
+# Health checks
+curl http://localhost:3008/health
+curl http://localhost:3006/health          # IT tools
+curl http://localhost:3007/health          # HR tools
 ```
 
 ---
 
-## License
+## Known Issues
 
-See LICENSE file in the project root.
+- **LiteLLM `post_call` guardrail not firing** — PANW Prisma AIRS `post_call` mode (LLM response scanning) does not execute even when configured. Only `pre_call` (input scanning) works. See [LiteLLM issue #23561](https://github.com/BerriAI/litellm/issues/23561) and [detailed report](litellm-post-call-guardrail-bug.md).
 
 ---
 
-**Last Updated**: October 31, 2025  
-**Version**: 1.0 - Complete System Documentation
+**Last Updated**: March 13, 2026

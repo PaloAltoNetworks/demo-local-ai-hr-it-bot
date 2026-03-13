@@ -19,7 +19,7 @@ Prisma AIRS guardrails via LiteLLM metadata injection
 ```
 
 ### Key SDK Versions
-- `ai` v5+ (streamText, convertToModelMessages, DefaultChatTransport, pipeUIMessageStreamToResponse)
+- `ai` v6+ (streamText, convertToModelMessages, stepCountIs, DefaultChatTransport, pipeUIMessageStreamToResponse)
 - `@ai-sdk/react` v3 (useChat with UIMessage parts API, sendMessage, status)
 - `@ai-sdk/openai` (OpenAI-compatible provider pointing at LiteLLM)
 - `@ai-sdk/mcp` (MCP client for tool discovery)
@@ -57,16 +57,20 @@ Key details:
 
 ### Guardrail Provider
 
-Phase 3 enforces Prisma AIRS guardrails via a custom `fetch` wrapper on `@ai-sdk/openai`:
+Phase 3 enforces Prisma AIRS guardrails via a custom `fetch` wrapper on `@ai-sdk/openai`. The guardrail name is configurable via `LITELLM_GUARDRAIL_NAME` env var:
 
 ```js
+const GUARDRAIL_NAME = process.env.LITELLM_GUARDRAIL_NAME || '';
+
 const openaiGuarded = createOpenAI({
   baseURL: `${LITELLM_BASE_URL}/v1`,
   apiKey: LITELLM_API_KEY,
   fetch: async (url, init) => {
     if (init?.body) {
       const body = JSON.parse(init.body);
-      body.metadata = { ...body.metadata, guardrails: ['PANW'] };
+      body.user = STATIC_USER.email;
+      body.metadata = { ...body.metadata, app_user: STATIC_USER.email, ... };
+      body.guardrails = [GUARDRAIL_NAME];
       init = { ...init, body: JSON.stringify(body) };
     }
     return fetch(url, init);
@@ -74,7 +78,7 @@ const openaiGuarded = createOpenAI({
 });
 ```
 
-LiteLLM intercepts requests with `metadata.guardrails` and runs them through the configured Prisma AIRS profile before forwarding to the LLM.
+LiteLLM intercepts requests with `body.guardrails` and runs them through the configured guardrail profile (e.g. Prisma AIRS) before forwarding to the LLM. Currently only `pre_call` (input scanning) is effective — `post_call` (response scanning) is [not firing due to a LiteLLM bug](https://github.com/BerriAI/litellm/issues/23561).
 
 ### Model Discovery
 
@@ -235,6 +239,7 @@ chatbot-v2/
 - `LITELLM_API_KEY` — API key for LiteLLM
 - `CHATBOT_V2_MODEL` / `LITELLM_MODEL` — Default model ID
 - `MCP_URL` — MCP aggregator endpoint (defaults to `{LITELLM_BASE_URL}/mcp/`)
+- `LITELLM_GUARDRAIL_NAME` — Name of the LiteLLM guardrail to enforce in Phase 3 (e.g. `PANW`)
 - `PRISMA_AIRS_TSG_ID` — Strata Cloud Manager tenant ID (for report links)
 - `PRISMA_AIRS_APP_ID` — AIRS application ID (for report links)
 - `CHATBOT_V2_PORT` — Server port (default 3008)
