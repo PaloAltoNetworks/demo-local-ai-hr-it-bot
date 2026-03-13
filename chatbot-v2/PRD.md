@@ -237,7 +237,7 @@ chatbot-v2/
 ### Environment Variables
 - `LITELLM_BASE_URL` — LiteLLM proxy URL
 - `LITELLM_API_KEY` — API key for LiteLLM
-- `CHATBOT_V2_MODEL` / `LITELLM_MODEL` — Default model ID
+- `CHATBOT_V2_MODEL` — Default model ID
 - `MCP_URL` — MCP aggregator endpoint (defaults to `{LITELLM_BASE_URL}/mcp/`)
 - `LITELLM_GUARDRAIL_NAME` — Name of the LiteLLM guardrail to enforce in Phase 3 (e.g. `PANW`)
 - `PRISMA_AIRS_TSG_ID` — Strata Cloud Manager tenant ID (for report links)

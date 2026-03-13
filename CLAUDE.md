@@ -128,7 +128,7 @@ Chatbot V2 (port 3008)           Frontend (vanilla JS) + Express + AI SDK
        ↓ LLM
        LiteLLM /v1               OpenAI-compatible endpoint
 ```
-Config: `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `CHATBOT_V2_MODEL` (or `LITELLM_MODEL`), `MCP_URL`.
+Config: `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `CHATBOT_V2_MODEL`, `MCP_URL`.
 
 ### LLM Provider System
 `utils/llm-provider.js` uses Vercel AI SDK to abstract across providers. Provider is auto-detected from environment variables (first match wins): Ollama, OpenAI, Anthropic, AWS Bedrock, Azure OpenAI, Google Vertex AI. Set `USE_LITELLM=true` to route all calls through a LiteLLM proxy instead.
