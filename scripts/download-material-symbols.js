@@ -81,6 +81,7 @@ const ICONS = [
     'gpp_bad',             // GPP/privacy icon (used in guardrail error message)
     'open_in_new',        // Open in new tab/window icon
     'savings',             // Savings/finance icon
+    'error',               // Error icon (used in guardrail error message)
 ];
 
 // Sort icons alphabetically
