@@ -68,8 +68,9 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .header-right { display: flex; align-items: center; gap: 8px; }
 .icon-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: none; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); cursor: pointer; transition: all var(--transition); }
 .icon-btn:hover { background: var(--surface-alt); color: var(--text); }
-.lang-select { height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: var(--font); font-size: 13px; cursor: pointer; outline: none; }
-.lang-select:focus { border-color: var(--phase); }
+.lang-select, .model-select { height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: var(--font); font-size: 13px; cursor: pointer; outline: none; }
+.lang-select:focus, .model-select:focus { border-color: var(--phase); }
+.model-select { max-width: 220px; font-family: var(--font-mono); font-size: 12px; }
 .user-chip { display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; background: var(--surface-alt); border-radius: var(--radius); color: var(--text-secondary); font-size: 13px; font-weight: 500; }
 .user-chip .material-symbols { font-size: 22px; color: var(--phase); }
 .user-name { color: var(--text); }

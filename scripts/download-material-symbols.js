@@ -77,6 +77,7 @@ const ICONS = [
     'close_fullscreen',    // Close fullscreen icon
     'help',                // Help icon
     'signature',           // Signature icon
+    'balance',             // Balance icon (legal/HR icon)
 ];
 
 // Sort icons alphabetically
@@ -100,8 +101,8 @@ console.log(`  - Grade: ${FONT_CONFIG.grade}\n`);
 // END OF ICONS CONFIGURATION
 // ============================================================================
 
-const FONTS_DIR = path.join(__dirname, '../frontend/fonts');
-const CSS_DIR = path.join(__dirname, '../frontend/css');
+const FONTS_DIR = path.join(__dirname, '../chatbot-v2/frontend/public/fonts');
+const CSS_DIR = path.join(__dirname, '../chatbot-v2/frontend/public/css');
 
 // Generate font filename based on font family (lowercase, with hyphens)
 // CSS file is generic "material-symbols.css"

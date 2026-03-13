@@ -2,7 +2,7 @@ import { useLanguage } from '../context/LanguageContext.jsx';
 
 const PHASES = ['phase1', 'phase2', 'phase3'];
 
-export default function Header({ phase, setPhase, toggleTheme }) {
+export default function Header({ phase, setPhase, toggleTheme, models, model, setModel }) {
   const { t, language, setLanguage, languages } = useLanguage();
 
   return (
@@ -26,6 +26,21 @@ export default function Header({ phase, setPhase, toggleTheme }) {
       </nav>
 
       <div className="header-right">
+        {models.length > 1 && (
+          <select
+            className="model-select"
+            value={model}
+            onChange={e => setModel(e.target.value)}
+            title="Select model"
+          >
+            {models.map(m => (
+              <option key={m.id} value={m.id}>
+                {m.provider ? `${m.provider} — ${m.name}` : m.name}
+              </option>
+            ))}
+          </select>
+        )}
+
         <button className="icon-btn" onClick={toggleTheme} title="Toggle theme">
           <span className="material-symbols">dark_mode</span>
         </button>

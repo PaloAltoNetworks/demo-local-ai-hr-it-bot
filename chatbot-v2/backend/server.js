@@ -55,8 +55,8 @@ const openai = createOpenAI({
   apiKey: LITELLM_API_KEY,
 });
 
-function getModel() {
-  return openai.chat(MODEL_ID);
+function getModel(modelId) {
+  return openai.chat(modelId || MODEL_ID);
 }
 
 // --- MCP Client ---
@@ -118,11 +118,13 @@ app.get('/health', (_req, res) => {
 
 // AI SDK native chat endpoint — useChat on frontend consumes this automatically
 app.post('/api/chat', async (req, res) => {
+  const requestedModel = req.body.model;
+  console.log(`Chat request — model: ${requestedModel || MODEL_ID} (from body: ${!!requestedModel})`);
   const tools = await getMCPTools();
   const messages = await convertToModelMessages(req.body.messages, { tools });
 
   const result = streamText({
-    model: getModel(),
+    model: getModel(requestedModel),
     system: SYSTEM_PROMPT,
     messages,
     tools,
@@ -130,6 +132,36 @@ app.post('/api/chat', async (req, res) => {
   });
 
   result.pipeUIMessageStreamToResponse(res);
+});
+
+// Available models from LiteLLM
+const PROVIDER_LABELS = {
+  bedrock: 'AWS', bedrock_converse: 'AWS',
+  vertex_ai: 'GCP', 'vertex_ai-language-models': 'GCP',
+  azure: 'Azure', azure_ai: 'Azure',
+  anthropic: 'Anthropic', openai: 'OpenAI', ollama: 'Ollama',
+};
+
+app.get('/api/models', async (_req, res) => {
+  try {
+    const response = await fetch(`${LITELLM_BASE_URL}/model/info`, {
+      headers: { 'x-litellm-api-key': LITELLM_API_KEY },
+    });
+    if (!response.ok) throw new Error(`LiteLLM ${response.status}`);
+    const data = await response.json();
+    const models = (data.data || []).map(m => {
+      const provider = m.model_info?.litellm_provider || 'unknown';
+      return {
+        id: m.model_name,
+        name: m.model_name,
+        provider: PROVIDER_LABELS[provider] || provider,
+      };
+    });
+    res.json({ models, default: MODEL_ID });
+  } catch (err) {
+    console.warn(`Failed to fetch models: ${err.message}`);
+    res.json({ models: [{ id: MODEL_ID, name: MODEL_ID, provider: 'unknown' }], default: MODEL_ID });
+  }
 });
 
 // i18n
