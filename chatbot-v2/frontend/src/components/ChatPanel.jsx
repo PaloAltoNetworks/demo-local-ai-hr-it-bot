@@ -6,7 +6,7 @@ import { useAirsConfig, buildReportUrl } from '../hooks/useAirsConfig.js';
 
 export default function ChatPanel() {
   const { t } = useLanguage();
-  const { messages, sendMessage, status, error, phaseMap } = useChatContext();
+  const { messages, sendMessage, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -89,6 +89,13 @@ export default function ChatPanel() {
                   }
                   return null;
                 })}
+                {msg.role === 'assistant' && msg.metadata?.usage && (
+                  <div className="message-usage">
+                    <span className="material-symbols">savings</span>
+                    {msg.metadata.usage.totalTokens.toLocaleString()} tokens
+                    <span className="usage-detail">({msg.metadata.usage.inputTokens.toLocaleString()} in / {msg.metadata.usage.outputTokens.toLocaleString()} out)</span>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -122,6 +129,13 @@ export default function ChatPanel() {
             <span className="material-symbols">send</span>
           </button>
         </form>
+        {sessionUsage.totalTokens > 0 && (
+          <div className="session-usage">
+            <span className="material-symbols">savings</span>
+            <span>{sessionUsage.totalTokens.toLocaleString()} tokens</span>
+            <span className="usage-detail">({sessionUsage.inputTokens.toLocaleString()} in / {sessionUsage.outputTokens.toLocaleString()} out)</span>
+          </div>
+        )}
       </div>
     </section>
   );

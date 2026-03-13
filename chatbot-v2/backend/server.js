@@ -8,6 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { streamText, convertToModelMessages } from 'ai';
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -54,23 +55,48 @@ const GUARDRAIL_NAME = 'PANW';
 const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
 
+// Per-request context set before each streamText call
+let _reqCtx = { threadId: '', userIp: '' };
+
+// Injects user identity, thread trace, and guardrails into every LiteLLM request
+function litellmFetch(guarded = false) {
+  return async (url, init) => {
+    if (init?.body) {
+      const body = JSON.parse(init.body);
+      body.user = STATIC_USER.email;
+      body.metadata = {
+        ...body.metadata,
+        app_user: STATIC_USER.email,
+        app_name: 'The Otter V2',
+        user_ip: _reqCtx.userIp,
+        trace_id: _reqCtx.threadId,
+        tr_id: _reqCtx.threadId,
+        tags: [`thread:${_reqCtx.threadId}`],
+      };
+      if (guarded) {
+        body.guardrails = [GUARDRAIL_NAME];
+      }
+      const headers = new Headers(init.headers);
+      headers.set('x-litellm-spend-logs-metadata', JSON.stringify({
+        thread_id: _reqCtx.threadId,
+        app_user: STATIC_USER.email,
+      }));
+      init = { ...init, headers, body: JSON.stringify(body) };
+    }
+    return fetch(url, init);
+  };
+}
+
 const openai = createOpenAI({
   baseURL: `${LITELLM_BASE_URL}/v1`,
   apiKey: LITELLM_API_KEY,
+  fetch: litellmFetch(false),
 });
 
-// Provider that injects LiteLLM guardrails into every request
 const openaiGuarded = createOpenAI({
   baseURL: `${LITELLM_BASE_URL}/v1`,
   apiKey: LITELLM_API_KEY,
-  fetch: async (url, init) => {
-    if (init?.body) {
-      const body = JSON.parse(init.body);
-      body.metadata = { ...body.metadata, guardrails: [GUARDRAIL_NAME] };
-      init = { ...init, body: JSON.stringify(body) };
-    }
-    return fetch(url, init);
-  },
+  fetch: litellmFetch(true),
 });
 
 function getModel(modelId, guarded = false) {
@@ -116,6 +142,7 @@ async function getMCPTools() {
 
 // --- Middleware ---
 
+app.set('trust proxy', true);
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 
@@ -140,6 +167,10 @@ app.post('/api/chat', async (req, res) => {
   const requestedModel = req.body.model;
   const phase = req.body.phase;
   const guarded = phase === 'phase3';
+  _reqCtx = {
+    threadId: req.body.threadId || crypto.randomUUID(),
+    userIp: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
+  };
   const tools = await getMCPTools();
   const messages = await convertToModelMessages(req.body.messages, { tools });
 
@@ -151,7 +182,13 @@ app.post('/api/chat', async (req, res) => {
     maxSteps: 10,
   });
 
-  result.pipeUIMessageStreamToResponse(res);
+  result.pipeUIMessageStreamToResponse(res, {
+    messageMetadata: ({ part }) => {
+      if (part.type === 'finish') {
+        return { usage: part.totalUsage };
+      }
+    },
+  });
 });
 
 // Available models from LiteLLM
