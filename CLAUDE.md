@@ -117,17 +117,18 @@ To create a new tools server: copy `it-tools-mcp-server` or `hr-tools-mcp-server
 ### LiteLLM Direct Mode
 When `USE_LITELLM=true` and `LITELLM_MCP_TOOLS=true`, the coordinator bypasses agent routing entirely. Instead, it sends the user query directly to LiteLLM, which has the standalone MCP tools servers (hr-tools, it-tools) registered in its config. LiteLLM handles tool calling, data retrieval, and answer generation in one shot — no multi-hop agent routing needed. The existing agents (HR, IT, General) remain available as fallback when this mode is off.
 
-### Chatbot V2 (AI SDK Direct)
-`chatbot-v2/` is a drop-in replacement for chatbot-host + mcp-gateway. It uses Vercel AI SDK `streamText` with `@ai-sdk/mcp` to call standalone MCP tools servers directly — no coordinator, no agent routing. The same vanilla JS frontend is served unchanged. Architecture:
+### Chatbot V2 (AI SDK + MCP via LiteLLM)
+`chatbot-v2/` is a drop-in replacement for chatbot-host + mcp-gateway. It uses Vercel AI SDK `generateText` with `@ai-sdk/mcp` for native tool calling. MCP tools are fetched from LiteLLM's `/mcp` aggregator endpoint, which proxies to all registered MCP servers. AI SDK handles the tool calling loop (up to 10 steps). To switch providers, change `MCP_URL` and `LITELLM_BASE_URL`. Architecture:
 ```
 Chatbot V2 (port 3008)           Frontend (vanilla JS) + Express + AI SDK
-       ↓ streamText + MCP tools
+       ↓ generateText + tools     @ai-sdk/mcp → single MCP connection
+       LiteLLM /mcp              MCP aggregator (proxies to registered servers)
        ├── hr-tools-mcp-server    HR data (CSV)
        └── it-tools-mcp-server    IT data (SQLite)
        ↓ LLM
-       LiteLLM proxy              OpenAI-compatible endpoint
+       LiteLLM /v1               OpenAI-compatible endpoint
 ```
-Config: `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `CHATBOT_V2_MODEL` (or `LITELLM_MODEL`), `HR_TOOLS_MCP_URL`, `IT_TOOLS_MCP_URL`.
+Config: `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `CHATBOT_V2_MODEL` (or `LITELLM_MODEL`), `MCP_URL`.
 
 ### LLM Provider System
 `utils/llm-provider.js` uses Vercel AI SDK to abstract across providers. Provider is auto-detected from environment variables (first match wins): Ollama, OpenAI, Anthropic, AWS Bedrock, Azure OpenAI, Google Vertex AI. Set `USE_LITELLM=true` to route all calls through a LiteLLM proxy instead.

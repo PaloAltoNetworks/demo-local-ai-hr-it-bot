@@ -199,14 +199,8 @@ services:
       - ./.env
     environment:
       - CHATBOT_V2_PORT=3008
-      - HR_TOOLS_MCP_URL=http://hr-tools-mcp-server:3000/mcp
-      - IT_TOOLS_MCP_URL=http://it-tools-mcp-server:3000/mcp
       - NODE_TLS_REJECT_UNAUTHORIZED=0
-    depends_on:
-      hr-tools-mcp-server:
-        condition: service_healthy
-      it-tools-mcp-server:
-        condition: service_healthy
+      - MCP_URL=${LITELLM_BASE_URL:-http://localhost:8080}/mcp/
     restart: unless-stopped
     volumes:
       - ./logs/chatbot-v2:/app/logs

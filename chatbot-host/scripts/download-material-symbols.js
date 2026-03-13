@@ -76,6 +76,7 @@ const ICONS = [
     'open_in_full',        // Open fullscreen icon
     'close_fullscreen',    // Close fullscreen icon
     'help',                // Help icon
+    'signature',           // Signature icon
 ];
 
 // Sort icons alphabetically
