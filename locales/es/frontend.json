@@ -81,7 +81,8 @@
     "offline": "Sin conexión",
     "connectionRestored": "Conexión restaurada",
     "ollamaServersDown": "Servidores de IA no disponibles: {servers}",
-    "greeting": "¡Hola {{name}}! Soy La Nutria, tu asistente inteligente de RRHH/IT. Puedo ayudarte con tus preguntas administrativas y técnicas. ¡Pregúntame lo que necesites!"
+    "greeting": "¡Hola {{name}}! Soy La Nutria, tu asistente inteligente de RRHH/IT. Puedo ayudarte con tus preguntas administrativas y técnicas. ¡Pregúntame lo que necesites!",
+    "emptyResponse": "El modelo devolvió una respuesta vacía. Por favor, inténtelo de nuevo."
   },
   "buttons": {
     "regenerate": "Regenerar",

@@ -155,6 +155,8 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .guardrail-icon { color: var(--red) !important; font-size: 18px; }
 .error-block { background: color-mix(in srgb, var(--orange) 8%, var(--surface-alt)) !important; border-color: color-mix(in srgb, var(--orange) 30%, transparent) !important; }
 .error-icon { color: var(--orange) !important; font-size: 18px; }
+.empty-response { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-style: italic; font-size: 13px; }
+.empty-response .material-symbols { font-size: 16px; color: var(--orange); }
 
 /* Phase dividers */
 .phase-divider { display: flex; align-items: center; gap: 8px; padding: 4px 0; margin: 8px 0; }

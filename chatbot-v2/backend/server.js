@@ -164,31 +164,46 @@ app.get('/health', (_req, res) => {
 
 // AI SDK native chat endpoint — useChat on frontend consumes this automatically
 app.post('/api/chat', async (req, res) => {
-  const requestedModel = req.body.model;
-  const phase = req.body.phase;
-  const guarded = phase === 'phase3';
-  _reqCtx = {
-    threadId: req.body.threadId || crypto.randomUUID(),
-    userIp: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
-  };
-  const tools = await getMCPTools();
-  const messages = await convertToModelMessages(req.body.messages, { tools });
+  try {
+    const requestedModel = req.body.model;
+    const phase = req.body.phase;
+    const guarded = phase === 'phase3';
+    _reqCtx = {
+      threadId: req.body.threadId || crypto.randomUUID(),
+      userIp: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
+    };
+    const tools = await getMCPTools();
+    const messages = await convertToModelMessages(req.body.messages, { tools });
 
-  const result = streamText({
-    model: getModel(requestedModel, guarded),
-    system: SYSTEM_PROMPT,
-    messages,
-    tools,
-    stopWhen: stepCountIs(10),
-  });
+    const result = streamText({
+      model: getModel(requestedModel, guarded),
+      system: SYSTEM_PROMPT,
+      messages,
+      tools,
+      stopWhen: stepCountIs(10),
+      onFinish: ({ text, usage, finishReason, steps }) => {
+        if (!text && usage?.completionTokens === 0) {
+          console.warn(`[chat] Empty response from ${requestedModel || MODEL_ID} (thread: ${_reqCtx.threadId}, reason: ${finishReason}, steps: ${steps?.length || 0})`);
+        }
+      },
+    });
 
-  result.pipeUIMessageStreamToResponse(res, {
-    messageMetadata: ({ part }) => {
-      if (part.type === 'finish') {
-        return { usage: part.totalUsage };
-      }
-    },
-  });
+    result.pipeUIMessageStreamToResponse(res, {
+      messageMetadata: ({ part }) => {
+        if (part.type === 'finish') {
+          return {
+            usage: part.totalUsage,
+            empty: (part.totalUsage?.outputTokens || 0) === 0,
+          };
+        }
+      },
+    });
+  } catch (err) {
+    console.error(`[chat] Error: ${err.message}`);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
 });
 
 // Available models from LiteLLM

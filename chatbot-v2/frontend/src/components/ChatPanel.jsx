@@ -98,6 +98,12 @@ export default function ChatPanel() {
                   }
                   return null;
                 })}
+                {msg.role === 'assistant' && msg.metadata?.empty && (
+                  <div className="message-text empty-response">
+                    <span className="material-symbols">warning</span>
+                    {t('chat.emptyResponse')}
+                  </div>
+                )}
                 {msg.role === 'assistant' && msg.metadata?.usage && (
                   <div className="message-usage">
                     <span className="material-symbols">savings</span>
