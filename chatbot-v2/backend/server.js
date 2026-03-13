@@ -119,7 +119,6 @@ app.get('/health', (_req, res) => {
 // AI SDK native chat endpoint — useChat on frontend consumes this automatically
 app.post('/api/chat', async (req, res) => {
   const requestedModel = req.body.model;
-  console.log(`Chat request — model: ${requestedModel || MODEL_ID} (from body: ${!!requestedModel})`);
   const tools = await getMCPTools();
   const messages = await convertToModelMessages(req.body.messages, { tools });
 
