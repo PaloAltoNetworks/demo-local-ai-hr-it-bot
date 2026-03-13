@@ -7,7 +7,7 @@ import { useModels } from './hooks/useModels.js';
 
 export default function App() {
   const [phase, setPhase] = useState(() => localStorage.getItem('currentPhase') || 'phase1');
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'system');
   const { models, model, setModel } = useModels();
 
   useEffect(() => {
@@ -15,18 +15,23 @@ export default function App() {
   }, [phase]);
 
   useEffect(() => {
-    document.body.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
+    if (theme === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const apply = () => document.body.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
+      apply();
+      mq.addEventListener('change', apply);
+      return () => mq.removeEventListener('change', apply);
+    }
+    document.body.setAttribute('data-theme', theme);
   }, [theme]);
-
-  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   return (
     <ChatProvider model={model} phase={phase}>
       <div className={`app ${phase}-active`}>
         <Header
           phase={phase} setPhase={setPhase}
-          toggleTheme={toggleTheme}
+          theme={theme} setTheme={setTheme}
           models={models} model={model} setModel={setModel}
         />
         <main className="main">
