@@ -1,32 +1,13 @@
 {
   "name": "@shared/utils",
-  "version": "0.0.22",
-  "description": "Shared utilities for chatbot-host, mcp-gateway, and mcp-server",
+  "version": "0.1.0",
+  "description": "Shared utilities for MCP tools servers",
   "type": "module",
   "exports": {
-    "./logger": "./logger.js",
-    "./llm-provider": "./llm-provider.js",
-    "./config": "./config.js"
+    "./logger": "./logger.js"
   },
-  "keywords": [
-    "shared",
-    "utils",
-    "logger",
-    "llm-provider",
-    "config"
-  ],
   "dependencies": {
-    "winston": "^3.19.0",
-    "ai": "^6.0.100",
-    "@ai-sdk/openai": "^3.0.33",
-    "@ai-sdk/anthropic": "^3.0.47",
-    "@ai-sdk/azure": "^3.0.34",
-    "@ai-sdk/google-vertex": "^4.0.63",
-    "@ai-sdk/amazon-bedrock": "^4.0.64",
-    "ollama-ai-provider-v2": "^3.3.1",
-    "i18next": "^25.8.13",
-    "i18next-fs-backend": "^2.6.1"
+    "winston": "^3.19.0"
   },
-  "author": "System",
   "license": "MIT"
 }
