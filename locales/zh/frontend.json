@@ -83,8 +83,7 @@
     "ollamaServersDown": "AI服务器不可用：{servers}",
     "greeting": "您好 {{name}}！我是海獭，您的智能人力资源/IT助手。我可以帮助您解答行政和技术问题。请随时问我任何问题！",
     "emptyResponse": "模型返回了空响应。请重试。",
-    "stop": "停止",
-    "deleteMessage": "删除消息"
+    "stop": "停止"
   },
   "buttons": {
     "regenerate": "重新生成",

@@ -83,8 +83,7 @@
     "ollamaServersDown": "KI-Server nicht verfügbar: {servers}",
     "greeting": "Hallo {{name}}! Ich bin Der Otter, dein intelligenter HR/IT-Assistent. Ich kann dir bei deinen administrativen und technischen Fragen helfen. Frag mich einfach!",
     "emptyResponse": "Das Modell hat eine leere Antwort zurückgegeben. Bitte versuchen Sie es erneut.",
-    "stop": "Stoppen",
-    "deleteMessage": "Nachricht löschen"
+    "stop": "Stoppen"
   },
   "buttons": {
     "regenerate": "Erneut generieren",

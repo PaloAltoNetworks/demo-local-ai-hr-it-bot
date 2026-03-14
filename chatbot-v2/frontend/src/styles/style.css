@@ -137,14 +137,6 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .message.bot .message-text blockquote { border-left: 3px solid var(--phase); padding-left: 12px; margin: 8px 0; color: var(--text-secondary); }
 .message.bot .message-text hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
 
-/* Message actions (hover-reveal) */
-.message-actions { position: absolute; top: 4px; right: 4px; opacity: 0; transition: opacity var(--transition); }
-.message-body { position: relative; }
-.message:hover .message-actions { opacity: 1; }
-.action-btn { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: none; border-radius: 4px; background: var(--surface-alt); color: var(--text-muted); cursor: pointer; transition: all var(--transition); }
-.action-btn:hover { background: color-mix(in srgb, var(--red) 10%, var(--surface-alt)); color: var(--red); }
-.action-btn .material-symbols { font-size: 14px; }
-
 /* Tool calls */
 .tool-call { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: var(--phase-bg); border: 1px solid var(--phase-border); font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); }
 .tool-call .material-symbols { font-size: 14px; color: var(--phase); }

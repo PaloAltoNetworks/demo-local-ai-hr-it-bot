@@ -71,14 +71,9 @@ export function ChatProvider({ model, phase, children }) {
     [chat.messages]
   );
 
-  const deleteMessage = useCallback((id) => {
-    chat.setMessages(chat.messages.filter(m => m.id !== id));
-  }, [chat.setMessages, chat.messages]);
-
   const value = {
     ...chat,
     sendMessage: wrappedSendMessage,
-    deleteMessage,
     phaseMap,
     sessionUsage,
   };
