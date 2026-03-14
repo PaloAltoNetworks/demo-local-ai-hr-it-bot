@@ -181,8 +181,8 @@ app.post('/api/chat', async (req, res) => {
       messages,
       tools,
       stopWhen: stepCountIs(10),
-      onFinish: ({ text, usage, finishReason, steps }) => {
-        if (!text && usage?.completionTokens === 0) {
+      onFinish: ({ text, totalUsage, finishReason, steps }) => {
+        if (!text && totalUsage?.completionTokens === 0) {
           console.warn(`[chat] Empty response from ${requestedModel || MODEL_ID} (thread: ${_reqCtx.threadId}, reason: ${finishReason}, steps: ${steps?.length || 0})`);
         }
       },

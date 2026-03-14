@@ -82,7 +82,8 @@
     "connectionRestored": "Connexion rétablie",
     "ollamaServersDown": "Serveurs IA indisponibles : {servers}",
     "greeting": "Bonjour {{name}} ! Je suis La Loutre, votre assistant intelligent RH/IT. Je peux vous aider avec vos questions administratives et techniques. Posez-moi n'importe quoi !",
-    "emptyResponse": "Le modèle a renvoyé une réponse vide. Veuillez réessayer."
+    "emptyResponse": "Le modèle a renvoyé une réponse vide. Veuillez réessayer.",
+    "stop": "Arrêter"
   },
   "buttons": {
     "regenerate": "Régénérer",

@@ -155,8 +155,14 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .guardrail-icon { color: var(--red) !important; font-size: 18px; }
 .error-block { background: color-mix(in srgb, var(--orange) 8%, var(--surface-alt)) !important; border-color: color-mix(in srgb, var(--orange) 30%, transparent) !important; }
 .error-icon { color: var(--orange) !important; font-size: 18px; }
-.empty-response { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-style: italic; font-size: 13px; }
+.empty-response { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--text-muted); font-style: italic; font-size: 13px; }
 .empty-response .material-symbols { font-size: 16px; color: var(--orange); }
+.retry-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-alt); color: var(--text-secondary); font-size: 12px; font-style: normal; cursor: pointer; transition: all var(--transition); }
+.retry-btn:hover { background: var(--bg); color: var(--text); }
+.retry-btn .material-symbols { font-size: 14px; }
+.stop-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-alt); color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all var(--transition); }
+.stop-btn:hover { background: var(--bg); color: var(--red); border-color: var(--red); }
+.stop-btn .material-symbols { font-size: 14px; }
 
 /* Phase dividers */
 .phase-divider { display: flex; align-items: center; gap: 8px; padding: 4px 0; margin: 8px 0; }

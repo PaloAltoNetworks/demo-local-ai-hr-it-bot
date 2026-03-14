@@ -6,7 +6,7 @@ import { useAirsConfig, buildReportUrl } from '../hooks/useAirsConfig.js';
 
 export default function ChatPanel() {
   const { t } = useLanguage();
-  const { messages, sendMessage, status, error, phaseMap, errorMap, sessionUsage } = useChatContext();
+  const { messages, sendMessage, regenerate, stop, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -24,7 +24,7 @@ export default function ChatPanel() {
     setInput('');
   };
 
-  // Build render list with phase dividers and persistent errors
+  // Build render list with phase dividers
   const renderItems = [];
   let prevPhase = null;
   for (const msg of messages) {
@@ -33,10 +33,6 @@ export default function ChatPanel() {
       renderItems.push({ type: 'divider', phase: msgPhase, key: `divider-${msg.id}` });
     }
     renderItems.push({ type: 'message', msg, phase: msgPhase, key: msg.id });
-    // Show captured error after the user message that triggered it
-    if (msg.role === 'user' && errorMap[msg.id]) {
-      renderItems.push({ type: 'error', error: errorMap[msg.id], phase: msgPhase, key: `error-${msg.id}` });
-    }
     prevPhase = msgPhase;
   }
 
@@ -102,6 +98,10 @@ export default function ChatPanel() {
                   <div className="message-text empty-response">
                     <span className="material-symbols">warning</span>
                     {t('chat.emptyResponse')}
+                    <button className="retry-btn" onClick={() => regenerate({ messageId: msg.id })}>
+                      <span className="material-symbols">refresh</span>
+                      {t('buttons.regenerate')}
+                    </button>
                   </div>
                 )}
                 {msg.role === 'assistant' && msg.metadata?.usage && (
@@ -116,11 +116,20 @@ export default function ChatPanel() {
           );
         })}
 
-        {/* Streaming indicator */}
+        {/* Streaming indicator with stop button */}
         {isStreaming && (
           <div className="thinking-indicator">
             <span className="thinking-dots"><span /><span /><span /></span>
+            <button className="stop-btn" onClick={() => stop()}>
+              <span className="material-symbols">stop_circle</span>
+              {t('chat.stop')}
+            </button>
           </div>
+        )}
+
+        {/* Native error display with regenerate */}
+        {status === 'error' && error && (
+          <GuardrailError error={error} airsConfig={airsConfig} t={t} onRetry={() => regenerate()} />
         )}
 
         <div ref={messagesEndRef} />
@@ -173,7 +182,7 @@ function parseGuardrailError(errorMessage) {
   }
 }
 
-function GuardrailError({ error, airsConfig, t }) {
+function GuardrailError({ error, airsConfig, t, onRetry }) {
   const errorText = error?.message || String(error);
   const info = parseGuardrailError(errorText);
 
@@ -216,6 +225,12 @@ function GuardrailError({ error, airsConfig, t }) {
       <div className="message-body">
         <div className="message-text error-block">
           {t('guardrail.error')}
+          {onRetry && (
+            <button className="retry-btn" onClick={onRetry}>
+              <span className="material-symbols">refresh</span>
+              {t('buttons.regenerate')}
+            </button>
+          )}
         </div>
       </div>
     </div>
