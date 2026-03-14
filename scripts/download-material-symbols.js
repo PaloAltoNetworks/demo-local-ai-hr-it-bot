@@ -89,6 +89,7 @@ const ICONS = [
     'delete',              // Delete/trash icon
     'stop_circle',         // Stop circle icon (used in streaming stop button)
     'refresh',             // Refresh/reload icon
+    'verified_user',       // Verified user/shield icon
 ];
 
 // Sort icons alphabetically
