@@ -18,8 +18,8 @@ RUN npm install --only=production
 COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/server.js ./
 COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/service.js ./
 
-# Copy employee data from the original HR agent
-COPY --chown=mcpserver:nodejs mcp-server/hr-mcp-server/employees.csv ./
+# Copy employee data (self-contained)
+COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/employees.csv ./
 
 # Shared utils (logger)
 COPY --chown=mcpserver:nodejs utils/ ./utils/

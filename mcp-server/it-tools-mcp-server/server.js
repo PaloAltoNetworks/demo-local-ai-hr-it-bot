@@ -1,7 +1,7 @@
 /**
  * IT Tools MCP Server
  * Pure data/tools MCP server — no LLM, no coordinator registration.
- * Exposes IT ticket database as MCP tools for external LLM hosts to consume.
+ * Exposes IT ticket database, assets, and IT processes as MCP tools.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -22,6 +22,8 @@ function json(data) {
 }
 
 function registerTools(server) {
+  // --- Ticket read tools ---
+
   server.tool(
     'get_ticket',
     'Get a specific IT ticket by its ID (e.g. INC-2025-0120). Returns full ticket details and discussion history.',
@@ -54,7 +56,7 @@ function registerTools(server) {
     'list_tickets',
     'List all IT tickets, optionally filtered by status, priority, or category.',
     {
-      status: z.string().optional().describe('Filter by status (Open, In Progress, Resolved, Closed)'),
+      status: z.string().optional().describe('Filter by status (Open, In Progress, Pending Approval, Approved, Rejected, Resolved, Closed)'),
       priority: z.string().optional().describe('Filter by priority (Critical, High, Medium, Low)'),
       category: z.string().optional().describe('Filter by category')
     },
@@ -93,6 +95,123 @@ function registerTools(server) {
       return json(service.getStatistics());
     }
   );
+
+  // --- Ticket mutation tools ---
+
+  server.tool(
+    'create_ticket',
+    'Create a new IT ticket. Returns the new ticket ID. Use this when an employee needs to open a support request, such as USB access, software installation, hardware replacement, etc.',
+    {
+      employee_email: z.string().describe('Email of the employee requesting support'),
+      employee_name: z.string().describe('Full name of the employee'),
+      description: z.string().describe('Detailed description of the request or issue'),
+      priority: z.enum(['Critical', 'High', 'Medium', 'Low']).default('Medium').describe('Ticket priority'),
+      category: z.string().describe('Category (e.g. USB Access, Software, Hardware, Network, Security, Email, Onboarding)'),
+      status: z.enum(['Open', 'Pending Approval']).default('Open').describe('Initial status. Use "Pending Approval" for requests that require manager approval.'),
+      asset_id: z.string().optional().describe('Asset ID if the request is linked to a specific device'),
+    },
+    async ({ employee_email, employee_name, description, priority, category, status, asset_id }) => {
+      const result = service.createTicket({
+        employee_email,
+        employee_name,
+        description: asset_id ? `${description} [Asset: ${asset_id}]` : description,
+        priority,
+        category,
+        status,
+        tags: category.toLowerCase(),
+      });
+      if (!result) {
+        return json({ error: 'creation_failed', message: 'Failed to create ticket' });
+      }
+      return json({ success: true, ...result, message: `Ticket ${result.ticket_id} created successfully` });
+    }
+  );
+
+  server.tool(
+    'update_ticket_status',
+    'Update the status of an existing IT ticket. Use this to approve, reject, resolve, or close tickets.',
+    {
+      ticket_id: z.string().describe('Ticket ID to update'),
+      status: z.enum(['Open', 'In Progress', 'Pending Approval', 'Approved', 'Rejected', 'Resolved', 'Closed']).describe('New status'),
+      approver_email: z.string().optional().describe('Email of the person approving/rejecting (required for approval actions)'),
+      approver_name: z.string().optional().describe('Name of the person approving/rejecting'),
+    },
+    async ({ ticket_id, status, approver_email, approver_name }) => {
+      const result = service.updateTicketStatus(ticket_id, status, approver_email, approver_name);
+      if (!result) {
+        return json({ error: 'update_failed', message: `Ticket ${ticket_id} not found or update failed` });
+      }
+      return json({ success: true, ...result, message: `Ticket ${ticket_id} status updated to "${status}"` });
+    }
+  );
+
+  // --- Asset tools ---
+
+  server.tool(
+    'get_employee_assets',
+    'Get all IT assets (laptops, devices) assigned to an employee by their email address. Use this to find which devices an employee has before creating device-specific requests.',
+    {
+      employee_email: z.string().describe('Employee email address')
+    },
+    async ({ employee_email }) => {
+      const assets = service.getAssetsByEmployee(employee_email);
+      return json({ count: assets.length, employee_email, assets });
+    }
+  );
+
+  server.tool(
+    'get_asset',
+    'Get details of a specific IT asset by its asset ID.',
+    {
+      asset_id: z.string().describe('Asset ID (e.g. ASSET-00001)')
+    },
+    async ({ asset_id }) => {
+      const asset = service.getAssetById(asset_id);
+      if (!asset) {
+        return json({ error: 'not_found', message: `Asset ${asset_id} not found` });
+      }
+      return json(asset);
+    }
+  );
+
+  // --- IT Process tools ---
+
+  server.tool(
+    'search_it_processes',
+    'Search IT processes and procedures by keyword. Returns the step-by-step process, required information, and whether manager approval is needed. Use this when an employee asks how to do something IT-related (e.g. "how do I get USB access", "I need new software").',
+    {
+      query: z.string().describe('Search term (e.g. "usb", "software install", "vpn", "password reset")')
+    },
+    async ({ query }) => {
+      const processes = service.searchProcesses(query);
+      return json({ count: processes.length, query, processes });
+    }
+  );
+
+  server.tool(
+    'get_it_process',
+    'Get a specific IT process by its ID.',
+    {
+      process_id: z.number().describe('Process ID')
+    },
+    async ({ process_id }) => {
+      const process = service.getProcessById(process_id);
+      if (!process) {
+        return json({ error: 'not_found', message: `Process ${process_id} not found` });
+      }
+      return json(process);
+    }
+  );
+
+  server.tool(
+    'list_it_processes',
+    'List all available IT processes and procedures.',
+    {},
+    async () => {
+      const processes = service.getAllProcesses();
+      return json({ count: processes.length, processes });
+    }
+  );
 }
 
 function createServer() {
@@ -109,16 +228,12 @@ async function main() {
 
   const app = express();
 
-  // Log all incoming requests
   app.use((req, _res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from ${req.ip}`);
-    console.log(`  Headers: ${JSON.stringify(req.headers)}`);
     next();
   });
 
   // Ensure MCP clients can always reach Streamable HTTP transport
-  // (some clients like LiteLLM don't send the required Accept header)
-  // Must patch both headers object AND rawHeaders array since @hono/node-server reads rawHeaders
   app.use('/mcp', (req, _res, next) => {
     req.headers['accept'] = 'application/json, text/event-stream';
     const idx = req.rawHeaders.findIndex(h => h.toLowerCase() === 'accept');
@@ -136,36 +251,27 @@ async function main() {
 
   // --- Streamable HTTP transport (POST /mcp) ---
   app.post('/mcp', async (req, res) => {
-    console.log(`[MCP] Streamable HTTP request received`);
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     await server.connect(transport);
     await transport.handleRequest(req, res);
-    console.log(`[MCP] Streamable HTTP request completed — status: ${res.statusCode}`);
   });
 
   // --- SSE transport (GET /sse + POST /messages) ---
   const sseTransports = {};
 
   app.get('/sse', async (req, res) => {
-    console.log(`[MCP] SSE connection opened from ${req.ip}`);
     const server = createServer();
     const transport = new SSEServerTransport('/messages', res);
     sseTransports[transport.sessionId] = transport;
-    console.log(`[MCP] SSE session: ${transport.sessionId}`);
-    res.on('close', () => {
-      console.log(`[MCP] SSE session closed: ${transport.sessionId}`);
-      delete sseTransports[transport.sessionId];
-    });
+    res.on('close', () => { delete sseTransports[transport.sessionId]; });
     await server.connect(transport);
   });
 
   app.post('/messages', async (req, res) => {
     const sessionId = req.query.sessionId;
-    console.log(`[MCP] SSE message for session: ${sessionId}`);
     const transport = sseTransports[sessionId];
     if (!transport) {
-      console.log(`[MCP] SSE session not found: ${sessionId}`);
       return res.status(400).json({ error: 'Invalid or expired session' });
     }
     await transport.handlePostMessage(req, res);

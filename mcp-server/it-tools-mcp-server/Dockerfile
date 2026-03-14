@@ -14,16 +14,14 @@ RUN npm install --prefix ./utils --only=production
 COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/package*.json ./
 RUN npm install --only=production
 
-# Copy agent source
+# Copy all source files (self-contained — no cross-workspace references)
 COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/server.js ./
 COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/service.js ./
+COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/database-manager.js ./
+COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/ticket-db.js ./
+COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/tickets.db ./
 
-# Copy shared database files from the original IT agent
-COPY --chown=mcpserver:nodejs mcp-server/it-mcp-server/database-manager.js ./
-COPY --chown=mcpserver:nodejs mcp-server/it-mcp-server/ticket-db.js ./
-COPY --chown=mcpserver:nodejs mcp-server/it-mcp-server/tickets.db ./
-
-# Shared utils (logger needed by database-manager.js)
+# Shared utils (logger)
 COPY --chown=mcpserver:nodejs utils/ ./utils/
 
 EXPOSE 3000

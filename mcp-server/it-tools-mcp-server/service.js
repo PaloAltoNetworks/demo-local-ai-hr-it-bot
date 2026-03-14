@@ -15,6 +15,8 @@ export class ITService {
     }
   }
 
+  // --- Tickets ---
+
   getAllTickets() {
     return this.ticketService?.getAllTickets() || [];
   }
@@ -44,24 +46,81 @@ export class ITService {
   }
 
   getStatistics() {
-    return this.ticketService?.getStatistics() || {
-      total: 0,
-      byStatus: [],
-      byPriority: [],
-      byAssignee: []
-    };
+    return this.ticketService?.getStatistics() || { total: 0, byStatus: [], byPriority: [], byAssignee: [] };
   }
 
   searchTickets(query) {
-    const tickets = this.getAllTickets();
-    const queryLower = query.toLowerCase();
+    return this.ticketService?.searchTickets(query) || [];
+  }
 
-    return tickets.filter(ticket =>
-      ticket.ticket_id.toLowerCase().includes(queryLower) ||
-      ticket.employee_name.toLowerCase().includes(queryLower) ||
-      ticket.employee_email.toLowerCase().includes(queryLower) ||
-      ticket.description.toLowerCase().includes(queryLower) ||
-      ticket.category.toLowerCase().includes(queryLower)
-    );
+  // --- Ticket mutations ---
+
+  createTicket(data) {
+    const ticketId = this.ticketService.getNextTicketId();
+    const today = new Date().toISOString().split('T')[0];
+    const success = this.ticketService.createTicket({
+      ticket_id: ticketId,
+      employee_email: data.employee_email,
+      employee_name: data.employee_name,
+      date: today,
+      status: data.status || 'Open',
+      description: data.description,
+      priority: data.priority || 'Medium',
+      category: data.category,
+      assigned_to_email: data.assigned_to_email || 'diego.martinez@company.com',
+      assigned_to: data.assigned_to || 'Diego Martinez',
+      tags: data.tags || data.category.toLowerCase(),
+      internal_notes: data.internal_notes || null,
+    });
+    if (success) {
+      return { ticket_id: ticketId, status: data.status || 'Open' };
+    }
+    return null;
+  }
+
+  updateTicketStatus(ticketId, status, approverEmail, approverName) {
+    const ticket = this.getTicketById(ticketId);
+    if (!ticket) return null;
+
+    const success = this.ticketService.updateTicketStatus(ticketId, status);
+    if (success && approverEmail) {
+      this.ticketService.addDiscussion({
+        ticket_id: ticketId,
+        author_email: approverEmail,
+        author_name: approverName || approverEmail,
+        comment_type: 'approval',
+        content: `Ticket ${status.toLowerCase()} by ${approverName || approverEmail}`,
+        is_internal: false,
+      });
+    }
+    return success ? { ticket_id: ticketId, status } : null;
+  }
+
+  // --- Assets ---
+
+  getAssetsByEmployee(email) {
+    return this.ticketService?.getAssetsByEmployee(email) || [];
+  }
+
+  getAssetById(assetId) {
+    return this.ticketService?.getAssetById(assetId);
+  }
+
+  // --- IT Processes ---
+
+  getAllProcesses() {
+    const processes = this.ticketService?.getAllProcesses() || [];
+    return processes.map(p => ({ ...p, steps: JSON.parse(p.steps), required_info: JSON.parse(p.required_info) }));
+  }
+
+  getProcessById(processId) {
+    const p = this.ticketService?.getProcessById(processId);
+    if (!p) return null;
+    return { ...p, steps: JSON.parse(p.steps), required_info: JSON.parse(p.required_info) };
+  }
+
+  searchProcesses(query) {
+    const processes = this.ticketService?.searchProcesses(query) || [];
+    return processes.map(p => ({ ...p, steps: JSON.parse(p.steps), required_info: JSON.parse(p.required_info) }));
   }
 }
