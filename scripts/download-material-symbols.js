@@ -79,13 +79,16 @@ const ICONS = [
     'signature',           // Signature icon
     'balance',             // Balance icon (legal/HR icon)
     'gpp_bad',             // GPP/privacy icon (used in guardrail error message)
-    'open_in_new',        // Open in new tab/window icon
+    'open_in_new',         // Open in new tab/window icon
     'savings',             // Savings/finance icon
     'error',               // Error icon (used in guardrail error message)
     'expand_less',         // Expand less/collapse icon
-    'translate',            // Translate/language icon,
-    'palette',              // Palette/design icon
-    'smart_toy',             // Smart toy/AI icon
+    'translate',           // Translate/language icon,
+    'palette',             // Palette/design icon
+    'smart_toy',           // Smart toy/AI icon
+    'delete',              // Delete/trash icon
+    'stop_circle',         // Stop circle icon (used in streaming stop button)
+    'refresh',             // Refresh/reload icon
 ];
 
 // Sort icons alphabetically
