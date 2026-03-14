@@ -83,7 +83,8 @@
     "ollamaServersDown": "AI servers unavailable: {servers}",
     "greeting": "Hello {{name}}! I am The Otter, your intelligent HR/IT assistant. I can help you with your administrative and technical questions. Ask me anything!",
     "emptyResponse": "The model returned an empty response. Please try again.",
-    "stop": "Stop"
+    "stop": "Stop",
+    "deleteMessage": "Delete message"
   },
   "buttons": {
     "regenerate": "Regenerate",

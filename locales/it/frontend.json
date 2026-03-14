@@ -83,7 +83,8 @@
     "ollamaServersDown": "Server IA non disponibili: {servers}",
     "greeting": "Ciao {{name}}! Sono La Lontra, il tuo assistente intelligente HR/IT. Posso aiutarti con le tue domande amministrative e tecniche. Chiedimi pure!",
     "emptyResponse": "Il modello ha restituito una risposta vuota. La preghiamo di riprovare.",
-    "stop": "Interrompi"
+    "stop": "Interrompi",
+    "deleteMessage": "Elimina messaggio"
   },
   "buttons": {
     "regenerate": "Rigenera",

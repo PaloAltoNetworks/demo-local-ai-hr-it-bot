@@ -6,7 +6,7 @@ import { useAirsConfig, buildReportUrl } from '../hooks/useAirsConfig.js';
 
 export default function ChatPanel() {
   const { t } = useLanguage();
-  const { messages, sendMessage, regenerate, stop, status, error, phaseMap, sessionUsage } = useChatContext();
+  const { messages, sendMessage, regenerate, stop, deleteMessage, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -73,6 +73,13 @@ export default function ChatPanel() {
                   : <i className="otter-icon" />}
               </div>
               <div className="message-body">
+                {!isStreaming && (
+                  <div className="message-actions">
+                    <button className="action-btn" onClick={() => deleteMessage(msg.id)} title={t('chat.deleteMessage')}>
+                      <span className="material-symbols">delete</span>
+                    </button>
+                  </div>
+                )}
                 {msg.parts?.map((part, i) => {
                   if (part.type === 'text' && part.text) {
                     return msg.role === 'user'

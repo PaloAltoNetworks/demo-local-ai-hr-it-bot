@@ -83,7 +83,8 @@
     "ollamaServersDown": "AIサーバーは利用できません: {servers}",
     "greeting": "こんにちは {{name}}! 私はカワウソ、あなたのインテリジェント HR/IT アシスタントです。管理およびテクニカルな質問でお手伝いできます。何でもお聞きください!",
     "emptyResponse": "モデルが空の応答を返しました。もう一度お試しください。",
-    "stop": "停止"
+    "stop": "停止",
+    "deleteMessage": "メッセージを削除"
   },
   "buttons": {
     "regenerate": "再生成",

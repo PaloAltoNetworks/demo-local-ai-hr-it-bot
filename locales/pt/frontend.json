@@ -83,7 +83,8 @@
     "ollamaServersDown": "Servidores de IA indisponíveis: {servers}",
     "greeting": "Olá {{name}}! Eu sou o The Otter, seu assistente inteligente de RH/TI. Posso ajudá-lo com suas perguntas administrativas e técnicas. Pergunte-me qualquer coisa!",
     "emptyResponse": "O modelo retornou uma resposta vazia. Por favor, tente novamente.",
-    "stop": "Parar"
+    "stop": "Parar",
+    "deleteMessage": "Excluir mensagem"
   },
   "buttons": {
     "regenerate": "Regenerar",

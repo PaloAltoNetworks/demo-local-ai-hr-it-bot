@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useCallback, useMemo } from 'react';
+import { createContext, useContext, useCallback, useMemo } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 
@@ -35,30 +35,29 @@ export function ChatProvider({ model, phase, children }) {
     onError: (error) => {
       console.error('[chat] Stream error:', error.message);
     },
+    onFinish: ({ message, isAbort, isError }) => {
+      if (isAbort) console.info('[chat] Response aborted');
+      if (isError) console.warn('[chat] Response finished with error');
+      if (message.metadata?.empty) console.warn('[chat] Model returned empty response');
+    },
   });
 
-  const phaseMapRef = useRef({});
-  const sendPhaseRef = useRef(phase);
-
-  // Tag new messages synchronously during render (not in useEffect)
-  // so phase colors are available on the very first render of each message.
-  let lastUserPhase = sendPhaseRef.current;
-  for (const msg of chat.messages) {
-    if (phaseMapRef.current[msg.id]) {
-      if (msg.role === 'user') lastUserPhase = phaseMapRef.current[msg.id];
-      continue;
+  // Derive phase for each message: user messages carry their phase in metadata,
+  // assistant messages inherit the phase of the preceding user message.
+  const phaseMap = useMemo(() => {
+    const map = {};
+    let currentPhase = 'phase1';
+    for (const msg of chat.messages) {
+      if (msg.role === 'user') {
+        currentPhase = msg.metadata?.phase || 'phase1';
+      }
+      map[msg.id] = currentPhase;
     }
-    if (msg.role === 'user') {
-      phaseMapRef.current[msg.id] = sendPhaseRef.current;
-      lastUserPhase = sendPhaseRef.current;
-    } else {
-      phaseMapRef.current[msg.id] = lastUserPhase;
-    }
-  }
+    return map;
+  }, [chat.messages]);
 
   const wrappedSendMessage = useCallback((opts) => {
-    sendPhaseRef.current = phase;
-    return chat.sendMessage(opts);
+    return chat.sendMessage({ ...opts, metadata: { phase } });
   }, [chat.sendMessage, phase]);
 
   const sessionUsage = useMemo(() =>
@@ -72,10 +71,15 @@ export function ChatProvider({ model, phase, children }) {
     [chat.messages]
   );
 
+  const deleteMessage = useCallback((id) => {
+    chat.setMessages(chat.messages.filter(m => m.id !== id));
+  }, [chat.setMessages, chat.messages]);
+
   const value = {
     ...chat,
     sendMessage: wrappedSendMessage,
-    phaseMap: phaseMapRef.current,
+    deleteMessage,
+    phaseMap,
     sessionUsage,
   };
 
