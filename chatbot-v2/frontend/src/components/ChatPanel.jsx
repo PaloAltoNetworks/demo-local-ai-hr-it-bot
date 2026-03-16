@@ -9,7 +9,18 @@ export default function ChatPanel() {
   const { messages, sendMessage, regenerate, stop, addToolApprovalResponse, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
   const [input, setInput] = useState('');
+  const [stickyErrors, setStickyErrors] = useState([]);
   const messagesEndRef = useRef(null);
+  const lastErrorRef = useRef(null);
+
+  // Persist errors into the chat flow so they survive new message sends
+  useEffect(() => {
+    if (status === 'error' && error && error !== lastErrorRef.current) {
+      lastErrorRef.current = error;
+      const afterId = messages[messages.length - 1]?.id || 'none';
+      setStickyErrors(prev => [...prev, { error, afterId, key: `err-${Date.now()}` }]);
+    }
+  }, [status, error, messages]);
 
   const isStreaming = status === 'streaming' || status === 'submitted';
 
@@ -24,7 +35,7 @@ export default function ChatPanel() {
     setInput('');
   };
 
-  // Build render list with phase dividers
+  // Build render list with phase dividers and sticky errors
   const renderItems = [];
   let prevPhase = null;
   for (const msg of messages) {
@@ -33,6 +44,12 @@ export default function ChatPanel() {
       renderItems.push({ type: 'divider', phase: msgPhase, key: `divider-${msg.id}` });
     }
     renderItems.push({ type: 'message', msg, phase: msgPhase, key: msg.id });
+    // Insert any sticky errors that were captured after this message
+    for (const se of stickyErrors) {
+      if (se.afterId === msg.id) {
+        renderItems.push({ type: 'error', error: se.error, key: se.key });
+      }
+    }
     prevPhase = msgPhase;
   }
 
@@ -163,8 +180,8 @@ export default function ChatPanel() {
           </div>
         )}
 
-        {/* Native error display with regenerate */}
-        {status === 'error' && error && (
+        {/* Native error display — hidden once captured as a sticky error */}
+        {status === 'error' && error && !stickyErrors.some(se => se.error === error) && (
           <GuardrailError error={error} airsConfig={airsConfig} t={t} onRetry={() => regenerate()} />
         )}
 
