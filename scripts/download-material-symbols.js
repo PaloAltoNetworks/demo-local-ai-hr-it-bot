@@ -90,6 +90,8 @@ const ICONS = [
     'stop_circle',         // Stop circle icon (used in streaming stop button)
     'refresh',             // Refresh/reload icon
     'verified_user',       // Verified user/shield icon
+    'usb',                 // USB/device icon
+    'shield_person',        // Shield/person icon (security/privacy icon)
 ];
 
 // Sort icons alphabetically
