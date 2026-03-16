@@ -16,6 +16,20 @@ import { createOpenAI } from '@ai-sdk/openai';
 
 dotenv.config();
 
+// Suppress AI SDK's verbose internal error dumps — errors are already handled via onError
+const _origConsoleError = console.error;
+console.error = (...args) => {
+  if (args[0] && typeof args[0] === 'object' && args[0][Symbol.for('vercel.ai.error')]) {
+    const err = args[0];
+    const body = err.responseBody || err.lastError?.responseBody || '';
+    let summary = err.message;
+    try { summary = JSON.parse(body)?.error?.message || summary; } catch {}
+    _origConsoleError(`[chat] ${summary}`);
+    return;
+  }
+  _origConsoleError.apply(console, args);
+};
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.CHATBOT_V2_PORT || 3008;
@@ -192,6 +206,7 @@ app.post('/api/chat', async (req, res) => {
       system: SYSTEM_PROMPT,
       messages,
       tools,
+      maxRetries: 0,
       stopWhen: stepCountIs(10),
       onFinish: ({ text, totalUsage, finishReason, steps }) => {
         if (!text && totalUsage?.completionTokens === 0) {
@@ -209,22 +224,27 @@ app.post('/api/chat', async (req, res) => {
           };
         }
       },
+      onError: (event) => {
+        const error = event?.error || event;
+        const msg = error?.message || String(error);
+        // Extract embedded guardrail error dict from RetryError message
+        const match = msg.match(/\{['"]error['"]\s*:\s*\{.*\}\s*\}/);
+        if (match) return match[0];
+        return msg;
+      },
     });
   } catch (err) {
-    console.error(`[chat] Error: ${err.message}`);
+    const apiError = err.lastError || err;
+    const body = apiError?.responseBody || '';
+    let summary = err.message;
+    try {
+      const parsed = JSON.parse(body);
+      summary = parsed?.error?.message || summary;
+    } catch {}
+    console.error(`[chat] ${summary}`);
+
     if (!res.headersSent) {
-      // Extract guardrail or API error details from nested RetryError → APICallError
-      const apiError = err.lastError || err;
-      const responseBody = apiError.responseBody || apiError.message || '';
-      try {
-        const parsed = JSON.parse(responseBody);
-        const inner = parsed?.error?.message || '';
-        // Forward the inner error message (guardrail violations, config errors, etc.)
-        if (inner) {
-          return res.status(apiError.statusCode || 500).json({ error: inner });
-        }
-      } catch {}
-      res.status(500).json({ error: err.message || 'Internal server error' });
+      res.status(500).json({ error: summary });
     }
   }
 });
