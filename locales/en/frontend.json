@@ -148,7 +148,7 @@
   "guardrail": {
     "blocked": "I'm sorry, but I can't process this request. Our AI security system has identified potential risks in this prompt.",
     "viewReport": "View security report",
-    "configError": "The AI security service (Prisma AIRS) is currently unavailable due to a configuration error. Please contact your administrator or try again using Normal or Risky mode.",
+    "configError": "The AI security service (Prisma AIRS) is currently unavailable due to a configuration error. Please contact The Otter support team, he knows what to do.",
     "error": "An error occurred while processing your request."
   },
   "language": {

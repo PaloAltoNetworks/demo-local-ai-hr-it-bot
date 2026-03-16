@@ -148,7 +148,7 @@
   "guardrail": {
     "blocked": "Nous vous prions de nous excuser, mais nous ne pouvons pas traiter cette demande. Notre système de sécurité IA a identifié des risques potentiels dans ce prompt.",
     "viewReport": "Voir le rapport de sécurité",
-    "configError": "Le service de sécurité IA (Prisma AIRS) est actuellement indisponible en raison d'une erreur de configuration. Veuillez contacter votre administrateur ou réessayer en mode Nominal ou Risqué.",
+    "configError": "Le service de sécurité IA (Prisma AIRS) est actuellement indisponible en raison d'une erreur de configuration. Veuillez contacter l'équipe de support de The Otter, il sait quoi faire.",
     "error": "Une erreur s'est produite lors du traitement de votre demande."
   },
   "language": {
