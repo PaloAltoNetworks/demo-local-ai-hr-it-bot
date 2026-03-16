@@ -10,7 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { streamText, convertToModelMessages, stepCountIs } from 'ai';
+import { streamText, convertToModelMessages, stepCountIs, tool as defineTool } from 'ai';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
 
@@ -174,7 +174,17 @@ app.post('/api/chat', async (req, res) => {
       threadId: req.body.threadId || crypto.randomUUID(),
       userIp: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
     };
-    const tools = await getMCPTools();
+    const mcpTools = await getMCPTools();
+
+    // Require user approval before executing mutation tools (match by suffix — MCP tools are prefixed with server name)
+    const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
+    const tools = { ...mcpTools };
+    for (const key of Object.keys(tools)) {
+      if (TOOLS_REQUIRING_APPROVAL.some(suffix => key.endsWith(suffix))) {
+        tools[key] = { ...tools[key], needsApproval: true };
+      }
+    }
+
     const messages = await convertToModelMessages(req.body.messages, { tools });
 
     const result = streamText({

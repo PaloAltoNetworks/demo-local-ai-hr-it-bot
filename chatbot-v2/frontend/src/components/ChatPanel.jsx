@@ -6,7 +6,7 @@ import { useAirsConfig, buildReportUrl } from '../hooks/useAirsConfig.js';
 
 export default function ChatPanel() {
   const { t } = useLanguage();
-  const { messages, sendMessage, regenerate, stop, status, error, phaseMap, sessionUsage } = useChatContext();
+  const { messages, sendMessage, regenerate, stop, addToolApprovalResponse, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -82,6 +82,42 @@ export default function ChatPanel() {
                   if (part.type === 'tool-invocation' || part.type === 'dynamic-tool') {
                     const toolName = part.type === 'tool-invocation' ? part.toolInvocation.toolName : part.toolName;
                     const toolState = part.type === 'tool-invocation' ? part.toolInvocation.state : part.state;
+                    const toolArgs = part.type === 'tool-invocation' ? part.toolInvocation.args : part.args;
+                    const approval = part.type === 'tool-invocation' ? part.toolInvocation.approval : part.approval;
+
+                    if (toolState === 'approval-requested') {
+                      return (
+                        <div key={i} className="tool-approval">
+                          <div className="tool-approval-header">
+                            <span className="material-symbols">verified_user</span>
+                            <span className="tool-approval-title">{t('tools.approvalRequired')}</span>
+                          </div>
+                          <div className="tool-approval-detail">
+                            <span className="tool-name">{toolName}</span>
+                            {toolArgs && (
+                              <pre className="tool-approval-args">{JSON.stringify(toolArgs, null, 2)}</pre>
+                            )}
+                          </div>
+                          <div className="tool-approval-actions">
+                            <button
+                              className="tool-approve-btn"
+                              onClick={() => addToolApprovalResponse({ id: approval.id, approved: true })}
+                            >
+                              <span className="material-symbols">check_circle</span>
+                              {t('tools.approve')}
+                            </button>
+                            <button
+                              className="tool-deny-btn"
+                              onClick={() => addToolApprovalResponse({ id: approval.id, approved: false })}
+                            >
+                              <span className="material-symbols">cancel</span>
+                              {t('tools.deny')}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={i} className="tool-call">
                         <span className="material-symbols">build</span>

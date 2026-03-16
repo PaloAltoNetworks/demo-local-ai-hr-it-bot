@@ -1,6 +1,6 @@
 import { createContext, useContext, useCallback, useMemo } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 
 const ChatContext = createContext();
 
@@ -32,6 +32,7 @@ export function ChatProvider({ model, phase, children }) {
 
   const chat = useChat({
     transport,
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onError: (error) => {
       console.error('[chat] Stream error:', error.message);
     },
