@@ -148,6 +148,7 @@
   "guardrail": {
     "blocked": "Ci scusiamo, ma non possiamo elaborare questa richiesta. Il nostro sistema di sicurezza IA ha identificato potenziali rischi in questo prompt.",
     "viewReport": "Visualizza rapporto di sicurezza",
+    "configError": "Il servizio di sicurezza IA (Prisma AIRS) non è attualmente disponibile a causa di un errore di configurazione. Contatti l'amministratore o riprovi in modalità Normale o Rischiosa.",
     "error": "Si è verificato un errore durante l'elaborazione della sua richiesta."
   },
   "language": {

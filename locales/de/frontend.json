@@ -148,6 +148,7 @@
   "guardrail": {
     "blocked": "Es tut uns leid, aber wir können diese Anfrage nicht bearbeiten. Unser KI-Sicherheitssystem hat potenzielle Risiken in diesem Prompt identifiziert.",
     "viewReport": "Sicherheitsbericht anzeigen",
+    "configError": "Der KI-Sicherheitsdienst (Prisma AIRS) ist derzeit aufgrund eines Konfigurationsfehlers nicht verfügbar. Bitte kontaktieren Sie Ihren Administrator oder versuchen Sie es im Normalen oder Riskanten Modus erneut.",
     "error": "Bei der Bearbeitung Ihrer Anfrage ist ein Fehler aufgetreten."
   },
   "language": {

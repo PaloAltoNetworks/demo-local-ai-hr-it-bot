@@ -203,10 +203,13 @@ function parseGuardrailError(errorMessage) {
     const jsonStr = errorMessage.replace(/'/g, '"').replace(/True/g, 'true').replace(/False/g, 'false');
     const parsed = JSON.parse(jsonStr);
     const err = parsed.error || parsed;
+    const type = err.type || '';
     return {
-      isGuardrail: err.type === 'guardrail_violation',
+      isGuardrail: type === 'guardrail_violation',
+      isGuardrailConfig: type === 'guardrail_config_error',
       guardrail: err.guardrail,
       category: err.category,
+      code: err.code,
       profileName: err.profile_name,
       scanId: err.scan_id,
       trId: err.tr_id,
@@ -214,13 +217,28 @@ function parseGuardrailError(errorMessage) {
       detected: err.prompt_detected || err.response_detected,
     };
   } catch {
-    return { isGuardrail: false, message: errorMessage };
+    return { isGuardrail: false, isGuardrailConfig: false, message: errorMessage };
   }
 }
 
 function GuardrailError({ error, airsConfig, t, onRetry }) {
   const errorText = error?.message || String(error);
   const info = parseGuardrailError(errorText);
+
+  if (info.isGuardrailConfig) {
+    return (
+      <div className="message bot">
+        <div className="message-avatar">
+          <span className="material-symbols guardrail-icon">security</span>
+        </div>
+        <div className="message-body">
+          <div className="message-text guardrail-config-error">
+            <p>{t('guardrail.configError')}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (info.isGuardrail) {
     const reportUrl = buildReportUrl(airsConfig, { trId: info.trId, scanId: info.scanId });

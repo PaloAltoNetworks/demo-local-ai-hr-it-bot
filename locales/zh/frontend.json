@@ -148,6 +148,7 @@
   "guardrail": {
     "blocked": "很抱歉，我们无法处理此请求。我们的AI安全系统已识别出此提示中的潜在风险。",
     "viewReport": "查看安全报告",
+    "configError": "AI安全服务（Prisma AIRS）由于配置错误当前不可用。请联系管理员或在正常模式或风险模式下重试。",
     "error": "处理您的请求时发生错误。"
   },
   "language": {

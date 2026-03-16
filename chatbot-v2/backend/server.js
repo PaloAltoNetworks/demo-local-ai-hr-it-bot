@@ -213,7 +213,18 @@ app.post('/api/chat', async (req, res) => {
   } catch (err) {
     console.error(`[chat] Error: ${err.message}`);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal server error' });
+      // Extract guardrail or API error details from nested RetryError → APICallError
+      const apiError = err.lastError || err;
+      const responseBody = apiError.responseBody || apiError.message || '';
+      try {
+        const parsed = JSON.parse(responseBody);
+        const inner = parsed?.error?.message || '';
+        // Forward the inner error message (guardrail violations, config errors, etc.)
+        if (inner) {
+          return res.status(apiError.statusCode || 500).json({ error: inner });
+        }
+      } catch {}
+      res.status(500).json({ error: err.message || 'Internal server error' });
     }
   }
 });
