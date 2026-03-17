@@ -37,6 +37,10 @@ class TicketService {
     return this.db.all('SELECT * FROM tickets WHERE employee_email = ? ORDER BY date DESC', [email]);
   }
 
+  getTicketsByEmployeeId(employeeId) {
+    return this.db.all('SELECT * FROM tickets WHERE employee_id = ? ORDER BY date DESC', [employeeId]);
+  }
+
   getTicketsByCategory(category) {
     return this.db.all('SELECT * FROM tickets WHERE category = ? ORDER BY priority DESC, date DESC', [category]);
   }
@@ -64,19 +68,20 @@ class TicketService {
     const term = `%${searchTerm}%`;
     return this.db.all(`
       SELECT * FROM tickets
-      WHERE ticket_id LIKE ? OR description LIKE ? OR tags LIKE ? OR category LIKE ? OR employee_name LIKE ?
+      WHERE ticket_id LIKE ? OR employee_id LIKE ? OR description LIKE ? OR tags LIKE ? OR category LIKE ? OR employee_name LIKE ?
       ORDER BY priority DESC, date DESC
-    `, [term, term, term, term, term]);
+    `, [term, term, term, term, term, term]);
   }
 
   createTicket(data) {
     const result = this.db.run(`
       INSERT INTO tickets (
-        ticket_id, employee_email, employee_name, date, status, description,
-        priority, category, assigned_to_email, assigned_to, resolution_time, tags, internal_notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ticket_id, employee_id, employee_email, employee_name, date, status, description,
+        priority, category, assigned_to_id, assigned_to_email, assigned_to, resolution_time, tags, internal_notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       data.ticket_id,
+      data.employee_id,
       data.employee_email,
       data.employee_name,
       data.date,
@@ -84,6 +89,7 @@ class TicketService {
       data.description,
       data.priority,
       data.category,
+      data.assigned_to_id || null,
       data.assigned_to_email,
       data.assigned_to,
       data.resolution_time || null,
@@ -121,6 +127,10 @@ class TicketService {
     return this.db.all('SELECT * FROM assets WHERE employee_email = ? ORDER BY assigned_date DESC', [email]);
   }
 
+  getAssetsByEmployeeId(employeeId) {
+    return this.db.all('SELECT * FROM assets WHERE employee_id = ? ORDER BY assigned_date DESC', [employeeId]);
+  }
+
   getAssetById(assetId) {
     return this.db.get('SELECT * FROM assets WHERE asset_id = ?', [assetId]);
   }
@@ -153,6 +163,7 @@ class TicketService {
     if (filters.priority) { sql += ' AND priority = ?'; params.push(filters.priority); }
     if (filters.category) { sql += ' AND category = ?'; params.push(filters.category); }
     if (filters.employee_email) { sql += ' AND employee_email = ?'; params.push(filters.employee_email); }
+    if (filters.employee_id) { sql += ' AND employee_id = ?'; params.push(filters.employee_id); }
 
     sql += ' ORDER BY priority DESC, date DESC';
     if (filters.limit) { sql += ' LIMIT ?'; params.push(filters.limit); }

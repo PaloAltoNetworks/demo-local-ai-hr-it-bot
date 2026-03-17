@@ -37,6 +37,10 @@ export class ITService {
     return this.ticketService?.getTicketsByEmployeeEmail(employeeEmail) || [];
   }
 
+  getTicketsByEmployeeId(employeeId) {
+    return this.ticketService?.getTicketsByEmployeeId(employeeId) || [];
+  }
+
   getTicketsByCategory(category) {
     return this.ticketService?.getTicketsByCategory(category) || [];
   }
@@ -60,6 +64,7 @@ export class ITService {
     const today = new Date().toISOString().split('T')[0];
     const success = this.ticketService.createTicket({
       ticket_id: ticketId,
+      employee_id: data.employee_id || null,
       employee_email: data.employee_email,
       employee_name: data.employee_name,
       date: today,
@@ -100,6 +105,10 @@ export class ITService {
 
   getAssetsByEmployee(email) {
     return this.ticketService?.getAssetsByEmployee(email) || [];
+  }
+
+  getAssetsByEmployeeId(employeeId) {
+    return this.ticketService?.getAssetsByEmployeeId(employeeId) || [];
   }
 
   getAssetById(assetId) {

@@ -42,7 +42,7 @@ function registerTools(server) {
 
   server.tool(
     'search_tickets',
-    'Search IT tickets by keyword. Searches across ticket ID, employee name, email, description, and category.',
+    'Search IT tickets by keyword. Searches across ticket ID, employee ID, employee name, email, description, and category.',
     {
       query: z.string().describe('Search term')
     },
@@ -77,13 +77,15 @@ function registerTools(server) {
 
   server.tool(
     'get_tickets_by_employee',
-    'Get all tickets for a specific employee by their email address.',
+    'Get all tickets for a specific employee by their employee ID (e.g. "EMP-008") or email address.',
     {
-      employee_email: z.string().describe('Employee email address')
+      identifier: z.string().describe('Employee ID (e.g. "EMP-008") or email address')
     },
-    async ({ employee_email }) => {
-      const tickets = service.getTicketsByEmployee(employee_email);
-      return json({ count: tickets.length, employee_email, tickets });
+    async ({ identifier }) => {
+      const tickets = identifier.startsWith('EMP-')
+        ? service.getTicketsByEmployeeId(identifier)
+        : service.getTicketsByEmployee(identifier);
+      return json({ count: tickets.length, identifier, tickets });
     }
   );
 
@@ -102,6 +104,7 @@ function registerTools(server) {
     'create_ticket',
     'Create a new IT ticket. Returns the new ticket ID. Use this when an employee needs to open a support request, such as USB access, software installation, hardware replacement, etc.',
     {
+      employee_id: z.string().describe('Employee ID (e.g. "EMP-034")'),
       employee_email: z.string().describe('Email of the employee requesting support'),
       employee_name: z.string().describe('Full name of the employee'),
       description: z.string().describe('Detailed description of the request or issue'),
@@ -110,8 +113,9 @@ function registerTools(server) {
       status: z.enum(['Open', 'Pending Approval']).default('Open').describe('Initial status. Use "Pending Approval" for requests that require manager approval.'),
       asset_id: z.string().optional().describe('Asset ID if the request is linked to a specific device'),
     },
-    async ({ employee_email, employee_name, description, priority, category, status, asset_id }) => {
+    async ({ employee_id, employee_email, employee_name, description, priority, category, status, asset_id }) => {
       const result = service.createTicket({
+        employee_id,
         employee_email,
         employee_name,
         description: asset_id ? `${description} [Asset: ${asset_id}]` : description,
@@ -149,13 +153,15 @@ function registerTools(server) {
 
   server.tool(
     'get_employee_assets',
-    'Get all IT assets (laptops, devices) assigned to an employee by their email address. Use this to find which devices an employee has before creating device-specific requests.',
+    'Get all IT assets (laptops, devices) assigned to an employee by their employee ID (e.g. "EMP-008") or email address. Use this to find which devices an employee has before creating device-specific requests.',
     {
-      employee_email: z.string().describe('Employee email address')
+      identifier: z.string().describe('Employee ID (e.g. "EMP-008") or email address')
     },
-    async ({ employee_email }) => {
-      const assets = service.getAssetsByEmployee(employee_email);
-      return json({ count: assets.length, employee_email, assets });
+    async ({ identifier }) => {
+      const assets = identifier.startsWith('EMP-')
+        ? service.getAssetsByEmployeeId(identifier)
+        : service.getAssetsByEmployee(identifier);
+      return json({ count: assets.length, identifier, assets });
     }
   );
 
@@ -184,7 +190,24 @@ function registerTools(server) {
     },
     async ({ query }) => {
       const processes = service.searchProcesses(query);
-      return json({ count: processes.length, query, processes });
+      return json({
+        count: processes.length,
+        query,
+        processes,
+        _instructions: processes.length > 0
+          ? `STOP — DO NOT reply to the user yet. You MUST call these tools NOW before generating any text response:
+- get_employee with the user's employee ID (to get their profile, email, and manager)
+- get_employee_assets with the user's employee ID (to list their devices)
+Call both tools in parallel right now.
+
+After you have the tool results, then respond to the user:
+1. Briefly explain the process using the "description" field — reassure them this is normal and part of company policy.
+2. The process "required_info" lists what you need. Check what you already have and ask only for what's missing.
+3. If "required_info" includes an asset, list the user's devices and ask them to confirm which one.
+4. If the process has "approval_required", mention that their manager (from the employee profile) will need to approve.
+5. NEVER call create_ticket until you have ALL items from "required_info" explicitly confirmed by the user. If anything is missing, ask for it first — do NOT assume or guess.`
+          : undefined,
+      });
     }
   );
 
