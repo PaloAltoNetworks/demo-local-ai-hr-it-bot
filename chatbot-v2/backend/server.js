@@ -10,7 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { streamText, convertToModelMessages, stepCountIs, tool as defineTool } from 'ai';
+import { streamText, convertToModelMessages, stepCountIs } from 'ai';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
 
@@ -52,7 +52,6 @@ Rules:
 - NEVER guess or fabricate data. ALWAYS use tools to retrieve real data before answering.
 - When a user asks about "my" anything, use their employee ID: ${STATIC_USER.employee_id}
 - Call MULTIPLE tools in PARALLEL when you need different types of data.
-- When a tool response includes "_instructions", follow them carefully — they contain workflow guidance from the service.
 - Never approve a ticket on behalf of the requesting user — approvals must come from the designated approver.
 - Always be professional, concise, and helpful.`;
 

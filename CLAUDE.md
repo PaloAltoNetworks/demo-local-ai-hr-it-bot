@@ -48,6 +48,7 @@ curl http://localhost:3005/health    # General agent
 curl http://localhost:3006/health    # IT Tools (standalone MCP)
 curl http://localhost:3007/health    # HR Tools (standalone MCP)
 curl http://localhost:3008/health    # Chatbot V2 (AI SDK + MCP)
+curl http://localhost:3009/health    # IT Triage Agent (agentic MCP)
 
 # Test full query pipeline
 curl -X POST http://localhost:3001/api/query \
@@ -84,6 +85,7 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 | it-tools-mcp-server | 3006 | 3000 |
 | hr-tools-mcp-server | 3007 | 3000 |
 | chatbot-v2 | 3008 | 3008 |
+| it-triage-agent | 3009 | 3000 |
 
 ### Workspace Layout
 - `utils/` — Shared: logger (Winston), LLM provider factory (Vercel AI SDK), i18n (i18next)
@@ -96,6 +98,7 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 - `mcp-server/it-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes IT ticket DB for external LLM hosts
 - `mcp-server/hr-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes HR employee DB for external LLM hosts
 - `chatbot-v2/` — AI SDK chatbot host with native MCP tool calling, connects directly to standalone tools servers (no coordinator/gateway needed)
+- `agents/it-triage-agent/` — Agentic MCP server: MCP on the outside (registers with LiteLLM), `ToolLoopAgent` on the inside (own LLM, local business logic tools + MCP data tools via LiteLLM)
 
 ### Agent Pattern
 Each agent in `mcp-server/{name}-mcp-server/` follows the same structure:
@@ -113,6 +116,13 @@ Standalone tools servers in `mcp-server/{name}-tools-mcp-server/` are pure data/
 4. `package.json` — Dependencies: `@modelcontextprotocol/sdk`, `express`; no LLM or coordinator deps
 
 To create a new tools server: copy `it-tools-mcp-server` or `hr-tools-mcp-server`, update `service.js`/`server.js`, add a Dockerfile and a new service block in `docker-compose.yml` with a unique host port.
+
+### Agentic MCP Server Pattern
+Agentic MCP servers in `agents/{name}/` wrap a `ToolLoopAgent` (AI SDK) inside an MCP server interface. From the outside they look like any other MCP server (register with LiteLLM, expose tools via `/mcp`). On the inside, each tool invocation triggers multi-step agent reasoning with its own LLM. The agent consumes data from other MCP servers via LiteLLM `/mcp` and makes LLM calls via LiteLLM `/v1`. Structure:
+1. `agent.js` — `ToolLoopAgent` with local business logic tools + MCP client for data tools + LLM provider
+2. `server.js` — Express + MCP SDK server, registers high-level tools that internally invoke the agent
+3. `Dockerfile` — Own Dockerfile, copies agent source files
+4. `package.json` — Dependencies: `ai`, `@ai-sdk/mcp`, `@ai-sdk/openai`, `@modelcontextprotocol/sdk`, `express`, `zod`
 
 ### LiteLLM Direct Mode
 When `USE_LITELLM=true` and `LITELLM_MCP_TOOLS=true`, the coordinator bypasses agent routing entirely. Instead, it sends the user query directly to LiteLLM, which has the standalone MCP tools servers (hr-tools, it-tools) registered in its config. LiteLLM handles tool calling, data retrieval, and answer generation in one shot — no multi-hop agent routing needed. The existing agents (HR, IT, General) remain available as fallback when this mode is off.
@@ -164,7 +174,7 @@ Provider switching requires container restart. All services read from the same `
 ## Gotchas
 
 - All services communicate via Docker `mcp-network` bridge. Use Docker hostnames (e.g., `http://mcp-gateway:3001`) in inter-service calls.
-- Agents and standalone tools servers run on internal port 3000 but are mapped to different host ports (3003-3007). Chatbot V2 runs on 3008.
+- Agents and standalone tools servers run on internal port 3000 but are mapped to different host ports (3003-3007, 3009). Chatbot V2 runs on 3008.
 - MCP requests must include proper JSON-RPC 2.0 fields (`jsonrpc`, `id`, `method`, `params`).
 - The chatbot-host depends on all other services being healthy before starting.
 - Logs are volume-mounted to `./logs/{service-name}/` on the host.

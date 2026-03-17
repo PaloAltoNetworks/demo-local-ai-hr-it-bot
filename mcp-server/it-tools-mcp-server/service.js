@@ -115,21 +115,4 @@ export class ITService {
     return this.ticketService?.getAssetById(assetId);
   }
 
-  // --- IT Processes ---
-
-  getAllProcesses() {
-    const processes = this.ticketService?.getAllProcesses() || [];
-    return processes.map(p => ({ ...p, steps: JSON.parse(p.steps), required_info: JSON.parse(p.required_info) }));
-  }
-
-  getProcessById(processId) {
-    const p = this.ticketService?.getProcessById(processId);
-    if (!p) return null;
-    return { ...p, steps: JSON.parse(p.steps), required_info: JSON.parse(p.required_info) };
-  }
-
-  searchProcesses(query) {
-    const processes = this.ticketService?.searchProcesses(query) || [];
-    return processes.map(p => ({ ...p, steps: JSON.parse(p.steps), required_info: JSON.parse(p.required_info) }));
-  }
 }

@@ -1,7 +1,8 @@
 /**
  * IT Tools MCP Server
  * Pure data/tools MCP server — no LLM, no coordinator registration.
- * Exposes IT ticket database, assets, and IT processes as MCP tools.
+ * Exposes IT ticket database and assets as MCP tools.
+ * IT processes are owned by the IT Triage Agent.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -180,61 +181,6 @@ function registerTools(server) {
     }
   );
 
-  // --- IT Process tools ---
-
-  server.tool(
-    'search_it_processes',
-    'Search IT processes and procedures by keyword. Returns the step-by-step process, required information, and whether manager approval is needed. Use this when an employee asks how to do something IT-related (e.g. "how do I get USB access", "I need new software").',
-    {
-      query: z.string().describe('Search term (e.g. "usb", "software install", "vpn", "password reset")')
-    },
-    async ({ query }) => {
-      const processes = service.searchProcesses(query);
-      return json({
-        count: processes.length,
-        query,
-        processes,
-        _instructions: processes.length > 0
-          ? `STOP — DO NOT reply to the user yet. You MUST call these tools NOW before generating any text response:
-- get_employee with the user's employee ID (to get their profile, email, and manager)
-- get_employee_assets with the user's employee ID (to list their devices)
-Call both tools in parallel right now.
-
-After you have the tool results, then respond to the user:
-1. Briefly explain the process using the "description" field — reassure them this is normal and part of company policy.
-2. The process "required_info" lists what you need. Check what you already have and ask only for what's missing.
-3. If "required_info" includes an asset, list the user's devices and ask them to confirm which one.
-4. If the process has "approval_required", mention that their manager (from the employee profile) will need to approve.
-5. NEVER call create_ticket until you have ALL items from "required_info" explicitly confirmed by the user. If anything is missing, ask for it first — do NOT assume or guess.`
-          : undefined,
-      });
-    }
-  );
-
-  server.tool(
-    'get_it_process',
-    'Get a specific IT process by its ID.',
-    {
-      process_id: z.number().describe('Process ID')
-    },
-    async ({ process_id }) => {
-      const process = service.getProcessById(process_id);
-      if (!process) {
-        return json({ error: 'not_found', message: `Process ${process_id} not found` });
-      }
-      return json(process);
-    }
-  );
-
-  server.tool(
-    'list_it_processes',
-    'List all available IT processes and procedures.',
-    {},
-    async () => {
-      const processes = service.getAllProcesses();
-      return json({ count: processes.length, processes });
-    }
-  );
 }
 
 function createServer() {

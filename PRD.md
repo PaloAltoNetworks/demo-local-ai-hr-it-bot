@@ -380,7 +380,7 @@ A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the 
 **Goal**: Build an IT Triage Agent as a standalone MCP server with its own LLM. MCP on the outside (registers with LiteLLM, discoverable by any client), `ToolLoopAgent` on the inside (multi-step reasoning with local business logic + remote MCP data tools via LiteLLM).
 
 **Scope**:
-- [ ] Create `agents/it-triage-agent/` as a new service:
+- [x] Create `agents/it-triage-agent/` as a new service:
   - `server.js` — Express + MCP SDK server (`McpServer`), registers tools via `McpServer.tool()`, supports Streamable HTTP (`POST /mcp`) and SSE transports
   - `agent.js` — `ToolLoopAgent` with `instructions` (IT triage system prompt):
     - Local tools defined with `tool()` + `inputSchema`: classify severity, check SLA, assign team, check approval required
@@ -389,19 +389,19 @@ A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the 
     - `stopWhen: stepCountIs(10)` for bounded autonomy
     - Lifecycle hooks (`experimental_onToolCallStart/Finish`) for audit logging
   - `package.json` — deps: `@modelcontextprotocol/sdk`, `ai`, `@ai-sdk/mcp`, `@ai-sdk/openai`, `express`, `zod`
-  - `Dockerfile` — standalone (copies `agents/it-triage-agent/` + `utils/` for logging)
+  - `Dockerfile` — standalone (copies `agents/it-triage-agent/`)
   - MCP tools exposed:
     - `triage_it_request` — high-level tool: takes a user query + employee ID, runs the full triage workflow internally (fetch employee, look up process, classify severity, assign team, check approval), returns structured triage result
     - `check_ticket_sla` — takes a ticket ID, checks SLA compliance, returns status
-- [ ] Register with LiteLLM:
+- [x] Register with LiteLLM:
   - Add to LiteLLM config as an MCP server alongside hr-tools and it-tools
   - Discoverable via LiteLLM `/mcp` aggregator by any client
-- [ ] Add to `docker-compose.yml`:
+- [x] Add to `docker-compose.yml`:
   - New service `it-triage-agent` on port 3009 (internal 3000)
   - Env vars: `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `IT_TRIAGE_MODEL`
   - Health check on `/health`
   - Depends on `it-tools-mcp-server` and `hr-tools-mcp-server`
-- [ ] No chatbot-v2 changes needed — the agent's tools appear automatically via the existing MCP connection to LiteLLM
+- [x] No chatbot-v2 changes needed — the agent's tools appear automatically via the existing MCP connection to LiteLLM
 
 **Key files**:
 - `agents/it-triage-agent/server.js` (new — MCP server)

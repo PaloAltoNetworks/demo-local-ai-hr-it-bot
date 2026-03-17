@@ -43,6 +43,30 @@ services:
       retries: 3
       start_period: 5s
 
+  # IT Triage Agent — Agentic MCP server (ToolLoopAgent inside, MCP outside)
+  it-triage-agent:
+    build:
+      context: .
+      dockerfile: agents/it-triage-agent/Dockerfile
+    hostname: it-triage-agent
+    ports:
+      - "3009:3000"
+    env_file:
+      - ./.env
+    environment:
+      - MCP_URL=${LITELLM_BASE_URL:-http://localhost:8080}/mcp/
+    restart: unless-stopped
+    volumes:
+      - ./logs/it-triage-agent:/app/logs
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   # Chatbot V2 — AI SDK + native MCP tool calling via LiteLLM
   chatbot-v2:
     build:
