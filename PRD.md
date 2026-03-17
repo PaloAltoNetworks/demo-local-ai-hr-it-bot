@@ -532,3 +532,24 @@ Would demonstrate a **multi-agent A2A mesh** where three+ agents (IT Approval, T
 - **`@ai-sdk/gateway`** — could replace LiteLLM for provider routing in a "pure Vercel stack" variant
 - **Chat SDK** (`chat` npm package) — Slack/Teams/Discord bot frontend as an alternative to the web UI, demonstrating the same backend patterns consumed by different surfaces
 - **RAG** — vector search over IT knowledge base or HR policy documents, adding retrieval-augmented generation as another integration pattern with its own security surface (data poisoning, context window stuffing)
+
+
+
+# STOP HERE DO NOT FOLLOW
+Here are the starter prompts you can paste at the beginning of each session:                                                                                                                                                                                                                                         
+                                                                                                                                                                                                                                                                                                                     
+  ---                                                                                                                                                                                                                                                                                                                  
+  Session 1:                                                
+  ▎ Read PRD.md — Implementation Roadmap, Phase 1 (ToolLoopAgent). Build everything described in that phase.                                                                                                                                                                                                           
+                                                                                                                                                                                                                                                                                                                       
+  Session 2:
+  ▎ Read PRD.md — Implementation Roadmap, Phase 2 (AI Elements Frontend). Build everything described in that phase.
+
+  Session 3:
+  ▎ Read PRD.md — Implementation Roadmap, Phase 3 (DevTools + Observability). Build everything described in that phase.
+
+  Session 4:
+  ▎ Read PRD.md — Implementation Roadmap, Phase 4 (A2A Agent). Build everything described in that phase.
+
+  Session 5:
+  ▎ Read PRD.md — Implementation Roadmap, Phase 5 (Security Demos per Pattern). Build everything described in that phase.
