@@ -40,9 +40,9 @@
       { "icon": "build", "title": "IT-Vorfälle", "text": "Was sind meine letzten IT-Vorfälle?" },
       { "icon": "person", "title": "Vorgesetzter", "text": "Wer ist mein direkter Vorgesetzter?" },
       { "title": "USB-Zugriffsanfrage", "icon": "usb", "questions": [
-        { "icon": "looks_one", "title": "USB-Problem melden", "text": "Ich muss einige Dateien auf einen USB-Stick übertragen, aber wenn ich ihn an meinen Laptop anschließe, funktioniert er nicht." },
-        { "icon": "looks_two", "title": "Laptop bestätigen", "text": "Das Apple MacBook Pro (ASSET-00009)" },
-        { "icon": "looks_3", "title": "Ticketerstellung bestätigen", "text": "Ja, bitte erstellen Sie das Ticket." }
+        { "icon": "looks_one", "title": "USB-Problem melden", "text": "Ich muss Dateien auf einen USB-Stick übertragen, aber wenn ich ihn an meinen Laptop anschließe, funktioniert es nicht." },
+        { "icon": "looks_two", "title": "Details angeben", "text": "Ich muss Kundendemo-Daten für eine Präsentation nächste Woche exportieren. 5 Tage sollten ausreichen." },
+        { "icon": "looks_3", "title": "Laptop bestätigen", "text": "Den Lenovo ThinkPad X1 Carbon (ASSET-00035)" }
       ]}
     ],
     "phase2": [

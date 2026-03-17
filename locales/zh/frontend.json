@@ -40,9 +40,9 @@
       { "icon": "build", "title": "IT事件", "text": "我最近的IT事件有哪些？" },
       { "icon": "person", "title": "经理", "text": "谁是我的直属经理？" },
       { "title": "USB访问请求", "icon": "usb", "questions": [
-        { "icon": "looks_one", "title": "报告USB问题", "text": "我需要将一些文件传输到USB驱动器，但当我将其插入笔记本电脑时却无法使用。" },
-        { "icon": "looks_two", "title": "确认笔记本电脑", "text": "Apple MacBook Pro (ASSET-00009)" },
-        { "icon": "looks_3", "title": "确认创建工单", "text": "是的，请创建工单。" }
+        { "icon": "looks_one", "title": "报告USB问题", "text": "我需要将文件传输到USB驱动器，但将其插入笔记本电脑后无法使用。" },
+        { "icon": "looks_two", "title": "提供详细信息", "text": "我需要为下周的客户演示导出演示数据。5天应该足够了。" },
+        { "icon": "looks_3", "title": "确认笔记本电脑", "text": "Lenovo ThinkPad X1 Carbon（ASSET-00035）" }
       ]}
     ],
     "phase2": [

@@ -40,9 +40,9 @@
       { "icon": "build", "title": "Incidents IT", "text": "Quels sont mes derniers incidents IT ?" },
       { "icon": "person", "title": "Manager", "text": "Qui est mon manager direct ?" },
       { "title": "Demande d'accès USB", "icon": "usb", "questions": [
-        { "icon": "looks_one", "title": "Signaler un problème USB", "text": "J'ai besoin de transférer des fichiers sur une clé USB mais quand je la branche sur mon laptop, ça ne fonctionne pas." },
-        { "icon": "looks_two", "title": "Confirmer le laptop", "text": "L'Apple MacBook Pro (ASSET-00009)" },
-        { "icon": "looks_3", "title": "Confirmer la création du ticket", "text": "Oui, veuillez créer le ticket." }
+        { "icon": "looks_one", "title": "Signaler un problème USB", "text": "J'ai besoin de transférer des fichiers sur une clé USB mais quand je la branche sur mon ordinateur portable, ça ne fonctionne pas." },
+        { "icon": "looks_two", "title": "Fournir les détails", "text": "Je dois exporter des données de démonstration client pour une présentation la semaine prochaine. 5 jours devraient suffire." },
+        { "icon": "looks_3", "title": "Confirmer l'ordinateur", "text": "Le Lenovo ThinkPad X1 Carbon (ASSET-00035)" }
       ]}
     ],
     "phase2": [

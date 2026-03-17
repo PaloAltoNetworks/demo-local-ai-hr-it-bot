@@ -40,9 +40,9 @@
       { "icon": "build", "title": "Incidentes de IT", "text": "¿Cuáles son mis incidentes recientes de IT?" },
       { "icon": "person", "title": "Gerente", "text": "¿Quién es mi gerente directo?" },
       { "title": "Solicitud de acceso USB", "icon": "usb", "questions": [
-        { "icon": "looks_one", "title": "Reportar problema USB", "text": "Necesito transferir algunos archivos a una unidad USB pero cuando la conecto a mi portátil no funciona." },
-        { "icon": "looks_two", "title": "Confirmar portátil", "text": "El Apple MacBook Pro (ASSET-00009)" },
-        { "icon": "looks_3", "title": "Confirmar creación de ticket", "text": "Sí, por favor cree el ticket." }
+        { "icon": "looks_one", "title": "Reportar problema USB", "text": "Necesito transferir archivos a una unidad USB, pero cuando la conecto a mi portátil no funciona." },
+        { "icon": "looks_two", "title": "Proporcionar detalles", "text": "Necesito exportar datos de demostración para una presentación con un cliente la próxima semana. 5 días deberían ser suficientes." },
+        { "icon": "looks_3", "title": "Confirmar portátil", "text": "El Lenovo ThinkPad X1 Carbon (ASSET-00035)" }
       ]}
     ],
     "phase2": [

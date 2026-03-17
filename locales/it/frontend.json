@@ -40,9 +40,9 @@
       { "icon": "build", "title": "Incidenti IT", "text": "Quali sono i miei ultimi incidenti IT?" },
       { "icon": "person", "title": "Manager", "text": "Chi è il mio manager diretto?" },
       { "title": "Richiesta accesso USB", "icon": "usb", "questions": [
-        { "icon": "looks_one", "title": "Segnalare problema USB", "text": "Ho bisogno di trasferire alcuni file su una chiavetta USB ma quando la collego al mio laptop non funziona." },
-        { "icon": "looks_two", "title": "Confermare laptop", "text": "L'Apple MacBook Pro (ASSET-00009)" },
-        { "icon": "looks_3", "title": "Confermare creazione ticket", "text": "Sì, per favore crei il ticket." }
+        { "icon": "looks_one", "title": "Segnalare problema USB", "text": "Ho bisogno di trasferire dei file su una chiavetta USB, ma quando la collego al mio portatile non funziona." },
+        { "icon": "looks_two", "title": "Fornire i dettagli", "text": "Devo esportare dati dimostrativi per una presentazione a un cliente la prossima settimana. 5 giorni dovrebbero bastare." },
+        { "icon": "looks_3", "title": "Confermare il portatile", "text": "Il Lenovo ThinkPad X1 Carbon (ASSET-00035)" }
       ]}
     ],
     "phase2": [
