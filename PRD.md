@@ -19,10 +19,10 @@ Prisma AIRS guardrails via LiteLLM metadata injection
 ```
 
 ### Key SDK Versions
-- `ai` v6+ (streamText, convertToModelMessages, stepCountIs, DefaultChatTransport, pipeUIMessageStreamToResponse)
+- `ai` v6+ (streamText, ToolLoopAgent, tool() with inputSchema, convertToModelMessages, stepCountIs, DefaultChatTransport, pipeUIMessageStreamToResponse, pipeAgentUIStreamToResponse)
 - `@ai-sdk/react` v3 (useChat with UIMessage parts API, sendMessage, status)
 - `@ai-sdk/openai` (OpenAI-compatible provider pointing at LiteLLM)
-- `@ai-sdk/mcp` (MCP client for tool discovery)
+- `@ai-sdk/mcp` (MCP client for tool discovery — used by both chatbot-v2 and agentic MCP servers)
 
 ---
 
@@ -232,9 +232,17 @@ chatbot-v2/
 │       └── images/
 ├── package.json            # Backend deps (ai, @ai-sdk/mcp, @ai-sdk/openai, express)
 └── Dockerfile
+
+agents/it-triage-agent/
+├── server.js               # Express + MCP SDK server (Streamable HTTP + SSE)
+├── agent.js                # ToolLoopAgent + local tools + MCP client
+├── package.json            # ai, @ai-sdk/mcp, @ai-sdk/openai, @modelcontextprotocol/sdk, express, zod
+└── Dockerfile
 ```
 
 ### Environment Variables
+
+**Chatbot V2**:
 - `LITELLM_BASE_URL` — LiteLLM proxy URL
 - `LITELLM_API_KEY` — API key for LiteLLM
 - `CHATBOT_V2_MODEL` — Default model ID
@@ -244,37 +252,39 @@ chatbot-v2/
 - `PRISMA_AIRS_APP_ID` — AIRS application ID (for report links)
 - `CHATBOT_V2_PORT` — Server port (default 3008)
 
+**IT Triage Agent**:
+- `LITELLM_BASE_URL` — LiteLLM proxy URL (for LLM calls via `/v1` and MCP calls via `/mcp`)
+- `LITELLM_API_KEY` — API key for LiteLLM
+- `IT_TRIAGE_MODEL` — Model ID for the agent's LLM (defaults to `CHATBOT_V2_MODEL`)
+
 ---
 
 ## AI Integration Patterns
 
-The demo showcases three distinct patterns an AI developer would use to build AI applications, each with its own security surface. This covers the full spectrum of how AI apps are built today — from simple tool calling to autonomous multi-agent systems — so security teams can understand and address risks at every layer.
+The demo showcases two distinct patterns an AI developer would use to build AI applications, each with its own security surface. This covers the spectrum from simple tool calling to autonomous agent systems — so security teams can understand and address risks at every layer.
 
 ### Target Architecture
 
 ```
-                     ┌──────────────────────────────────────────┐
-                     │         Chatbot V2 (React + Elements)    │
-                     │   AI SDK useChat + AI Elements components │
-                     └──────────────┬───────────────────────────┘
-                                    │
-                     ┌──────────────▼───────────────────────────┐
-                     │      Chatbot V2 Backend (Express)        │
-                     │                                          │
-                     │  Pattern A: streamText + MCP tools       │
-                     │  Pattern B: ToolLoopAgent + local tools  │
-                     │  Pattern C: A2A client                   │
-                     │  + @ai-sdk/devtools observability        │
-                     └──┬───────────┬───────────────┬───────────┘
-                        │           │               │
-             ┌──────────▼──┐  ┌─────▼──────┐  ┌────▼───────────┐
-             │ MCP Servers │  │ AI SDK     │  │ A2A Agent      │
-             │ (data only) │  │ Agent      │  │ (own LLM)      │
-             │             │  │ (local)    │  │                │
-             │ hr-tools    │  │ IT Triage  │  │ IT Approval    │
-             │ it-tools    │  │            │  │ Agent          │
-             └─────────────┘  └────────────┘  └────────────────┘
+Any MCP client (chatbot-v2, Claude Desktop, Cursor, LiteLLM...)
+    │
+    ▼
+LiteLLM /mcp (MCP aggregator)
+    ├──────────────────┬──────────────────────────────┐
+    │                  │                               │
+    ▼                  ▼                               ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────────────────────────┐
+│ hr-tools     │ │ it-tools     │ │ it-triage-agent              │
+│ MCP server   │ │ MCP server   │ │ MCP server (external)        │
+│ (data only)  │ │ (data only)  │ │ ToolLoopAgent (internal)     │
+│ No LLM       │ │ No LLM       │ │ Own LLM via LiteLLM /v1     │
+│              │ │              │ │ + local business logic tools  │
+│              │ │              │ │ + MCP tools via LiteLLM /mcp  │
+└──────────────┘ └──────────────┘ └──────────────────────────────┘
+     Pattern A        Pattern A              Pattern B
 ```
+
+Key insight: **MCP on the outside, ToolLoopAgent on the inside.** The IT Triage Agent looks like any other MCP server to clients — it registers with LiteLLM, exposes tools via `/mcp`. But internally, its tools trigger multi-step agent reasoning with its own LLM. The agent consumes HR and IT data by calling back through LiteLLM's MCP aggregator, so all calls flow through the gateway (observability, guardrails, rate limiting apply uniformly).
 
 ### Vercel AI SDK Stack
 
@@ -282,9 +292,9 @@ The demo relies entirely on the Vercel AI SDK ecosystem — from protocol to age
 
 | Package | Role | Pattern |
 |---|---|---|
-| `ai` v6+ | `streamText`, `ToolLoopAgent`, `tool()` with `inputSchema`, `stopWhen`, lifecycle hooks | A + B |
+| `ai` v6+ | `streamText`, `ToolLoopAgent`, `tool()` with `inputSchema`, `pipeAgentUIStreamToResponse`, `stopWhen`, lifecycle hooks | A + B |
 | `@ai-sdk/react` v3 | `useChat`, `DefaultChatTransport`, UIMessage parts API | All |
-| `@ai-sdk/mcp` | MCP client — connects to MCP servers, auto-converts tools to AI SDK format | A |
+| `@ai-sdk/mcp` | MCP client — connects to MCP servers, auto-converts tools to AI SDK format | A + B |
 | `@ai-sdk/openai` | OpenAI-compatible provider (LiteLLM bridge) | All |
 | `@ai-sdk/devtools` | Local web UI for inspecting LLM calls, tool chains, token usage, multi-step runs | All |
 | AI Elements | shadcn/ui component library for AI apps (Conversation, Message, Tool, Confirmation, etc.) | All |
@@ -304,63 +314,58 @@ Stateless data servers with no LLM. The chatbot's LLM calls tools to read/write 
 - Prompt injection via tool results (e.g. ticket description contains attack payload)
 - Input validation limited to Zod schema
 
-### Pattern B — ToolLoopAgent with `inputSchema` (new)
+### Pattern B — Agentic MCP Server (new)
 
-An intelligent agent with local business logic tools + MCP tools. Uses AI SDK `ToolLoopAgent` class with `inputSchema`-defined tools that compose MCP calls with deterministic business rules.
+A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the outside it's a standard MCP server (registers with LiteLLM, any client can call its tools). On the inside, each tool invocation triggers multi-step agent reasoning with local business logic tools and remote MCP data tools.
 
-**User flow**: "I need USB access" — agent reasons across multiple steps: fetch employee, check policy, find assets, create ticket.
+**User flow**: "I need USB access" — chatbot-v2's LLM calls `triage_it_request` tool → IT Triage Agent internally reasons across multiple steps: fetch employee, check policy via local tools, find assets, classify severity, determine team assignment → returns structured result.
 
-**Implementation**: Refactors the existing `streamText` + `_instructions` pattern into a proper `ToolLoopAgent` with explicit local tools for triage and classification. The `_instructions` hack in `search_it_processes` becomes a structured agent workflow with lifecycle hooks.
+**Service**: `agents/it-triage-agent/` — separate container, own LLM, own MCP client
+
+**How it works**:
+1. LiteLLM registers the agent as an MCP server alongside hr-tools and it-tools
+2. Any MCP client (chatbot-v2, Claude Desktop, Cursor) discovers its tools via LiteLLM `/mcp`
+3. When a tool is called, the agent's `ToolLoopAgent` runs internally:
+   - LLM calls go through LiteLLM `/v1` (OpenAI-compatible)
+   - Data access goes through LiteLLM `/mcp` (hr-tools, it-tools)
+   - Local tools apply business logic (severity classification, SLA checks, team assignment)
+4. The agent returns the final result as an MCP tool response
 
 **Key AI SDK features used**:
 - `ToolLoopAgent` — encapsulates model, instructions, tools, and loop behavior
 - `tool()` with `inputSchema` — local tools with Zod-validated inputs and business logic
-- `needsApproval: true` — framework-level human-in-the-loop for mutation tools
+- `@ai-sdk/mcp` — client for consuming hr-tools and it-tools via LiteLLM
 - `stopWhen: stepCountIs(N)` — bounded autonomy
 - `experimental_onToolCallStart/Finish` — audit trail for every tool call
-- `prepareStep` — inject or mutate state between steps
+- MCP SDK (`@modelcontextprotocol/sdk`) — server-side for exposing tools to LiteLLM
 
 **Security surface** (additive to Pattern A):
 - Agent autonomy — multi-step loop makes decisions without human checkpoints
-- Tool chain escalation — local tool calls MCP tool, privilege context gets confused
-- Business logic bypass — LLM decides to skip an approval step
+- Tool chain escalation — agent tool calls MCP tool, privilege context gets confused
+- Business logic bypass — LLM decides to skip a classification or approval step
 - Cost/resource abuse — runaway tool loops (`stepCountIs` mitigates)
 - Confused deputy — agent acts with server's permissions, not user's
-
-### Pattern C — A2A Agent (new)
-
-An autonomous agent with its own LLM, exposed as an A2A HTTP endpoint. The orchestrator delegates entire workflows to it. Internally powered by `ToolLoopAgent`, but exposed over the A2A protocol (agent card discovery, task delegation, status polling).
-
-**User flow**: "Onboard new hire Sarah Chen" — orchestrator delegates to IT Approval Agent, which autonomously manages the approval workflow (checks manager, sends notifications, tracks status). Consumes HR data via MCP.
-
-**Implementation**: New standalone service (`it-approval-a2a-agent/`) with Express routes implementing A2A protocol. Internally uses `ToolLoopAgent` with MCP tools. No `@ai-sdk/a2a` package exists yet — A2A protocol is implemented directly.
-
-**Security surface** (additive to Patterns A + B):
-- Agent identity/trust — how does the orchestrator verify the remote agent?
-- Data leakage across agent boundaries — IT agent accesses HR data it shouldn't see
-- Agent card spoofing — malicious agent advertises capabilities it weaponizes
-- Cascading failures — one compromised agent poisons the chain
-- Audit trail gaps — which agent made the decision? Which LLM call?
-- No standard auth in A2A protocol yet
+- Opaque reasoning — client sees only the final result, not the agent's internal steps
+- Nested gateway calls — agent calls LiteLLM which calls MCP servers, creating a deep call chain
 
 ### Pattern Matrix
 
-| | MCP Tools (A) | ToolLoopAgent (B) | A2A Agent (C) |
-|---|---|---|---|
-| **LLM** | None | One (in chatbot-v2) | Own LLM per agent |
-| **Intelligence** | Zero | Centralized reasoning | Distributed reasoning |
-| **Protocol** | MCP (JSON-RPC) | Internal (AI SDK) | A2A (HTTP + agent cards) |
-| **Example flow** | "Get ticket X" | "I need USB access" | "Onboard new hire" |
-| **Human-in-loop** | `needsApproval` on tools | Agent decides when to ask | Agent-to-agent negotiation |
-| **Guardrail point** | LiteLLM pre/post call | LiteLLM + agent lifecycle hooks | Per-agent + orchestrator + AIRS |
+| | MCP Tools (A) | Agentic MCP Server (B) |
+|---|---|---|
+| **LLM** | None | Own LLM per agent |
+| **Intelligence** | Zero — pure data pipe | Multi-step reasoning with business logic |
+| **Protocol** | MCP (JSON-RPC) | MCP (external) + AI SDK (internal) |
+| **Example flow** | "Get ticket X" | "I need USB access" (triage + classify + route) |
+| **Discoverable by** | Any MCP client via LiteLLM | Any MCP client via LiteLLM (same as A) |
+| **Human-in-loop** | Client-side `needsApproval` | Agent decides internally (no approval mid-loop) |
+| **Guardrail point** | LiteLLM pre/post call | LiteLLM on agent's LLM calls + agent's MCP calls |
 
 ### Security Demo Phases x Patterns
 
 | | Phase 1 (Normal) | Phase 2 (Risky) | Phase 3 (Protected) |
 |---|---|---|---|
 | **Pattern A** | Lookup works | Inject via ticket description | AIRS blocks injection |
-| **Pattern B** | Triage works | Trick agent into skipping approval | Agent guardrails + AIRS |
-| **Pattern C** | Onboarding works | Spoof agent identity / data leak | Agent auth + AIRS + audit |
+| **Pattern B** | Triage works | Trick agent into skipping classification | Agent guardrails + AIRS on nested calls |
 
 ---
 
@@ -370,32 +375,42 @@ An autonomous agent with its own LLM, exposed as an A2A HTTP endpoint. The orche
 - [ ] Not started
 - [x] Complete
 
-### Phase 1 — ToolLoopAgent (Pattern B)
+### Phase 1 — Agentic MCP Server (Pattern B)
 
-**Goal**: Replace `streamText` + `_instructions` hack with a proper AI SDK agent that demonstrates multi-step reasoning with local business logic tools.
+**Goal**: Build an IT Triage Agent as a standalone MCP server with its own LLM. MCP on the outside (registers with LiteLLM, discoverable by any client), `ToolLoopAgent` on the inside (multi-step reasoning with local business logic + remote MCP data tools via LiteLLM).
 
 **Scope**:
-- [ ] Create `chatbot-v2/backend/agents/it-triage-agent.js`
-  - `ToolLoopAgent` with `instructions` (system prompt)
-  - Local tools defined with `tool()` + `inputSchema`: classify severity, check SLA, assign team
-  - Merge MCP tools via `@ai-sdk/mcp` for data access (get_employee, get_ticket, etc.)
-  - Lifecycle hooks (`experimental_onToolCallStart/Finish`) for audit logging
-  - `stopWhen: stepCountIs(10)` for bounded autonomy
-  - `needsApproval: true` on mutation tools (create_ticket, update_ticket_status)
-- [ ] Add mode toggle in `/api/chat` — request body includes `pattern: 'mcp' | 'agent'`
-  - `mcp` mode: current `streamText` + MCP tools (Pattern A, unchanged)
-  - `agent` mode: `ToolLoopAgent.stream()` + `pipeUIMessageStreamToResponse` (Pattern B)
-- [ ] Frontend: pattern selector in header (alongside model selector)
-  - Transport `body()` sends `pattern` field
-  - No other frontend changes needed — `useChat` + `pipeUIMessageStreamToResponse` handles both modes identically
+- [ ] Create `agents/it-triage-agent/` as a new service:
+  - `server.js` — Express + MCP SDK server (`McpServer`), registers tools via `McpServer.tool()`, supports Streamable HTTP (`POST /mcp`) and SSE transports
+  - `agent.js` — `ToolLoopAgent` with `instructions` (IT triage system prompt):
+    - Local tools defined with `tool()` + `inputSchema`: classify severity, check SLA, assign team, check approval required
+    - MCP tools via `@ai-sdk/mcp` connecting to LiteLLM `/mcp` (hr-tools, it-tools data)
+    - LLM calls via `@ai-sdk/openai` pointing at LiteLLM `/v1`
+    - `stopWhen: stepCountIs(10)` for bounded autonomy
+    - Lifecycle hooks (`experimental_onToolCallStart/Finish`) for audit logging
+  - `package.json` — deps: `@modelcontextprotocol/sdk`, `ai`, `@ai-sdk/mcp`, `@ai-sdk/openai`, `express`, `zod`
+  - `Dockerfile` — standalone (copies `agents/it-triage-agent/` + `utils/` for logging)
+  - MCP tools exposed:
+    - `triage_it_request` — high-level tool: takes a user query + employee ID, runs the full triage workflow internally (fetch employee, look up process, classify severity, assign team, check approval), returns structured triage result
+    - `check_ticket_sla` — takes a ticket ID, checks SLA compliance, returns status
+- [ ] Register with LiteLLM:
+  - Add to LiteLLM config as an MCP server alongside hr-tools and it-tools
+  - Discoverable via LiteLLM `/mcp` aggregator by any client
+- [ ] Add to `docker-compose.yml`:
+  - New service `it-triage-agent` on port 3009 (internal 3000)
+  - Env vars: `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `IT_TRIAGE_MODEL`
+  - Health check on `/health`
+  - Depends on `it-tools-mcp-server` and `hr-tools-mcp-server`
+- [ ] No chatbot-v2 changes needed — the agent's tools appear automatically via the existing MCP connection to LiteLLM
 
 **Key files**:
-- `chatbot-v2/backend/agents/it-triage-agent.js` (new)
-- `chatbot-v2/backend/server.js` (modified — route branching)
-- `chatbot-v2/frontend/src/components/Header.jsx` (modified — pattern selector)
-- `chatbot-v2/frontend/src/context/ChatContext.jsx` (modified — pattern in transport body)
+- `agents/it-triage-agent/server.js` (new — MCP server)
+- `agents/it-triage-agent/agent.js` (new — ToolLoopAgent + local tools)
+- `agents/it-triage-agent/package.json` (new)
+- `agents/it-triage-agent/Dockerfile` (new)
+- `docker-compose.yml` (modified — new service)
 
-**Validates**: `ToolLoopAgent`, `tool()` with `inputSchema`, lifecycle hooks, `needsApproval`, bounded step loops.
+**Validates**: `ToolLoopAgent`, `tool()` with `inputSchema`, `@ai-sdk/mcp` as client, lifecycle hooks, bounded step loops, MCP-on-the-outside / agent-on-the-inside pattern, LiteLLM gateway for both LLM and MCP calls.
 
 ### Phase 2 — AI Elements Frontend
 
@@ -447,42 +462,7 @@ An autonomous agent with its own LLM, exposed as an A2A HTTP endpoint. The orche
 
 **Validates**: Observability for AI applications, audit trail, token tracking, tool call inspection.
 
-### Phase 4 — A2A Agent (Pattern C)
-
-**Goal**: Build a standalone IT Approval Agent as an A2A server with its own LLM. The chatbot-v2 orchestrator delegates approval workflows to it. Demonstrates distributed autonomous agents.
-
-**Scope**:
-- [ ] Create new service: `mcp-server/it-approval-a2a-agent/`
-  - Express server implementing A2A protocol:
-    - `GET /.well-known/agent.json` — agent card (name, capabilities, endpoints)
-    - `POST /tasks` — create a new task (approval workflow)
-    - `GET /tasks/:id` — poll task status
-    - `POST /tasks/:id/cancel` — cancel a running task
-  - Internally powered by `ToolLoopAgent`:
-    - Consumes HR MCP tools (get_employee, get manager for approval chain)
-    - Consumes IT MCP tools (get_ticket, update_ticket_status)
-    - Own system prompt for approval domain expertise
-    - Lifecycle hooks for audit trail
-  - Own `Dockerfile`, own port in `docker-compose.yml`
-- [ ] Add A2A client to chatbot-v2 backend:
-  - Discover agent via `/.well-known/agent.json`
-  - Delegate approval workflows via `POST /tasks`
-  - Poll or stream task status
-  - Add `pattern: 'a2a'` mode to `/api/chat` route
-- [ ] Frontend:
-  - Add `'a2a'` option to pattern selector
-  - `<Canvas />` + `<Node />` + `<Edge />` (AI Elements Workflow components) to visualize agent delegation
-  - `<Task />` component to show A2A task progress
-
-**Key files**:
-- `mcp-server/it-approval-a2a-agent/` (new service)
-- `chatbot-v2/backend/server.js` (modified — A2A client, route branching)
-- `chatbot-v2/frontend/src/components/` (modified — workflow visualization)
-- `docker-compose.yml` (new service entry)
-
-**Validates**: A2A protocol, distributed agent autonomy, agent identity/trust, cross-agent data flow, multi-agent audit trail.
-
-### Phase 5 — Security Demos per Pattern
+### Phase 4 — Security Demos per Pattern
 
 **Goal**: Add concrete Phase 2 (Risky) attack scenarios and Phase 3 (Protected) mitigations for each integration pattern.
 
@@ -492,40 +472,35 @@ An autonomous agent with its own LLM, exposed as an A2A HTTP endpoint. The orche
   - Demonstrate excessive data exposure (tool returning PII)
   - Sidebar questions for Phase 2 that trigger these attacks
 - [ ] Pattern B attacks:
-  - Craft prompt that tricks the agent into skipping the approval step
-  - Demonstrate confused deputy (agent creates ticket as wrong user)
+  - Craft prompt that tricks the agent into skipping severity classification
+  - Demonstrate confused deputy (agent creates ticket as wrong user via nested MCP calls)
   - Demonstrate runaway loop (agent keeps calling tools in a cycle)
-  - Sidebar questions for Phase 2 that trigger these attacks
-- [ ] Pattern C attacks:
-  - Demonstrate agent spoofing (fake agent card)
-  - Demonstrate data leakage across agent boundaries
+  - Demonstrate opaque reasoning (client can't see what the agent did internally)
   - Sidebar questions for Phase 2 that trigger these attacks
 - [ ] Phase 3 mitigations for each:
-  - AIRS guardrails at LiteLLM level (existing)
+  - AIRS guardrails at LiteLLM level — applies to both the agent's LLM calls and chatbot-v2's calls (existing)
   - Agent lifecycle hooks that detect and block suspicious tool chains (Pattern B)
-  - Agent authentication and authorization at A2A level (Pattern C)
   - Audit logging across all patterns via DevTools
-- [ ] Update i18n: add Phase 2 sidebar questions for Patterns B and C across all 9 locales
+- [ ] Update i18n: add Phase 2 sidebar questions for Pattern B across all 9 locales
 
 **Key files**:
 - `mcp-server/it-tools-mcp-server/` (modified — seeded attack data)
-- `chatbot-v2/backend/agents/` (modified — security hooks)
-- `chatbot-v2/frontend/public/locales/*/frontend.json` (modified — new sidebar questions)
+- `agents/it-triage-agent/agent.js` (modified — security hooks)
+- `locales/*/frontend.json` (modified — new sidebar questions)
 
-**Validates**: Full security demo narrative across all integration patterns and all 3 phases.
+**Validates**: Full security demo narrative across both integration patterns and all 3 phases.
 
 ---
 
 ## Future Evolution
 
-### Travel/Expense Agent (A2A)
+### Pattern C — A2A Agent
 
-Natural next A2A candidate. Own domain with distinct data (receipts, budgets, travel policies), approval chains, and cross-department dependencies:
-- HR MCP tools for employee profile, manager, department budget
-- IT MCP tools for corporate card provisioning, VPN for travel
-- Own approval logic (expense thresholds, policy compliance, receipt validation)
+Evolve Pattern B into full A2A protocol: agent card discovery (`/.well-known/agent.json`), task delegation (`POST /tasks`), status polling, cancellation. The agentic MCP server already has its own LLM and tools — A2A would add standard inter-agent communication on top.
 
-Would demonstrate a **multi-agent A2A mesh** where three+ agents (IT Approval, Travel/Expense, and potentially HR Policy) negotiate across domain boundaries. Each agent is a `ToolLoopAgent` internally, exposed as A2A externally, consuming shared MCP data servers.
+### Multi-Agent Mesh
+
+Add more agentic MCP servers (Travel/Expense, HR Policy) that each wrap a `ToolLoopAgent`. All register with LiteLLM as MCP servers, all consume shared data via LiteLLM `/mcp`. Demonstrates cross-agent data flow, cascading guardrails, and distributed audit trails.
 
 ### Additional Patterns to Consider
 
@@ -536,12 +511,12 @@ Would demonstrate a **multi-agent A2A mesh** where three+ agents (IT Approval, T
 
 
 # STOP HERE DO NOT FOLLOW
-Here are the starter prompts you can paste at the beginning of each session:                                                                                                                                                                                                                                         
-                                                                                                                                                                                                                                                                                                                     
-  ---                                                                                                                                                                                                                                                                                                                  
-  Session 1:                                                
-  ▎ Read PRD.md — Implementation Roadmap, Phase 1 (ToolLoopAgent). Build everything described in that phase.                                                                                                                                                                                                           
-                                                                                                                                                                                                                                                                                                                       
+Here are the starter prompts you can paste at the beginning of each session:
+
+  ---
+  Session 1:
+  ▎ Read PRD.md — Implementation Roadmap, Phase 1 (Agentic MCP Server). Build everything described in that phase.
+
   Session 2:
   ▎ Read PRD.md — Implementation Roadmap, Phase 2 (AI Elements Frontend). Build everything described in that phase.
 
@@ -549,7 +524,4 @@ Here are the starter prompts you can paste at the beginning of each session:
   ▎ Read PRD.md — Implementation Roadmap, Phase 3 (DevTools + Observability). Build everything described in that phase.
 
   Session 4:
-  ▎ Read PRD.md — Implementation Roadmap, Phase 4 (A2A Agent). Build everything described in that phase.
-
-  Session 5:
-  ▎ Read PRD.md — Implementation Roadmap, Phase 5 (Security Demos per Pattern). Build everything described in that phase.
+  ▎ Read PRD.md — Implementation Roadmap, Phase 4 (Security Demos per Pattern). Build everything described in that phase.
