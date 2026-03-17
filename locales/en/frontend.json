@@ -41,8 +41,8 @@
       { "icon": "person", "title": "Manager", "text": "Who is my direct manager?" },
       { "title": "USB Access Request", "icon": "usb", "questions": [
         { "icon": "looks_one", "title": "Report USB Issue", "text": "I need to transfer some files to a USB drive but when I plug it into my laptop it doesn't work." },
-        { "icon": "looks_two", "title": "Confirm Laptop", "text": "The Apple MacBook Pro (ASSET-00009)" },
-        { "icon": "looks_3", "title": "Confirm Ticket Creation", "text": "Yes, please create the ticket." }
+        { "icon": "looks_two", "title": "Provide Details", "text": "I need to export client demo data for a customer presentation next week. 5 days should be enough." },
+        { "icon": "looks_3", "title": "Confirm Laptop", "text": "The Lenovo ThinkPad X1 Carbon (ASSET-00035)" }
       ]}
     ],
     "phase2": [

@@ -42,28 +42,19 @@ const MODEL_ID = process.env.CHATBOT_V2_MODEL || 'eu.anthropic.claude-opus-4-6-v
 const MCP_URL = process.env.MCP_URL || `${LITELLM_BASE_URL}/mcp/`;
 
 const STATIC_USER = {
-  name: 'Aurélien Delamarre',
-  email: 'aurelien.delamarre@company.com',
-  role: 'Pre-Sales Engineer',
-  department: 'Sales Department',
+  employee_id: 'EMP-034',
 };
 
-const SYSTEM_PROMPT = `You are a helpful corporate assistant for HR and IT support.
-The current user is ${STATIC_USER.name} (${STATIC_USER.email}), ${STATIC_USER.role} in the ${STATIC_USER.department}.
+const SYSTEM_PROMPT = `You are a helpful corporate assistant. You have access to HR and IT tools.
+The current user's employee ID is ${STATIC_USER.employee_id}. You know NOTHING about this user except their ID — you MUST call tools to look up any information.
 
-When answering questions, think step-by-step:
-1. Identify what information you need
-2. Use the available tools to gather ALL relevant data before answering
-3. If a question spans both HR and IT, call BOTH HR and IT tools
-
-Important behaviors:
-- When a user asks about "my tickets" or "my information", use their email: ${STATIC_USER.email}
-- When a user has an IT need (USB access, software, hardware, etc.), ALWAYS search IT processes first to find the correct procedure, then guide them through it
-- When a request involves a specific device, look up the user's assets to find which devices they have and ask them to confirm which one
-- When creating a ticket that requires approval (e.g. USB access), set status to "Pending Approval" and inform the user their manager must approve
-- Never approve a ticket on behalf of the requesting user — approvals must come from the user's direct manager
-
-Always be professional, concise, and helpful.`;
+Rules:
+- NEVER guess or fabricate data. ALWAYS use tools to retrieve real data before answering.
+- When a user asks about "my" anything, use their employee ID: ${STATIC_USER.employee_id}
+- Call MULTIPLE tools in PARALLEL when you need different types of data.
+- When a tool response includes "_instructions", follow them carefully — they contain workflow guidance from the service.
+- Never approve a ticket on behalf of the requesting user — approvals must come from the designated approver.
+- Always be professional, concise, and helpful.`;
 
 // --- LLM ---
 
@@ -79,10 +70,10 @@ function litellmFetch(guarded = false) {
   return async (url, init) => {
     if (init?.body) {
       const body = JSON.parse(init.body);
-      body.user = STATIC_USER.email;
+      body.user = STATIC_USER.employee_id;
       body.metadata = {
         ...body.metadata,
-        app_user: STATIC_USER.email,
+        app_user: STATIC_USER.employee_id,
         app_name: 'The Otter V2',
         user_ip: _reqCtx.userIp,
         trace_id: _reqCtx.threadId,
@@ -95,7 +86,7 @@ function litellmFetch(guarded = false) {
       const headers = new Headers(init.headers);
       headers.set('x-litellm-spend-logs-metadata', JSON.stringify({
         thread_id: _reqCtx.threadId,
-        app_user: STATIC_USER.email,
+        app_user: STATIC_USER.employee_id,
       }));
       init = { ...init, headers, body: JSON.stringify(body) };
     }
