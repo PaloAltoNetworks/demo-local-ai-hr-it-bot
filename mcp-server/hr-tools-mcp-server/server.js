@@ -24,12 +24,14 @@ function json(data) {
 function registerTools(server) {
   server.tool(
     'get_employee',
-    'Get a specific employee by name or email address. Returns full employee profile including role, department, salary, leave balance, and manager comments.',
+    'Get a specific employee by employee ID, name, or email address. Returns full employee profile including employee_id, role, department, salary, leave balance, manager_id, manager_name, and manager comments.',
     {
-      identifier: z.string().describe('Employee name or email address')
+      identifier: z.string().describe('Employee ID (e.g. "EMP-008"), name, or email address')
     },
     async ({ identifier }) => {
-      const employee = service.getEmployeeByEmail(identifier) || service.getEmployeeByName(identifier);
+      const employee = identifier.startsWith('EMP-')
+        ? service.getEmployeeById(identifier)
+        : (service.getEmployeeByEmail(identifier) || service.getEmployeeByName(identifier));
       if (!employee) {
         return json({ error: 'not_found', message: `Employee "${identifier}" not found` });
       }
@@ -39,7 +41,7 @@ function registerTools(server) {
 
   server.tool(
     'search_employees',
-    'Search employees by keyword. Searches across name, email, role, and department.',
+    'Search employees by keyword. Searches across employee ID, name, email, role, and department.',
     {
       query: z.string().describe('Search term')
     },
@@ -65,19 +67,20 @@ function registerTools(server) {
 
   server.tool(
     'get_direct_reports',
-    'Get all employees who report to a specific manager by manager name.',
+    'Get all employees who report to a specific manager by manager employee ID. Use get_employee first to resolve a name to an employee ID.',
     {
-      manager_name: z.string().describe('Manager full name (e.g. "Sarah Chen")')
+      manager_id: z.string().describe('Manager employee ID (e.g. "EMP-001")')
     },
-    async ({ manager_name }) => {
-      const reports = service.getEmployeesByManager(manager_name);
-      return json({ count: reports.length, manager: manager_name, direct_reports: reports });
+    async ({ manager_id }) => {
+      const manager = service.getEmployeeById(manager_id);
+      const reports = service.getEmployeesByManager(manager_id);
+      return json({ count: reports.length, manager_id, manager_name: manager?.name, direct_reports: reports });
     }
   );
 
   server.tool(
     'get_employee_statistics',
-    'Get HR statistics: total headcount, breakdown by department, and breakdown by manager.',
+    'Get HR statistics: total headcount, breakdown by department, and breakdown by manager (with employee IDs).',
     {},
     async () => {
       return json(service.getStatistics());

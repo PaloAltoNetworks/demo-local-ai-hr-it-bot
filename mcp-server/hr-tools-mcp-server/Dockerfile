@@ -14,12 +14,12 @@ RUN npm install --prefix ./utils --only=production
 COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/package*.json ./
 RUN npm install --only=production
 
-# Copy agent source
+# Copy all source files (self-contained — no cross-workspace references)
 COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/server.js ./
 COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/service.js ./
-
-# Copy employee data (self-contained)
-COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/employees.csv ./
+COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/database-manager.js ./
+COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/employee-db.js ./
+COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/employees.db ./
 
 # Shared utils (logger)
 COPY --chown=mcpserver:nodejs utils/ ./utils/

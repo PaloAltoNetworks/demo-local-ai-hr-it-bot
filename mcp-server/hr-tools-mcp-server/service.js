@@ -1,131 +1,53 @@
-import path from 'path';
-import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { initializeDatabase } from './database-manager.js';
+import { initializeEmployeeService } from './employee-db.js';
 
 export class HRService {
   constructor() {
-    this.employees = null;
-    this.rawCsvData = null;
-  }
-
-  _normalize(str) {
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    this.employeeService = null;
   }
 
   async init() {
-    const csvPath = path.join(__dirname, 'employees.csv');
-    this.rawCsvData = await fs.readFile(csvPath, 'utf8');
-    this.employees = this._parseCSV(this.rawCsvData);
+    try {
+      await initializeDatabase();
+      this.employeeService = await initializeEmployeeService();
+    } catch (error) {
+      throw new Error(`Failed to initialize HR service: ${error.message}`);
+    }
   }
 
   getAllEmployees() {
-    return this.employees;
+    return this.employeeService?.getAllEmployees() || [];
+  }
+
+  getEmployeeById(employeeId) {
+    return this.employeeService?.getEmployeeById(employeeId);
   }
 
   getEmployeeByEmail(email) {
-    return this.employees.find(emp => emp.email.toLowerCase() === email.toLowerCase());
+    return this.employeeService?.getEmployeeByEmail(email);
   }
 
   getEmployeeByName(name) {
-    const normalized = this._normalize(name);
-    return this.employees.find(emp => this._normalize(emp.name) === normalized);
+    return this.employeeService?.getEmployeeByName(name);
   }
 
   searchEmployees(query) {
-    const normalized = this._normalize(query);
-    return this.employees.filter(emp =>
-      this._normalize(emp.name).includes(normalized) ||
-      emp.email.toLowerCase().includes(normalized) ||
-      this._normalize(emp.role).includes(normalized) ||
-      this._normalize(emp.department).includes(normalized)
-    );
+    return this.employeeService?.searchEmployees(query) || [];
   }
 
   getEmployeesByDepartment(department) {
-    const normalized = this._normalize(department);
-    return this.employees.filter(emp =>
-      this._normalize(emp.department) === normalized
-    );
+    return this.employeeService?.getEmployeesByDepartment(department) || [];
   }
 
-  getEmployeesByManager(managerName) {
-    const normalized = this._normalize(managerName);
-    return this.employees.filter(emp =>
-      this._normalize(emp.manager) === normalized
-    );
+  getEmployeesByManager(managerId) {
+    return this.employeeService?.getEmployeesByManager(managerId) || [];
   }
 
   getDepartments() {
-    const depts = {};
-    for (const emp of this.employees) {
-      if (!depts[emp.department]) {
-        depts[emp.department] = 0;
-      }
-      depts[emp.department]++;
-    }
-    return Object.entries(depts).map(([department, count]) => ({ department, count }));
+    return this.employeeService?.getDepartments() || [];
   }
 
   getStatistics() {
-    const departments = this.getDepartments();
-    const managers = {};
-    for (const emp of this.employees) {
-      if (emp.manager) {
-        if (!managers[emp.manager]) managers[emp.manager] = 0;
-        managers[emp.manager]++;
-      }
-    }
-    const byManager = Object.entries(managers)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-
-    return {
-      total: this.employees.length,
-      byDepartment: departments.sort((a, b) => b.count - a.count),
-      byManager
-    };
-  }
-
-  _parseCSV(data) {
-    const lines = data.split('\n');
-    if (lines.length < 2) return [];
-
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-
-    return lines.slice(1)
-      .filter(line => line.trim())
-      .map(line => {
-        const values = this._parseCSVLine(line);
-        const emp = {};
-        headers.forEach((h, i) => {
-          emp[h] = values[i]?.trim() || '';
-        });
-        return emp;
-      });
-  }
-
-  _parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current);
-    return result;
+    return this.employeeService?.getStatistics() || { total: 0, byDepartment: [], byManager: [] };
   }
 }
