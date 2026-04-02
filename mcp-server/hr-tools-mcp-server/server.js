@@ -52,20 +52,6 @@ function registerTools(server) {
   );
 
   server.tool(
-    'list_employees',
-    'List all employees, optionally filtered by department.',
-    {
-      department: z.string().optional().describe('Filter by department (e.g. Technology, Sales, Marketing, Human Resources, Finance, Executive, Operations, Legal, Customer Support, Quality, Business Development)')
-    },
-    async ({ department }) => {
-      const employees = department
-        ? service.getEmployeesByDepartment(department)
-        : service.getAllEmployees();
-      return json({ count: employees.length, department: department || 'all', employees });
-    }
-  );
-
-  server.tool(
     'get_direct_reports',
     'Get all employees who report to a specific manager by manager employee ID. Use get_employee first to resolve a name to an employee ID.',
     {
@@ -78,14 +64,6 @@ function registerTools(server) {
     }
   );
 
-  server.tool(
-    'get_employee_statistics',
-    'Get HR statistics: total headcount, breakdown by department, and breakdown by manager (with employee IDs).',
-    {},
-    async () => {
-      return json(service.getStatistics());
-    }
-  );
 }
 
 function createServer() {

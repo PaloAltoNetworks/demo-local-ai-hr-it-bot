@@ -42,41 +42,6 @@ function registerTools(server) {
   );
 
   server.tool(
-    'search_tickets',
-    'Search IT tickets by keyword. Searches across ticket ID, employee ID, employee name, email, description, and category.',
-    {
-      query: z.string().describe('Search term')
-    },
-    async ({ query }) => {
-      const tickets = service.searchTickets(query);
-      return json({ count: tickets.length, tickets });
-    }
-  );
-
-  server.tool(
-    'list_tickets',
-    'List all IT tickets, optionally filtered by status, priority, or category.',
-    {
-      status: z.string().optional().describe('Filter by status (Open, In Progress, Pending Approval, Approved, Rejected, Resolved, Closed)'),
-      priority: z.string().optional().describe('Filter by priority (Critical, High, Medium, Low)'),
-      category: z.string().optional().describe('Filter by category')
-    },
-    async ({ status, priority, category }) => {
-      let tickets;
-      if (status) {
-        tickets = service.getTicketsByStatus(status);
-      } else if (priority) {
-        tickets = service.getTicketsByPriority(priority);
-      } else if (category) {
-        tickets = service.getTicketsByCategory(category);
-      } else {
-        tickets = service.getAllTickets();
-      }
-      return json({ count: tickets.length, filters: { status, priority, category }, tickets });
-    }
-  );
-
-  server.tool(
     'get_tickets_by_employee',
     'Get all tickets for a specific employee by their employee ID (e.g. "EMP-008") or email address.',
     {
@@ -87,15 +52,6 @@ function registerTools(server) {
         ? service.getTicketsByEmployeeId(identifier)
         : service.getTicketsByEmployee(identifier);
       return json({ count: tickets.length, identifier, tickets });
-    }
-  );
-
-  server.tool(
-    'get_ticket_statistics',
-    'Get IT ticket statistics: totals by status, priority, category, and assignee.',
-    {},
-    async () => {
-      return json(service.getStatistics());
     }
   );
 
@@ -163,21 +119,6 @@ function registerTools(server) {
         ? service.getAssetsByEmployeeId(identifier)
         : service.getAssetsByEmployee(identifier);
       return json({ count: assets.length, identifier, assets });
-    }
-  );
-
-  server.tool(
-    'get_asset',
-    'Get details of a specific IT asset by its asset ID.',
-    {
-      asset_id: z.string().describe('Asset ID (e.g. ASSET-00001)')
-    },
-    async ({ asset_id }) => {
-      const asset = service.getAssetById(asset_id);
-      if (!asset) {
-        return json({ error: 'not_found', message: `Asset ${asset_id} not found` });
-      }
-      return json(asset);
     }
   );
 

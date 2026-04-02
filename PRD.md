@@ -57,10 +57,10 @@ Key details:
 
 ### Guardrail Provider
 
-Phase 3 enforces Prisma AIRS guardrails via a custom `fetch` wrapper on `@ai-sdk/openai`. The guardrail name is configurable via `LITELLM_GUARDRAIL_NAME` env var:
+Phase 3 enforces Prisma AIRS guardrails via a custom `fetch` wrapper on `@ai-sdk/openai`. Guardrail names are configurable via `LITELLM_GUARDRAIL_NAME` env var (comma-separated for multiple guardrails, e.g. `PANW-pre,PANW-post`):
 
 ```js
-const GUARDRAIL_NAME = process.env.LITELLM_GUARDRAIL_NAME || '';
+const GUARDRAIL_NAMES = (process.env.LITELLM_GUARDRAIL_NAME || '').split(',').map(s => s.trim()).filter(Boolean);
 
 const openaiGuarded = createOpenAI({
   baseURL: `${LITELLM_BASE_URL}/v1`,
@@ -70,7 +70,7 @@ const openaiGuarded = createOpenAI({
       const body = JSON.parse(init.body);
       body.user = STATIC_USER.email;
       body.metadata = { ...body.metadata, app_user: STATIC_USER.email, ... };
-      body.guardrails = [GUARDRAIL_NAME];
+      body.guardrails = GUARDRAIL_NAMES;
       init = { ...init, body: JSON.stringify(body) };
     }
     return fetch(url, init);
@@ -247,7 +247,7 @@ agents/it-triage-agent/
 - `LITELLM_API_KEY` — API key for LiteLLM
 - `CHATBOT_V2_MODEL` — Default model ID
 - `MCP_URL` — MCP aggregator endpoint (defaults to `{LITELLM_BASE_URL}/mcp/`)
-- `LITELLM_GUARDRAIL_NAME` — Name of the LiteLLM guardrail to enforce in Phase 3 (e.g. `PANW`)
+- `LITELLM_GUARDRAIL_NAME` — Comma-separated LiteLLM guardrail names to enforce in Phase 3 (e.g. `PANW-pre,PANW-post`)
 - `PRISMA_AIRS_TSG_ID` — Strata Cloud Manager tenant ID (for report links)
 - `PRISMA_AIRS_APP_ID` — AIRS application ID (for report links)
 - `CHATBOT_V2_PORT` — Server port (default 3008)

@@ -57,7 +57,7 @@ Rules:
 
 // --- LLM ---
 
-const GUARDRAIL_NAME = process.env.LITELLM_GUARDRAIL_NAME || '';
+const GUARDRAIL_NAMES = (process.env.LITELLM_GUARDRAIL_NAME || '').split(',').map(s => s.trim()).filter(Boolean);
 const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
 
@@ -80,7 +80,7 @@ function litellmFetch(guarded = false) {
         tags: [`thread:${_reqCtx.threadId}`],
       };
       if (guarded) {
-        body.guardrails = [GUARDRAIL_NAME];
+        body.guardrails = GUARDRAIL_NAMES;
       }
       const headers = new Headers(init.headers);
       headers.set('x-litellm-spend-logs-metadata', JSON.stringify({
@@ -217,9 +217,24 @@ app.post('/api/chat', async (req, res) => {
       onError: (event) => {
         const error = event?.error || event;
         const msg = error?.message || String(error);
-        // Extract embedded guardrail error dict from RetryError message
+        // Extract embedded guardrail error dict from RetryError message (pre_call format)
         const match = msg.match(/\{['"]error['"]\s*:\s*\{.*\}\s*\}/);
         if (match) return match[0];
+        // Convert post_call plain text guardrail block into the JSON dict the frontend expects
+        const postMatch = msg.match(/Response blocked by (\S+) .+?\(Category:\s*(\w+)\)/);
+        if (postMatch) {
+          const category = postMatch[2].toLowerCase();
+          return JSON.stringify({
+            error: {
+              type: 'guardrail_violation',
+              guardrail: postMatch[1],
+              category,
+              message: msg,
+              tr_id: _reqCtx.threadId,
+              response_detected: { [category]: true },
+            },
+          });
+        }
         return msg;
       },
     });

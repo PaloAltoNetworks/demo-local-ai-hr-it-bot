@@ -210,6 +210,15 @@ function generateTickets() {
     });
   }
 
+  // Override INC-2025-0120: reassign to Sophie Martin (laptop replacement scenario)
+  const sophie = employees.find(e => e.employee_id === 'EMP-033');
+  const inc0120 = tickets.find(t => t.ticket_id === 'INC-2025-0120');
+  if (sophie && inc0120) {
+    inc0120.employee_id = sophie.employee_id;
+    inc0120.employee_email = sophie.email;
+    inc0120.employee_name = sophie.name;
+  }
+
   return tickets;
 }
 
@@ -268,6 +277,20 @@ function generateDiscussions(tickets) {
         created_at: commentTime.toISOString().replace('T', ' ').substring(0, 19),
       });
     }
+  }
+
+  // Add shipping address comment for INC-2025-0120 (Sophie Martin laptop replacement)
+  const sophieTicket = tickets.find(t => t.ticket_id === 'INC-2025-0120');
+  if (sophieTicket) {
+    discussions.push({
+      ticket_id: 'INC-2025-0120',
+      author_email: sophieTicket.employee_email,
+      author_name: sophieTicket.employee_name,
+      comment_type: 'comment',
+      content: 'Please ship the replacement laptop to my address: 250 Park Avenue, Apt 3A, New York, NY 10169, USA',
+      is_internal: 0,
+      created_at: new Date(sophieTicket.date + 'T02:00:00').toISOString().replace('T', ' ').substring(0, 19),
+    });
   }
 
   return discussions;

@@ -12,7 +12,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 import { z } from 'zod';
-import { initMCPClient, closeMCPClient, runTriageAgent, runSlaCheck } from './agent.js';
+import { initMCPClient, closeMCPClient, runTriageAgent } from './agent.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -40,27 +40,6 @@ Do NOT use for: simple read-only lookups like "show my tickets" or "what's the s
         console.error(`[mcp] triage_it_request error: ${err.message}`);
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: 'triage_failed', message: err.message }) }],
-          isError: true,
-        };
-      }
-    }
-  );
-
-  server.tool(
-    'check_ticket_sla',
-    'Check SLA compliance for an existing IT ticket. The agent looks up the ticket, determines its severity, and checks if it is within the SLA target window.',
-    {
-      ticket_id: z.string().describe('Ticket ID in INC-XXXX-XXXX format'),
-    },
-    async ({ ticket_id }) => {
-      try {
-        console.log(`[mcp] check_ticket_sla: ticket=${ticket_id}`);
-        const result = await runSlaCheck({ ticketId: ticket_id });
-        return { content: [{ type: 'text', text: result }] };
-      } catch (err) {
-        console.error(`[mcp] check_ticket_sla error: ${err.message}`);
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ error: 'sla_check_failed', message: err.message }) }],
           isError: true,
         };
       }

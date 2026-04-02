@@ -89,7 +89,7 @@ MCP_URL=http://localhost:8080/mcp/
 ### Guardrails (Phase 3)
 
 ```bash
-LITELLM_GUARDRAIL_NAME=PANW              # LiteLLM guardrail name
+LITELLM_GUARDRAIL_NAME=PANW-pre,PANW-post # LiteLLM guardrail names (comma-separated)
 PRISMA_AIRS_TSG_ID=your_tsg_id           # For report links
 PRISMA_AIRS_APP_ID=your_app_id           # For report links
 ```

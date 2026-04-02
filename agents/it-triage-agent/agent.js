@@ -2,7 +2,7 @@
  * IT Triage Agent — ToolLoopAgent with local business logic + MCP data tools
  *
  * MCP on the outside, ToolLoopAgent on the inside.
- * - Local tools: classify severity, check SLA, assign team, check approval, IT process lookup
+ * - Local tools: classify severity, assign team, check approval, IT process lookup
  * - MCP tools via LiteLLM /mcp: hr-tools (get_employee, get_employee_assets)
  *   and it-tools (get_ticket, search_tickets, create_ticket, etc.)
  * - LLM via LiteLLM /v1 (OpenAI-compatible)
@@ -152,27 +152,6 @@ const classifySeverity = tool({
   },
 });
 
-const checkSlaCompliance = tool({
-  description: 'Check if an existing ticket is within its SLA target based on severity and creation date.',
-  inputSchema: z.object({
-    severity: z.enum(['Critical', 'High', 'Medium', 'Low']).describe('Ticket severity'),
-    createdAt: z.string().describe('Ticket creation timestamp (ISO 8601)'),
-  }),
-  execute: async ({ severity, createdAt }) => {
-    const slaTargets = { Critical: 1, High: 4, Medium: 24, Low: 72 };
-    const slaHours = slaTargets[severity];
-    const elapsed = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
-    const withinSla = elapsed <= slaHours;
-    return {
-      severity,
-      slaHours,
-      elapsedHours: Math.round(elapsed * 10) / 10,
-      withinSla,
-      status: withinSla ? 'Within SLA' : 'SLA BREACHED',
-    };
-  },
-});
-
 const assignTeam = tool({
   description: 'Determine which IT support team should handle a request based on category and severity.',
   inputSchema: z.object({
@@ -228,7 +207,7 @@ const TRIAGE_INSTRUCTIONS = `You are an IT Triage Agent — a specialized assist
 
 You have access to three types of tools:
 1. LOCAL PROCESS TOOLS (search_it_processes, get_it_process, list_it_processes) — look up IT process definitions, steps, and requirements
-2. LOCAL TRIAGE TOOLS (classify_severity, check_sla_compliance, assign_team, check_approval_required) — deterministic business logic for evaluating and routing IT requests
+2. LOCAL TRIAGE TOOLS (classify_severity, assign_team, check_approval_required) — deterministic business logic for evaluating and routing IT requests
 3. MCP DATA TOOLS (prefixed with server names) — for reading actual data (employees, tickets, assets)
 
 WORKFLOW for triage requests:
@@ -238,11 +217,6 @@ WORKFLOW for triage requests:
 4. Use check_approval_required to see if manager approval is needed
 5. Use assign_team to route to the right support team
 6. Return a structured summary with all findings
-
-WORKFLOW for SLA checks:
-1. Get the ticket details via MCP data tools (get_ticket)
-2. Use check_sla_compliance with the ticket's severity and creation date
-3. Return SLA status and recommended actions
 
 RULES:
 - ALWAYS use search_it_processes first to find the relevant IT process — this is your own local data
@@ -266,7 +240,6 @@ export async function runTriageAgent({ query, employeeId }) {
     get_it_process: getItProcess,
     list_it_processes: listItProcesses,
     classify_severity: classifySeverity,
-    check_sla_compliance: checkSlaCompliance,
     assign_team: assignTeam,
     check_approval_required: checkApprovalRequired,
   };
@@ -299,30 +272,4 @@ The requesting employee's ID is ${employeeId}. Use this ID when looking up emplo
   return result.text;
 }
 
-/**
- * Run SLA check for a specific ticket.
- */
-export async function runSlaCheck({ ticketId }) {
-  const mcpTools = await getMCPTools();
-
-  const tools = {
-    ...mcpTools,
-    check_sla_compliance: checkSlaCompliance,
-  };
-
-  const agent = new ToolLoopAgent({
-    model: openai.chat(MODEL_ID),
-    instructions: `${TRIAGE_INSTRUCTIONS}\n\nYou are checking the SLA status of ticket ${ticketId}. Get the ticket details and run check_sla_compliance.`,
-    tools,
-    stopWhen: stepCountIs(5),
-    onFinish: ({ steps }) => {
-      console.log(`[it-triage] SLA check finished in ${steps.length} steps`);
-    },
-  });
-
-  const result = await agent.generate({
-    prompt: `Check the SLA compliance status of ticket ${ticketId}`,
-  });
-  return result.text;
-}
 
