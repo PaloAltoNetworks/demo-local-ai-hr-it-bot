@@ -295,7 +295,7 @@ function GuardrailError({ error, airsConfig, t, onRetry }) {
       </div>
       <div className="message-body">
         <div className="message-text error-block">
-          {t('guardrail.error')}
+          {info.message || t('guardrail.error')}
           {onRetry && (
             <button className="retry-btn" onClick={onRetry}>
               <span className="material-symbols">refresh</span>
