@@ -6,7 +6,7 @@ services:
       dockerfile: mcp-server/it-tools-mcp-server/Dockerfile
     hostname: it-tools-mcp-server
     ports:
-      - "3006:3000"
+      - "3016:3000"
     env_file:
       - ./.env
     restart: unless-stopped
@@ -28,7 +28,7 @@ services:
       dockerfile: mcp-server/hr-tools-mcp-server/Dockerfile
     hostname: hr-tools-mcp-server
     ports:
-      - "3007:3000"
+      - "3017:3000"
     env_file:
       - ./.env
     restart: unless-stopped
@@ -50,7 +50,7 @@ services:
       dockerfile: agents/it-triage-agent/Dockerfile
     hostname: it-triage-agent
     ports:
-      - "3009:3000"
+      - "3019:3000"
     env_file:
       - ./.env
     environment:
@@ -74,11 +74,11 @@ services:
       dockerfile: chatbot-v2/Dockerfile
     hostname: chatbot-v2
     ports:
-      - "3008:3008"
+      - "3018:3018"
     env_file:
       - ./.env
     environment:
-      - CHATBOT_V2_PORT=3008
+      - CHATBOT_V2_PORT=3018
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       - MCP_URL=${LITELLM_BASE_URL:-http://localhost:8080}/mcp/
       - PRISMA_AIRS_TSG_ID=${PRISMA_AIRS_TSG_ID:-}
@@ -89,7 +89,7 @@ services:
     networks:
       - mcp-network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3008/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3018/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3

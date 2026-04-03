@@ -32,7 +32,7 @@ console.error = (...args) => {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = process.env.CHATBOT_V2_PORT || 3008;
+const PORT = process.env.CHATBOT_V2_PORT || 3018;
 
 // --- Configuration ---
 
