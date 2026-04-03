@@ -1,6 +1,11 @@
+x-common: &common
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
 services:
   # IT Tools MCP Server (standalone — pure data tools)
   it-tools-mcp-server:
+    <<: *common
     build:
       context: .
       dockerfile: mcp-server/it-tools-mcp-server/Dockerfile
@@ -23,6 +28,7 @@ services:
 
   # HR Tools MCP Server (standalone — pure data tools)
   hr-tools-mcp-server:
+    <<: *common
     build:
       context: .
       dockerfile: mcp-server/hr-tools-mcp-server/Dockerfile
@@ -45,6 +51,7 @@ services:
 
   # IT Triage Agent — Agentic MCP server (ToolLoopAgent inside, MCP outside)
   it-triage-agent:
+    <<: *common
     build:
       context: .
       dockerfile: agents/it-triage-agent/Dockerfile
@@ -69,6 +76,7 @@ services:
 
   # Chatbot V2 — AI SDK + native MCP tool calling via LiteLLM
   chatbot-v2:
+    <<: *common
     build:
       context: .
       dockerfile: chatbot-v2/Dockerfile
