@@ -1,6 +1,11 @@
+x-common: &common
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
 services:
   # MCP Gateway - Enterprise routing and security layer
   mcp-gateway:
+    <<: *common
     build:
       context: .
       dockerfile: mcp-gateway/Dockerfile
@@ -26,6 +31,7 @@ services:
     
   # HR MCP Server
   hr-mcp-server:
+    <<: *common
     build:
       context: .
       dockerfile: mcp-server/Dockerfile.agent
@@ -54,6 +60,7 @@ services:
     
   # IT MCP Server  
   it-mcp-server:
+    <<: *common
     build:
       context: .
       dockerfile: mcp-server/Dockerfile.agent
@@ -82,6 +89,7 @@ services:
     
   # General MCP Server
   general-mcp-server:
+    <<: *common
     build:
       context: .
       dockerfile: mcp-server/Dockerfile.agent
@@ -110,6 +118,7 @@ services:
 
   # MCP Host - User-facing chatbot application
   chatbot-host:
+    <<: *common
     build:
       context: .
       dockerfile: chatbot-host/Dockerfile
