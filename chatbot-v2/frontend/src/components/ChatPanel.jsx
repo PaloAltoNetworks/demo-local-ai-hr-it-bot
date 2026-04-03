@@ -222,12 +222,13 @@ function parseGuardrailError(errorMessage) {
     const err = parsed.error || parsed;
     const type = err.type || '';
     return {
-      isGuardrail: type === 'guardrail_violation',
+      isGuardrail: type === 'guardrail_violation' || type === 'guardrail_scan_error',
       isGuardrailConfig: type === 'guardrail_config_error',
       guardrail: err.guardrail,
       category: err.category,
       code: err.code,
       profileName: err.profile_name,
+      profileId: err.profile_id,
       scanId: err.scan_id,
       trId: err.tr_id,
       message: err.message,

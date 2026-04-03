@@ -14,6 +14,7 @@ export function useAirsConfig() {
 }
 
 export function buildReportUrl(config, { trId, scanId }) {
-  if (!config?.tsgId || !config?.appId || !trId || !scanId) return null;
-  return `${config.baseUrl}/${trId}/${config.appId}/LiteLLM/transactions/${scanId}/0?tsg_id=${config.tsgId}#date=24hr`;
+  if (!config?.tsgId || !config?.appId || !config?.appName || !trId || !scanId) return null;
+  const appName = encodeURIComponent(config.appName);
+  return `${config.baseUrl}/${scanId}/0/${trId}/${config.appId}/${appName}?tsg-id=${config.tsgId}`;
 }

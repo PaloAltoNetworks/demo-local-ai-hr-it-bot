@@ -91,6 +91,7 @@ services:
       - MCP_URL=${LITELLM_BASE_URL:-http://localhost:8080}/mcp/
       - PRISMA_AIRS_TSG_ID=${PRISMA_AIRS_TSG_ID:-}
       - PRISMA_AIRS_APP_ID=${PRISMA_AIRS_APP_ID:-}
+      - PRISMA_AIRS_APP_NAME=${PRISMA_AIRS_APP_NAME:-}
     restart: unless-stopped
     volumes:
       - ./logs/chatbot-v2:/app/logs

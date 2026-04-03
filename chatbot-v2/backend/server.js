@@ -60,6 +60,7 @@ Rules:
 const GUARDRAIL_NAMES = (process.env.LITELLM_GUARDRAIL_NAME || '').split(',').map(s => s.trim()).filter(Boolean);
 const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
+const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
 
 // Per-request context set before each streamText call
 let _reqCtx = { threadId: '', userIp: '' };
@@ -277,7 +278,8 @@ app.get('/api/models', async (_req, res) => {
         provider: PROVIDER_LABELS[provider] || provider,
       };
     });
-    res.json({ models, default: MODEL_ID });
+    const defaultModel = models.some(m => m.id === MODEL_ID) ? MODEL_ID : (models[0]?.id || MODEL_ID);
+    res.json({ models, default: defaultModel });
   } catch (err) {
     console.warn(`Failed to fetch models: ${err.message}`);
     res.json({ models: [{ id: MODEL_ID, name: MODEL_ID, provider: 'unknown' }], default: MODEL_ID });
@@ -289,7 +291,8 @@ app.get('/api/airs-config', (_req, res) => {
   res.json({
     tsgId: AIRS_TSG_ID,
     appId: AIRS_APP_ID,
-    baseUrl: 'https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions',
+    appName: AIRS_APP_NAME,
+    baseUrl: 'https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/api-violations',
   });
 });
 
