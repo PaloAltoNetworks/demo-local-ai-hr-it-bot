@@ -40,20 +40,10 @@ export AWS_REGION=us-east-1
 docker compose up -d
 
 # Health checks
-curl http://localhost:3001/health    # Gateway
-curl http://localhost:3002/health    # Chatbot host
-curl http://localhost:3003/health    # HR agent
-curl http://localhost:3004/health    # IT agent
-curl http://localhost:3005/health    # General agent
 curl http://localhost:3016/health    # IT Tools (standalone MCP)
 curl http://localhost:3017/health    # HR Tools (standalone MCP)
 curl http://localhost:3018/health    # Chatbot V2 (AI SDK + MCP)
 curl http://localhost:3019/health    # IT Triage Agent (agentic MCP)
-
-# Test full query pipeline
-curl -X POST http://localhost:3001/api/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "Who is my manager?", "language": "en"}'
 
 # Seed IT ticket database
 cd mcp-server/it-mcp-server && npm run seed-db
@@ -77,11 +67,6 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 ### Service Ports
 | Service | Host Port | Internal Port |
 |---------|-----------|---------------|
-| mcp-gateway | 3001 | 3001 |
-| chatbot-host | 3002 | 3002 |
-| hr-mcp-server | 3003 | 3000 |
-| it-mcp-server | 3004 | 3000 |
-| general-mcp-server | 3005 | 3000 |
 | it-tools-mcp-server | 3016 | 3000 |
 | hr-tools-mcp-server | 3017 | 3000 |
 | chatbot-v2 | 3018 | 3018 |
