@@ -21,7 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const LITELLM_BASE_URL = process.env.LITELLM_BASE_URL || 'http://localhost:8080';
 const LITELLM_API_KEY = process.env.LITELLM_API_KEY || 'sk-1234';
-const MODEL_ID = process.env.IT_TRIAGE_MODEL || process.env.CHATBOT_V2_MODEL || 'eu.anthropic.claude-opus-4-6-v1';
+const MODEL_ID = process.env.IT_TRIAGE_MODEL || process.env.LITELLM_DEFAULT_MODEL || 'eu.anthropic.claude-opus-4-6-v1';
 const MCP_URL = process.env.MCP_URL || `${LITELLM_BASE_URL}/mcp/`;
 
 // --- IT Process Data (local — agent owns this domain) ---

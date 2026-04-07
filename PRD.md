@@ -245,7 +245,7 @@ agents/it-triage-agent/
 **Chatbot V2**:
 - `LITELLM_BASE_URL` — LiteLLM proxy URL
 - `LITELLM_API_KEY` — API key for LiteLLM
-- `CHATBOT_V2_MODEL` — Default model ID
+- `LITELLM_DEFAULT_MODEL` — Default model ID
 - `MCP_URL` — MCP aggregator endpoint (defaults to `{LITELLM_BASE_URL}/mcp/`)
 - `LITELLM_GUARDRAIL_NAME` — Comma-separated LiteLLM guardrail names to enforce in Phase 3 (e.g. `PANW-pre,PANW-post`)
 - `PRISMA_AIRS_TSG_ID` — Strata Cloud Manager tenant ID (for report links)
@@ -255,7 +255,7 @@ agents/it-triage-agent/
 **IT Triage Agent**:
 - `LITELLM_BASE_URL` — LiteLLM proxy URL (for LLM calls via `/v1` and MCP calls via `/mcp`)
 - `LITELLM_API_KEY` — API key for LiteLLM
-- `IT_TRIAGE_MODEL` — Model ID for the agent's LLM (defaults to `CHATBOT_V2_MODEL`)
+- `IT_TRIAGE_MODEL` — Model ID for the agent's LLM (defaults to `LITELLM_DEFAULT_MODEL`)
 
 ---
 

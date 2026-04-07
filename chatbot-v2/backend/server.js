@@ -38,7 +38,7 @@ const PORT = process.env.CHATBOT_V2_PORT || 3018;
 
 const LITELLM_BASE_URL = process.env.LITELLM_BASE_URL || 'http://localhost:8080';
 const LITELLM_API_KEY = process.env.LITELLM_API_KEY || 'sk-1234';
-const MODEL_ID = process.env.CHATBOT_V2_MODEL || 'eu.anthropic.claude-opus-4-6-v1';
+const MODEL_ID = process.env.LITELLM_DEFAULT_MODEL || 'eu.anthropic.claude-opus-4-6-v1';
 const MCP_URL = process.env.MCP_URL || `${LITELLM_BASE_URL}/mcp/`;
 
 const STATIC_USER = {

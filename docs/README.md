@@ -82,7 +82,7 @@ All services read from the same `.env` file via `env_file` in docker-compose.
 ```bash
 LITELLM_BASE_URL=http://localhost:8080
 LITELLM_API_KEY=sk-your-key
-CHATBOT_V2_MODEL=qwen.qwen3-32b-v1:0
+LITELLM_DEFAULT_MODEL=qwen.qwen3-32b-v1:0
 MCP_URL=http://localhost:8080/mcp/
 ```
 
