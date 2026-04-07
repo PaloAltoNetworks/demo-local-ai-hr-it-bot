@@ -45,10 +45,10 @@ curl http://localhost:3002/health    # Chatbot host
 curl http://localhost:3003/health    # HR agent
 curl http://localhost:3004/health    # IT agent
 curl http://localhost:3005/health    # General agent
-curl http://localhost:3006/health    # IT Tools (standalone MCP)
-curl http://localhost:3007/health    # HR Tools (standalone MCP)
-curl http://localhost:3008/health    # Chatbot V2 (AI SDK + MCP)
-curl http://localhost:3009/health    # IT Triage Agent (agentic MCP)
+curl http://localhost:3016/health    # IT Tools (standalone MCP)
+curl http://localhost:3017/health    # HR Tools (standalone MCP)
+curl http://localhost:3018/health    # Chatbot V2 (AI SDK + MCP)
+curl http://localhost:3019/health    # IT Triage Agent (agentic MCP)
 
 # Test full query pipeline
 curl -X POST http://localhost:3001/api/query \
@@ -82,10 +82,10 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 | hr-mcp-server | 3003 | 3000 |
 | it-mcp-server | 3004 | 3000 |
 | general-mcp-server | 3005 | 3000 |
-| it-tools-mcp-server | 3006 | 3000 |
-| hr-tools-mcp-server | 3007 | 3000 |
-| chatbot-v2 | 3008 | 3008 |
-| it-triage-agent | 3009 | 3000 |
+| it-tools-mcp-server | 3016 | 3000 |
+| hr-tools-mcp-server | 3017 | 3000 |
+| chatbot-v2 | 3018 | 3018 |
+| it-triage-agent | 3019 | 3000 |
 
 ### Workspace Layout
 - `utils/` — Shared: logger (Winston), LLM provider factory (Vercel AI SDK), i18n (i18next)
@@ -130,7 +130,7 @@ When `USE_LITELLM=true` and `LITELLM_MCP_TOOLS=true`, the coordinator bypasses a
 ### Chatbot V2 (AI SDK + MCP via LiteLLM)
 `chatbot-v2/` is a drop-in replacement for chatbot-host + mcp-gateway. It uses Vercel AI SDK `generateText` with `@ai-sdk/mcp` for native tool calling. MCP tools are fetched from LiteLLM's `/mcp` aggregator endpoint, which proxies to all registered MCP servers. AI SDK handles the tool calling loop (up to 10 steps). To switch providers, change `MCP_URL` and `LITELLM_BASE_URL`. Architecture:
 ```
-Chatbot V2 (port 3008)           Frontend (vanilla JS) + Express + AI SDK
+Chatbot V2 (port 3018)           Frontend (vanilla JS) + Express + AI SDK
        ↓ generateText + tools     @ai-sdk/mcp → single MCP connection
        LiteLLM /mcp              MCP aggregator (proxies to registered servers)
        ├── hr-tools-mcp-server    HR data (CSV)
@@ -174,7 +174,7 @@ Provider switching requires container restart. All services read from the same `
 ## Gotchas
 
 - All services communicate via Docker `mcp-network` bridge. Use Docker hostnames (e.g., `http://mcp-gateway:3001`) in inter-service calls.
-- Agents and standalone tools servers run on internal port 3000 but are mapped to different host ports (3003-3007, 3009). Chatbot V2 runs on 3008.
+- Agents and standalone tools servers run on internal port 3000 but are mapped to different host ports (3016-3017, 3019). Chatbot V2 runs on 3018.
 - MCP requests must include proper JSON-RPC 2.0 fields (`jsonrpc`, `id`, `method`, `params`).
 - The chatbot-host depends on all other services being healthy before starting.
 - Logs are volume-mounted to `./logs/{service-name}/` on the host.
