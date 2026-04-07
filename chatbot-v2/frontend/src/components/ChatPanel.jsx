@@ -157,11 +157,11 @@ export default function ChatPanel() {
                     </button>
                   </div>
                 )}
-                {msg.role === 'assistant' && msg.metadata?.usage && (
+                {msg.role === 'assistant' && msg.metadata?.usage?.totalTokens > 0 && (
                   <div className="message-usage">
                     <span className="material-symbols">savings</span>
                     {msg.metadata.usage.totalTokens.toLocaleString()} tokens
-                    <span className="usage-detail">({msg.metadata.usage.inputTokens.toLocaleString()} in / {msg.metadata.usage.outputTokens.toLocaleString()} out)</span>
+                    <span className="usage-detail">({(msg.metadata.usage.inputTokens || 0).toLocaleString()} in / {(msg.metadata.usage.outputTokens || 0).toLocaleString()} out)</span>
                   </div>
                 )}
               </div>
