@@ -17,7 +17,12 @@ export function LanguageProvider({ children }) {
   useEffect(() => {
     fetch(`/api/translations/${language}`)
       .then(r => r.json())
-      .then(setTranslations)
+      .then(data => {
+        setTranslations(data);
+        const dir = data?.language?.dir || 'ltr';
+        document.documentElement.setAttribute('dir', dir);
+        document.documentElement.setAttribute('lang', language);
+      })
       .catch(() => {});
   }, [language]);
 

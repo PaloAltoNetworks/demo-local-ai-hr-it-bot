@@ -250,6 +250,17 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
   .message { max-width: 95%; }
 }
 
+/* ═══ RTL support ═══ */
+[dir="rtl"] .sidebar { border-right: none; border-left: 1px solid var(--border-light); }
+[dir="rtl"] .question-group .question-card { margin-left: 0; margin-right: 8px; border-left: none; border-right: 2px solid var(--phase-border); }
+[dir="rtl"] .question-card { text-align: right; }
+[dir="rtl"] .message.bot .message-text ul, [dir="rtl"] .message.bot .message-text ol { padding-left: 0; padding-right: 20px; }
+[dir="rtl"] .message.bot .message-text th, [dir="rtl"] .message.bot .message-text td { text-align: right; }
+[dir="rtl"] .message.bot .message-text blockquote { border-left: none; border-right: 3px solid var(--phase); padding-left: 0; padding-right: 12px; }
+[dir="rtl"] .chat-input { text-align: right; }
+[dir="rtl"] .user-chevron { margin-left: 0; margin-right: -2px; }
+[dir="rtl"] .user-menu { right: auto; left: 0; }
+
 /* ═══ Scrollbar ═══ */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
