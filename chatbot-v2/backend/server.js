@@ -218,24 +218,18 @@ app.post('/api/chat', async (req, res) => {
       onError: (event) => {
         const error = event?.error || event;
         const msg = error?.message || String(error);
-        // Extract embedded guardrail error dict from RetryError message (pre_call format)
-        const match = msg.match(/\{['"]error['"]\s*:\s*\{.*\}\s*\}/);
-        if (match) return match[0];
-        // Convert post_call plain text guardrail block into the JSON dict the frontend expects
-        const postMatch = msg.match(/Response blocked by (\S+) .+?\(Category:\s*(\w+)\)/);
-        if (postMatch) {
-          const category = postMatch[2].toLowerCase();
-          return JSON.stringify({
-            error: {
-              type: 'guardrail_violation',
-              guardrail: postMatch[1],
-              category,
-              message: msg,
-              tr_id: _reqCtx.threadId,
-              response_detected: { [category]: true },
-            },
-          });
+        // Prefer responseBody — contains the full guardrail JSON with scan_id/tr_id
+        const body = error?.responseBody || error?.lastError?.responseBody || '';
+        if (body) {
+          try {
+            const parsed = JSON.parse(body);
+            if (parsed?.error) return JSON.stringify(parsed);
+          } catch {}
         }
+        // Fallback: embedded guardrail JSON in error message (RetryError wrapping)
+        const jsonMatch = msg.match(/\{['"]error['"]\s*:\s*\{.*\}\s*\}/);
+        if (jsonMatch) return jsonMatch[0];
+        // Plain text for everything else — frontend parses guardrails and generic errors
         return msg;
       },
     });

@@ -146,8 +146,13 @@
     "deny": "Deny"
   },
   "guardrail": {
-    "blocked": "I'm sorry, but I can't process this request. Our AI security system has identified potential risks in this prompt.",
-    "viewReport": "View security report",
+    "cannotProcessRequest": "I cannot process this request",
+    "cannotProvideResponse": "I cannot provide this response",
+    "containsIssues": "because it contains: {{issues}}.",
+    "policyViolation": "because it does not comply with the security policies in place.",
+    "rephraseRequest": "Please rephrase your question appropriately.",
+    "helpWithElse": "Can I help you with something else?",
+    "viewReport": "View incident",
     "configError": "The AI security service (Prisma AIRS) is currently unavailable due to a configuration error. Please contact The Otter support team, he knows what to do.",
     "error": "An error occurred while processing your request."
   },

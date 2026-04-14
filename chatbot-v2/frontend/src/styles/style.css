@@ -168,6 +168,9 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .guardrail-report-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 4px 10px; border-radius: 6px; background: color-mix(in srgb, var(--red) 8%, transparent); color: var(--red); font-size: 12px; font-weight: 500; text-decoration: none; transition: all var(--transition); }
 .guardrail-report-link:hover { background: color-mix(in srgb, var(--red) 15%, transparent); text-decoration: none; }
 .guardrail-report-link .material-symbols { font-size: 14px; }
+.guardrail-report-inline { display: inline-flex; align-items: center; gap: 4px; color: var(--red); font-size: 11px; font-weight: 500; text-decoration: none; transition: opacity var(--transition); }
+.guardrail-report-inline:hover { opacity: 0.7; text-decoration: none; }
+.guardrail-report-inline .material-symbols { font-size: 13px; }
 .guardrail-icon { color: var(--red) !important; font-size: 18px; }
 .error-block { background: color-mix(in srgb, var(--orange) 8%, var(--surface-alt)) !important; border-color: color-mix(in srgb, var(--orange) 30%, transparent) !important; }
 .error-icon { color: var(--orange) !important; font-size: 18px; }

@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useMemo } from 'react';
+import { createContext, useContext, useCallback, useMemo, useRef } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 
@@ -57,6 +57,50 @@ export function ChatProvider({ model, phase, children }) {
     return map;
   }, [chat.messages]);
 
+  // Parse the error string from the SSE stream into a structured object once.
+  // Downstream components receive a typed object, never a raw string.
+  const lastRawError = useRef(null);
+  const lastParsedError = useRef(null);
+  const parsedError = useMemo(() => {
+    if (!chat.error) return null;
+    if (chat.error === lastRawError.current) return lastParsedError.current;
+    lastRawError.current = chat.error;
+    const msg = chat.error.message || String(chat.error);
+
+    // 1. Embedded JSON — guardrail detail lives in provider_specific_fields.error
+    try {
+      const json = JSON.parse(msg.replace(/'/g, '"').replace(/True/g, 'true').replace(/False/g, 'false'));
+      const outer = json.error || json;
+      const data = outer.provider_specific_fields?.error || outer;
+      if (!data.tr_id) data.tr_id = threadId;
+      if (!data.message) data.message = outer.message;
+      if (outer.guardrail_mode) data.guardrail_mode = outer.guardrail_mode;
+      lastParsedError.current = data;
+      return lastParsedError.current;
+    } catch { /* not JSON */ }
+
+    // 2. Plain text guardrail blocks: "Prompt blocked by X ..." or "Response blocked by X ..."
+    const gr = msg.match(/(Prompt|Response) blocked by (\S+) .+?\(Category:\s*(\w+)\)/);
+    if (gr) {
+      const isResponse = gr[1] === 'Response';
+      const category = gr[3].toLowerCase();
+      lastParsedError.current = {
+        type: 'guardrail_violation',
+        guardrail: gr[2],
+        category,
+        message: msg,
+        tr_id: threadId,
+        isResponseBlock: isResponse,
+        detected: { [category]: true },
+      };
+      return lastParsedError.current;
+    }
+
+    // 3. Generic error (API errors, network failures, etc.)
+    lastParsedError.current = { type: 'error', message: msg };
+    return lastParsedError.current;
+  }, [chat.error]);
+
   const wrappedSendMessage = useCallback((opts) => {
     return chat.sendMessage({ ...opts, metadata: { phase } });
   }, [chat.sendMessage, phase]);
@@ -74,6 +118,7 @@ export function ChatProvider({ model, phase, children }) {
 
   const value = {
     ...chat,
+    error: parsedError,
     sendMessage: wrappedSendMessage,
     phaseMap,
     sessionUsage,

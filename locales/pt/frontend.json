@@ -146,10 +146,15 @@
     "deny": "Recusar"
   },
   "guardrail": {
-    "blocked": "Pedimos desculpas, mas não podemos processar esta solicitação. Nosso sistema de segurança de IA identificou riscos potenciais neste prompt.",
-    "viewReport": "Ver relatório de segurança",
+    "cannotProcessRequest": "Não é possível processar esta solicitação",
+    "cannotProvideResponse": "Não é possível fornecer esta resposta",
+    "containsIssues": "porque contém: {{issues}}.",
+    "policyViolation": "porque não está em conformidade com as políticas de segurança vigentes.",
+    "rephraseRequest": "Por favor, reformule a sua pergunta de forma apropriada.",
+    "helpWithElse": "Posso ajudá-lo(a) com mais alguma coisa?",
+    "viewReport": "Ver incidente",
     "configError": "O serviço de segurança de IA (Prisma AIRS) está atualmente indisponível devido a um erro de configuração. Por favor, entre em contato com a equipe de suporte do The Otter, ele sabe o que fazer.",
-    "error": "Ocorreu um erro ao processar sua solicitação."
+    "error": "Ocorreu um erro ao processar a sua solicitação."
   },
   "language": {
     "code": "pt",

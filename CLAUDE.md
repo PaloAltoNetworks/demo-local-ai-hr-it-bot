@@ -109,9 +109,6 @@ Agentic MCP servers in `agents/{name}/` wrap a `ToolLoopAgent` (AI SDK) inside a
 3. `Dockerfile` — Own Dockerfile, copies agent source files
 4. `package.json` — Dependencies: `ai`, `@ai-sdk/mcp`, `@ai-sdk/openai`, `@modelcontextprotocol/sdk`, `express`, `zod`
 
-### LiteLLM Direct Mode
-When `USE_LITELLM=true` and `LITELLM_MCP_TOOLS=true`, the coordinator bypasses agent routing entirely. Instead, it sends the user query directly to LiteLLM, which has the standalone MCP tools servers (hr-tools, it-tools) registered in its config. LiteLLM handles tool calling, data retrieval, and answer generation in one shot — no multi-hop agent routing needed. The existing agents (HR, IT, General) remain available as fallback when this mode is off.
-
 ### Chatbot V2 (AI SDK + MCP via LiteLLM)
 `chatbot-v2/` is a drop-in replacement for chatbot-host + mcp-gateway. It uses Vercel AI SDK `generateText` with `@ai-sdk/mcp` for native tool calling. MCP tools are fetched from LiteLLM's `/mcp` aggregator endpoint, which proxies to all registered MCP servers. AI SDK handles the tool calling loop (up to 10 steps). To switch providers, change `MCP_URL` and `LITELLM_BASE_URL`. Architecture:
 ```
@@ -145,13 +142,7 @@ The coordinator (`mcp-gateway/coordinator.js`) and each agent independently call
 ## Environment Configuration
 
 Copy `.env.example` to `.env`. Key variables:
-- `OLLAMA_SERVER_URL` / `OLLAMA_MODEL` — Local LLM (default: `qwen2.5:1.5b`)
-- `AWS_BEARER_TOKEN_BEDROCK` / `BEDROCK_MODEL` — AWS Bedrock
-- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `AZURE_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS` — Other providers
-- `USE_LITELLM` / `LITELLM_BASE_URL` — LiteLLM proxy mode
-- `LITELLM_MCP_TOOLS=true` — When set with `USE_LITELLM=true`, coordinator bypasses agent routing and lets LiteLLM handle MCP tool calling directly
 - `LOG_LEVEL` — error, warn, info, debug
-- `SESSION_TTL` — Session timeout in seconds
 - `PRISMA_AIRS_*` — Optional security integration
 
 Provider switching requires container restart. All services read from the same `.env` file via `env_file` in docker-compose.

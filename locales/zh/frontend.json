@@ -146,8 +146,13 @@
     "deny": "拒绝"
   },
   "guardrail": {
-    "blocked": "很抱歉，我们无法处理此请求。我们的AI安全系统已识别出此提示中的潜在风险。",
-    "viewReport": "查看安全报告",
+    "cannotProcessRequest": "无法处理此请求",
+    "cannotProvideResponse": "无法提供此回复",
+    "containsIssues": "因为其中包含：{{issues}}。",
+    "policyViolation": "因为不符合现行的安全策略。",
+    "rephraseRequest": "请您适当地重新表述您的问题。",
+    "helpWithElse": "还有什么可以为您效劳的吗？",
+    "viewReport": "查看事件",
     "configError": "AI安全服务（Prisma AIRS）由于配置错误当前不可用。请联系The Otter支持团队，他知道该怎么做。",
     "error": "处理您的请求时发生错误。"
   },

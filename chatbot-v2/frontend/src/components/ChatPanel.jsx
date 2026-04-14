@@ -79,7 +79,7 @@ export default function ChatPanel() {
             );
           }
           if (item.type === 'error') {
-            return <GuardrailError key={item.key} error={item.error} airsConfig={airsConfig} t={t} />;
+            return <StreamError key={item.key} error={item.error} airsConfig={airsConfig} t={t} />;
           }
           const { msg, phase: msgPhase } = item;
           return (
@@ -182,7 +182,7 @@ export default function ChatPanel() {
 
         {/* Native error display — hidden once captured as a sticky error */}
         {status === 'error' && error && !stickyErrors.some(se => se.error === error) && (
-          <GuardrailError error={error} airsConfig={airsConfig} t={t} onRetry={() => regenerate()} />
+          <StreamError error={error} airsConfig={airsConfig} t={t} onRetry={() => regenerate()} />
         )}
 
         <div ref={messagesEndRef} />
@@ -215,42 +215,19 @@ export default function ChatPanel() {
   );
 }
 
-function parseGuardrailError(errorMessage) {
-  try {
-    const jsonStr = errorMessage.replace(/'/g, '"').replace(/True/g, 'true').replace(/False/g, 'false');
-    const parsed = JSON.parse(jsonStr);
-    const err = parsed.error || parsed;
-    const type = err.type || '';
-    return {
-      isGuardrail: type === 'guardrail_violation' || type === 'guardrail_scan_error',
-      isGuardrailConfig: type === 'guardrail_config_error',
-      guardrail: err.guardrail,
-      category: err.category,
-      code: err.code,
-      profileName: err.profile_name,
-      profileId: err.profile_id,
-      scanId: err.scan_id,
-      trId: err.tr_id,
-      message: err.message,
-      detected: err.prompt_detected || err.response_detected,
-    };
-  } catch {
-    return { isGuardrail: false, isGuardrailConfig: false, message: errorMessage };
-  }
-}
+function StreamError({ error, airsConfig, t, onRetry }) {
+  const type = error?.type || '';
+  const isGuardrail = type === 'guardrail_violation' || type === 'guardrail_scan_error';
+  const isGuardrailConfig = type === 'guardrail_config_error';
+  const reportUrl = isGuardrail ? buildReportUrl(airsConfig, { trId: error.tr_id, scanId: error.scan_id }) : null;
 
-function GuardrailError({ error, airsConfig, t, onRetry }) {
-  const errorText = error?.message || String(error);
-  const info = parseGuardrailError(errorText);
-
-  if (info.isGuardrailConfig) {
+  // Guardrail config error (AIRS unreachable)
+  if (isGuardrailConfig) {
     return (
       <div className="message bot">
-        <div className="message-avatar">
-          <span className="material-symbols guardrail-icon">security</span>
-        </div>
+        <div className="message-avatar"><span className="material-symbols guardrail-icon">security</span></div>
         <div className="message-body">
-          <div className="message-text guardrail-config-error">
+          <div className="message-text guardrail-block">
             <p>{t('guardrail.configError')}</p>
           </div>
         </div>
@@ -258,45 +235,53 @@ function GuardrailError({ error, airsConfig, t, onRetry }) {
     );
   }
 
-  if (info.isGuardrail) {
-    const reportUrl = buildReportUrl(airsConfig, { trId: info.trId, scanId: info.scanId });
-    const detectedFlags = info.detected
-      ? Object.entries(info.detected).filter(([, v]) => v).map(([k]) => k.replace(/_/g, ' '))
+  // Guardrail violation — personalized i18n message
+  if (isGuardrail) {
+    const detected = error.prompt_detected || error.response_detected || error.detected;
+    const isResponse = error.isResponseBlock || !!error.response_detected;
+    const flags = detected
+      ? Object.entries(detected).filter(([, v]) => v).map(([k]) => k.replace(/_/g, ' '))
       : [];
+    const issues = flags.join(', ');
 
     return (
       <div className="message bot">
-        <div className="message-avatar">
-          <span className="material-symbols guardrail-icon">security</span>
-        </div>
+        <div className="message-avatar"><span className="material-symbols guardrail-icon">security</span></div>
         <div className="message-body">
           <div className="message-text guardrail-block">
-            <p>{t('guardrail.blocked')}</p>
-            {detectedFlags.length > 0 && (
-              <p className="guardrail-flags">
-                {detectedFlags.map(f => <span key={f} className="guardrail-flag">{f}</span>)}
-              </p>
-            )}
-            {reportUrl && (
-              <a href={reportUrl} target="_blank" rel="noopener noreferrer" className="guardrail-report-link">
+            <p>
+              {isResponse ? t('guardrail.cannotProvideResponse') : t('guardrail.cannotProcessRequest')}
+              {' '}
+              {issues ? t('guardrail.containsIssues', { issues }) : t('guardrail.policyViolation')}
+            </p>
+            <p>{isResponse ? t('guardrail.helpWithElse') : t('guardrail.rephraseRequest')}</p>
+          </div>
+          {reportUrl && isResponse && (
+            <div className="message-usage">
+              <a href={reportUrl} target="_blank" rel="noopener noreferrer" className="guardrail-report-inline">
                 <span className="material-symbols">open_in_new</span>
                 {t('guardrail.viewReport')}
               </a>
-            )}
-          </div>
+            </div>
+          )}
+          {reportUrl && !isResponse && (
+            <a href={reportUrl} target="_blank" rel="noopener noreferrer" className="guardrail-report-link">
+              <span className="material-symbols">open_in_new</span>
+              {t('guardrail.viewReport')}
+            </a>
+          )}
         </div>
       </div>
     );
   }
 
+  // Generic error (API errors, network, auth, rate limit, etc.)
   return (
     <div className="message bot">
-      <div className="message-avatar">
-        <span className="material-symbols error-icon">error</span>
-      </div>
+      <div className="message-avatar"><span className="material-symbols error-icon">error</span></div>
       <div className="message-body">
         <div className="message-text error-block">
-          {info.message || t('guardrail.error')}
+          <p>{error?.message || t('guardrail.error')}</p>
           {onRetry && (
             <button className="retry-btn" onClick={onRetry}>
               <span className="material-symbols">refresh</span>

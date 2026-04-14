@@ -14,7 +14,12 @@ export function useAirsConfig() {
 }
 
 export function buildReportUrl(config, { trId, scanId }) {
-  if (!config?.tsgId || !config?.appId || !config?.appName || !trId || !scanId) return null;
-  const appName = encodeURIComponent(config.appName);
-  return `${config.baseUrl}/${scanId}/0/${trId}/${config.appId}/${appName}?tsg-id=${config.tsgId}`;
+  if (!config?.tsgId || !trId) return null;
+  // Direct incident link when all identifiers are available
+  if (scanId && config.appId && config.appName) {
+    const appName = encodeURIComponent(config.appName);
+    return `${config.baseUrl}/${scanId}/0/${trId}/${config.appId}/${appName}?tsg_id=${config.tsgId}`;
+  }
+  // Dashboard fallback when scanId is unavailable (e.g. plain text guardrail errors)
+  return `${config.baseUrl}?tsg-id=${config.tsgId}`;
 }

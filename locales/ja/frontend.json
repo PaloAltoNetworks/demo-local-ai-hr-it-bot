@@ -146,8 +146,13 @@
     "deny": "拒否"
   },
   "guardrail": {
-    "blocked": "申し訳ございませんが、このリクエストを処理することができません。当社のAIセキュリティシステムがこのプロンプトに潜在的なリスクを特定いたしました。",
-    "viewReport": "セキュリティレポートを表示",
+    "cannotProcessRequest": "このリクエストを処理することができません",
+    "cannotProvideResponse": "この応答を提供することができません",
+    "containsIssues": "以下の内容が含まれているためです：{{issues}}。",
+    "policyViolation": "適用されているセキュリティポリシーに準拠していないためです。",
+    "rephraseRequest": "お手数ですが、ご質問を適切に言い換えてください。",
+    "helpWithElse": "他にお手伝いできることはございますか？",
+    "viewReport": "インシデントを表示",
     "configError": "AIセキュリティサービス（Prisma AIRS）は設定エラーのため現在利用できません。The Otterサポートチームにご連絡ください。対処方法を把握しております。",
     "error": "リクエストの処理中にエラーが発生いたしました。"
   },
