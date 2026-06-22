@@ -102,7 +102,7 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .question-card-text { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4; }
 .question-group { margin-bottom: 12px; }
 .question-group-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--phase); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding: 0 4px; }
-.question-group .question-card { margin-left: 8px; border-left: 2px solid var(--phase-border); }
+.question-group .question-card { border-left: 2px solid var(--phase-border); }
 
 /* ═══ Chat ═══ */
 .chat { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
@@ -257,7 +257,7 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 
 /* ═══ RTL support ═══ */
 [dir="rtl"] .sidebar { border-right: none; border-left: 1px solid var(--border-light); }
-[dir="rtl"] .question-group .question-card { margin-left: 0; margin-right: 8px; border-left: none; border-right: 2px solid var(--phase-border); }
+[dir="rtl"] .question-group .question-card { border-left: none; border-right: 2px solid var(--phase-border); }
 [dir="rtl"] .question-card { text-align: right; }
 [dir="rtl"] .message.bot .message-text ul, [dir="rtl"] .message.bot .message-text ol { padding-left: 0; padding-right: 20px; }
 [dir="rtl"] .message.bot .message-text th, [dir="rtl"] .message.bot .message-text td { text-align: right; }
