@@ -107,7 +107,7 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .question-group-cards .question-card { position: relative; }
 .question-group-cards .question-card::before { content: ''; position: absolute; left: -19px; top: 50%; width: 15px; height: 2px; background: var(--phase); opacity: 0.5; }
 .question-group-cards .question-card::after { content: ''; position: absolute; left: -21px; top: 0; width: 2px; height: calc(100% + 6px); background: var(--phase); opacity: 0.6; }
-.question-group-cards .question-card:last-child::after { height: 50%; }
+.question-group-cards .question-card:last-child::after { height: 57%; }
 
 /* ═══ Chat ═══ */
 .chat { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
