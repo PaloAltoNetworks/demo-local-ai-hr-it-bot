@@ -135,6 +135,31 @@ export default function ChatPanel() {
                       );
                     }
 
+                    if (toolName === 'reflect' || toolName?.endsWith('-reflect')) {
+                      const REACT_PHASE_ICON = { observe: 'visibility', reason: 'psychology', decide: 'task_alt' };
+                      const REACT_PHASE_LABEL = { observe: 'Observe', reason: 'Reason', decide: 'Decide' };
+                      const phase = toolArgs?.phase || 'reason';
+                      const icon = REACT_PHASE_ICON[phase] || 'psychology';
+                      const label = REACT_PHASE_LABEL[phase] || phase;
+                      const isStreaming = toolState === 'input-streaming';
+
+                      return (
+                        <div key={i} className={`react-step react-${phase} ${isStreaming ? 'streaming' : ''}`}>
+                          <div className="react-step-header">
+                            <span className="material-symbols react-step-icon">{icon}</span>
+                            <span className="react-step-label">{label}</span>
+                            {isStreaming && <span className="react-step-streaming-dot" />}
+                          </div>
+                          {toolArgs?.observation && (
+                            <div className="react-step-observation">{toolArgs.observation}</div>
+                          )}
+                          {toolArgs?.next_action && toolState === 'result' && (
+                            <div className="react-step-next">→ {toolArgs.next_action}</div>
+                          )}
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={i} className="tool-call">
                         <span className="material-symbols">build</span>

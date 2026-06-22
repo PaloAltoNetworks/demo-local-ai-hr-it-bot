@@ -269,3 +269,39 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ReAct step display */
+.react-step {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+  margin: 2px 0;
+  border-left: 2px solid var(--border);
+  border-radius: 0 6px 6px 0;
+  background: var(--surface-alt);
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+.react-step.react-observe { border-left-color: #4a9eff; }
+.react-step.react-reason  { border-left-color: #f0a500; }
+.react-step.react-decide  { border-left-color: #00cc66; }
+.react-step-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.react-step-icon { font-size: 1rem; }
+.react-step-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.react-step-streaming-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: blink 1s infinite;
+  margin-left: auto;
+}
+.react-step-observation { color: var(--text-secondary); line-height: 1.4; }
+.react-step-next { color: var(--text-muted); font-style: italic; }
+@keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0.2 } }

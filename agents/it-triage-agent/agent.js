@@ -201,6 +201,20 @@ const checkApprovalRequired = tool({
   },
 });
 
+const reflect = tool({
+  description: 'Record your observation from the last tool result and state your next action. Call this: (1) after every data tool result (get_employee, search_tickets, etc.), (2) before every decision tool (classify_severity, assign_team, check_approval_required). This enforces the ReAct loop: Observe → Reason → Decide.',
+  inputSchema: z.object({
+    phase: z.enum(['observe', 'reason', 'decide']).describe('Current ReAct phase'),
+    observation: z.string().describe('What did the last tool return? Was it expected? Any surprises?'),
+    gaps: z.string().describe('What is still unknown or ambiguous?'),
+    next_action: z.string().describe('What will you do next and why?'),
+  }),
+  execute: async ({ phase, observation, gaps, next_action }) => {
+    console.log(`[react:${phase}] ${observation} | gaps: ${gaps} | next: ${next_action}`);
+    return { phase, acknowledged: true };
+  },
+});
+
 // --- Agent Instructions ---
 
 const TRIAGE_INSTRUCTIONS = `You are an IT Triage Agent — a specialized assistant that handles IT support requests with structured reasoning.
@@ -231,13 +245,18 @@ After classify_severity + assign_team + check_approval_required:
 - Do the results make sense together? (e.g. Critical severity should always route to escalation team)
 - If something looks inconsistent, reason about it before finalizing.
 
-## Workflow:
-1. Think: what category does this request fall into? What keywords should I search?
-2. Call search_it_processes with those keywords.
-3. In parallel: call get_employee + get_employee_assets for the requesting employee.
-4. Assess results. Reformulate if needed.
-5. Call classify_severity, check_approval_required, assign_team (these can run in parallel — they are independent).
-6. Return a structured summary with: process found, severity, SLA, assigned team, approval required, and any caveats.
+## Workflow (enforce ReAct loop):
+1. Think: what category is this request? Call search_it_processes.
+2. reflect({ phase: 'observe', observation: <what search returned>, gaps: <what's missing>, next_action: 'fetch employee data' })
+3. In parallel: get_employee + get_employee_assets.
+4. reflect({ phase: 'observe', observation: <employee data summary>, gaps: <any missing fields>, next_action: 'classify and route' })
+5. In parallel: classify_severity + check_approval_required + assign_team.
+6. reflect({ phase: 'decide', observation: <summary of all classifications>, gaps: 'none' or <remaining unknowns>, next_action: 'return final triage result' })
+7. Return structured summary.
+
+If search_it_processes returns 0 results:
+- reflect({ phase: 'reason', observation: 'no process found for query X', gaps: 'correct category unknown', next_action: 'retry with synonym Y' })
+- Retry with a synonym before proceeding.
 
 ## Rules:
 - ALWAYS use search_it_processes first — never assume you know the process steps
@@ -264,6 +283,7 @@ export async function runTriageAgent({ query, employeeId }) {
     classify_severity: classifySeverity,
     assign_team: assignTeam,
     check_approval_required: checkApprovalRequired,
+    reflect,
   };
 
   const instructions = `${TRIAGE_INSTRUCTIONS}
