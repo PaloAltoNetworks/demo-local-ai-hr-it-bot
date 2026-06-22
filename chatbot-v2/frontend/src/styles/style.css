@@ -102,8 +102,8 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .question-card-text { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4; }
 .question-group { margin-bottom: 12px; border-left: 2px solid var(--phase); padding-left: 0; }
 .question-group-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--phase); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; padding: 4px 0 2px 10px; }
-.question-group .question-card { border-left: none; margin-left: 0; position: relative; padding-left: 22px; }
-.question-group .question-card::before { content: ''; position: absolute; left: 0; top: 50%; width: 12px; height: 2px; background: var(--phase); opacity: 0.5; }
+.question-group .question-card { border-left: none; margin-left: 0; position: relative; padding-left: 20px; }
+.question-group .question-card::before { content: ''; position: absolute; left: 0; top: 50%; width: 14px; height: 2px; background: var(--phase); opacity: 0.5; }
 
 /* ═══ Chat ═══ */
 .chat { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
