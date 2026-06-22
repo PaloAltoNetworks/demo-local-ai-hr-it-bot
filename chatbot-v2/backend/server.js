@@ -133,6 +133,8 @@ async function getMCPTools() {
     return await mcpClient.tools();
   } catch (err) {
     console.warn(`MCP tools unavailable: ${err.message}`);
+    mcpClient = null;
+    initMCPClient();
     return {};
   }
 }
