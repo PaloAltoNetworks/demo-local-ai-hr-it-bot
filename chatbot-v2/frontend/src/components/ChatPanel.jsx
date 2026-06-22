@@ -97,12 +97,12 @@ export default function ChatPanel() {
                       ? <div key={i} className="message-text">{part.text}</div>
                       : <div key={i} className="message-text"><Markdown remarkPlugins={[remarkGfm]}>{part.text}</Markdown></div>;
                   }
-                  if (part.type === 'tool-invocation' || part.type === 'dynamic-tool') {
-                    const isDynamic = part.type === 'dynamic-tool';
-                    const toolName = isDynamic ? part.toolName : part.toolInvocation.toolName;
-                    const toolState = isDynamic ? part.state : part.toolInvocation.state;
-                    const toolArgs = isDynamic ? part.input : part.toolInvocation.args;
-                    const approval = isDynamic ? part.approval : part.toolInvocation.approval;
+                  if (part.type === 'dynamic-tool' || part.type.startsWith('tool-')) {
+                    // AI SDK v6: static tools → type is 'tool-${toolName}', dynamic → 'dynamic-tool'
+                    const toolName = part.type === 'dynamic-tool' ? part.toolName : part.type.slice(5);
+                    const toolState = part.state;
+                    const toolArgs = part.input;
+                    const approval = part.approval;
 
                     if (toolState === 'approval-requested') {
                       return (
