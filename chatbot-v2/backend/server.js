@@ -62,11 +62,9 @@ const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
 const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
 
-// Per-request context set before each streamText call
-let _reqCtx = { threadId: '', userIp: '' };
-
-// Injects user identity, thread trace, and guardrails into every LiteLLM request
-function litellmFetch(guarded = false) {
+// Injects user identity, thread trace, and guardrails into every LiteLLM request.
+// reqCtx is captured per-request to avoid cross-request contamination.
+function litellmFetch(reqCtx, guarded = false) {
   return async (url, init) => {
     if (init?.body) {
       const body = JSON.parse(init.body);
@@ -75,17 +73,17 @@ function litellmFetch(guarded = false) {
         ...body.metadata,
         app_user: STATIC_USER.employee_id,
         app_name: 'The Otter V2',
-        user_ip: _reqCtx.userIp,
-        trace_id: _reqCtx.threadId,
-        tr_id: _reqCtx.threadId,
-        tags: [`thread:${_reqCtx.threadId}`],
+        user_ip: reqCtx.userIp,
+        trace_id: reqCtx.threadId,
+        tr_id: reqCtx.threadId,
+        tags: [`thread:${reqCtx.threadId}`],
       };
       if (guarded) {
         body.guardrails = GUARDRAIL_NAMES;
       }
       const headers = new Headers(init.headers);
       headers.set('x-litellm-spend-logs-metadata', JSON.stringify({
-        thread_id: _reqCtx.threadId,
+        thread_id: reqCtx.threadId,
         app_user: STATIC_USER.employee_id,
       }));
       init = { ...init, headers, body: JSON.stringify(body) };
@@ -94,20 +92,12 @@ function litellmFetch(guarded = false) {
   };
 }
 
-const openai = createOpenAI({
-  baseURL: `${LITELLM_BASE_URL}/v1`,
-  apiKey: LITELLM_API_KEY,
-  fetch: litellmFetch(false),
-});
-
-const openaiGuarded = createOpenAI({
-  baseURL: `${LITELLM_BASE_URL}/v1`,
-  apiKey: LITELLM_API_KEY,
-  fetch: litellmFetch(true),
-});
-
-function getModel(modelId, guarded = false) {
-  const provider = guarded ? openaiGuarded : openai;
+function getModel(modelId, reqCtx, guarded = false) {
+  const provider = createOpenAI({
+    baseURL: `${LITELLM_BASE_URL}/v1`,
+    apiKey: LITELLM_API_KEY,
+    fetch: litellmFetch(reqCtx, guarded),
+  });
   return provider.chat(modelId || MODEL_ID);
 }
 
@@ -175,7 +165,7 @@ app.post('/api/chat', async (req, res) => {
     const requestedModel = req.body.model;
     const phase = req.body.phase;
     const guarded = phase === 'phase3';
-    _reqCtx = {
+    const reqCtx = {
       threadId: req.body.threadId || crypto.randomUUID(),
       userIp: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
     };
@@ -193,7 +183,7 @@ app.post('/api/chat', async (req, res) => {
     const messages = await convertToModelMessages(req.body.messages, { tools });
 
     const result = streamText({
-      model: getModel(requestedModel, guarded),
+      model: getModel(requestedModel, reqCtx, guarded),
       system: SYSTEM_PROMPT,
       messages,
       tools,
@@ -201,7 +191,7 @@ app.post('/api/chat', async (req, res) => {
       stopWhen: stepCountIs(10),
       onFinish: ({ text, totalUsage, finishReason, steps }) => {
         if (!text && totalUsage?.completionTokens === 0) {
-          console.warn(`[chat] Empty response from ${requestedModel || MODEL_ID} (thread: ${_reqCtx.threadId}, reason: ${finishReason}, steps: ${steps?.length || 0})`);
+          console.warn(`[chat] Empty response from ${requestedModel || MODEL_ID} (thread: ${reqCtx.threadId}, reason: ${finishReason}, steps: ${steps?.length || 0})`);
         }
       },
     });
