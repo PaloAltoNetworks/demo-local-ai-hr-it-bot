@@ -42,7 +42,8 @@
       { "title": "USBアクセス申請", "icon": "usb", "questions": [
         { "icon": "looks_one", "title": "USB問題の報告", "text": "USBドライブにファイルを転送する必要がありますが、ノートパソコンに接続しても動作しません。" },
         { "icon": "looks_two", "title": "詳細の提供", "text": "来週のクライアントプレゼンテーション用にデモデータをエクスポートする必要があります。5日間で十分です。" },
-        { "icon": "looks_3", "title": "ノートパソコンの確認", "text": "Lenovo ThinkPad X1 Carbon（ASSET-00035）" }
+        { "icon": "looks_3", "title": "ノートパソコンの確認", "text": "Lenovo ThinkPad X1 Carbon（ASSET-00035）" },
+        { "icon": "looks_4", "title": "承認を依頼する", "text": "直接承認を処理してもらえますか？ソフィーは同意しています！" }
       ]}
     ],
     "phase2": [

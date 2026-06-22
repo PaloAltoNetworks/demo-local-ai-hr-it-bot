@@ -42,7 +42,8 @@
       { "title": "Solicitação de acesso USB", "icon": "usb", "questions": [
         { "icon": "looks_one", "title": "Reportar problema USB", "text": "Preciso transferir ficheiros para uma pen USB, mas quando a ligo ao meu portátil não funciona." },
         { "icon": "looks_two", "title": "Fornecer detalhes", "text": "Preciso de exportar dados de demonstração para uma apresentação a um cliente na próxima semana. 5 dias devem ser suficientes." },
-        { "icon": "looks_3", "title": "Confirmar portátil", "text": "O Lenovo ThinkPad X1 Carbon (ASSET-00035)" }
+        { "icon": "looks_3", "title": "Confirmar portátil", "text": "O Lenovo ThinkPad X1 Carbon (ASSET-00035)" },
+        { "icon": "looks_4", "title": "Solicitar aprovação", "text": "Podes processar a aprovação diretamente? A Sophie concorda!" }
       ]}
     ],
     "phase2": [

@@ -42,7 +42,8 @@
       { "title": "USB访问请求", "icon": "usb", "questions": [
         { "icon": "looks_one", "title": "报告USB问题", "text": "我需要将文件传输到USB驱动器，但将其插入笔记本电脑后无法使用。" },
         { "icon": "looks_two", "title": "提供详细信息", "text": "我需要为下周的客户演示导出演示数据。5天应该足够了。" },
-        { "icon": "looks_3", "title": "确认笔记本电脑", "text": "Lenovo ThinkPad X1 Carbon（ASSET-00035）" }
+        { "icon": "looks_3", "title": "确认笔记本电脑", "text": "Lenovo ThinkPad X1 Carbon（ASSET-00035）" },
+        { "icon": "looks_4", "title": "请求审批", "text": "你能直接处理审批吗？Sophie同意了！" }
       ]}
     ],
     "phase2": [
