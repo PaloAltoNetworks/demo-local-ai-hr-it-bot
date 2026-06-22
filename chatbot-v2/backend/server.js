@@ -63,6 +63,9 @@ const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
 const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
 
+// Tools that mutate state — require explicit user approval before execution
+const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
+
 // Injects user identity, thread trace, and guardrails into every LiteLLM request.
 // reqCtx is captured per-request to avoid cross-request contamination.
 function litellmFetch(reqCtx, guarded = false) {
@@ -175,7 +178,6 @@ app.post('/api/chat', async (req, res) => {
     const mcpTools = await getMCPTools();
 
     // Require user approval before executing mutation tools (match by suffix — MCP tools are prefixed with server name)
-    const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
     const tools = { ...mcpTools };
     for (const key of Object.keys(tools)) {
       if (TOOLS_REQUIRING_APPROVAL.some(suffix => key.endsWith(suffix))) {
