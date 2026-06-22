@@ -141,6 +141,7 @@ async function getMCPTools() {
     for (const tool of Object.values(tools)) {
       if (tool.type === 'dynamic') delete tool.type;
     }
+    console.log(`[mcp] tools loaded (${Object.keys(tools).length}): ${Object.keys(tools).join(', ')}`);
     return tools;
   } catch (err) {
     console.warn(`MCP tools unavailable: ${err.message}`);
@@ -201,7 +202,16 @@ app.post('/api/chat', async (req, res) => {
       tools,
       maxRetries: 0,
       stopWhen: stepCountIs(10),
+      onStepStart: ({ toolCalls }) => {
+        if (toolCalls?.length) {
+          for (const tc of toolCalls) {
+            const found = !!tools[tc.toolName];
+            console.log(`[chat] tool call: ${tc.toolName} → ${found ? 'found' : 'NOT FOUND in tools'}`);
+          }
+        }
+      },
       onFinish: ({ text, totalUsage, finishReason, steps }) => {
+        console.log(`[chat] finish reason: ${finishReason}, steps: ${steps?.length || 0}`);
         if (!text && totalUsage?.completionTokens === 0) {
           console.warn(`[chat] Empty response from ${requestedModel || MODEL_ID} (thread: ${reqCtx.threadId}, reason: ${finishReason}, steps: ${steps?.length || 0})`);
         }
