@@ -10,12 +10,12 @@
   "dependencies": {
     "@ai-sdk/react": "^3.0.210",
     "ai": "^6.0.208",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^6.0.1",
-    "vite": "^8.0.0"
+    "@vitejs/plugin-react": "^6.0.2",
+    "vite": "^8.0.16"
   }
 }

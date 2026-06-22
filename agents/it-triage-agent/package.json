@@ -11,10 +11,10 @@
   "dependencies": {
     "@ai-sdk/mcp": "^1.0.52",
     "@ai-sdk/openai": "^3.0.73",
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "ai": "^6.0.208",
     "express": "^5.2.1",
-    "zod": "^3.25.67"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
