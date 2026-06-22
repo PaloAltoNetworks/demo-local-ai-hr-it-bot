@@ -8,8 +8,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ai-sdk/react": "^3.0.118",
-    "ai": "^6.0.116",
+    "@ai-sdk/react": "^3.0.210",
+    "ai": "^6.0.208",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0"
