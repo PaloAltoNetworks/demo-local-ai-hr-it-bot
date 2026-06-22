@@ -100,9 +100,9 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .question-card:hover { background: var(--phase-bg); border-color: var(--phase-border); transform: translateY(-1px); box-shadow: var(--shadow); }
 .question-card .material-symbols { color: var(--phase); font-size: 18px; margin-top: 1px; flex-shrink: 0; transition: color var(--transition); }
 .question-card-text { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4; }
-.question-group { margin-bottom: 12px; }
-.question-group-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--phase); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding: 0 4px; }
-.question-group .question-card { border-left: 2px solid var(--phase-border); }
+.question-group { margin-bottom: 12px; border-left: 2px solid var(--phase); padding-left: 10px; background: var(--phase-bg); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding-bottom: 4px; }
+.question-group-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--phase); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding: 6px 4px 2px; }
+.question-group .question-card { border-left: none; background: var(--surface); }
 
 /* ═══ Chat ═══ */
 .chat { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
@@ -257,7 +257,8 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 
 /* ═══ RTL support ═══ */
 [dir="rtl"] .sidebar { border-right: none; border-left: 1px solid var(--border-light); }
-[dir="rtl"] .question-group .question-card { border-left: none; border-right: 2px solid var(--phase-border); }
+[dir="rtl"] .question-group { border-left: none; border-right: 2px solid var(--phase); padding-left: 0; padding-right: 10px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+[dir="rtl"] .question-group .question-card { border-left: none; border-right: none; }
 [dir="rtl"] .question-card { text-align: right; }
 [dir="rtl"] .message.bot .message-text ul, [dir="rtl"] .message.bot .message-text ol { padding-left: 0; padding-right: 20px; }
 [dir="rtl"] .message.bot .message-text th, [dir="rtl"] .message.bot .message-text td { text-align: right; }
