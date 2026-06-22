@@ -6,6 +6,7 @@
  */
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
@@ -290,9 +291,8 @@ app.get('/api/translations/:language', (req, res) => {
   });
 });
 
-app.get('/api/languages', async (_req, res) => {
+app.get('/api/languages', (_req, res) => {
   try {
-    const fs = await import('fs');
     const localesDir = path.join(__dirname, '../frontend/dist/locales');
     const dirs = fs.readdirSync(localesDir, { withFileTypes: true })
       .filter(d => d.isDirectory())
