@@ -34,9 +34,11 @@ export default function Sidebar({ phase }) {
                   <span className="material-symbols">{item.icon || 'format_list_numbered'}</span>
                   {item.title}
                 </div>
-                {steps.map((step, j) => (
-                  <QuestionCard key={j} item={step} onClick={handleClick} />
-                ))}
+                <div className="question-group-cards">
+                  {steps.map((step, j) => (
+                    <QuestionCard key={j} item={step} onClick={handleClick} />
+                  ))}
+                </div>
               </div>
             );
           }
