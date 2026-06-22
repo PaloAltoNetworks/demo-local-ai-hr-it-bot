@@ -134,7 +134,14 @@ async function initMCPClient() {
 async function getMCPTools() {
   if (!mcpClient) return {};
   try {
-    return await mcpClient.tools();
+    const tools = await mcpClient.tools();
+    // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() by default (type: 'dynamic'),
+    // which tells streamText to send them to the client for execution instead of running
+    // them server-side. Strip the flag so the execute() function runs on the backend.
+    for (const tool of Object.values(tools)) {
+      if (tool.type === 'dynamic') delete tool.type;
+    }
+    return tools;
   } catch (err) {
     console.warn(`MCP tools unavailable: ${err.message}`);
     mcpClient = null;

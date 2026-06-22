@@ -78,6 +78,9 @@ async function getMCPTools() {
     for (const [name, t] of Object.entries(allTools)) {
       // LiteLLM prefixes with server name: "it_triage_agent-triage_it_request"
       if (!name.includes('it_triage_agent')) {
+        // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() (type: 'dynamic') by default,
+        // which would prevent ToolLoopAgent from executing them server-side. Strip the flag.
+        if (t.type === 'dynamic') delete t.type;
         filtered[name] = t;
       }
     }
