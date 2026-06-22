@@ -143,6 +143,8 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .tool-name { color: var(--text); font-weight: 500; }
 .tool-state { font-size: 11px; opacity: 0.7; }
 .tool-state.result { color: var(--green); }
+.tool-state.streaming { color: var(--phase); }
+.tool-state.error { color: var(--red); }
 
 /* Tool approval */
 .tool-approval { padding: 12px 16px; border-radius: 10px; background: var(--phase-bg); border: 1px solid var(--phase-border); max-width: 480px; }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { useChatContext } from '../context/ChatContext.jsx';
 import { useAirsConfig, buildReportUrl } from '../hooks/useAirsConfig.js';
@@ -94,13 +95,14 @@ export default function ChatPanel() {
                   if (part.type === 'text' && part.text) {
                     return msg.role === 'user'
                       ? <div key={i} className="message-text">{part.text}</div>
-                      : <div key={i} className="message-text"><Markdown>{part.text}</Markdown></div>;
+                      : <div key={i} className="message-text"><Markdown remarkPlugins={[remarkGfm]}>{part.text}</Markdown></div>;
                   }
                   if (part.type === 'tool-invocation' || part.type === 'dynamic-tool') {
-                    const toolName = part.type === 'tool-invocation' ? part.toolInvocation.toolName : part.toolName;
-                    const toolState = part.type === 'tool-invocation' ? part.toolInvocation.state : part.state;
-                    const toolArgs = part.type === 'tool-invocation' ? part.toolInvocation.args : part.args;
-                    const approval = part.type === 'tool-invocation' ? part.toolInvocation.approval : part.approval;
+                    const isDynamic = part.type === 'dynamic-tool';
+                    const toolName = isDynamic ? part.toolName : part.toolInvocation.toolName;
+                    const toolState = isDynamic ? part.state : part.toolInvocation.state;
+                    const toolArgs = isDynamic ? part.input : part.toolInvocation.args;
+                    const approval = isDynamic ? part.approval : part.toolInvocation.approval;
 
                     if (toolState === 'approval-requested') {
                       return (
@@ -135,7 +137,8 @@ export default function ChatPanel() {
                       );
                     }
 
-                    if (toolName === 'reflect' || toolName?.endsWith('-reflect')) {
+                    const isReflect = toolName === 'reflect' || toolName?.endsWith('-reflect');
+                    if (isReflect) {
                       const REACT_PHASE_ICON = { observe: 'visibility', reason: 'psychology', decide: 'task_alt' };
                       const REACT_PHASE_LABEL = { observe: 'Observe', reason: 'Reason', decide: 'Decide' };
                       const phase = toolArgs?.phase || 'reason';
@@ -153,19 +156,23 @@ export default function ChatPanel() {
                           {toolArgs?.observation && (
                             <div className="react-step-observation">{toolArgs.observation}</div>
                           )}
-                          {toolArgs?.next_action && toolState === 'result' && (
+                          {toolArgs?.next_action && toolState === 'output-available' && (
                             <div className="react-step-next">→ {toolArgs.next_action}</div>
                           )}
                         </div>
                       );
                     }
 
+                    const isRunning = toolState === 'input-streaming' || toolState === 'input-available';
+                    const isDone = toolState === 'output-available';
+                    const isError = toolState === 'output-error';
+
                     return (
                       <div key={i} className="tool-call">
                         <span className="material-symbols">build</span>
                         <span className="tool-name">{toolName}</span>
-                        <span className={`tool-state ${toolState}`}>
-                          {toolState === 'result' ? 'done' : toolState}
+                        <span className={`tool-state ${isDone ? 'result' : isError ? 'error' : 'streaming'}`}>
+                          {isDone ? 'done' : isError ? 'error' : isRunning ? 'running' : toolState}
                         </span>
                       </div>
                     );
