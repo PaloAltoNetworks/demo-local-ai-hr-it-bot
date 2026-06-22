@@ -17,19 +17,6 @@ import { createOpenAI } from '@ai-sdk/openai';
 
 dotenv.config();
 
-// Suppress AI SDK's verbose internal error dumps — errors are already handled via onError
-const _origConsoleError = console.error;
-console.error = (...args) => {
-  if (args[0] && typeof args[0] === 'object' && args[0][Symbol.for('vercel.ai.error')]) {
-    const err = args[0];
-    const body = err.responseBody || err.lastError?.responseBody || '';
-    let summary = err.message;
-    try { summary = JSON.parse(body)?.error?.message || summary; } catch {}
-    _origConsoleError(`[chat] ${summary}`);
-    return;
-  }
-  _origConsoleError.apply(console, args);
-};
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
