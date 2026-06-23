@@ -13,6 +13,13 @@ export default function ChatPanel() {
   const [stickyErrors, setStickyErrors] = useState([]);
   const messagesEndRef = useRef(null);
   const lastErrorRef = useRef(null);
+  // key: msgId → { start, end } for whole-generation latency
+  const [msgTimings, setMsgTimings] = useState({});
+  const streamingMsgIdRef = useRef(null);
+  // key: `${msgId}:${phase}` → start timestamp, set when placeholder renders
+  const phaseStarts = useRef({});
+  // tick every 100ms while streaming to update live elapsed display
+  const [tick, setTick] = useState(0);
 
   // Persist errors into the chat flow so they survive new message sends
   useEffect(() => {
@@ -26,12 +33,52 @@ export default function ChatPanel() {
   const isStreaming = status === 'streaming' || status === 'submitted';
 
   useEffect(() => {
+    if (!isStreaming) return;
+    const id = setInterval(() => setTick(t => t + 1), 100);
+    return () => clearInterval(id);
+  }, [isStreaming]);
+
+  const prevIsStreamingRef = useRef(false);
+
+  // Track whole-generation latency per assistant message
+  useEffect(() => {
+    if (!isStreaming) {
+      // Streaming stopped — close any open timing
+      if (streamingMsgIdRef.current) {
+        const id = streamingMsgIdRef.current;
+        streamingMsgIdRef.current = null;
+        setMsgTimings(prev => {
+          if (!prev[id] || prev[id].end) return prev;
+          return { ...prev, [id]: { ...prev[id], end: Date.now() } };
+        });
+      }
+      prevIsStreamingRef.current = false;
+      return;
+    }
+    // Streaming just started — clear stale ref so placeholder shows in global slot
+    if (!prevIsStreamingRef.current) {
+      streamingMsgIdRef.current = null;
+      prevIsStreamingRef.current = true;
+    }
+    // Streaming started — find the latest assistant message
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+    if (lastAssistant && lastAssistant.id !== streamingMsgIdRef.current) {
+      streamingMsgIdRef.current = lastAssistant.id;
+      setMsgTimings(prev => {
+        if (prev[lastAssistant.id]) return prev;
+        return { ...prev, [lastAssistant.id]: { start: Date.now() } };
+      });
+    }
+  }, [isStreaming, messages]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, status, error]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim() || isStreaming) return;
+    phaseStarts.current = {};
     sendMessage({ text: input });
     setInput('');
   };
@@ -137,26 +184,48 @@ export default function ChatPanel() {
                       );
                     }
 
-                    const isReflect = toolName === 'reflect' || toolName?.endsWith('-reflect');
+                    // Only known reflect tools — block hallucinated variants (reflect_respond, etc.)
+                    const KNOWN_REFLECT = new Set(['reflect', 'reflect_reason', 'reflect_observe', 'reflect_decide']);
+                    if (toolName?.startsWith('reflect_') && !KNOWN_REFLECT.has(toolName)) return null;
+                    const isReflect = KNOWN_REFLECT.has(toolName) || toolName?.endsWith('-reflect');
                     if (isReflect) {
-                      const REACT_PHASE_ICON = { observe: 'visibility', reason: 'psychology', decide: 'task_alt' };
+                      const REACT_PHASE_ICON = { observe: 'search_insights', reason: 'psychology', decide: 'task_alt' };
                       const REACT_PHASE_LABEL = { observe: 'Observe', reason: 'Reason', decide: 'Decide' };
-                      const phase = toolArgs?.phase || 'reason';
+                      // Phase-locked tools: trust tool name (authoritative).
+                      // Legacy unified 'reflect' tool: read toolArgs.phase.
+                      // Model may inject extra fields into phase-locked tool args — ignore them.
+                      const phase = toolName.startsWith('reflect_')
+                        ? toolName.split('_')[1]
+                        : (toolArgs?.phase || 'reason');
                       const icon = REACT_PHASE_ICON[phase] || 'psychology';
                       const label = REACT_PHASE_LABEL[phase] || phase;
-                      const isStreaming = toolState === 'input-streaming';
+                      const isStepStreaming = toolState === 'input-streaming';
+                      const isDone = toolState === 'output-available';
+
+                      // Per-step latency: inherit from placeholder, freeze on done
+                      const phaseKey = `${msg.id}:${phase}`;
+                      if (!phaseStarts.current[phaseKey]) {
+                        const inherited = phaseStarts.current[`global:${phase}`];
+                        phaseStarts.current[phaseKey] = { start: inherited?.start ?? inherited ?? Date.now() };
+                      }
+                      const timing = phaseStarts.current[phaseKey];
+                      if (isDone && !timing.end) timing.end = Date.now();
+                      const elapsed = timing.end
+                        ? ((timing.end - timing.start) / 1000).toFixed(1)
+                        : ((Date.now() - timing.start) / 1000).toFixed(1);
 
                       return (
-                        <div key={i} className={`react-step react-${phase} ${isStreaming ? 'streaming' : ''}`}>
+                        <div key={i} className={`react-step react-${phase} ${isStepStreaming ? 'streaming' : ''}`}>
                           <div className="react-step-header">
                             <span className="material-symbols react-step-icon">{icon}</span>
                             <span className="react-step-label">{label}</span>
-                            {isStreaming && <span className="react-step-streaming-dot" />}
+                            {isStepStreaming && <span className="react-step-streaming-dot" />}
+                            {elapsed && <span className="react-step-latency">{elapsed}s</span>}
                           </div>
                           {toolArgs?.observation && (
                             <div className="react-step-observation">{toolArgs.observation}</div>
                           )}
-                          {toolArgs?.next_action && toolState === 'output-available' && (
+                          {toolArgs?.next_action && isDone && (
                             <div className="react-step-next">→ {toolArgs.next_action}</div>
                           )}
                         </div>
@@ -167,18 +236,105 @@ export default function ChatPanel() {
                     const isDone = toolState === 'output-available';
                     const isError = toolState === 'output-error';
 
+                    // Strip server prefix (e.g. "hr_tools_mcp_server-get_employee" → "get_employee")
+                    const shortName = toolName.includes('-') ? toolName.split('-').slice(1).join('-') : toolName;
+                    // Show first key arg as hint (e.g. identifier: EMP-034)
+                    const argHint = toolArgs && Object.keys(toolArgs).length > 0
+                      ? `${Object.keys(toolArgs)[0]}: ${String(Object.values(toolArgs)[0]).slice(0, 40)}`
+                      : '';
+                    // Extract output text — MCP tools return {content:[{type:'text',text:'...'}]}
+                    const toolOutput = part.output;
+                    const outputText = isDone && toolOutput
+                      ? (() => {
+                          if (toolOutput?.content?.[0]?.text) {
+                            try {
+                              const parsed = JSON.parse(toolOutput.content[0].text);
+                              // Show a compact summary — first 2 top-level keys
+                              const fmtVal = (v) => {
+                                if (Array.isArray(v)) return `${v.length} items`;
+                                if (v !== null && typeof v === 'object') return JSON.stringify(v).slice(0, 40);
+                                return String(v).slice(0, 40);
+                              };
+                              return Object.entries(parsed)
+                                .filter(([k]) => !['id','bank_account','salary'].includes(k))
+                                .slice(0, 3)
+                                .map(([k, v]) => `${k}: ${fmtVal(v)}`)
+                                .join(' · ');
+                            } catch {
+                              return toolOutput.content[0].text.slice(0, 120);
+                            }
+                          }
+                          if (typeof toolOutput === 'string') return toolOutput.slice(0, 120);
+                          if (typeof toolOutput === 'object') return JSON.stringify(toolOutput).slice(0, 120);
+                          return '';
+                        })()
+                      : '';
+
+                    const stateClass = isDone ? 'result' : isError ? 'error' : 'streaming';
+                    const toolTimingKey = `${msg.id}:tool:${i}`;
+                    if (!phaseStarts.current[toolTimingKey]) phaseStarts.current[toolTimingKey] = { start: Date.now() };
+                    const toolTiming = phaseStarts.current[toolTimingKey];
+                    if (isDone && !toolTiming.end) toolTiming.end = Date.now();
+                    const toolElapsed = toolTiming.end
+                      ? ((toolTiming.end - toolTiming.start) / 1000).toFixed(1)
+                      : ((Date.now() - toolTiming.start) / 1000).toFixed(1);
+
                     return (
-                      <div key={i} className="tool-call">
-                        <span className="material-symbols">build</span>
-                        <span className="tool-name">{toolName}</span>
-                        <span className={`tool-state ${isDone ? 'result' : isError ? 'error' : 'streaming'}`}>
-                          {isDone ? 'done' : isError ? 'error' : isRunning ? 'running' : toolState}
-                        </span>
+                      <div key={i} className={`tool-call ${stateClass}`}>
+                        <div className="react-step-header">
+                          <span className="material-symbols react-step-icon">build</span>
+                          <span className="react-step-label">Tool</span>
+                          {!isDone && !isError && <span className="react-step-streaming-dot" />}
+                          {isError && <span className="tool-state error" style={{marginLeft:'auto'}}>error</span>}
+                          {toolElapsed && <span className="react-step-latency">{toolElapsed}s</span>}
+                        </div>
+                        <div className="tool-call-detail">
+                          <span className="tool-name">{shortName}</span>
+                          {argHint && <span className="tool-args">{argHint}</span>}
+                        </div>
+                        {outputText && (
+                          <div className="react-step-next">→ {outputText}</div>
+                        )}
                       </div>
                     );
                   }
                   return null;
                 })}
+                {/* Placeholder card shown during inter-step gap — appears after existing parts */}
+                {msg.role === 'assistant' && isStreaming && msg.id === streamingMsgIdRef.current && (() => {
+                  const parts = msg.parts || [];
+                  const hasActiveStream = parts.some(p => (p.type === 'dynamic-tool' || p.type?.startsWith('tool-')) && p.state === 'input-streaming');
+                  if (hasActiveStream) return null;
+                  const KNOWN_REFLECT = ['reflect_reason', 'reflect_observe', 'reflect_decide'];
+                  const ranPhases = new Set(parts
+                    .filter(p => { const n = p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5); return KNOWN_REFLECT.includes(n); })
+                    .map(p => (p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5))?.split('_')[1]));
+                  const ranDataTools = parts.some(p => {
+                    const n = p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5);
+                    return n && !KNOWN_REFLECT.includes(n) && (p.type === 'dynamic-tool' || p.type?.startsWith('tool-'));
+                  });
+                  let nextPhase;
+                  if (!ranPhases.has('reason')) nextPhase = 'reason';
+                  else if (!ranDataTools) nextPhase = null;
+                  else if (!ranPhases.has('observe')) nextPhase = 'observe';
+                  else nextPhase = null;
+                  if (!nextPhase) return null;
+                  const REACT_PHASE_ICON = { reason: 'psychology', observe: 'search_insights' };
+                  const REACT_PHASE_LABEL = { reason: 'Reason', observe: 'Observe' };
+                  const phaseKey = `${msg.id}:${nextPhase}`;
+                  if (!phaseStarts.current[phaseKey]) phaseStarts.current[phaseKey] = { start: Date.now() };
+                  const liveElapsed = ((Date.now() - phaseStarts.current[phaseKey].start) / 1000).toFixed(1);
+                  return (
+                    <div key="pending-step" className={`react-step react-${nextPhase} streaming`}>
+                      <div className="react-step-header">
+                        <span className="material-symbols react-step-icon">{REACT_PHASE_ICON[nextPhase]}</span>
+                        <span className="react-step-label">{REACT_PHASE_LABEL[nextPhase]}...</span>
+                        <span className="react-step-streaming-dot" />
+                        <span className="react-step-latency">{liveElapsed}s</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {msg.role === 'assistant' && msg.metadata?.empty && (
                   <div className="message-text empty-response">
                     <span className="material-symbols">warning</span>
@@ -194,6 +350,13 @@ export default function ChatPanel() {
                     <span className="material-symbols">savings</span>
                     {msg.metadata.usage.totalTokens.toLocaleString()} tokens
                     <span className="usage-detail">({(msg.metadata.usage.inputTokens || 0).toLocaleString()} in / {(msg.metadata.usage.outputTokens || 0).toLocaleString()} out)</span>
+                    {msgTimings[msg.id]?.end && (
+                      <>
+                        <span className="usage-sep">·</span>
+                        <span className="material-symbols">acute</span>
+                        {((msgTimings[msg.id].end - msgTimings[msg.id].start) / 1000).toFixed(1)}s
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -201,16 +364,29 @@ export default function ChatPanel() {
           );
         })}
 
-        {/* Streaming indicator with stop button */}
-        {isStreaming && (
-          <div className="thinking-indicator">
-            <span className="thinking-dots"><span /><span /><span /></span>
-            <button className="stop-btn" onClick={() => stop()}>
-              <span className="material-symbols">stop_circle</span>
-              {t('chat.stop')}
-            </button>
-          </div>
-        )}
+        {/* Global streaming placeholder — shown when streaming but no assistant message yet,
+            or when the last message has no active tool stream (first step = Reason) */}
+        {isStreaming && (() => {
+          if (streamingMsgIdRef.current) return null; // placeholder lives inside the message
+          const phaseKey = `global:reason`;
+          if (!phaseStarts.current[phaseKey]) phaseStarts.current[phaseKey] = { start: Date.now() };
+          const liveElapsed = ((Date.now() - phaseStarts.current[phaseKey].start) / 1000).toFixed(1);
+          return (
+            <div className="message bot">
+              <div className="message-avatar"><i className="otter-icon" /></div>
+              <div className="message-body">
+                <div className="react-step react-reason streaming">
+                  <div className="react-step-header">
+                    <span className="material-symbols react-step-icon">psychology</span>
+                    <span className="react-step-label">Reason...</span>
+                    <span className="react-step-streaming-dot" />
+                    <span className="react-step-latency">{liveElapsed}s</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Native error display — hidden once captured as a sticky error */}
         {status === 'error' && error && !stickyErrors.some(se => se.error === error) && (
@@ -231,15 +407,35 @@ export default function ChatPanel() {
             autoComplete="off"
             maxLength={2000}
           />
-          <button type="submit" className="send-btn" disabled={isStreaming || !input.trim()}>
-            <span className="material-symbols">send</span>
-          </button>
+          {isStreaming ? (
+            <button type="button" className="send-btn send-btn--stop" onClick={() => stop()}>
+              <span className="material-symbols">stop</span>
+            </button>
+          ) : (
+            <button type="submit" className="send-btn" disabled={!input.trim()}>
+              <span className="material-symbols">send</span>
+            </button>
+          )}
         </form>
         {sessionUsage.totalTokens > 0 && (
           <div className="session-usage">
             <span className="material-symbols">savings</span>
             <span>{sessionUsage.totalTokens.toLocaleString()} tokens</span>
             <span className="usage-detail">({sessionUsage.inputTokens.toLocaleString()} in / {sessionUsage.outputTokens.toLocaleString()} out)</span>
+            {(() => {
+              const lastLatency = [...messages]
+                .reverse()
+                .find(m => m.role === 'assistant' && msgTimings[m.id]?.end);
+              if (!lastLatency) return null;
+              const t = msgTimings[lastLatency.id];
+              return (
+                <>
+                  <span className="usage-sep">·</span>
+                  <span className="material-symbols">acute</span>
+                  <span>{((t.end - t.start) / 1000).toFixed(1)}s last</span>
+                </>
+              );
+            })()}
           </div>
         )}
       </div>
