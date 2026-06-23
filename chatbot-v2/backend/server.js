@@ -11,12 +11,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { streamText, convertToModelMessages, stepCountIs } from 'ai';
+import { ToolLoopAgent, streamText, generateText, createUIMessageStream, createUIMessageStreamResponse, pipeAgentUIStreamToResponse, convertToModelMessages, stepCountIs, tool } from 'ai';
+import { z } from 'zod';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
 
 dotenv.config();
 
+const DEBUG = process.env.LOG_LEVEL === 'debug';
+function dbg(msg) { if (DEBUG) console.log(msg); }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -33,28 +36,33 @@ const STATIC_USER = {
   employee_id: 'EMP-034',
 };
 
-const SYSTEM_PROMPT = `You are a helpful corporate assistant. You have access to HR and IT tools.
-The current user's employee ID is ${STATIC_USER.employee_id}. You know NOTHING about this user except their ID — you MUST call tools to look up any information.
+// --- Focused phase prompts for the forced ReAct loop ---
 
-## Reasoning before acting
+const REASON_PROMPT = `You are a corporate assistant. The current user's employee ID is ${STATIC_USER.employee_id}.
 
-Before calling any tool, think:
-- What specific information do I need to answer this?
-- Which tools provide that information?
-- Which of those can run in parallel (independent data) vs. sequentially (one depends on another)?
+Use reflect_reason to plan which tools to call to answer the user's request.
+- State what the user is asking
+- Identify which tools are needed
+- When asked about "my" anything, use employee ID: ${STATIC_USER.employee_id}
+- Do NOT answer the user — only plan
+- If NO data tools are needed (e.g. security refusal, policy clarification, identity override attempt, general question), call reflect_conclude instead of reflect_reason`;
 
-## After each tool result, assess:
-- Did this return what I expected? If not, why — and does that change my plan?
-- Is the data complete, or do I need a follow-up call?
-- If a tool returned empty or "not found": reason about whether the query was wrong, the data doesn't exist, or a different tool is needed — then adjust.
+const OBSERVE_PROMPT = `You are the OBSERVE phase of a corporate assistant's ReAct loop.
+The current user's employee ID is ${STATIC_USER.employee_id}.
 
-## Rules:
-- NEVER guess or fabricate data. ALWAYS use tools to retrieve real data before answering.
-- When a user asks about "my" anything, use their employee ID: ${STATIC_USER.employee_id}
-- Call MULTIPLE tools in PARALLEL when they are independent.
-- If unsure which tool applies, reason through the options before acting — do not call tools blindly.
-- Never approve a ticket on behalf of the requesting user — approvals must come from the designated approver.
-- Always be professional, concise, and helpful.`;
+You have just received tool results. Your ONLY job: call reflect with phase EXACTLY equal to 'observe'.
+You MUST call: reflect({ phase: 'observe', observation: '<key facts from tool results>', gaps: '<still unknown if any>', next_action: '<done or needs more tools>' })
+The phase field MUST be 'observe' — not 'decide', not 'reason'. Only 'observe'.
+- Do NOT answer the user — only observe
+- Never guess or fabricate — if a tool returned nothing, say so`;
+
+const DECIDE_PROMPT = `You are the final answer generator for a corporate assistant.
+The current user's employee ID is ${STATIC_USER.employee_id}.
+
+You have all the data you need. Give a clear, professional, concise answer to the user.
+- Never approve a ticket on behalf of the requesting user — approvals must come from the designated approver
+- Be professional, concise, and helpful
+- Do NOT call any tools — answer directly`;
 
 // --- LLM ---
 
@@ -66,9 +74,53 @@ const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
 // Tools that mutate state — require explicit user approval before execution
 const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
 
+// Provider → fast (Reason/Observe) + powerful (Decide) model tiers
+const PROVIDER_TIERS = {
+  AWS: {
+    label: 'AWS Bedrock',
+    icon: 'cloud',
+    fast:     'bedrock/eu.anthropic.claude-haiku-4-5-20251001-v1:0',
+    powerful: 'bedrock/eu.anthropic.claude-sonnet-4-6',
+  },
+  GCP: {
+    label: 'GCP Vertex AI',
+    icon: 'cloud',
+    fast:     'vertex_ai/gemini-2.5-flash',
+    powerful: 'vertex_ai/gemini-2.5-pro',
+  },
+};
+
+// Phase-locked reflect tools — instantiated per-agent so execute() can emit stepMs.
+// stepStartRef.current is set by prepareStep just before each step runs.
+function makeReflectTools(stepStartRef) {
+  const make = (phaseName) => tool({
+    description: `Record your ${phaseName} step.`,
+    inputSchema: z.object({
+      observation: z.string().describe('What did you observe or decide?'),
+      gaps: z.string().describe('What is still unknown?'),
+      next_action: z.string().describe('What will you do next?'),
+    }),
+    execute: async () => {
+      const stepMs = stepStartRef.current ? Date.now() - stepStartRef.current : null;
+      return { phase: phaseName, acknowledged: true, stepMs };
+    },
+  });
+  const conclude = tool({
+    description: 'Signal that no data tools are needed — the answer can be given directly. Use when the request can be answered without fetching any data (e.g. security refusal, policy clarification, identity override attempt).',
+    inputSchema: z.object({
+      reason: z.string().describe('Why no data tools are needed'),
+    }),
+    execute: async () => {
+      const stepMs = stepStartRef.current ? Date.now() - stepStartRef.current : null;
+      return { phase: 'conclude', acknowledged: true, stepMs };
+    },
+  });
+  return { reflect_reason: make('reason'), reflect_observe: make('observe'), reflect_conclude: conclude };
+}
+
 // Injects user identity, thread trace, and guardrails into every LiteLLM request.
 // reqCtx is captured per-request to avoid cross-request contamination.
-function litellmFetch(reqCtx, guarded = false) {
+function litellmFetch(reqCtx, guarded = false, noParallel = false) {
   return async (url, init) => {
     if (init?.body) {
       const body = JSON.parse(init.body);
@@ -85,22 +137,30 @@ function litellmFetch(reqCtx, guarded = false) {
       if (guarded) {
         body.guardrails = GUARDRAIL_NAMES;
       }
+      if (noParallel) {
+        body.parallel_tool_calls = false;
+      }
+      // Bedrock errors if tool_choice is present but tools is empty/absent
+      if (body.tool_choice && (!body.tools || body.tools.length === 0)) {
+        delete body.tool_choice;
+      }
       const headers = new Headers(init.headers);
       headers.set('x-litellm-spend-logs-metadata', JSON.stringify({
         thread_id: reqCtx.threadId,
         app_user: STATIC_USER.employee_id,
       }));
       init = { ...init, headers, body: JSON.stringify(body) };
+      dbg(`[llm] → ${body.model} | msgs:${body.messages?.length ?? 0} tools:${body.tools?.length ?? 0}`);
     }
     return fetch(url, init);
   };
 }
 
-function getModel(modelId, reqCtx, guarded = false) {
+function getModel(modelId, reqCtx, guarded = false, noParallel = false) {
   const provider = createOpenAI({
     baseURL: `${LITELLM_BASE_URL}/v1`,
     apiKey: LITELLM_API_KEY,
-    fetch: litellmFetch(reqCtx, guarded),
+    fetch: litellmFetch(reqCtx, guarded, noParallel),
   });
   return provider.chat(modelId || MODEL_ID);
 }
@@ -173,19 +233,184 @@ app.get('/health', (_req, res) => {
   });
 });
 
+// No-op — kept for reference, synthetic reflect now handled via reflectTool in ToolLoopAgent
+
+function normalizeError(err, modelId) {
+  const apiError = err.lastError || err;
+  const body = apiError?.responseBody || '';
+  let summary = err.message || String(err);
+  try { const p = JSON.parse(body); summary = p?.error?.message || summary; } catch {}
+  const isNetwork = summary.includes('NameResolutionError') || summary.includes('Failed to resolve') ||
+    summary.includes('APIConnectionError') || summary.includes('Max retries exceeded') ||
+    summary.includes('ECONNREFUSED') || summary.includes('ETIMEDOUT') || summary.includes('ENOTFOUND');
+  if (isNetwork) {
+    const model = modelId ? ` [${modelId}]` : '';
+    return `Provider unreachable${model}: DNS/connection failed. Check credentials and network, or switch provider.`;
+  }
+  return summary;
+}
+
+// Build a ToolLoopAgent with prepareStep-driven phase switching.
+// Phase-locked reflect tools enforce correct phase labels — model cannot mislabel.
+// Step 0: reflect_reason  forced  (fast model, plans which data tools to call)
+// Step 1: data tools      required (fast model, executes the data fetch)
+// Step 2: reflect_observe forced  (fast model, synthesizes findings)
+// Step 3: text answer     none    (powerful model, answers directly)
+function buildReactAgent(tiers, reqCtx, mcpTools, guarded) {
+  const DATA_TOOL_NAMES = Object.keys(mcpTools);
+
+  // Per-agent step timer — prepareStep sets .current before each LLM call,
+  // reflect execute() reads it to emit stepMs.
+  const stepStartRef = { current: null };
+  const { reflect_reason, reflect_observe, reflect_conclude } = makeReflectTools(stepStartRef);
+
+  // Full tool set: MCP data tools + reason + observe + conclude reflect variants
+  const allTools = {
+    ...mcpTools,
+    reflect_reason,
+    reflect_observe,
+    reflect_conclude,
+  };
+
+  return new ToolLoopAgent({
+    model: getModel(tiers.fast, reqCtx, guarded),
+    instructions: REASON_PROMPT,
+    tools: allTools,
+    maxRetries: 0,
+    stopWhen: stepCountIs(10),
+    experimental_onToolCallStart: ({ toolCall }) => {
+      const args = JSON.stringify(toolCall.args);
+      console.log(`[react] tool: ${toolCall.toolName}(${args.slice(0, 80)})`);
+      dbg(`[react] tool args full: ${args}`);
+    },
+    onFinish: ({ steps }) => {
+      console.log(`[react] finished in ${steps.length} steps`);
+    },
+    onStepFinish: (step) => {
+      if (!DEBUG) return;
+      const tools = step.toolCalls?.map(tc => tc.toolName).join(', ') || 'none';
+      const results = step.toolResults?.map(tr =>
+        `${tr.toolName}=${JSON.stringify(tr.result).slice(0, 120)}`
+      ).join(' | ') || '';
+      const usage = step.usage ? `in:${step.usage.inputTokens} out:${step.usage.outputTokens}` : '';
+      dbg(`[react] step done | tools:[${tools}] ${usage}${results ? ` | ${results}` : ''}`);
+    },
+    prepareStep: async ({ stepNumber, steps }) => {
+      stepStartRef.current = Date.now();
+
+      const ranReason = steps.some(s =>
+        s.toolCalls?.some(tc => tc.toolName === 'reflect_reason')
+      );
+      const ranConclude = steps.some(s =>
+        s.toolCalls?.some(tc => tc.toolName === 'reflect_conclude')
+      );
+      const ranDataTools = steps.some(s =>
+        s.toolCalls?.some(tc => DATA_TOOL_NAMES.includes(tc.toolName))
+      );
+      const ranObserve = steps.some(s =>
+        s.toolCalls?.some(tc => tc.toolName === 'reflect_observe')
+      );
+
+      // If model concluded no data tools needed → skip straight to ANSWER
+      if (ranConclude) {
+        console.log(`[react] step ${stepNumber}: ANSWER (no-data shortcut) (${tiers.powerful})`);
+        return {
+          model: getModel(tiers.powerful, reqCtx, guarded),
+          instructions: DECIDE_PROMPT,
+        };
+      }
+
+      // REASON: allow reason or conclude — model picks based on whether data tools are needed
+      if (!ranReason && !ranDataTools) {
+        console.log(`[react] step ${stepNumber}: REASON (${tiers.fast})`);
+        return {
+          model: getModel(tiers.fast, reqCtx, guarded),
+          instructions: REASON_PROMPT,
+          activeTools: ['reflect_reason', 'reflect_conclude'],
+          toolChoice: 'required',
+        };
+      }
+
+      // FETCH: model must call at least one data tool
+      if (!ranDataTools) {
+        console.log(`[react] step ${stepNumber}: FETCH (${tiers.fast})`);
+        return {
+          model: getModel(tiers.fast, reqCtx, guarded),
+          instructions: REASON_PROMPT,
+          activeTools: DATA_TOOL_NAMES,
+          toolChoice: 'required',
+        };
+      }
+
+      // OBSERVE: one attempt after data tools.
+      const dataStepIndex = steps.findIndex(s =>
+        s.toolCalls?.some(tc => DATA_TOOL_NAMES.includes(tc.toolName))
+      );
+      const observeAttempted = steps.length > dataStepIndex + 1;
+      if (!ranObserve && !observeAttempted) {
+        console.log(`[react] step ${stepNumber}: OBSERVE (${tiers.fast})`);
+        return {
+          model: getModel(tiers.fast, reqCtx, guarded),
+          instructions: OBSERVE_PROMPT,
+          activeTools: ['reflect_observe'],
+          toolChoice: 'required',
+        };
+      }
+
+      // DECIDE+ANSWER: keep full tool set so Bedrock doesn't error on empty tools array;
+      // DECIDE_PROMPT instructs the model not to call any tools
+      console.log(`[react] step ${stepNumber}: ANSWER (${tiers.powerful})`);
+      return {
+        model: getModel(tiers.powerful, reqCtx, guarded),
+        instructions: DECIDE_PROMPT,
+      };
+    },
+  });
+}
+
+// Normalize approval-responded parts so convertToModelMessages doesn't crash.
+function applyApprovalSafeMessages(rawMessages) {
+  return rawMessages.map(msg => {
+    if (msg.role !== 'assistant' || !Array.isArray(msg.parts)) return msg;
+    let changed = false;
+    const parts = msg.parts.map(p => {
+      // Only remap denied approvals — approved ones are valid and handled by the SDK
+      if (p.state === 'approval-responded' && p.approval?.approved === false) {
+        changed = true;
+        return {
+          ...p,
+          state: 'output-denied',
+          approval: {
+            ...p.approval,
+            reason: 'ACTION DENIED BY USER. The user clicked Deny. Do not retry this action. Tell the user you understand they declined, then ask what they would like to do instead.',
+          },
+        };
+      }
+      return p;
+    });
+    return changed ? { ...msg, parts } : msg;
+  });
+}
+
 // AI SDK native chat endpoint — useChat on frontend consumes this automatically
 app.post('/api/chat', async (req, res) => {
+  const providerId = req.body.provider || 'AWS';
+  const tiers = PROVIDER_TIERS[providerId] || PROVIDER_TIERS.AWS;
   try {
-    const requestedModel = req.body.model;
     const phase = req.body.phase;
     const guarded = phase === 'phase3';
     const reqCtx = {
       threadId: req.body.threadId || crypto.randomUUID(),
       userIp: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
     };
+    const lastMsg = req.body.messages?.at(-1);
+    const lastText = lastMsg?.parts?.find(p => p.type === 'text')?.text || lastMsg?.content || '';
+    console.log(`[chat] provider:${providerId} phase:${phase || 'default'} thread:${reqCtx.threadId} msgs:${req.body.messages?.length ?? 0}`);
+    dbg(`[chat] last message: ${lastText.slice(0, 200)}`);
+    dbg(`[chat] models: fast=${tiers.fast} powerful=${tiers.powerful} guarded=${guarded}`);
     const mcpTools = await getMCPTools();
 
-    // Require user approval before executing mutation tools (match by suffix — MCP tools are prefixed with server name)
+    // MCP tools only — reflect variants added inside buildReactAgent per phase
     const tools = { ...mcpTools };
     for (const key of Object.keys(tools)) {
       if (TOOLS_REQUIRING_APPROVAL.some(suffix => key.endsWith(suffix))) {
@@ -193,71 +418,37 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    const messages = await convertToModelMessages(req.body.messages, { tools });
+    const safeMessages = applyApprovalSafeMessages(req.body.messages);
+    const agent = buildReactAgent(tiers, reqCtx, tools, guarded);
 
-    const result = streamText({
-      model: getModel(requestedModel, reqCtx, guarded),
-      system: SYSTEM_PROMPT,
-      messages,
-      tools,
-      maxRetries: 0,
-      stopWhen: stepCountIs(10),
-      onStepStart: ({ toolCalls }) => {
-        if (toolCalls?.length) {
-          for (const tc of toolCalls) {
-            const found = !!tools[tc.toolName];
-            console.log(`[chat] tool call: ${tc.toolName} → ${found ? 'found' : 'NOT FOUND in tools'}`);
-          }
+    // Accumulate token usage across all phases for the final metadata
+    let totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+
+    await pipeAgentUIStreamToResponse({
+      response: res,
+      agent,
+      uiMessages: safeMessages,
+      onError: (err) => normalizeError(err, tiers?.fast),
+      onStepFinish: ({ usage }) => {
+        if (usage) {
+          totalUsage.inputTokens  += usage.inputTokens  || 0;
+          totalUsage.outputTokens += usage.outputTokens || 0;
+          totalUsage.totalTokens  += usage.totalTokens  || 0;
         }
       },
-      onFinish: ({ text, totalUsage, finishReason, steps }) => {
-        console.log(`[chat] finish reason: ${finishReason}, steps: ${steps?.length || 0}`);
-        if (!text && totalUsage?.completionTokens === 0) {
-          console.warn(`[chat] Empty response from ${requestedModel || MODEL_ID} (thread: ${reqCtx.threadId}, reason: ${finishReason}, steps: ${steps?.length || 0})`);
-        }
-      },
-    });
-
-    result.pipeUIMessageStreamToResponse(res, {
       messageMetadata: ({ part }) => {
         if (part.type === 'finish') {
           return {
-            usage: part.totalUsage,
-            empty: (part.totalUsage?.outputTokens || 0) === 0,
+            usage: totalUsage,
+            empty: totalUsage.outputTokens === 0,
           };
         }
       },
-      onError: (event) => {
-        const error = event?.error || event;
-        const msg = error?.message || String(error);
-        // Prefer responseBody — contains the full guardrail JSON with scan_id/tr_id
-        const body = error?.responseBody || error?.lastError?.responseBody || '';
-        if (body) {
-          try {
-            const parsed = JSON.parse(body);
-            if (parsed?.error) return JSON.stringify(parsed);
-          } catch {}
-        }
-        // Fallback: embedded guardrail JSON in error message (RetryError wrapping)
-        const jsonMatch = msg.match(/\{['"]error['"]\s*:\s*\{.*\}\s*\}/);
-        if (jsonMatch) return jsonMatch[0];
-        // Plain text for everything else — frontend parses guardrails and generic errors
-        return msg;
-      },
     });
   } catch (err) {
-    const apiError = err.lastError || err;
-    const body = apiError?.responseBody || '';
-    let summary = err.message;
-    try {
-      const parsed = JSON.parse(body);
-      summary = parsed?.error?.message || summary;
-    } catch {}
-    console.error(`[chat] ${summary}`);
-
-    if (!res.headersSent) {
-      res.status(500).json({ error: summary });
-    }
+    console.error(`[chat] ${err.message}`);
+    const errMsg = normalizeError(err, tiers?.fast);
+    if (!res.headersSent) res.status(500).json({ error: errMsg });
   }
 });
 
@@ -269,26 +460,73 @@ const PROVIDER_LABELS = {
   anthropic: 'Anthropic', openai: 'OpenAI', ollama: 'Ollama',
 };
 
+function inferProvider(modelId) {
+  if (!modelId) return 'unknown';
+  if (modelId.startsWith('bedrock/') || modelId.includes('anthropic.') || modelId.includes('amazon.') || modelId.includes('eu.anthropic') || modelId.includes('us.anthropic')) return 'AWS';
+  if (modelId.startsWith('vertex_ai/') || modelId.includes('gemini')) return 'GCP';
+  if (modelId.startsWith('azure_ai/') || modelId.startsWith('azure/')) return 'Azure';
+  if (modelId.startsWith('anthropic/')) return 'Anthropic';
+  if (modelId.startsWith('openai/') || modelId.startsWith('gpt')) return 'OpenAI';
+  if (modelId.startsWith('ollama/')) return 'Ollama';
+  // Fallback: check PROVIDER_LABELS by prefix segment
+  const prefix = modelId.split('/')[0];
+  return PROVIDER_LABELS[prefix] || 'unknown';
+}
+
 app.get('/api/models', async (_req, res) => {
   try {
-    const response = await fetch(`${LITELLM_BASE_URL}/model/info`, {
+    // Try /model/info first (richer metadata), fall back to /models (OpenAI-compat list)
+    let models = [];
+    const infoResp = await fetch(`${LITELLM_BASE_URL}/model/info`, {
       headers: { 'x-litellm-api-key': LITELLM_API_KEY },
     });
-    if (!response.ok) throw new Error(`LiteLLM ${response.status}`);
-    const data = await response.json();
-    const models = (data.data || []).map(m => {
-      const provider = m.model_info?.litellm_provider || 'unknown';
-      return {
-        id: m.model_name,
-        name: m.model_name,
-        provider: PROVIDER_LABELS[provider] || provider,
-      };
-    });
+    if (infoResp.ok) {
+      const data = await infoResp.json();
+      models = (data.data || []).map(m => {
+        const provider = m.model_info?.litellm_provider || inferProvider(m.model_name);
+        return { id: m.model_name, name: m.model_name, provider: PROVIDER_LABELS[provider] || provider };
+      });
+    }
+    if (models.length === 0) {
+      const listResp = await fetch(`${LITELLM_BASE_URL}/models`, {
+        headers: { 'x-litellm-api-key': LITELLM_API_KEY },
+      });
+      if (listResp.ok) {
+        const data = await listResp.json();
+        models = (data.data || []).map(m => ({
+          id: m.id,
+          name: m.id,
+          provider: inferProvider(m.id),
+        }));
+      }
+    }
     const defaultModel = models.some(m => m.id === MODEL_ID) ? MODEL_ID : (models[0]?.id || MODEL_ID);
     res.json({ models, default: defaultModel });
   } catch (err) {
     console.warn(`Failed to fetch models: ${err.message}`);
     res.json({ models: [{ id: MODEL_ID, name: MODEL_ID, provider: 'unknown' }], default: MODEL_ID });
+  }
+});
+
+// Providers — only return tiers where both fast + powerful models are live in LiteLLM
+app.get('/api/providers', async (_req, res) => {
+  try {
+    let liveIds = new Set();
+    const listResp = await fetch(`${LITELLM_BASE_URL}/models`, {
+      headers: { 'x-litellm-api-key': LITELLM_API_KEY },
+    });
+    if (listResp.ok) {
+      const data = await listResp.json();
+      for (const m of data.data || []) liveIds.add(m.id);
+    }
+    const providers = Object.entries(PROVIDER_TIERS)
+      .filter(([, t]) => liveIds.has(t.fast) && liveIds.has(t.powerful))
+      .map(([id, t]) => ({ id, label: t.label, fast: t.fast, powerful: t.powerful }));
+    const defaultProvider = providers[0]?.id || 'AWS';
+    res.json({ providers, default: defaultProvider });
+  } catch (err) {
+    console.warn(`Failed to fetch providers: ${err.message}`);
+    res.json({ providers: Object.entries(PROVIDER_TIERS).map(([id, t]) => ({ id, label: t.label, fast: t.fast, powerful: t.powerful })), default: 'AWS' });
   }
 });
 
