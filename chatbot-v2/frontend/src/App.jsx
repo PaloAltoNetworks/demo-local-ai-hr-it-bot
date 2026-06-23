@@ -3,12 +3,12 @@ import Header from './components/Header.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import ChatPanel from './components/ChatPanel.jsx';
 import { ChatProvider } from './context/ChatContext.jsx';
-import { useModels } from './hooks/useModels.js';
+import { useProviders } from './hooks/useProviders.js';
 
 export default function App() {
   const [phase, setPhase] = useState(() => localStorage.getItem('currentPhase') || 'phase1');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'system');
-  const { models, model, setModel } = useModels();
+  const { providers, provider, setProvider } = useProviders();
 
   useEffect(() => {
     localStorage.setItem('currentPhase', phase);
@@ -27,12 +27,12 @@ export default function App() {
   }, [theme]);
 
   return (
-    <ChatProvider model={model} phase={phase}>
+    <ChatProvider provider={provider} phase={phase}>
       <div className={`app ${phase}-active`}>
         <Header
           phase={phase} setPhase={setPhase}
           theme={theme} setTheme={setTheme}
-          models={models} model={model} setModel={setModel}
+          providers={providers} provider={provider} setProvider={setProvider}
         />
         <main className="main">
           <Sidebar phase={phase} />

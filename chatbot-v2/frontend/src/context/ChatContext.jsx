@@ -10,14 +10,14 @@ export const useChatContext = () => useContext(ChatContext);
 const threadId = crypto.randomUUID();
 
 // Refs for values that change per-render but must be captured at request time
-const dynamicRef = { model: '', phase: '' };
+const dynamicRef = { provider: '', phase: '' };
 
 const transport = new DefaultChatTransport({
   api: '/api/chat',
   prepareSendMessagesRequest: ({ messages, trigger, messageId }) => ({
     body: {
       messages,
-      model: dynamicRef.model,
+      provider: dynamicRef.provider,
       phase: dynamicRef.phase,
       threadId,
       trigger,
@@ -26,8 +26,8 @@ const transport = new DefaultChatTransport({
   }),
 });
 
-export function ChatProvider({ model, phase, children }) {
-  dynamicRef.model = model;
+export function ChatProvider({ provider, phase, children }) {
+  dynamicRef.provider = provider;
   dynamicRef.phase = phase;
 
   const chat = useChat({

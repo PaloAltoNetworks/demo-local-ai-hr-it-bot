@@ -8,7 +8,7 @@ const THEMES = [
   { value: 'dark', icon: 'dark_mode', label: 'Dark' },
 ];
 
-export default function Header({ phase, setPhase, theme, setTheme, models, model, setModel }) {
+export default function Header({ phase, setPhase, theme, setTheme, providers, provider, setProvider }) {
   const { t, language, setLanguage, languages } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -52,21 +52,19 @@ export default function Header({ phase, setPhase, theme, setTheme, models, model
 
         {menuOpen && (
           <div className="user-menu">
-            {/* Model */}
-            {models.length > 0 && (
+            {/* Provider */}
+            {providers.length > 0 && (
               <div className="user-menu-section">
                 <div className="user-menu-label">
-                  <span className="material-symbols">smart_toy</span>Model
+                  <span className="material-symbols">cloud</span>{t('llmProvider.label')}
                 </div>
                 <select
                   className="user-menu-select"
-                  value={model}
-                  onChange={e => setModel(e.target.value)}
+                  value={provider}
+                  onChange={e => setProvider(e.target.value)}
                 >
-                  {models.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.provider ? `${m.provider} — ${m.name}` : m.name}
-                    </option>
+                  {providers.map(p => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
                   ))}
                 </select>
               </div>
