@@ -91,7 +91,19 @@ const ICONS = [
     'refresh',             // Refresh/reload icon
     'verified_user',       // Verified user/shield icon
     'usb',                 // USB/device icon
-    'shield_person',        // Shield/person icon (security/privacy icon)
+    'shield_person',       // Shield/person icon (security/privacy icon)
+    'step',                // Step icon (used in stepper component)
+    'step_over',           // Step over icon (used in stepper component)
+    'task_alt',            // Task/checkbox icon
+    'task',                // Task icon
+    'psychology',          // Psychology/mental health icon
+    'insights',            // Insights/analytics icon
+    'history',             // History/clock icon
+    'voting_chip',         // Voting chip icon (used in voting component)
+    'visibility',          // Visibility/show icon
+    'search_insights',     // Search insights icon
+    'acute',               // Acute icon
+    'stop',                // Stop icon
 ];
 
 // Sort icons alphabetically

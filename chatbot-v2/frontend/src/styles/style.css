@@ -142,14 +142,29 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .message.bot .message-text blockquote { border-left: 3px solid var(--phase); padding-left: 12px; margin: 8px 0; color: var(--text-secondary); }
 .message.bot .message-text hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
 
-/* Tool calls */
-.tool-call { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: var(--phase-bg); border: 1px solid var(--phase-border); font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); }
-.tool-call .material-symbols { font-size: 14px; color: var(--phase); }
-.tool-name { color: var(--text); font-weight: 500; }
-.tool-state { font-size: 11px; opacity: 0.7; }
-.tool-state.result { color: var(--green); }
-.tool-state.streaming { color: var(--phase); }
-.tool-state.error { color: var(--red); }
+/* Tool calls — same card structure as .react-step */
+.tool-call {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+  margin: 2px 0;
+  border-left: 2px solid var(--border);
+  border-radius: 0 6px 6px 0;
+  background: var(--surface-alt);
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+.tool-call.streaming { border-left-color: var(--phase); }
+.tool-call.result    { border-left-color: var(--green); }
+.tool-call.error     { border-left-color: var(--red); }
+.tool-call-detail { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tool-name { color: var(--text); font-weight: 500; font-family: var(--font-mono); font-size: 0.78rem; }
+.tool-args { color: var(--text-muted); font-size: 11px; font-style: italic; font-family: var(--font-mono); }
+.tool-state { font-size: 11px; opacity: 0.7; margin-left: auto; }
+.tool-state.result { color: var(--green); opacity: 1; }
+.tool-state.streaming { color: var(--phase); animation: blink 1s infinite; }
+.tool-state.error { color: var(--red); opacity: 1; }
 
 /* Tool approval */
 .tool-approval { padding: 12px 16px; border-radius: 10px; background: var(--phase-bg); border: 1px solid var(--phase-border); max-width: 480px; }
@@ -237,6 +252,8 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .send-btn { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: none; border-radius: var(--radius); background: var(--phase); color: white; cursor: pointer; transition: all var(--transition); flex-shrink: 0; }
 .send-btn:hover:not(:disabled) { filter: brightness(1.1); transform: scale(1.02); }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.send-btn--stop { background: var(--red); }
+.send-btn--stop:hover { filter: brightness(1.15); }
 
 /* Token usage */
 .session-usage { display: flex; align-items: center; gap: 6px; padding: 6px 0 0; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
@@ -244,6 +261,7 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .message-usage { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); padding: 2px 0 0; }
 .message-usage .material-symbols { font-size: 13px; }
 .usage-detail { opacity: 0.7; }
+.usage-sep { opacity: 0.4; }
 
 /* ═══ Animations ═══ */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -310,6 +328,13 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
   background: currentColor;
   animation: blink 1s infinite;
   margin-left: auto;
+}
+.react-step-latency {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
 }
 .react-step-observation { color: var(--text-secondary); line-height: 1.4; }
 .react-step-next { color: var(--text-muted); font-style: italic; }
