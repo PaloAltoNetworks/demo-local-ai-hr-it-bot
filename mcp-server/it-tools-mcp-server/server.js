@@ -72,6 +72,11 @@ function registerTools(server) {
       asset_id: z.string().optional().describe('Asset ID if the request is linked to a specific device'),
     },
     async ({ employee_id, employee_email, employee_name, description, priority, category, status, asset_id }) => {
+      // Security-sensitive requests always require manager approval — enforce regardless
+      // of the model's chosen status so the approval workflow is deterministic.
+      const approvalText = `${category} ${description}`.toLowerCase();
+      const requiresApproval = /\b(usb|vpn|security|access request|privileged|admin access)\b/.test(approvalText);
+      const effectiveStatus = requiresApproval ? 'Pending Approval' : status;
       const result = service.createTicket({
         employee_id,
         employee_email,
@@ -79,7 +84,7 @@ function registerTools(server) {
         description: asset_id ? `${description} [Asset: ${asset_id}]` : description,
         priority,
         category,
-        status,
+        status: effectiveStatus,
         tags: category.toLowerCase(),
       });
       if (!result) {
