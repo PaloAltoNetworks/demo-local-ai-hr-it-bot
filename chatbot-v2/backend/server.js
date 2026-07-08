@@ -94,8 +94,8 @@ const PROVIDER_TIERS = {
   GCP: {
     label: 'GCP Vertex AI',
     icon: 'cloud',
-    fast:     `${GCP_PROVIDER}/gemini-2.5-flash`,
-    powerful: `${GCP_PROVIDER}/gemini-2.5-pro`,
+    fast:     `${GCP_PROVIDER}/anthropic.claude-haiku-4-5`,
+    powerful: `${GCP_PROVIDER}/anthropic.claude-sonnet-4-6`,
   },
   Azure: {
     label: 'Azure AI Foundry',
