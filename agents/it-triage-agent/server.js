@@ -4,7 +4,7 @@
  * MCP on the outside: exposes tools via MCP protocol (Streamable HTTP + SSE).
  * ToolLoopAgent on the inside: each tool invocation triggers multi-step agent reasoning.
  *
- * Registers with LiteLLM as an MCP server alongside hr-tools and it-tools.
+ * Registers with the Portkey MCP Gateway alongside hr-tools and it-tools.
  * Any MCP client (chatbot-v2, Claude Desktop, Cursor) can discover and call its tools.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -57,7 +57,7 @@ function createServer() {
 // --- Express + MCP Transport ---
 
 async function main() {
-  // Connect to LiteLLM /mcp for consuming hr-tools + it-tools
+  // Connect to Portkey MCP Gateway for consuming hr-tools + it-tools
   await initMCPClient();
 
   const app = express();

@@ -3,9 +3,9 @@
  *
  * MCP on the outside, ToolLoopAgent on the inside.
  * - Local tools: classify severity, assign team, check approval, IT process lookup
- * - MCP tools via LiteLLM /mcp: hr-tools (get_employee, get_employee_assets)
- *   and it-tools (get_ticket, search_tickets, create_ticket, etc.)
- * - LLM via LiteLLM /v1 (OpenAI-compatible)
+ * - MCP tools via Portkey MCP Gateway: hr-tools (get_employee, get_employee_assets)
+ *   and it-tools (get_ticket, search_tickets, create_ticket, etc.) — one client per server
+ * - LLM via Portkey (api.portkey.ai/v1, OpenAI-compatible)
  */
 import { ToolLoopAgent, tool, stepCountIs } from 'ai';
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -19,10 +19,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // --- Configuration ---
 
-const LITELLM_BASE_URL = process.env.LITELLM_BASE_URL || 'http://localhost:8080';
-const LITELLM_API_KEY = process.env.LITELLM_API_KEY || 'sk-1234';
-const MODEL_ID = process.env.IT_TRIAGE_MODEL || process.env.LITELLM_DEFAULT_MODEL || 'eu.anthropic.claude-opus-4-6-v1';
-const MCP_URL = process.env.MCP_URL || `${LITELLM_BASE_URL}/mcp/`;
+const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai/v1';
+const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
+const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
+const MODEL_ID = process.env.IT_TRIAGE_MODEL || process.env.PORTKEY_DEFAULT_MODEL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`;
+
+// Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
+const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';
+const MCP_SLUGS = [process.env.PORTKEY_MCP_HR_SLUG, process.env.PORTKEY_MCP_IT_SLUG].filter(Boolean);
+const MCP_URLS = MCP_SLUGS.map(slug => `${PORTKEY_MCP_BASE}/${slug}/mcp`);
 
 // --- IT Process Data (local — agent owns this domain) ---
 
@@ -31,64 +36,75 @@ const IT_PROCESSES = JSON.parse(readFileSync(join(__dirname, 'it-processes.json'
 // --- LLM Provider ---
 
 const openai = createOpenAI({
-  baseURL: `${LITELLM_BASE_URL}/v1`,
-  apiKey: LITELLM_API_KEY,
+  baseURL: PORTKEY_BASE_URL,
+  apiKey: PORTKEY_API_KEY,
+  fetch: async (url, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set('x-portkey-api-key', PORTKEY_API_KEY);
+    return fetch(url, { ...init, headers });
+  },
 });
 
-// --- MCP Client (for consuming hr-tools + it-tools via LiteLLM) ---
+// --- MCP Clients (consume hr-tools + it-tools via Portkey MCP Gateway) ---
 
-let mcpClient = null;
+let mcpClients = [];
+
+async function connectMCP(url) {
+  const connectPromise = createMCPClient({
+    transport: {
+      type: 'http',
+      url,
+      headers: {
+        'x-portkey-api-key': PORTKEY_API_KEY,
+      },
+    },
+  });
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('MCP connection timeout (15s)')), 15000)
+  );
+  return Promise.race([connectPromise, timeoutPromise]);
+}
 
 export async function initMCPClient() {
-  try {
-    const connectPromise = createMCPClient({
-      transport: {
-        type: 'http',
-        url: MCP_URL,
-        headers: {
-          'Authorization': `Bearer ${LITELLM_API_KEY}`,
-          'x-litellm-api-key': `Bearer ${LITELLM_API_KEY}`,
-        },
-      },
-    });
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('MCP connection timeout (15s)')), 15000)
-    );
-    mcpClient = await Promise.race([connectPromise, timeoutPromise]);
-    console.log(`[it-triage] MCP client connected: ${MCP_URL}`);
-  } catch (err) {
-    console.error(`[it-triage] Failed to connect MCP client: ${err.message}`);
+  mcpClients = [];
+  for (const url of MCP_URLS) {
+    try {
+      const client = await connectMCP(url);
+      mcpClients.push({ url, client });
+      console.log(`[it-triage] MCP client connected: ${url}`);
+    } catch (err) {
+      console.error(`[it-triage] Failed to connect MCP client ${url}: ${err.message}`);
+    }
   }
 }
 
 export async function closeMCPClient() {
-  try { await mcpClient?.close(); } catch (_) {}
+  for (const entry of mcpClients) {
+    try { await entry.client.close(); } catch (_) {}
+  }
 }
 
 /**
- * Get MCP tools from LiteLLM, filtered to only include data tools
- * (hr-tools, it-tools). Excludes the agent's own tools to prevent recursion.
+ * Get data tools (hr-tools, it-tools) from the Portkey MCP Gateway.
+ * Each server has its own client, so no self-referential tools appear here.
  */
 async function getMCPTools() {
-  if (!mcpClient) return {};
-  try {
-    const allTools = await mcpClient.tools();
-    // Only keep tools from data servers — exclude this agent's own tools to prevent recursion
-    const filtered = {};
-    for (const [name, t] of Object.entries(allTools)) {
-      // LiteLLM prefixes with server name: "it_triage_agent-triage_it_request"
-      if (!name.includes('it_triage_agent')) {
-        // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() (type: 'dynamic') by default,
-        // which would prevent ToolLoopAgent from executing them server-side. Strip the flag.
+  if (mcpClients.length === 0) return {};
+  const merged = {};
+  for (const entry of mcpClients) {
+    try {
+      const tools = await entry.client.tools();
+      // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() (type: 'dynamic') by default,
+      // which would prevent ToolLoopAgent from executing them server-side. Strip the flag.
+      for (const [name, t] of Object.entries(tools)) {
         if (t.type === 'dynamic') delete t.type;
-        filtered[name] = t;
+        merged[name] = t;
       }
+    } catch (err) {
+      console.warn(`[it-triage] MCP tools unavailable from ${entry.url}: ${err.message}`);
     }
-    return filtered;
-  } catch (err) {
-    console.warn(`[it-triage] MCP tools unavailable: ${err.message}`);
-    return {};
   }
+  return merged;
 }
 
 // --- Local IT Process Tools ---

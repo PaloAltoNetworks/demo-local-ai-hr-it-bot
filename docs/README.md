@@ -1,6 +1,6 @@
 # MCP HR/IT Chatbot — Documentation
 
-AI-powered HR/IT chatbot using Vercel AI SDK with native MCP (Model Context Protocol) tool calling via LiteLLM.
+AI-powered HR/IT chatbot using Vercel AI SDK with native MCP (Model Context Protocol) tool calling via Portkey.
 
 ---
 
@@ -8,22 +8,22 @@ AI-powered HR/IT chatbot using Vercel AI SDK with native MCP (Model Context Prot
 
 ```
 Chatbot V2 (port 3008)           React + Express + AI SDK (streamText)
-       |  AI SDK + @ai-sdk/mcp   Single MCP connection
-LiteLLM /mcp                     MCP aggregator (proxies to registered servers)
-       |--- hr-tools-mcp-server  HR data (CSV) — port 3007
-       |--- it-tools-mcp-server  IT data (SQLite) — port 3006
+       |  AI SDK + @ai-sdk/mcp   One MCP client per server, tools merged
+mcp.portkey.ai/{slug}/mcp        Portkey MCP Gateway (per-server endpoints)
+       |--- hr-tools-mcp-server  HR data (CSV) — via Cloudflare tunnel
+       |--- it-tools-mcp-server  IT data (SQLite) — via Cloudflare tunnel
        |  LLM
-LiteLLM /v1                      OpenAI-compatible endpoint
+api.portkey.ai/v1                OpenAI-compatible endpoint
        |--- AWS Bedrock, GCP Vertex AI, Azure OpenAI, Anthropic, OpenAI, Ollama
        |  Guardrails (Phase 3)
-LiteLLM guardrails               Prisma AIRS (pre_call input scanning)
+Portkey guardrail config         Prisma AIRS (input + output scanning)
 ```
 
-A single `streamText` call handles everything. AI SDK manages the tool calling loop (up to 10 steps). LiteLLM acts as both the LLM proxy and MCP tool aggregator.
+A single `streamText` call handles everything. AI SDK manages the tool calling loop (up to 10 steps). Portkey acts as the LLM gateway; its MCP Gateway exposes one endpoint per registered server, so the app opens one MCP client per server and merges the tool sets. Portkey Cloud reaches the tools servers through a Cloudflare tunnel.
 
 ### Standalone Tools Servers
 
-Pure data/tools MCP servers — no LLM, no routing. They expose data directly as MCP tools for LiteLLM to aggregate.
+Pure data/tools MCP servers — no LLM, no routing. They expose data directly as MCP tools for the Portkey MCP Gateway to reach (via Cloudflare tunnel).
 
 | Server | Port | Data Source | Tools |
 |--------|------|-------------|-------|
@@ -47,7 +47,8 @@ Transports: Streamable HTTP (`POST /mcp`) and SSE (`GET /sse` + `POST /messages`
 ### Prerequisites
 - Node.js 22
 - Docker & Docker Compose
-- LiteLLM proxy with MCP servers registered
+- Portkey account (API key), provider integrations, guardrail config
+- Tools servers registered in the Portkey MCP Gateway (exposed via Cloudflare tunnel)
 
 ### Quick Start
 
@@ -57,7 +58,7 @@ npm install
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your LiteLLM and LLM provider credentials
+# Edit .env with your Portkey API key, provider slugs, MCP slugs, and guardrail config
 
 # Start all services
 docker compose up -d
@@ -69,7 +70,7 @@ curl http://localhost:3008/health
 Open `http://localhost:3008` in a browser. The 3-phase demo:
 - **Phase 1** (green) — Normal HR/IT queries
 - **Phase 2** (red) — Risky/attack prompts
-- **Phase 3** (blue) — Guardrails enforced via LiteLLM
+- **Phase 3** (blue) — Guardrails enforced via Portkey
 
 ---
 
@@ -77,24 +78,32 @@ Open `http://localhost:3008` in a browser. The 3-phase demo:
 
 All services read from the same `.env` file via `env_file` in docker-compose.
 
-### LiteLLM
+### Portkey
 
 ```bash
-LITELLM_BASE_URL=http://localhost:8080
-LITELLM_API_KEY=sk-your-key
-LITELLM_DEFAULT_MODEL=qwen.qwen3-32b-v1:0
-MCP_URL=http://localhost:8080/mcp/
+PORTKEY_API_KEY=pk-your-key
+PORTKEY_BASE_URL=https://api.portkey.ai/v1
+PORTKEY_DEFAULT_MODEL=@bedrock-prod/eu.anthropic.claude-sonnet-4-6
+PORTKEY_AWS_PROVIDER=@bedrock-prod        # provider integration slugs
+PORTKEY_GCP_PROVIDER=@vertex-prod
+PORTKEY_MCP_BASE=https://mcp.portkey.ai
+PORTKEY_MCP_HR_SLUG=hr-tools              # MCP server slugs (per-server endpoints)
+PORTKEY_MCP_IT_SLUG=it-tools
 ```
+
+Tools servers are reached by Portkey Cloud through a host-level Cloudflare tunnel (managed
+outside compose): each hostname (e.g. `hr-tools.<domain>/mcp` → `127.0.0.1:3017`) is registered
+in the Portkey MCP Gateway, which returns the slug used above.
 
 ### Guardrails (Phase 3)
 
 ```bash
-LITELLM_GUARDRAIL_NAME=PANW-pre,PANW-post # LiteLLM guardrail names (comma-separated)
-PRISMA_AIRS_TSG_ID=your_tsg_id           # For report links
-PRISMA_AIRS_APP_ID=your_app_id           # For report links
+PORTKEY_GUARDED_CONFIG=pc-your-config     # Portkey config attaching PANW Prisma AIRS
+PRISMA_AIRS_TSG_ID=your_tsg_id            # For report links
+PRISMA_AIRS_APP_ID=your_app_id            # For report links
 ```
 
-Phase 3 injects `body.guardrails` into LiteLLM requests. LiteLLM runs them through the configured Prisma AIRS profile. Currently only `pre_call` (input scanning) is effective — see [known issues](#known-issues).
+Phase 3 sets the `x-portkey-config` header to a Portkey config that attaches the PANW Prisma AIRS guardrail as both `input_guardrails` and `output_guardrails`. Portkey runs input and output scanning through the configured AIRS profile before/after the LLM call.
 
 ---
 
@@ -113,8 +122,8 @@ React context `LanguageProvider` with `t('key')` interpolation. Language persist
 | Runtime | Node.js 22, ES modules, npm workspaces |
 | Frontend | React 19, Vite, @ai-sdk/react v3 |
 | Backend | Express 5, AI SDK v6 (streamText, convertToModelMessages, stepCountIs) |
-| MCP | @ai-sdk/mcp (native tool calling via LiteLLM /mcp aggregator) |
-| LLM | @ai-sdk/openai pointing at LiteLLM /v1 |
+| MCP | @ai-sdk/mcp (native tool calling via Portkey MCP Gateway, one client per server) |
+| LLM | @ai-sdk/openai pointing at Portkey api.portkey.ai/v1 |
 | Data | CSV (HR), SQLite via sql.js (IT) |
 | Containers | Docker Compose |
 
@@ -145,7 +154,7 @@ curl http://localhost:3007/health          # HR tools
 
 ## Known Issues
 
-- **LiteLLM `post_call` guardrail not firing** — PANW Prisma AIRS `post_call` mode (LLM response scanning) does not execute even when configured. Only `pre_call` (input scanning) works. See [LiteLLM issue #23561](https://github.com/BerriAI/litellm/issues/23561) and [detailed report](litellm-post-call-guardrail-bug.md).
+- None currently tracked. (Portkey applies PANW Prisma AIRS as both input and output guardrails, so response scanning is fully effective.)
 
 ---
 

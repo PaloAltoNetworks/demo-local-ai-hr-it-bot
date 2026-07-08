@@ -1,7 +1,7 @@
 /**
  * Chatbot V2 — AI SDK Native Backend
  * Uses streamText + pipeUIMessageStreamToResponse (AI SDK's native protocol).
- * MCP tools fetched from LiteLLM's MCP aggregator.
+ * MCP tools fetched from Portkey MCP Gateway (one client per registered server).
  * Frontend: React + useChat (consumes the data stream automatically).
  */
 import express from 'express';
@@ -27,10 +27,16 @@ const PORT = process.env.CHATBOT_V2_PORT || 3018;
 
 // --- Configuration ---
 
-const LITELLM_BASE_URL = process.env.LITELLM_BASE_URL || 'http://localhost:8080';
-const LITELLM_API_KEY = process.env.LITELLM_API_KEY || 'sk-1234';
-const MODEL_ID = process.env.LITELLM_DEFAULT_MODEL || 'eu.anthropic.claude-opus-4-6-v1';
-const MCP_URL = process.env.MCP_URL || `${LITELLM_BASE_URL}/mcp/`;
+const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai/v1';
+const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
+const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
+const GCP_PROVIDER = process.env.PORTKEY_GCP_PROVIDER || '@vertex-prod';
+const MODEL_ID = process.env.PORTKEY_DEFAULT_MODEL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`;
+
+// Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
+const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';
+const MCP_SLUGS = [process.env.PORTKEY_MCP_HR_SLUG, process.env.PORTKEY_MCP_IT_SLUG].filter(Boolean);
+const MCP_URLS = MCP_SLUGS.map(slug => `${PORTKEY_MCP_BASE}/${slug}/mcp`);
 
 const STATIC_USER = {
   employee_id: 'EMP-034',
@@ -66,7 +72,8 @@ You have all the data you need. Give a clear, professional, concise answer to th
 
 // --- LLM ---
 
-const GUARDRAIL_NAMES = (process.env.LITELLM_GUARDRAIL_NAME || '').split(',').map(s => s.trim()).filter(Boolean);
+// Portkey Config ID that attaches the PANW Prisma AIRS guardrail (input + output) on guarded requests
+const GUARDED_CONFIG = process.env.PORTKEY_GUARDED_CONFIG || '';
 const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
 const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
@@ -74,19 +81,20 @@ const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
 // Tools that mutate state — require explicit user approval before execution
 const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
 
-// Provider → fast (Reason/Observe) + powerful (Decide) model tiers
+// Provider → fast (Reason/Observe) + powerful (Decide) model tiers.
+// Model IDs use Portkey's @provider-slug/model format.
 const PROVIDER_TIERS = {
   AWS: {
     label: 'AWS Bedrock',
     icon: 'cloud',
-    fast:     'bedrock/eu.anthropic.claude-haiku-4-5-20251001-v1:0',
-    powerful: 'bedrock/eu.anthropic.claude-sonnet-4-6',
+    fast:     `${AWS_PROVIDER}/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
+    powerful: `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`,
   },
   GCP: {
     label: 'GCP Vertex AI',
     icon: 'cloud',
-    fast:     'vertex_ai/gemini-2.5-flash',
-    powerful: 'vertex_ai/gemini-2.5-pro',
+    fast:     `${GCP_PROVIDER}/gemini-2.5-flash`,
+    powerful: `${GCP_PROVIDER}/gemini-2.5-pro`,
   },
 };
 
@@ -118,25 +126,25 @@ function makeReflectTools(stepStartRef) {
   return { reflect_reason: make('reason'), reflect_observe: make('observe'), reflect_conclude: conclude };
 }
 
-// Injects user identity, thread trace, and guardrails into every LiteLLM request.
+// Injects Portkey auth, user identity, thread trace, and guardrail config into every request.
 // reqCtx is captured per-request to avoid cross-request contamination.
-function litellmFetch(reqCtx, guarded = false, noParallel = false) {
+function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
   return async (url, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set('x-portkey-api-key', PORTKEY_API_KEY);
+    headers.set('x-portkey-trace-id', reqCtx.threadId);
+    headers.set('x-portkey-metadata', JSON.stringify({
+      _user: STATIC_USER.employee_id,
+      app_name: 'The Otter V2',
+      user_ip: reqCtx.userIp,
+      thread_id: reqCtx.threadId,
+    }));
+    if (guarded && GUARDED_CONFIG) {
+      headers.set('x-portkey-config', GUARDED_CONFIG);
+    }
     if (init?.body) {
       const body = JSON.parse(init.body);
       body.user = STATIC_USER.employee_id;
-      body.metadata = {
-        ...body.metadata,
-        app_user: STATIC_USER.employee_id,
-        app_name: 'The Otter V2',
-        user_ip: reqCtx.userIp,
-        trace_id: reqCtx.threadId,
-        tr_id: reqCtx.threadId,
-        tags: [`thread:${reqCtx.threadId}`],
-      };
-      if (guarded) {
-        body.guardrails = GUARDRAIL_NAMES;
-      }
       if (noParallel) {
         body.parallel_tool_calls = false;
       }
@@ -144,13 +152,10 @@ function litellmFetch(reqCtx, guarded = false, noParallel = false) {
       if (body.tool_choice && (!body.tools || body.tools.length === 0)) {
         delete body.tool_choice;
       }
-      const headers = new Headers(init.headers);
-      headers.set('x-litellm-spend-logs-metadata', JSON.stringify({
-        thread_id: reqCtx.threadId,
-        app_user: STATIC_USER.employee_id,
-      }));
       init = { ...init, headers, body: JSON.stringify(body) };
       dbg(`[llm] → ${body.model} | msgs:${body.messages?.length ?? 0} tools:${body.tools?.length ?? 0}`);
+    } else {
+      init = { ...init, headers };
     }
     return fetch(url, init);
   };
@@ -158,57 +163,65 @@ function litellmFetch(reqCtx, guarded = false, noParallel = false) {
 
 function getModel(modelId, reqCtx, guarded = false, noParallel = false) {
   const provider = createOpenAI({
-    baseURL: `${LITELLM_BASE_URL}/v1`,
-    apiKey: LITELLM_API_KEY,
-    fetch: litellmFetch(reqCtx, guarded, noParallel),
+    baseURL: PORTKEY_BASE_URL,
+    apiKey: PORTKEY_API_KEY,
+    fetch: portkeyFetch(reqCtx, guarded, noParallel),
   });
   return provider.chat(modelId || MODEL_ID);
 }
 
-// --- MCP Client ---
+// --- MCP Clients (Portkey MCP Gateway — one client per registered server) ---
 
-let mcpClient = null;
+let mcpClients = [];
 
-async function initMCPClient() {
-  try {
-    const connectPromise = createMCPClient({
-      transport: {
-        type: 'http',
-        url: MCP_URL,
-        headers: {
-          'Authorization': `Bearer ${LITELLM_API_KEY}`,
-          'x-litellm-api-key': `Bearer ${LITELLM_API_KEY}`,
-        },
+async function connectMCP(url) {
+  const connectPromise = createMCPClient({
+    transport: {
+      type: 'http',
+      url,
+      headers: {
+        'x-portkey-api-key': PORTKEY_API_KEY,
       },
-    });
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Connection timeout (15s)')), 15000)
-    );
-    mcpClient = await Promise.race([connectPromise, timeoutPromise]);
-    console.log(`MCP client connected: ${MCP_URL}`);
-  } catch (err) {
-    console.error(`Failed to connect MCP client: ${err.message}`);
+    },
+  });
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Connection timeout (15s)')), 15000)
+  );
+  return Promise.race([connectPromise, timeoutPromise]);
+}
+
+async function initMCPClients() {
+  mcpClients = [];
+  for (const url of MCP_URLS) {
+    try {
+      const client = await connectMCP(url);
+      mcpClients.push({ url, client });
+      console.log(`MCP client connected: ${url}`);
+    } catch (err) {
+      console.error(`Failed to connect MCP client ${url}: ${err.message}`);
+    }
   }
 }
 
 async function getMCPTools() {
-  if (!mcpClient) return {};
-  try {
-    const tools = await mcpClient.tools();
-    // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() by default (type: 'dynamic'),
-    // which tells streamText to send them to the client for execution instead of running
-    // them server-side. Strip the flag so the execute() function runs on the backend.
-    for (const tool of Object.values(tools)) {
-      if (tool.type === 'dynamic') delete tool.type;
+  if (mcpClients.length === 0) return {};
+  const merged = {};
+  for (const entry of mcpClients) {
+    try {
+      const tools = await entry.client.tools();
+      // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() by default (type: 'dynamic'),
+      // which tells streamText to send them to the client for execution instead of running
+      // them server-side. Strip the flag so the execute() function runs on the backend.
+      for (const [name, tool] of Object.entries(tools)) {
+        if (tool.type === 'dynamic') delete tool.type;
+        merged[name] = tool;
+      }
+    } catch (err) {
+      console.warn(`MCP tools unavailable from ${entry.url}: ${err.message}`);
     }
-    console.log(`[mcp] tools loaded (${Object.keys(tools).length}): ${Object.keys(tools).join(', ')}`);
-    return tools;
-  } catch (err) {
-    console.warn(`MCP tools unavailable: ${err.message}`);
-    mcpClient = null;
-    initMCPClient();
-    return {};
   }
+  console.log(`[mcp] tools loaded (${Object.keys(merged).length}): ${Object.keys(merged).join(', ')}`);
+  return merged;
 }
 
 // --- Middleware ---
@@ -227,8 +240,8 @@ app.get('/health', (_req, res) => {
     status: 'ok',
     service: 'chatbot-v2',
     timestamp: new Date().toISOString(),
-    mcpStatus: mcpClient ? 'connected' : 'disconnected',
-    mcpUrl: MCP_URL,
+    mcpStatus: mcpClients.length > 0 ? 'connected' : 'disconnected',
+    mcpUrls: MCP_URLS,
     model: MODEL_ID,
   });
 });
@@ -452,53 +465,39 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Available models from LiteLLM
+// Available models from Portkey
 const PROVIDER_LABELS = {
   bedrock: 'AWS', bedrock_converse: 'AWS',
-  vertex_ai: 'GCP', 'vertex_ai-language-models': 'GCP',
+  vertex_ai: 'GCP', 'vertex-ai': 'GCP',
   azure: 'Azure', azure_ai: 'Azure',
   anthropic: 'Anthropic', openai: 'OpenAI', ollama: 'Ollama',
 };
 
 function inferProvider(modelId) {
   if (!modelId) return 'unknown';
-  if (modelId.startsWith('bedrock/') || modelId.includes('anthropic.') || modelId.includes('amazon.') || modelId.includes('eu.anthropic') || modelId.includes('us.anthropic')) return 'AWS';
-  if (modelId.startsWith('vertex_ai/') || modelId.includes('gemini')) return 'GCP';
-  if (modelId.startsWith('azure_ai/') || modelId.startsWith('azure/')) return 'Azure';
-  if (modelId.startsWith('anthropic/')) return 'Anthropic';
-  if (modelId.startsWith('openai/') || modelId.startsWith('gpt')) return 'OpenAI';
-  if (modelId.startsWith('ollama/')) return 'Ollama';
-  // Fallback: check PROVIDER_LABELS by prefix segment
-  const prefix = modelId.split('/')[0];
+  if (modelId.includes('bedrock') || modelId.includes('anthropic.') || modelId.includes('amazon.') || modelId.includes('eu.anthropic') || modelId.includes('us.anthropic')) return 'AWS';
+  if (modelId.includes('vertex') || modelId.includes('gemini')) return 'GCP';
+  if (modelId.includes('azure')) return 'Azure';
+  if (modelId.includes('anthropic/') || modelId.startsWith('@anthropic')) return 'Anthropic';
+  if (modelId.includes('openai') || modelId.includes('gpt')) return 'OpenAI';
+  if (modelId.includes('ollama')) return 'Ollama';
+  const prefix = modelId.replace(/^@/, '').split('/')[0];
   return PROVIDER_LABELS[prefix] || 'unknown';
 }
 
 app.get('/api/models', async (_req, res) => {
   try {
-    // Try /model/info first (richer metadata), fall back to /models (OpenAI-compat list)
     let models = [];
-    const infoResp = await fetch(`${LITELLM_BASE_URL}/model/info`, {
-      headers: { 'x-litellm-api-key': LITELLM_API_KEY },
+    const listResp = await fetch(`${PORTKEY_BASE_URL}/models`, {
+      headers: { 'x-portkey-api-key': PORTKEY_API_KEY },
     });
-    if (infoResp.ok) {
-      const data = await infoResp.json();
-      models = (data.data || []).map(m => {
-        const provider = m.model_info?.litellm_provider || inferProvider(m.model_name);
-        return { id: m.model_name, name: m.model_name, provider: PROVIDER_LABELS[provider] || provider };
-      });
-    }
-    if (models.length === 0) {
-      const listResp = await fetch(`${LITELLM_BASE_URL}/models`, {
-        headers: { 'x-litellm-api-key': LITELLM_API_KEY },
-      });
-      if (listResp.ok) {
-        const data = await listResp.json();
-        models = (data.data || []).map(m => ({
-          id: m.id,
-          name: m.id,
-          provider: inferProvider(m.id),
-        }));
-      }
+    if (listResp.ok) {
+      const data = await listResp.json();
+      models = (data.data || []).map(m => ({
+        id: m.id,
+        name: m.slug || m.id,
+        provider: inferProvider(m.id),
+      }));
     }
     const defaultModel = models.some(m => m.id === MODEL_ID) ? MODEL_ID : (models[0]?.id || MODEL_ID);
     res.json({ models, default: defaultModel });
@@ -508,12 +507,12 @@ app.get('/api/models', async (_req, res) => {
   }
 });
 
-// Providers — only return tiers where both fast + powerful models are live in LiteLLM
+// Providers — only return tiers where both fast + powerful models are live in Portkey
 app.get('/api/providers', async (_req, res) => {
   try {
     let liveIds = new Set();
-    const listResp = await fetch(`${LITELLM_BASE_URL}/models`, {
-      headers: { 'x-litellm-api-key': LITELLM_API_KEY },
+    const listResp = await fetch(`${PORTKEY_BASE_URL}/models`, {
+      headers: { 'x-portkey-api-key': PORTKEY_API_KEY },
     });
     if (listResp.ok) {
       const data = await listResp.json();
@@ -578,12 +577,12 @@ app.get('/{*path}', (_req, res) => {
 // --- Startup ---
 
 async function main() {
-  await initMCPClient();
+  await initMCPClients();
 
   app.listen(PORT, () => {
     console.log(`Chatbot V2 running on http://localhost:${PORT}`);
-    console.log(`Model: ${MODEL_ID} via LiteLLM at ${LITELLM_BASE_URL}`);
-    console.log(`MCP tools: ${MCP_URL}`);
+    console.log(`Model: ${MODEL_ID} via Portkey at ${PORTKEY_BASE_URL}`);
+    console.log(`MCP tools: ${MCP_URLS.join(', ') || '(none configured)'}`);
   });
 }
 
@@ -594,7 +593,9 @@ main().catch(err => {
 
 async function shutdown() {
   console.log('Shutting down...');
-  try { await mcpClient?.close(); } catch (_) {}
+  for (const entry of mcpClients) {
+    try { await entry.client.close(); } catch (_) {}
+  }
   process.exit(0);
 }
 

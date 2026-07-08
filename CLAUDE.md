@@ -83,7 +83,7 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 - `mcp-server/it-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes IT ticket DB for external LLM hosts
 - `mcp-server/hr-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes HR employee DB for external LLM hosts
 - `chatbot-v2/` — AI SDK chatbot host with native MCP tool calling, connects directly to standalone tools servers (no coordinator/gateway needed)
-- `agents/it-triage-agent/` — Agentic MCP server: MCP on the outside (registers with LiteLLM), `ToolLoopAgent` on the inside (own LLM, local business logic tools + MCP data tools via LiteLLM)
+- `agents/it-triage-agent/` — Agentic MCP server: MCP on the outside (registers with the Portkey MCP Gateway), `ToolLoopAgent` on the inside (own LLM, local business logic tools + MCP data tools via Portkey)
 
 ### Agent Pattern
 Each agent in `mcp-server/{name}-mcp-server/` follows the same structure:
@@ -94,7 +94,7 @@ Each agent in `mcp-server/{name}-mcp-server/` follows the same structure:
 To create a new agent: copy an existing agent directory, update `config.js`/`service.js`, add a new service block in `docker-compose.yml` with a unique `AGENT_NAME` build arg.
 
 ### Standalone Tools Server Pattern
-Standalone tools servers in `mcp-server/{name}-tools-mcp-server/` are pure data/tools MCP servers — no LLM, no coordinator registration. They expose data directly as MCP tools for external LLM hosts (e.g. Claude Desktop, Cursor, LiteLLM) to consume. Each follows this structure:
+Standalone tools servers in `mcp-server/{name}-tools-mcp-server/` are pure data/tools MCP servers — no LLM, no coordinator registration. They expose data directly as MCP tools for external LLM hosts (e.g. Claude Desktop, Cursor, Portkey) to consume. Each follows this structure:
 1. `service.js` — Data loading and querying logic (self-contained, no shared base classes)
 2. `server.js` — Express + MCP SDK server, registers tools via `McpServer`, supports both Streamable HTTP (`POST /mcp`) and SSE (`GET /sse` + `POST /messages`) transports
 3. `Dockerfile` — Own Dockerfile (not `Dockerfile.agent`), copies data files from the original agent and `utils/` for logging
@@ -103,29 +103,29 @@ Standalone tools servers in `mcp-server/{name}-tools-mcp-server/` are pure data/
 To create a new tools server: copy `it-tools-mcp-server` or `hr-tools-mcp-server`, update `service.js`/`server.js`, add a Dockerfile and a new service block in `docker-compose.yml` with a unique host port.
 
 ### Agentic MCP Server Pattern
-Agentic MCP servers in `agents/{name}/` wrap a `ToolLoopAgent` (AI SDK) inside an MCP server interface. From the outside they look like any other MCP server (register with LiteLLM, expose tools via `/mcp`). On the inside, each tool invocation triggers multi-step agent reasoning with its own LLM. The agent consumes data from other MCP servers via LiteLLM `/mcp` and makes LLM calls via LiteLLM `/v1`. Structure:
+Agentic MCP servers in `agents/{name}/` wrap a `ToolLoopAgent` (AI SDK) inside an MCP server interface. From the outside they look like any other MCP server (registered with the Portkey MCP Gateway, expose tools via `/mcp`). On the inside, each tool invocation triggers multi-step agent reasoning with its own LLM. The agent consumes data from other MCP servers via the Portkey MCP Gateway (`mcp.portkey.ai/{slug}/mcp`, one client per server) and makes LLM calls via Portkey `api.portkey.ai/v1`. Structure:
 1. `agent.js` — `ToolLoopAgent` with local business logic tools + MCP client for data tools + LLM provider
 2. `server.js` — Express + MCP SDK server, registers high-level tools that internally invoke the agent
 3. `Dockerfile` — Own Dockerfile, copies agent source files
 4. `package.json` — Dependencies: `ai`, `@ai-sdk/mcp`, `@ai-sdk/openai`, `@modelcontextprotocol/sdk`, `express`, `zod`
 
-### Chatbot V2 (AI SDK + MCP via LiteLLM)
-`chatbot-v2/` is a drop-in replacement for chatbot-host + mcp-gateway. It uses Vercel AI SDK `generateText` with `@ai-sdk/mcp` for native tool calling. MCP tools are fetched from LiteLLM's `/mcp` aggregator endpoint, which proxies to all registered MCP servers. AI SDK handles the tool calling loop (up to 10 steps). To switch providers, change `MCP_URL` and `LITELLM_BASE_URL`. Architecture:
+### Chatbot V2 (AI SDK + MCP via Portkey)
+`chatbot-v2/` is a drop-in replacement for chatbot-host + mcp-gateway. It uses Vercel AI SDK `generateText` with `@ai-sdk/mcp` for native tool calling. Portkey's MCP Gateway exposes one endpoint per registered server (no single aggregator), so the app opens one MCP client per server (HR, IT) and merges the tool sets. AI SDK handles the tool calling loop (up to 10 steps). Portkey Cloud reaches the tools servers through a Cloudflare tunnel. Architecture:
 ```
 Chatbot V2 (port 3018)           Frontend (vanilla JS) + Express + AI SDK
-       ↓ generateText + tools     @ai-sdk/mcp → single MCP connection
-       LiteLLM /mcp              MCP aggregator (proxies to registered servers)
-       ├── hr-tools-mcp-server    HR data (CSV)
-       └── it-tools-mcp-server    IT data (SQLite)
+       ↓ generateText + tools     @ai-sdk/mcp → one client per server, tools merged
+       mcp.portkey.ai/{slug}/mcp  Portkey MCP Gateway (per-server endpoints)
+       ├── hr-tools-mcp-server    HR data (CSV)   ── via Cloudflare tunnel
+       └── it-tools-mcp-server    IT data (SQLite) ── via Cloudflare tunnel
        ↓ LLM
-       LiteLLM /v1               OpenAI-compatible endpoint
+       api.portkey.ai/v1          OpenAI-compatible endpoint
 ```
-Config: `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `LITELLM_DEFAULT_MODEL`, `MCP_URL`.
+Config: `PORTKEY_BASE_URL`, `PORTKEY_API_KEY`, `PORTKEY_DEFAULT_MODEL`, `PORTKEY_MCP_BASE`, `PORTKEY_MCP_HR_SLUG`, `PORTKEY_MCP_IT_SLUG`, `PORTKEY_GUARDED_CONFIG`.
 
 ### LLM Provider System
-`utils/llm-provider.js` uses Vercel AI SDK to abstract across providers. Provider is auto-detected from environment variables (first match wins): Ollama, OpenAI, Anthropic, AWS Bedrock, Azure OpenAI, Google Vertex AI. Set `USE_LITELLM=true` to route all calls through a LiteLLM proxy instead.
+LLM calls go through Portkey Cloud (`api.portkey.ai/v1`, OpenAI-compatible) via `@ai-sdk/openai` `createOpenAI` with a custom fetch wrapper that injects `x-portkey-*` headers (auth, metadata, trace id, guardrail config). The target provider is selected via Portkey's `@provider-slug/model` model string; provider integrations (AWS Bedrock, GCP Vertex) are configured in the Portkey dashboard.
 
-The coordinator (`mcp-gateway/coordinator.js`) and each agent independently call the LLM. Model can be configured per-role via `COORDINATOR_MODEL` and `AGENT_MODEL` env vars.
+Model can be configured per-role via `PORTKEY_DEFAULT_MODEL` and `IT_TRIAGE_MODEL` env vars.
 
 ### MCP Protocol
 - JSON-RPC 2.0 over HTTP transport, protocol version `2025-06-18`

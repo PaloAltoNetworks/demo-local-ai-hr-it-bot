@@ -6,7 +6,7 @@ const ChatContext = createContext();
 
 export const useChatContext = () => useContext(ChatContext);
 
-// Unique thread ID per browser session — links all requests in LiteLLM logs
+// Unique thread ID per browser session — links all requests in Portkey logs
 const threadId = crypto.randomUUID();
 
 // Refs for values that change per-render but must be captured at request time

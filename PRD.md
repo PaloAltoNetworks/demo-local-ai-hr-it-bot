@@ -11,17 +11,17 @@ React Frontend (@ai-sdk/react useChat v3)
     ↕ AI SDK UI Message Stream Protocol (automatic)
 Express Backend (streamText + pipeUIMessageStreamToResponse)
     ↕ AI SDK native tool calling
-MCP Tools via LiteLLM /mcp/ aggregator (@ai-sdk/mcp)
+MCP Tools via Portkey MCP Gateway (mcp.portkey.ai/{slug}/mcp, @ai-sdk/mcp, one client per server)
     ↕
-LiteLLM /v1 → Multi-provider (AWS Bedrock, GCP Vertex AI, Azure OpenAI)
+Portkey api.portkey.ai/v1 → Multi-provider (AWS Bedrock, GCP Vertex AI, Azure OpenAI)
     ↕ (Phase 3 only)
-Prisma AIRS guardrails via LiteLLM metadata injection
+Prisma AIRS guardrails via Portkey config (input + output)
 ```
 
 ### Key SDK Versions
 - `ai` v6+ (streamText, ToolLoopAgent, tool() with inputSchema, convertToModelMessages, stepCountIs, DefaultChatTransport, pipeUIMessageStreamToResponse, pipeAgentUIStreamToResponse)
 - `@ai-sdk/react` v3 (useChat with UIMessage parts API, sendMessage, status)
-- `@ai-sdk/openai` (OpenAI-compatible provider pointing at LiteLLM)
+- `@ai-sdk/openai` (OpenAI-compatible provider pointing at Portkey)
 - `@ai-sdk/mcp` (MCP client for tool discovery — used by both chatbot-v2 and agentic MCP servers)
 
 ---
@@ -57,35 +57,32 @@ Key details:
 
 ### Guardrail Provider
 
-Phase 3 enforces Prisma AIRS guardrails via a custom `fetch` wrapper on `@ai-sdk/openai`. Guardrail names are configurable via `LITELLM_GUARDRAIL_NAME` env var (comma-separated for multiple guardrails, e.g. `PANW-pre,PANW-post`):
+Phase 3 enforces Prisma AIRS guardrails via a custom `fetch` wrapper on `@ai-sdk/openai` that sets Portkey headers. The guardrail is a Portkey **config** (referenced by ID via `PORTKEY_GUARDED_CONFIG`) that attaches the PANW Prisma AIRS guardrail as both `input_guardrails` and `output_guardrails`:
 
 ```js
-const GUARDRAIL_NAMES = (process.env.LITELLM_GUARDRAIL_NAME || '').split(',').map(s => s.trim()).filter(Boolean);
+const GUARDED_CONFIG = process.env.PORTKEY_GUARDED_CONFIG || '';
 
 const openaiGuarded = createOpenAI({
-  baseURL: `${LITELLM_BASE_URL}/v1`,
-  apiKey: LITELLM_API_KEY,
+  baseURL: PORTKEY_BASE_URL,
+  apiKey: PORTKEY_API_KEY,
   fetch: async (url, init) => {
-    if (init?.body) {
-      const body = JSON.parse(init.body);
-      body.user = STATIC_USER.email;
-      body.metadata = { ...body.metadata, app_user: STATIC_USER.email, ... };
-      body.guardrails = GUARDRAIL_NAMES;
-      init = { ...init, body: JSON.stringify(body) };
-    }
-    return fetch(url, init);
+    const headers = new Headers(init?.headers);
+    headers.set('x-portkey-api-key', PORTKEY_API_KEY);
+    headers.set('x-portkey-metadata', JSON.stringify({ _user: STATIC_USER.employee_id, ... }));
+    if (guarded && GUARDED_CONFIG) headers.set('x-portkey-config', GUARDED_CONFIG);
+    return fetch(url, { ...init, headers });
   },
 });
 ```
 
-LiteLLM intercepts requests with `body.guardrails` and runs them through the configured guardrail profile (e.g. Prisma AIRS) before forwarding to the LLM. Currently only `pre_call` (input scanning) is effective — `post_call` (response scanning) is [not firing due to a LiteLLM bug](https://github.com/BerriAI/litellm/issues/23561).
+Portkey runs the config's guardrails through the configured Prisma AIRS profile. Both input (pre-call) and output (post-call) scanning are effective — the config declares `input_guardrails` and `output_guardrails` separately.
 
 ### Model Discovery
 
-`GET /api/models` fetches available models from LiteLLM's `/model/info` endpoint and maps provider labels:
-- `bedrock` / `bedrock_converse` → AWS
-- `vertex_ai` → GCP
-- `azure` / `azure_ai` → Azure
+`GET /api/models` fetches available models from Portkey's `/v1/models` endpoint and maps provider labels:
+- `bedrock` → AWS
+- `vertex` / `gemini` → GCP
+- `azure` → Azure
 - `anthropic` → Anthropic, `openai` → OpenAI, `ollama` → Ollama
 
 Returns `{ models: [{ id, name, provider }], default: MODEL_ID }`.
@@ -94,7 +91,7 @@ Returns `{ models: [{ id, name, provider }], default: MODEL_ID }`.
 
 `GET /api/airs-config` returns `{ tsgId, appId, baseUrl }` for building Strata Cloud Manager report links in the frontend. Report URL format:
 ```
-{baseUrl}/{tr_id}/{appId}/LiteLLM/transactions/{scan_id}/0?tsg_id={tsgId}#date=24hr
+{baseUrl}/{tr_id}/{appId}/Portkey/transactions/{scan_id}/0?tsg_id={tsgId}#date=24hr
 ```
 
 ### Other Endpoints
@@ -151,7 +148,7 @@ Messages persist across phase switches. Each message is tagged with the phase it
 
 ### Guardrail Error Display
 
-When LiteLLM blocks a request via Prisma AIRS (Phase 3), the error is parsed and displayed:
+When Portkey blocks a request via Prisma AIRS (Phase 3), the error is parsed and displayed:
 1. Parse the Python-dict-style error string (replace `'`→`"`, `True`→`true`, `False`→`false`)
 2. Extract `type`, `tr_id`, `scan_id`, `prompt_detected`/`response_detected`
 3. Display translated message via `t('guardrail.blocked')` (all 9 locales)
@@ -186,7 +183,7 @@ LanguageProvider (context: t, language, setLanguage, languages)
 |-------|-----------|----------|
 | Phase 1 — Normal Usage | `--green` (#00CC66) | Standard LLM + MCP tools |
 | Phase 2 — Risky Usage | `--red` (#C84727) | Same backend, attack prompts in sidebar |
-| Phase 3 — Protected Mode | `--blue` (#00C0E8) | Guardrails enforced via LiteLLM PANW profile |
+| Phase 3 — Protected Mode | `--blue` (#00C0E8) | Guardrails enforced via Portkey config (PANW AIRS input + output) |
 
 - Phase state in `App.jsx`, persisted to `localStorage`
 - Phase CSS applied via `.phase{N}-active` on app wrapper (controls `--phase` CSS variable)
@@ -243,19 +240,22 @@ agents/it-triage-agent/
 ### Environment Variables
 
 **Chatbot V2**:
-- `LITELLM_BASE_URL` — LiteLLM proxy URL
-- `LITELLM_API_KEY` — API key for LiteLLM
-- `LITELLM_DEFAULT_MODEL` — Default model ID
-- `MCP_URL` — MCP aggregator endpoint (defaults to `{LITELLM_BASE_URL}/mcp/`)
-- `LITELLM_GUARDRAIL_NAME` — Comma-separated LiteLLM guardrail names to enforce in Phase 3 (e.g. `PANW-pre,PANW-post`)
+- `PORTKEY_BASE_URL` — Portkey gateway URL (`https://api.portkey.ai/v1`)
+- `PORTKEY_API_KEY` — Portkey API key
+- `PORTKEY_DEFAULT_MODEL` — Default model in `@provider-slug/model` format
+- `PORTKEY_AWS_PROVIDER` / `PORTKEY_GCP_PROVIDER` — Provider integration slugs
+- `PORTKEY_MCP_BASE` — MCP Gateway base (`https://mcp.portkey.ai`)
+- `PORTKEY_MCP_HR_SLUG` / `PORTKEY_MCP_IT_SLUG` — Per-server MCP slugs
+- `PORTKEY_GUARDED_CONFIG` — Portkey config ID attaching PANW AIRS (Phase 3)
 - `PRISMA_AIRS_TSG_ID` — Strata Cloud Manager tenant ID (for report links)
 - `PRISMA_AIRS_APP_ID` — AIRS application ID (for report links)
 - `CHATBOT_V2_PORT` — Server port (default 3008)
 
 **IT Triage Agent**:
-- `LITELLM_BASE_URL` — LiteLLM proxy URL (for LLM calls via `/v1` and MCP calls via `/mcp`)
-- `LITELLM_API_KEY` — API key for LiteLLM
-- `IT_TRIAGE_MODEL` — Model ID for the agent's LLM (defaults to `LITELLM_DEFAULT_MODEL`)
+- `PORTKEY_BASE_URL` — Portkey gateway URL (for LLM calls via `/v1`)
+- `PORTKEY_API_KEY` — Portkey API key
+- `PORTKEY_MCP_BASE` / `PORTKEY_MCP_HR_SLUG` / `PORTKEY_MCP_IT_SLUG` — MCP Gateway endpoints (hr-tools, it-tools)
+- `IT_TRIAGE_MODEL` — Model ID for the agent's LLM (defaults to `PORTKEY_DEFAULT_MODEL`)
 
 ---
 
@@ -266,10 +266,10 @@ The demo showcases two distinct patterns an AI developer would use to build AI a
 ### Target Architecture
 
 ```
-Any MCP client (chatbot-v2, Claude Desktop, Cursor, LiteLLM...)
+Any MCP client (chatbot-v2, Claude Desktop, Cursor, Portkey...)
     │
     ▼
-LiteLLM /mcp (MCP aggregator)
+Portkey MCP Gateway (mcp.portkey.ai/{slug}/mcp — one endpoint per server)
     ├──────────────────┬──────────────────────────────┐
     │                  │                               │
     ▼                  ▼                               ▼
@@ -277,14 +277,14 @@ LiteLLM /mcp (MCP aggregator)
 │ hr-tools     │ │ it-tools     │ │ it-triage-agent              │
 │ MCP server   │ │ MCP server   │ │ MCP server (external)        │
 │ (data only)  │ │ (data only)  │ │ ToolLoopAgent (internal)     │
-│ No LLM       │ │ No LLM       │ │ Own LLM via LiteLLM /v1     │
+│ No LLM       │ │ No LLM       │ │ Own LLM via Portkey /v1      │
 │              │ │              │ │ + local business logic tools  │
-│              │ │              │ │ + MCP tools via LiteLLM /mcp  │
+│              │ │              │ │ + MCP tools via Portkey MCP   │
 └──────────────┘ └──────────────┘ └──────────────────────────────┘
      Pattern A        Pattern A              Pattern B
 ```
 
-Key insight: **MCP on the outside, ToolLoopAgent on the inside.** The IT Triage Agent looks like any other MCP server to clients — it registers with LiteLLM, exposes tools via `/mcp`. But internally, its tools trigger multi-step agent reasoning with its own LLM. The agent consumes HR and IT data by calling back through LiteLLM's MCP aggregator, so all calls flow through the gateway (observability, guardrails, rate limiting apply uniformly).
+Key insight: **MCP on the outside, ToolLoopAgent on the inside.** The IT Triage Agent looks like any other MCP server to clients — registered in the Portkey MCP Gateway, exposes tools via `/mcp`. But internally, its tools trigger multi-step agent reasoning with its own LLM. The agent consumes HR and IT data by calling back through the Portkey MCP Gateway (one client per server), so all calls flow through the gateway (observability, guardrails, rate limiting apply uniformly).
 
 ### Vercel AI SDK Stack
 
@@ -295,7 +295,7 @@ The demo relies entirely on the Vercel AI SDK ecosystem — from protocol to age
 | `ai` v6+ | `streamText`, `ToolLoopAgent`, `tool()` with `inputSchema`, `pipeAgentUIStreamToResponse`, `stopWhen`, lifecycle hooks | A + B |
 | `@ai-sdk/react` v3 | `useChat`, `DefaultChatTransport`, UIMessage parts API | All |
 | `@ai-sdk/mcp` | MCP client — connects to MCP servers, auto-converts tools to AI SDK format | A + B |
-| `@ai-sdk/openai` | OpenAI-compatible provider (LiteLLM bridge) | All |
+| `@ai-sdk/openai` | OpenAI-compatible provider (Portkey bridge) | All |
 | `@ai-sdk/devtools` | Local web UI for inspecting LLM calls, tool chains, token usage, multi-step runs | All |
 | AI Elements | shadcn/ui component library for AI apps (Conversation, Message, Tool, Confirmation, etc.) | All |
 
@@ -316,28 +316,28 @@ Stateless data servers with no LLM. The chatbot's LLM calls tools to read/write 
 
 ### Pattern B — Agentic MCP Server (new)
 
-A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the outside it's a standard MCP server (registers with LiteLLM, any client can call its tools). On the inside, each tool invocation triggers multi-step agent reasoning with local business logic tools and remote MCP data tools.
+A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the outside it's a standard MCP server (registered in the Portkey MCP Gateway, any client can call its tools). On the inside, each tool invocation triggers multi-step agent reasoning with local business logic tools and remote MCP data tools.
 
 **User flow**: "I need USB access" — chatbot-v2's LLM calls `triage_it_request` tool → IT Triage Agent internally reasons across multiple steps: fetch employee, check policy via local tools, find assets, classify severity, determine team assignment → returns structured result.
 
 **Service**: `agents/it-triage-agent/` — separate container, own LLM, own MCP client
 
 **How it works**:
-1. LiteLLM registers the agent as an MCP server alongside hr-tools and it-tools
-2. Any MCP client (chatbot-v2, Claude Desktop, Cursor) discovers its tools via LiteLLM `/mcp`
+1. The agent is registered in the Portkey MCP Gateway alongside hr-tools and it-tools
+2. Any MCP client (chatbot-v2, Claude Desktop, Cursor) discovers its tools via `mcp.portkey.ai/{slug}/mcp`
 3. When a tool is called, the agent's `ToolLoopAgent` runs internally:
-   - LLM calls go through LiteLLM `/v1` (OpenAI-compatible)
-   - Data access goes through LiteLLM `/mcp` (hr-tools, it-tools)
+   - LLM calls go through Portkey `/v1` (OpenAI-compatible)
+   - Data access goes through the Portkey MCP Gateway (hr-tools, it-tools; one client per server)
    - Local tools apply business logic (severity classification, SLA checks, team assignment)
 4. The agent returns the final result as an MCP tool response
 
 **Key AI SDK features used**:
 - `ToolLoopAgent` — encapsulates model, instructions, tools, and loop behavior
 - `tool()` with `inputSchema` — local tools with Zod-validated inputs and business logic
-- `@ai-sdk/mcp` — client for consuming hr-tools and it-tools via LiteLLM
+- `@ai-sdk/mcp` — client for consuming hr-tools and it-tools via Portkey (one per server)
 - `stopWhen: stepCountIs(N)` — bounded autonomy
 - `experimental_onToolCallStart/Finish` — audit trail for every tool call
-- MCP SDK (`@modelcontextprotocol/sdk`) — server-side for exposing tools to LiteLLM
+- MCP SDK (`@modelcontextprotocol/sdk`) — server-side for exposing tools to the Portkey MCP Gateway
 
 **Security surface** (additive to Pattern A):
 - Agent autonomy — multi-step loop makes decisions without human checkpoints
@@ -346,7 +346,7 @@ A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the 
 - Cost/resource abuse — runaway tool loops (`stepCountIs` mitigates)
 - Confused deputy — agent acts with server's permissions, not user's
 - Opaque reasoning — client sees only the final result, not the agent's internal steps
-- Nested gateway calls — agent calls LiteLLM which calls MCP servers, creating a deep call chain
+- Nested gateway calls — agent calls Portkey which calls MCP servers, creating a deep call chain
 
 ### Pattern Matrix
 
@@ -356,9 +356,9 @@ A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the 
 | **Intelligence** | Zero — pure data pipe | Multi-step reasoning with business logic |
 | **Protocol** | MCP (JSON-RPC) | MCP (external) + AI SDK (internal) |
 | **Example flow** | "Get ticket X" | "I need USB access" (triage + classify + route) |
-| **Discoverable by** | Any MCP client via LiteLLM | Any MCP client via LiteLLM (same as A) |
+| **Discoverable by** | Any MCP client via Portkey | Any MCP client via Portkey (same as A) |
 | **Human-in-loop** | Client-side `needsApproval` | Agent decides internally (no approval mid-loop) |
-| **Guardrail point** | LiteLLM pre/post call | LiteLLM on agent's LLM calls + agent's MCP calls |
+| **Guardrail point** | Portkey input/output config | Portkey on agent's LLM calls + agent's MCP calls |
 
 ### Security Demo Phases x Patterns
 
@@ -377,15 +377,15 @@ A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the 
 
 ### Phase 1 — Agentic MCP Server (Pattern B)
 
-**Goal**: Build an IT Triage Agent as a standalone MCP server with its own LLM. MCP on the outside (registers with LiteLLM, discoverable by any client), `ToolLoopAgent` on the inside (multi-step reasoning with local business logic + remote MCP data tools via LiteLLM).
+**Goal**: Build an IT Triage Agent as a standalone MCP server with its own LLM. MCP on the outside (registered in the Portkey MCP Gateway, discoverable by any client), `ToolLoopAgent` on the inside (multi-step reasoning with local business logic + remote MCP data tools via Portkey).
 
 **Scope**:
 - [x] Create `agents/it-triage-agent/` as a new service:
   - `server.js` — Express + MCP SDK server (`McpServer`), registers tools via `McpServer.tool()`, supports Streamable HTTP (`POST /mcp`) and SSE transports
   - `agent.js` — `ToolLoopAgent` with `instructions` (IT triage system prompt):
     - Local tools defined with `tool()` + `inputSchema`: classify severity, check SLA, assign team, check approval required
-    - MCP tools via `@ai-sdk/mcp` connecting to LiteLLM `/mcp` (hr-tools, it-tools data)
-    - LLM calls via `@ai-sdk/openai` pointing at LiteLLM `/v1`
+    - MCP tools via `@ai-sdk/mcp` connecting to the Portkey MCP Gateway (hr-tools, it-tools data; one client per server)
+    - LLM calls via `@ai-sdk/openai` pointing at Portkey `/v1`
     - `stopWhen: stepCountIs(10)` for bounded autonomy
     - Lifecycle hooks (`experimental_onToolCallStart/Finish`) for audit logging
   - `package.json` — deps: `@modelcontextprotocol/sdk`, `ai`, `@ai-sdk/mcp`, `@ai-sdk/openai`, `express`, `zod`
@@ -393,15 +393,15 @@ A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the 
   - MCP tools exposed:
     - `triage_it_request` — high-level tool: takes a user query + employee ID, runs the full triage workflow internally (fetch employee, look up process, classify severity, assign team, check approval), returns structured triage result
     - `check_ticket_sla` — takes a ticket ID, checks SLA compliance, returns status
-- [x] Register with LiteLLM:
-  - Add to LiteLLM config as an MCP server alongside hr-tools and it-tools
-  - Discoverable via LiteLLM `/mcp` aggregator by any client
+- [x] Register with the Portkey MCP Gateway:
+  - Register the agent as an MCP server alongside hr-tools and it-tools (exposed via Cloudflare tunnel)
+  - Discoverable via `mcp.portkey.ai/{slug}/mcp` by any client
 - [x] Add to `docker-compose.yml`:
   - New service `it-triage-agent` on port 3009 (internal 3000)
-  - Env vars: `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `IT_TRIAGE_MODEL`
+  - Env vars: `PORTKEY_BASE_URL`, `PORTKEY_API_KEY`, `PORTKEY_MCP_*`, `IT_TRIAGE_MODEL`
   - Health check on `/health`
   - Depends on `it-tools-mcp-server` and `hr-tools-mcp-server`
-- [x] No chatbot-v2 changes needed — the agent's tools appear automatically via the existing MCP connection to LiteLLM
+- [x] No chatbot-v2 changes needed — the agent's tools appear via its own MCP client connection through Portkey
 
 **Key files**:
 - `agents/it-triage-agent/server.js` (new — MCP server)
@@ -410,7 +410,7 @@ A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the 
 - `agents/it-triage-agent/Dockerfile` (new)
 - `docker-compose.yml` (modified — new service)
 
-**Validates**: `ToolLoopAgent`, `tool()` with `inputSchema`, `@ai-sdk/mcp` as client, lifecycle hooks, bounded step loops, MCP-on-the-outside / agent-on-the-inside pattern, LiteLLM gateway for both LLM and MCP calls.
+**Validates**: `ToolLoopAgent`, `tool()` with `inputSchema`, `@ai-sdk/mcp` as client, lifecycle hooks, bounded step loops, MCP-on-the-outside / agent-on-the-inside pattern, Portkey gateway for both LLM and MCP calls.
 
 ### Phase 2 — AI Elements Frontend
 
@@ -478,7 +478,7 @@ A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the 
   - Demonstrate opaque reasoning (client can't see what the agent did internally)
   - Sidebar questions for Phase 2 that trigger these attacks
 - [ ] Phase 3 mitigations for each:
-  - AIRS guardrails at LiteLLM level — applies to both the agent's LLM calls and chatbot-v2's calls (existing)
+  - AIRS guardrails at Portkey level — applies to both the agent's LLM calls and chatbot-v2's calls (existing)
   - Agent lifecycle hooks that detect and block suspicious tool chains (Pattern B)
   - Audit logging across all patterns via DevTools
 - [ ] Update i18n: add Phase 2 sidebar questions for Pattern B across all 9 locales
@@ -500,11 +500,11 @@ Evolve Pattern B into full A2A protocol: agent card discovery (`/.well-known/age
 
 ### Multi-Agent Mesh
 
-Add more agentic MCP servers (Travel/Expense, HR Policy) that each wrap a `ToolLoopAgent`. All register with LiteLLM as MCP servers, all consume shared data via LiteLLM `/mcp`. Demonstrates cross-agent data flow, cascading guardrails, and distributed audit trails.
+Add more agentic MCP servers (Travel/Expense, HR Policy) that each wrap a `ToolLoopAgent`. All register in the Portkey MCP Gateway as MCP servers, all consume shared data via Portkey. Demonstrates cross-agent data flow, cascading guardrails, and distributed audit trails.
 
 ### Additional Patterns to Consider
 
-- **`@ai-sdk/gateway`** — could replace LiteLLM for provider routing in a "pure Vercel stack" variant
+- **`@ai-sdk/gateway`** — could replace Portkey for provider routing in a "pure Vercel stack" variant
 - **Chat SDK** (`chat` npm package) — Slack/Teams/Discord bot frontend as an alternative to the web UI, demonstrating the same backend patterns consumed by different surfaces
 - **RAG** — vector search over IT knowledge base or HR policy documents, adding retrieval-augmented generation as another integration pattern with its own security surface (data poisoning, context window stuffing)
 
