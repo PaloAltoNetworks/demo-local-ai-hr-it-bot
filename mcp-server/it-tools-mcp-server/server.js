@@ -6,6 +6,7 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { randomUUID } from 'crypto';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 import { z } from 'zod';
@@ -159,13 +160,30 @@ async function main() {
     res.json({ status: 'healthy', name: 'it-tools', timestamp: new Date().toISOString() });
   });
 
-  // --- Streamable HTTP transport (POST /mcp) ---
+  // --- Streamable HTTP transport (stateful — Portkey MCP Gateway requires sessions) ---
+  const httpTransports = {};
+
   app.post('/mcp', async (req, res) => {
-    const server = createServer();
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-    await server.connect(transport);
+    const sessionId = req.headers['mcp-session-id'];
+    let transport = sessionId ? httpTransports[sessionId] : undefined;
+    if (!transport) {
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => { httpTransports[sid] = transport; },
+      });
+      transport.onclose = () => { if (transport.sessionId) delete httpTransports[transport.sessionId]; };
+      await createServer().connect(transport);
+    }
     await transport.handleRequest(req, res);
   });
+
+  const bySession = async (req, res) => {
+    const transport = httpTransports[req.headers['mcp-session-id']];
+    if (!transport) return res.status(400).json({ error: 'Invalid or missing session' });
+    await transport.handleRequest(req, res);
+  };
+  app.get('/mcp', bySession);
+  app.delete('/mcp', bySession);
 
   // --- SSE transport (GET /sse + POST /messages) ---
   const sseTransports = {};
@@ -185,10 +203,6 @@ async function main() {
       return res.status(400).json({ error: 'Invalid or expired session' });
     }
     await transport.handlePostMessage(req, res);
-  });
-
-  app.get('/mcp', async (_req, res) => {
-    res.status(405).json({ error: 'GET not supported — use POST for MCP requests' });
   });
 
   app.listen(PORT, () => {

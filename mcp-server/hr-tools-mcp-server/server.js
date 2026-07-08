@@ -6,6 +6,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { randomUUID } from 'crypto';
 import express from 'express';
 import { z } from 'zod';
 import { initializeLogger } from './utils/logger.js';
@@ -103,15 +104,32 @@ async function main() {
     res.json({ status: 'healthy', name: 'hr-tools', timestamp: new Date().toISOString() });
   });
 
-  // --- Streamable HTTP transport (POST /mcp) ---
+  // --- Streamable HTTP transport (stateful — Portkey MCP Gateway requires sessions) ---
+  const httpTransports = {};
+
   app.post('/mcp', async (req, res) => {
-    console.log(`[MCP] Streamable HTTP request received`);
-    const server = createServer();
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-    await server.connect(transport);
+    const sessionId = req.headers['mcp-session-id'];
+    let transport = sessionId ? httpTransports[sessionId] : undefined;
+    if (!transport) {
+      // New session — the transport assigns a session id on initialize and echoes it back.
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => { httpTransports[sid] = transport; },
+      });
+      transport.onclose = () => { if (transport.sessionId) delete httpTransports[transport.sessionId]; };
+      await createServer().connect(transport);
+    }
     await transport.handleRequest(req, res);
-    console.log(`[MCP] Streamable HTTP request completed — status: ${res.statusCode}`);
   });
+
+  // GET (SSE stream) + DELETE (session close) for an established Streamable HTTP session
+  const bySession = async (req, res) => {
+    const transport = httpTransports[req.headers['mcp-session-id']];
+    if (!transport) return res.status(400).json({ error: 'Invalid or missing session' });
+    await transport.handleRequest(req, res);
+  };
+  app.get('/mcp', bySession);
+  app.delete('/mcp', bySession);
 
   // --- SSE transport (GET /sse + POST /messages) ---
   const sseTransports = {};
@@ -138,10 +156,6 @@ async function main() {
       return res.status(400).json({ error: 'Invalid or expired session' });
     }
     await transport.handlePostMessage(req, res);
-  });
-
-  app.get('/mcp', async (_req, res) => {
-    res.status(405).json({ error: 'GET not supported — use POST for MCP requests' });
   });
 
   app.listen(PORT, () => {
