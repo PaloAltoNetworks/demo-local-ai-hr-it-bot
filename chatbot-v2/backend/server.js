@@ -507,26 +507,12 @@ app.get('/api/models', async (_req, res) => {
   }
 });
 
-// Providers — only return tiers where both fast + powerful models are live in Portkey
-app.get('/api/providers', async (_req, res) => {
-  try {
-    let liveIds = new Set();
-    const listResp = await fetch(`${PORTKEY_BASE_URL}/models`, {
-      headers: { 'x-portkey-api-key': PORTKEY_API_KEY },
-    });
-    if (listResp.ok) {
-      const data = await listResp.json();
-      for (const m of data.data || []) liveIds.add(m.id);
-    }
-    const providers = Object.entries(PROVIDER_TIERS)
-      .filter(([, t]) => liveIds.has(t.fast) && liveIds.has(t.powerful))
-      .map(([id, t]) => ({ id, label: t.label, fast: t.fast, powerful: t.powerful }));
-    const defaultProvider = providers[0]?.id || 'AWS';
-    res.json({ providers, default: defaultProvider });
-  } catch (err) {
-    console.warn(`Failed to fetch providers: ${err.message}`);
-    res.json({ providers: Object.entries(PROVIDER_TIERS).map(([id, t]) => ({ id, label: t.label, fast: t.fast, powerful: t.powerful })), default: 'AWS' });
-  }
+// Providers — all configured tiers. Portkey routes @provider-slug/model via passthrough,
+// so a model need not appear in the /v1/models catalog to be callable.
+app.get('/api/providers', (_req, res) => {
+  const providers = Object.entries(PROVIDER_TIERS)
+    .map(([id, t]) => ({ id, label: t.label, fast: t.fast, powerful: t.powerful }));
+  res.json({ providers, default: providers[0]?.id || 'AWS' });
 });
 
 // AIRS config for building report links in the frontend
