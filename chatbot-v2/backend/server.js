@@ -248,11 +248,43 @@ app.get('/health', (_req, res) => {
 
 // No-op — kept for reference, synthetic reflect now handled via reflectTool in ToolLoopAgent
 
+// Extract structured guardrail detail from Portkey's hook_results (HTTP 446).
+// Returns a JSON string the frontend parses into a guardrail_violation error, or null.
+function parseGuardrailBlock(parsed) {
+  const hooks = parsed?.hook_results;
+  if (!hooks) return null;
+  const before = (hooks.before_request_hooks || []).find(h => h.verdict === false);
+  const after = (hooks.after_request_hooks || []).find(h => h.verdict === false);
+  const hook = before || after;
+  if (!hook) return null;
+  const data = hook.checks?.find(c => c.data)?.data || {};
+  const isResponse = !before && !!after;
+  const toxic = data.prompt_detection_details?.toxic_content_details?.toxic_categories
+    || data.response_detection_details?.toxic_content_details?.toxic_categories || [];
+  return JSON.stringify({
+    type: 'guardrail_violation',
+    tr_id: data.tr_id || data.session_id || '',
+    scan_id: data.scan_id || '',
+    report_id: data.report_id || '',
+    category: data.category || '',
+    toxic_categories: toxic,
+    prompt_detected: isResponse ? undefined : data.prompt_detected,
+    response_detected: isResponse ? (data.response_detected || {}) : undefined,
+    isResponseBlock: isResponse,
+    message: parsed?.error?.message || 'Request blocked by guardrail',
+  });
+}
+
 function normalizeError(err, modelId) {
   const apiError = err.lastError || err;
   const body = apiError?.responseBody || '';
   let summary = err.message || String(err);
-  try { const p = JSON.parse(body); summary = p?.error?.message || summary; } catch {}
+  try {
+    const p = JSON.parse(body);
+    const guardrail = parseGuardrailBlock(p);
+    if (guardrail) return guardrail;
+    summary = p?.error?.message || summary;
+  } catch {}
   const isNetwork = summary.includes('NameResolutionError') || summary.includes('Failed to resolve') ||
     summary.includes('APIConnectionError') || summary.includes('Max retries exceeded') ||
     summary.includes('ECONNREFUSED') || summary.includes('ETIMEDOUT') || summary.includes('ENOTFOUND');
