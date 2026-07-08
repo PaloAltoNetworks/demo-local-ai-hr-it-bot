@@ -31,6 +31,7 @@ const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
 const GCP_PROVIDER = process.env.PORTKEY_GCP_PROVIDER || '@vertex-prod';
+const AZURE_PROVIDER = process.env.PORTKEY_AZURE_PROVIDER || '@azure-openai';
 const MODEL_ID = process.env.PORTKEY_DEFAULT_MODEL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`;
 
 // Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
@@ -95,6 +96,12 @@ const PROVIDER_TIERS = {
     icon: 'cloud',
     fast:     `${GCP_PROVIDER}/gemini-2.5-flash`,
     powerful: `${GCP_PROVIDER}/gemini-2.5-pro`,
+  },
+  Azure: {
+    label: 'Azure OpenAI',
+    icon: 'cloud',
+    fast:     `${AZURE_PROVIDER}/gpt-5-mini`,
+    powerful: `${AZURE_PROVIDER}/gpt-5`,
   },
 };
 
