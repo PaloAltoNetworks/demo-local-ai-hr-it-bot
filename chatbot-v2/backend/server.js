@@ -133,18 +133,14 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
     const headers = new Headers(init?.headers);
     headers.set('x-portkey-api-key', PORTKEY_API_KEY);
     headers.set('x-portkey-trace-id', reqCtx.threadId);
-    headers.set('x-portkey-metadata', JSON.stringify({
-      _user: STATIC_USER.employee_id,
-      app_name: 'The Otter V2',
-      user_ip: reqCtx.userIp,
-      thread_id: reqCtx.threadId,
-    }));
     if (guarded && GUARDED_CONFIG) {
       headers.set('x-portkey-config', GUARDED_CONFIG);
     }
+    let model = '';
     if (init?.body) {
       const body = JSON.parse(init.body);
       body.user = STATIC_USER.employee_id;
+      model = body.model || '';
       if (noParallel) {
         body.parallel_tool_calls = false;
       }
@@ -152,12 +148,19 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
       if (body.tool_choice && (!body.tools || body.tools.length === 0)) {
         delete body.tool_choice;
       }
-      init = { ...init, headers, body: JSON.stringify(body) };
-      dbg(`[llm] → ${body.model} | msgs:${body.messages?.length ?? 0} tools:${body.tools?.length ?? 0}`);
-    } else {
-      init = { ...init, headers };
+      init = { ...init, body: JSON.stringify(body) };
+      dbg(`[llm] → ${model} | msgs:${body.messages?.length ?? 0} tools:${body.tools?.length ?? 0}`);
     }
-    return fetch(url, init);
+    // Metadata feeds Portkey observability and the AIRS guardrail params
+    // (ai_model={{metadata.model}}, app_user={{metadata._user}}).
+    headers.set('x-portkey-metadata', JSON.stringify({
+      _user: STATIC_USER.employee_id,
+      app_name: 'The Otter V2',
+      user_ip: reqCtx.userIp,
+      thread_id: reqCtx.threadId,
+      model,
+    }));
+    return fetch(url, { ...init, headers });
   };
 }
 
