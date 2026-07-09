@@ -61,7 +61,13 @@ Do NOT use for: simple read-only lookups like "show my tickets" or "what's the s
         });
         return { content: [{ type: 'text', text: result }] };
       } catch (err) {
-        console.error(`[mcp] triage_it_request error: ${err.message}`);
+        // AI SDK APICallError carries the upstream body/status — err.message alone is just
+        // "Bad Request". Log the real Bedrock rejection so tool-schema/400 causes are visible.
+        console.error(`[mcp] triage_it_request error: ${err.message}`, {
+          statusCode: err.statusCode,
+          url: err.url,
+          responseBody: err.responseBody,
+        });
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: 'triage_failed', message: err.message }) }],
           isError: true,
