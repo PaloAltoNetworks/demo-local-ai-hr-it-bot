@@ -328,27 +328,19 @@ export default function ChatPanel() {
                   const ranConclude = parts.some(p => (p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5)) === 'reflect_conclude');
                   const hasText = parts.some(p => p.type === 'text' && p.text);
                   if (ranConclude || hasText) return null;
-                  const KNOWN_REFLECT = ['reflect_reason', 'reflect_observe', 'reflect_decide'];
-                  const ranPhases = new Set(parts
-                    .filter(p => { const n = p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5); return KNOWN_REFLECT.includes(n); })
-                    .map(p => (p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5))?.split('_')[1]));
-                  const ranDataTools = parts.some(p => {
+                  // Only ever preview the FIRST step (Reason). Never predict Observe —
+                  // the Observe card must appear only when reflect_observe actually
+                  // streams, not speculatively during the inter-step gap.
+                  const ranReason = parts.some(p => {
                     const n = p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5);
-                    return n && !KNOWN_REFLECT.includes(n) && (p.type === 'dynamic-tool' || p.type?.startsWith('tool-'));
+                    return n === 'reflect_reason';
                   });
-                  let nextPhase;
-                  if (!ranPhases.has('reason')) nextPhase = 'reason';
-                  else if (!ranDataTools) nextPhase = null;
-                  else if (!ranPhases.has('observe')) nextPhase = 'observe';
-                  else nextPhase = null;
-                  if (!nextPhase) return null;
-                  const REACT_PHASE_ICON = { reason: 'psychology', observe: 'search_insights' };
-                  const REACT_PHASE_LABEL = { reason: 'Reason', observe: 'Observe' };
+                  if (ranReason) return null;
                   return (
-                    <div key="pending-step" className={`react-step react-${nextPhase} streaming`}>
+                    <div key="pending-step" className="react-step react-reason streaming">
                       <div className="react-step-header">
-                        <span className="material-symbols react-step-icon">{REACT_PHASE_ICON[nextPhase]}</span>
-                        <span className="react-step-label">{REACT_PHASE_LABEL[nextPhase]}...</span>
+                        <span className="material-symbols react-step-icon">psychology</span>
+                        <span className="react-step-label">Reason...</span>
                       </div>
                     </div>
                   );
