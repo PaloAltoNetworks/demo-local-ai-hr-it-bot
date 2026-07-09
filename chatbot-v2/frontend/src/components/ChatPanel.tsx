@@ -341,16 +341,20 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
 
 function AssistantParts({ msg, onApprove, t }: { msg: any; onApprove: (r: { id: string; approved: boolean }) => void; t: Translate }) {
   const parts: any[] = msg.parts || [];
+  // A wrong-phase tool call (AI_NoSuchToolError) never executes — it surfaces as an
+  // input-error/output-error part. Drop these: they're phase-lock noise, not real steps.
+  // Genuine tool failures keep state 'output-available' with output.isError, so they stay.
+  const isErroredToolPart = (p: any) => p.state === 'output-error' || p.state === 'input-error';
   // Known reflect_* steps → Chain of Thought. Hallucinated variants (reflect_respond, …) are dropped.
   const cotSteps = parts.filter(p => {
-    if (!isToolPart(p)) return false;
+    if (!isToolPart(p) || isErroredToolPart(p)) return false;
     const name = partToolName(p);
     if (name?.startsWith('reflect_') && !KNOWN_REFLECT.has(name)) return false;
     return isReflect(name);
   });
   // Real data tools = tool parts that aren't reflect steps (and aren't hallucinated reflect_*).
   const dataTools = parts.filter(p => {
-    if (!isToolPart(p)) return false;
+    if (!isToolPart(p) || isErroredToolPart(p)) return false;
     const name = partToolName(p);
     if (name?.startsWith('reflect_')) return false;
     return !isReflect(name);

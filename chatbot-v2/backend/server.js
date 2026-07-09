@@ -619,6 +619,30 @@ function applyApprovalSafeMessages(rawMessages) {
   });
 }
 
+// Prior-turn tool outputs (e.g. a 24-ticket dump) replay verbatim on every step and
+// balloon the context — a long thread hit ~50k input tokens and the slow turn tripped the
+// Cloudflare/Portkey stream timeout (ERR_INCOMPLETE_CHUNKED_ENCODING). Shrink big tool
+// outputs on every assistant message EXCEPT the last one, so the current turn keeps full
+// fidelity while history stays bounded. Tool-call/result pairing is preserved (we only
+// replace the text content of the output, never drop the part).
+const MAX_HISTORY_TOOL_OUTPUT_CHARS = 2000;
+function trimHistoryToolOutputs(messages) {
+  const lastAssistantIdx = messages.map(m => m.role).lastIndexOf('assistant');
+  return messages.map((msg, idx) => {
+    if (msg.role !== 'assistant' || !Array.isArray(msg.parts) || idx === lastAssistantIdx) return msg;
+    let changed = false;
+    const parts = msg.parts.map(p => {
+      const isToolPart = p.type === 'dynamic-tool' || (typeof p.type === 'string' && p.type.startsWith('tool-'));
+      if (!isToolPart || p.output === undefined) return p;
+      const json = typeof p.output === 'string' ? p.output : JSON.stringify(p.output);
+      if (!json || json.length <= MAX_HISTORY_TOOL_OUTPUT_CHARS) return p;
+      changed = true;
+      return { ...p, output: `${json.slice(0, MAX_HISTORY_TOOL_OUTPUT_CHARS)}\n…[truncated ${json.length - MAX_HISTORY_TOOL_OUTPUT_CHARS} chars of an earlier turn's tool output]` };
+    });
+    return changed ? { ...msg, parts } : msg;
+  });
+}
+
 // AI SDK native chat endpoint — useChat on frontend consumes this automatically
 app.post('/api/chat', async (req, res) => {
   const providerId = req.body.provider || DEFAULT_PROVIDER;
@@ -651,7 +675,7 @@ app.post('/api/chat', async (req, res) => {
       TOOLS_REQUIRING_APPROVAL.some(suffix => key.endsWith(suffix))
     );
 
-    const safeMessages = applyApprovalSafeMessages(req.body.messages);
+    const safeMessages = trimHistoryToolOutputs(applyApprovalSafeMessages(req.body.messages));
     // Per-model token usage → local cost (input*price_in + output*price_out).
     const perModelUsage = {};
     const agent = buildReactAgent(tiers, reqCtx, tools, guarded, approvalToolNames, perModelUsage);
