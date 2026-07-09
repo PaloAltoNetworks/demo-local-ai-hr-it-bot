@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -6,11 +7,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Check, Languages, SunMoon, Moon, Sun } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Check, Languages, SunMoon, Moon, Sun, ShieldQuestionMark, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 type ThemeChoice = 'system' | 'light' | 'dark';
 
-const PHASES = ['phase1', 'phase2', 'phase3'];
+const PHASES: { id: string; icon: typeof ShieldCheck; color: string }[] = [
+  { id: 'phase1', icon: ShieldQuestionMark, color: 'var(--brand-green)' },
+  { id: 'phase2', icon: ShieldAlert, color: 'var(--brand-red)' },
+  { id: 'phase3', icon: ShieldCheck, color: 'var(--brand-blue)' },
+];
 const THEMES: { value: ThemeChoice; icon: typeof SunMoon; label: string }[] = [
   { value: 'system', icon: SunMoon, label: 'System' },
   { value: 'light', icon: Sun, label: 'Light' },
@@ -37,23 +48,32 @@ export default function Header({ phase, setPhase, theme, setTheme }: HeaderProps
         <span className="text-lg font-semibold tracking-tight">{t('app.brand')}</span>
       </div>
 
-      <nav className="flex gap-1 rounded-xl bg-secondary p-1">
-        {PHASES.map(p => {
-          const active = phase === p;
-          return (
-            <button
-              key={p}
-              onClick={() => setPhase(p)}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <span className={`size-2 rounded-full transition-colors ${active ? 'bg-primary' : 'bg-muted-foreground/50'}`} />
-              {t(`phases.${p}.label`)}
-            </button>
-          );
-        })}
-      </nav>
+      <TooltipProvider>
+        <nav className="flex gap-1 rounded-xl bg-secondary p-1">
+          {PHASES.map(({ id, icon: Icon, color }) => {
+            const active = phase === id;
+            return (
+              <Tooltip key={id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setPhase(id)}
+                    aria-label={t(`phases.${id}.label`)}
+                    style={{ '--phase': color } as CSSProperties}
+                    className={`flex size-9 items-center justify-center rounded-lg border transition-colors ${
+                      active
+                        ? 'border-[var(--phase)] bg-card text-[var(--phase)] shadow-sm'
+                        : 'border-transparent text-muted-foreground hover:border-[var(--phase)] hover:text-[var(--phase)]'
+                    }`}
+                  >
+                    <Icon className="size-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t(`phases.${id}.label`)}</TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </nav>
+      </TooltipProvider>
 
       <div className="flex items-center gap-2">
         {/* Theme — icon only when collapsed, icon + label on open */}

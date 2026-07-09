@@ -422,7 +422,7 @@ function AssistantParts({ msg, onApprove, t }: { msg: any; onApprove: (r: { id: 
     const name = shortToolName(partToolName(p));
     return (
       <ChainOfThoughtStep key={key} icon={Wrench} label={name} status={p.state === 'output-available' ? 'complete' : 'active'}>
-        <Tool defaultOpen={p.state === 'output-available'}>
+        <Tool defaultOpen={false}>
           {p.type === 'dynamic-tool'
             ? <ToolHeader type="dynamic-tool" state={p.state} toolName={name} />
             : <ToolHeader type={p.type} state={p.state} title={name} />}
