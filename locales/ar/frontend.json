@@ -262,7 +262,8 @@
   "feedback": {
     "helpful": "مفيد",
     "notHelpful": "غير مفيد",
-    "copy": "نسخ"
+    "copy": "نسخ",
+    "viewTrace": "عرض التتبع"
   },
   "guardrail": {
     "cannotProcessRequest": "لا يمكنني معالجة هذا الطلب",

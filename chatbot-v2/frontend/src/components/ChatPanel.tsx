@@ -83,6 +83,21 @@ import {
 // Estimated model context window — drives the Context usage ring (Claude-class).
 const CONTEXT_WINDOW = 200_000;
 
+// Portkey trace deep-link. Org/workspace are stable per Portkey workspace (not secrets — they
+// live in the dashboard URL). traceId comes from finish metadata; the app sets it = threadId.
+const PORTKEY_ORG = '8ce8561b-633e-49f4-8029-20b2021c3e7f';
+const PORTKEY_WORKSPACE = '991814d2-3517-4328-9af9-32ad1e2c0498';
+const buildTraceUrl = (traceId: string, createdAt?: number) => {
+  const q = new URLSearchParams({
+    workspaceId: PORTKEY_WORKSPACE,
+    traceView: 'true',
+    selectedTraceId: traceId,
+    logLogStoreFilePathFormat: 'v1',
+  });
+  if (createdAt) q.set('logCreatedAt', new Date(createdAt).toISOString());
+  return `https://app.portkey.ai/organisation/${PORTKEY_ORG}/logs?${q.toString()}`;
+};
+
 const KNOWN_REFLECT = new Set(['reflect', 'reflect_reason', 'reflect_observe', 'reflect_decide', 'reflect_conclude']);
 const REFLECT_META: Record<string, { icon: typeof Brain; label: string }> = {
   reason: { icon: Brain, label: 'Reason' },
@@ -519,6 +534,16 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t }: {
       )}
       {canFeedback && (
         <MessageActions className="ms-auto">
+          {traceId && (
+            <MessageAction
+              tooltip={t('feedback.viewTrace')}
+              label="Trace"
+              onClick={() => window.open(buildTraceUrl(traceId, timing?.end), '_blank', 'noopener,noreferrer')}
+            >
+              <img src="/images/portkey-light.svg" alt="" className="size-3.5 dark:hidden" />
+              <img src="/images/portkey-dark.svg" alt="" className="hidden size-3.5 dark:block" />
+            </MessageAction>
+          )}
           <MessageAction tooltip={t('buttons.regenerate')} label="Retry" onClick={onRetry}>
             <RefreshCw className="size-3.5" />
           </MessageAction>

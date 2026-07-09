@@ -262,7 +262,8 @@
   "feedback": {
     "helpful": "有帮助",
     "notHelpful": "没有帮助",
-    "copy": "复制"
+    "copy": "复制",
+    "viewTrace": "查看跟踪"
   },
   "guardrail": {
     "cannotProcessRequest": "无法处理此请求",

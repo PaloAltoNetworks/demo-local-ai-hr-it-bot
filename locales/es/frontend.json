@@ -262,7 +262,8 @@
   "feedback": {
     "helpful": "Útil",
     "notHelpful": "No útil",
-    "copy": "Copiar"
+    "copy": "Copiar",
+    "viewTrace": "Ver traza"
   },
   "guardrail": {
     "cannotProcessRequest": "No puedo procesar esta solicitud",
