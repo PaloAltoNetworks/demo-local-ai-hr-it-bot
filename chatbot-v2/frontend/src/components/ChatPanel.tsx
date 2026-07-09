@@ -377,26 +377,33 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 // Types out the greeting on load and re-types it every `repeatMs`. `text` changes
 // (e.g. language switch) restart the animation.
-function Typewriter({ text, repeatMs = 300_000, speedMs = 55 }: { text: string; repeatMs?: number; speedMs?: number }) {
+function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750 }: { text: string; repeatMs?: number; speedMs?: number; pauseMs?: number }) {
   const [shown, setShown] = useState('');
 
   useEffect(() => {
     let typeTimer: number;
     let cycleTimer: number;
+    // Longer beat after sentence-ending punctuation, so the greeting lands in phrases.
+    const isPause = (ch: string) => '!.?…'.includes(ch);
     const type = () => {
       setShown('');
       let i = 0;
       const step = () => {
         i += 1;
         setShown(text.slice(0, i));
-        if (i < text.length) typeTimer = window.setTimeout(step, speedMs);
+        if (i < text.length) {
+          const justTyped = text[i - 1];
+          const next = text[i];
+          const delay = isPause(justTyped) && next === ' ' ? pauseMs : speedMs;
+          typeTimer = window.setTimeout(step, delay);
+        }
       };
       step();
     };
     type();
     cycleTimer = window.setInterval(type, repeatMs);
     return () => { window.clearTimeout(typeTimer); window.clearInterval(cycleTimer); };
-  }, [text, repeatMs, speedMs]);
+  }, [text, repeatMs, speedMs, pauseMs]);
 
   return (
     <span>
