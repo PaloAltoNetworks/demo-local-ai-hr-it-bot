@@ -90,16 +90,33 @@ export default function ChatPanel() {
     setInput('');
   };
 
-  const handleFeedback = (msg, value) => {
+  const handleFeedback = (msg, direction) => {
     const traceId = msg.metadata?.traceId;
     if (!traceId) return;
-    const pick = value > 0 ? 'up' : 'down';
+    const pick = direction > 0 ? 'up' : 'down';
     // Chosen thumb is locked; re-clicking it does nothing. The other thumb stays
     // clickable so a misclick can be corrected by switching.
     if (feedback[msg.id] === pick) return;
     const prev = feedback[msg.id];
+
+    // Extreme value (±10) — thumbs are a strong signal, not a nuance.
+    const value = direction > 0 ? 10 : -10;
+    // Weight tool-backed answers higher than direct ones: a thumbs on an answer that
+    // actually ran data tools carries more signal than one on a canned/direct reply.
+    const parts = msg.parts || [];
+    const toolsUsed = parts.reduce((acc, p) => {
+      if (p.type !== 'dynamic-tool' && !p.type?.startsWith('tool-')) return acc;
+      const raw = p.type === 'dynamic-tool' ? p.toolName : p.type.slice(5);
+      if (!raw || raw.startsWith('reflect_') || raw === 'reflect') return acc;
+      // Strip server prefix (e.g. "hr_tools_mcp_server-get_employee" → "get_employee")
+      const name = raw.includes('-') ? raw.split('-').slice(1).join('-') : raw;
+      if (!acc.includes(name)) acc.push(name);
+      return acc;
+    }, []);
+    const weight = toolsUsed.length > 0 ? 1 : 0.5;
+
     setFeedback(f => ({ ...f, [msg.id]: pick }));
-    sendFeedback({ traceId, value }).catch(err => {
+    sendFeedback({ traceId, value, weight, toolsUsed }).catch(err => {
       console.error('[feedback]', err.message);
       setFeedback(f => ({ ...f, [msg.id]: prev }));
     });

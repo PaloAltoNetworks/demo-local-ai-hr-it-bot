@@ -591,11 +591,12 @@ app.get('/api/airs-config', (_req, res) => {
 // Forward user feedback (thumbs up/down) to Portkey, keyed by the turn's trace-id.
 // value: +1 (👍) / -1 (👎); Portkey accepts [-10,10]. Feedback shows on the trace's log.
 app.post('/api/feedback', async (req, res) => {
-  const { traceId, value, weight, comment } = req.body || {};
+  const { traceId, value, weight, toolsUsed, comment } = req.body || {};
   if (!traceId || typeof value !== 'number') {
     return res.status(400).json({ error: 'traceId and numeric value are required' });
   }
   try {
+    const tools = Array.isArray(toolsUsed) ? toolsUsed : [];
     const resp = await fetch(`${PORTKEY_BASE_URL}/feedback`, {
       method: 'POST',
       headers: { 'x-portkey-api-key': PORTKEY_API_KEY, 'Content-Type': 'application/json' },
@@ -606,6 +607,8 @@ app.post('/api/feedback', async (req, res) => {
         metadata: {
           _user: STATIC_USER.employee_id,
           app_name: 'The Otter V2',
+          answer_type: tools.length > 0 ? 'tool-backed' : 'direct',
+          tools_used: tools.join(', '),
           ...(comment ? { text: comment } : {}),
         },
       }),

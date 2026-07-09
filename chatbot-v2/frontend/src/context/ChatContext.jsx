@@ -106,11 +106,11 @@ export function ChatProvider({ provider, phase, children }) {
   }, [chat.sendMessage, phase]);
 
   // Send thumbs up/down to Portkey (keyed by the assistant turn's trace-id).
-  const sendFeedback = useCallback(async ({ traceId, value, comment }) => {
+  const sendFeedback = useCallback(async ({ traceId, value, weight, toolsUsed, comment }) => {
     const resp = await fetch('/api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ traceId, value, comment }),
+      body: JSON.stringify({ traceId, value, weight, toolsUsed, comment }),
     });
     if (!resp.ok) throw new Error('feedback request failed');
     return resp.json();
