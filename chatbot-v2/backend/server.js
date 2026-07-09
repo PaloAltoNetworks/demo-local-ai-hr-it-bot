@@ -36,7 +36,11 @@ const MODEL_ID = process.env.PORTKEY_DEFAULT_MODEL || `${AWS_PROVIDER}/eu.anthro
 
 // Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
 const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';
-const MCP_SLUGS = [process.env.PORTKEY_MCP_HR_SLUG, process.env.PORTKEY_MCP_IT_SLUG].filter(Boolean);
+// Every PORTKEY_MCP_*_SLUG env var becomes an MCP client — add a new server by
+// adding an env var, no code change. (PORTKEY_MCP_BASE is excluded by the _SLUG suffix.)
+const MCP_SLUGS = Object.entries(process.env)
+  .filter(([k, v]) => /^PORTKEY_MCP_.+_SLUG$/.test(k) && v)
+  .map(([, v]) => v);
 const MCP_URLS = MCP_SLUGS.map(slug => `${PORTKEY_MCP_BASE}/${slug}/mcp`);
 
 const STATIC_USER = {
@@ -375,11 +379,13 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded) {
         };
       }
 
-      // REASON: allow reason or conclude — model picks based on whether data tools are needed
+      // REASON: allow reason or conclude — model picks based on whether data tools are needed.
+      // noParallel so the model can't emit BOTH reflect_reason and reflect_conclude at once
+      // (contradictory "need data" + "no data" → two Reason cards).
       if (!ranReason && !ranDataTools) {
         console.log(`[react] step ${stepNumber}: REASON (${tiers.fast})`);
         return {
-          model: getModel(tiers.fast, reqCtx, guarded),
+          model: getModel(tiers.fast, reqCtx, guarded, true),
           instructions: REASON_PROMPT,
           activeTools: ['reflect_reason', 'reflect_conclude'],
           toolChoice: 'required',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useLanguage } from '../context/LanguageContext.jsx';
@@ -16,8 +16,9 @@ export default function ChatPanel() {
   // key: msgId → { start, end } for whole-generation latency
   const [msgTimings, setMsgTimings] = useState({});
   const streamingMsgIdRef = useRef(null);
-  // key: `${msgId}:${phase}` → start timestamp, set when placeholder renders
-  const phaseStarts = useRef({});
+  // Timestamp when the current generation started (captures pre-message time too),
+  // used for the single global live timer.
+  const globalStartRef = useRef(null);
   // tick every 100ms while streaming to update live elapsed display
   const [tick, setTick] = useState(0);
 
@@ -55,18 +56,23 @@ export default function ChatPanel() {
       prevIsStreamingRef.current = false;
       return;
     }
-    // Streaming just started — clear stale ref so placeholder shows in global slot
+    // Streaming just started — clear stale ref + mark the global start time.
     if (!prevIsStreamingRef.current) {
       streamingMsgIdRef.current = null;
       prevIsStreamingRef.current = true;
+      globalStartRef.current = Date.now();
     }
-    // Streaming started — find the latest assistant message
-    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
-    if (lastAssistant && lastAssistant.id !== streamingMsgIdRef.current) {
-      streamingMsgIdRef.current = lastAssistant.id;
+    // Streaming started — adopt the assistant message for THIS turn only
+    // (one that appears after the last user message). Until it exists, keep the
+    // ref null so the global placeholder renders at the bottom instead of
+    // attaching to the previous turn's assistant message.
+    const lastUserIdx = messages.map(m => m.role).lastIndexOf('user');
+    const turnAssistant = messages.slice(lastUserIdx + 1).find(m => m.role === 'assistant');
+    if (turnAssistant && turnAssistant.id !== streamingMsgIdRef.current) {
+      streamingMsgIdRef.current = turnAssistant.id;
       setMsgTimings(prev => {
-        if (prev[lastAssistant.id]) return prev;
-        return { ...prev, [lastAssistant.id]: { start: Date.now() } };
+        if (prev[turnAssistant.id]) return prev;
+        return { ...prev, [turnAssistant.id]: { start: globalStartRef.current ?? Date.now() } };
       });
     }
   }, [isStreaming, messages]);
@@ -78,7 +84,6 @@ export default function ChatPanel() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim() || isStreaming) return;
-    phaseStarts.current = {};
     sendMessage({ text: input });
     setInput('');
   };
@@ -140,9 +145,29 @@ export default function ChatPanel() {
               <div className="message-body">
                 {msg.parts?.map((part, i) => {
                   if (part.type === 'text' && part.text) {
-                    return msg.role === 'user'
-                      ? <div key={i} className="message-text">{part.text}</div>
-                      : <div key={i} className="message-text"><Markdown remarkPlugins={[remarkGfm]}>{part.text}</Markdown></div>;
+                    if (msg.role === 'user') {
+                      return <div key={i} className="message-text">{part.text}</div>;
+                    }
+                    // Assistant final answer. If this message ran ReAct steps, prepend a
+                    // Decide card above the answer to mark the final phase (no per-step timer;
+                    // the single global timer tracks total elapsed).
+                    const allParts = msg.parts || [];
+                    const hasSteps = allParts.some(p => p.type === 'dynamic-tool' || p.type?.startsWith('tool-'));
+                    const firstTextIdx = allParts.findIndex(p => p.type === 'text' && p.text);
+                    const decideCard = (hasSteps && i === firstTextIdx) ? (
+                      <div key="decide" className="react-step react-decide">
+                        <div className="react-step-header">
+                          <span className="material-symbols react-step-icon">task_alt</span>
+                          <span className="react-step-label">Decide</span>
+                        </div>
+                      </div>
+                    ) : null;
+                    return (
+                      <Fragment key={i}>
+                        {decideCard}
+                        <div className="message-text"><Markdown remarkPlugins={[remarkGfm]}>{part.text}</Markdown></div>
+                      </Fragment>
+                    );
                   }
                   if (part.type === 'dynamic-tool' || part.type.startsWith('tool-')) {
                     // AI SDK v6: static tools → type is 'tool-${toolName}', dynamic → 'dynamic-tool'
@@ -160,8 +185,17 @@ export default function ChatPanel() {
                           </div>
                           <div className="tool-approval-detail">
                             <span className="tool-name">{toolName}</span>
-                            {toolArgs && (
-                              <pre className="tool-approval-args">{JSON.stringify(toolArgs, null, 2)}</pre>
+                            {toolArgs && Object.keys(toolArgs).length > 0 && (
+                              <table className="tool-approval-table">
+                                <tbody>
+                                  {Object.entries(toolArgs).map(([k, v]) => (
+                                    <tr key={k}>
+                                      <th>{k.replace(/_/g, ' ')}</th>
+                                      <td>{v !== null && typeof v === 'object' ? JSON.stringify(v) : String(v)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             )}
                           </div>
                           <div className="tool-approval-actions">
@@ -185,12 +219,15 @@ export default function ChatPanel() {
                     }
 
                     // Only known reflect tools — block hallucinated variants (reflect_respond, etc.)
-                    const KNOWN_REFLECT = new Set(['reflect', 'reflect_reason', 'reflect_observe', 'reflect_decide']);
+                    // reflect_conclude = no-data shortcut: model decided it can answer without
+                    // fetching tools. Render it as a Reason card so its rationale persists above
+                    // the final answer (same as the data path's reason/observe cards).
+                    const KNOWN_REFLECT = new Set(['reflect', 'reflect_reason', 'reflect_observe', 'reflect_decide', 'reflect_conclude']);
                     if (toolName?.startsWith('reflect_') && !KNOWN_REFLECT.has(toolName)) return null;
                     const isReflect = KNOWN_REFLECT.has(toolName) || toolName?.endsWith('-reflect');
                     if (isReflect) {
-                      const REACT_PHASE_ICON = { observe: 'search_insights', reason: 'psychology', decide: 'task_alt' };
-                      const REACT_PHASE_LABEL = { observe: 'Observe', reason: 'Reason', decide: 'Decide' };
+                      const REACT_PHASE_ICON = { observe: 'search_insights', reason: 'psychology', decide: 'task_alt', conclude: 'psychology' };
+                      const REACT_PHASE_LABEL = { observe: 'Observe', reason: 'Reason', decide: 'Decide', conclude: 'Reason' };
                       // Phase-locked tools: trust tool name (authoritative).
                       // Legacy unified 'reflect' tool: read toolArgs.phase.
                       // Model may inject extra fields into phase-locked tool args — ignore them.
@@ -199,31 +236,21 @@ export default function ChatPanel() {
                         : (toolArgs?.phase || 'reason');
                       const icon = REACT_PHASE_ICON[phase] || 'psychology';
                       const label = REACT_PHASE_LABEL[phase] || phase;
+                      const cssPhase = phase === 'conclude' ? 'reason' : phase;
                       const isStepStreaming = toolState === 'input-streaming';
                       const isDone = toolState === 'output-available';
-
-                      // Per-step latency: inherit from placeholder, freeze on done
-                      const phaseKey = `${msg.id}:${phase}`;
-                      if (!phaseStarts.current[phaseKey]) {
-                        const inherited = phaseStarts.current[`global:${phase}`];
-                        phaseStarts.current[phaseKey] = { start: inherited?.start ?? inherited ?? Date.now() };
-                      }
-                      const timing = phaseStarts.current[phaseKey];
-                      if (isDone && !timing.end) timing.end = Date.now();
-                      const elapsed = timing.end
-                        ? ((timing.end - timing.start) / 1000).toFixed(1)
-                        : ((Date.now() - timing.start) / 1000).toFixed(1);
+                      // reflect_reason/observe carry the plan in `observation`; reflect_conclude in `reason`.
+                      // This streamed text is the model's live reasoning for the step.
+                      const stepText = toolArgs?.observation || toolArgs?.reason;
 
                       return (
-                        <div key={i} className={`react-step react-${phase} ${isStepStreaming ? 'streaming' : ''}`}>
+                        <div key={i} className={`react-step react-${cssPhase} ${isStepStreaming ? 'streaming' : ''}`}>
                           <div className="react-step-header">
                             <span className="material-symbols react-step-icon">{icon}</span>
                             <span className="react-step-label">{label}</span>
-                            {isStepStreaming && <span className="react-step-streaming-dot" />}
-                            {elapsed && <span className="react-step-latency">{elapsed}s</span>}
                           </div>
-                          {toolArgs?.observation && (
-                            <div className="react-step-observation">{toolArgs.observation}</div>
+                          {stepText && (
+                            <div className="react-step-observation">{stepText}</div>
                           )}
                           {toolArgs?.next_action && isDone && (
                             <div className="react-step-next">→ {toolArgs.next_action}</div>
@@ -271,22 +298,13 @@ export default function ChatPanel() {
                       : '';
 
                     const stateClass = isDone ? 'result' : isError ? 'error' : 'streaming';
-                    const toolTimingKey = `${msg.id}:tool:${i}`;
-                    if (!phaseStarts.current[toolTimingKey]) phaseStarts.current[toolTimingKey] = { start: Date.now() };
-                    const toolTiming = phaseStarts.current[toolTimingKey];
-                    if (isDone && !toolTiming.end) toolTiming.end = Date.now();
-                    const toolElapsed = toolTiming.end
-                      ? ((toolTiming.end - toolTiming.start) / 1000).toFixed(1)
-                      : ((Date.now() - toolTiming.start) / 1000).toFixed(1);
 
                     return (
                       <div key={i} className={`tool-call ${stateClass}`}>
                         <div className="react-step-header">
                           <span className="material-symbols react-step-icon">build</span>
                           <span className="react-step-label">Tool</span>
-                          {!isDone && !isError && <span className="react-step-streaming-dot" />}
                           {isError && <span className="tool-state error" style={{marginLeft:'auto'}}>error</span>}
-                          {toolElapsed && <span className="react-step-latency">{toolElapsed}s</span>}
                         </div>
                         <div className="tool-call-detail">
                           <span className="tool-name">{shortName}</span>
@@ -305,6 +323,11 @@ export default function ChatPanel() {
                   const parts = msg.parts || [];
                   const hasActiveStream = parts.some(p => (p.type === 'dynamic-tool' || p.type?.startsWith('tool-')) && p.state === 'input-streaming');
                   if (hasActiveStream) return null;
+                  // No-data shortcut (reflect_conclude) or the answer text already
+                  // streaming → the reasoning card is done; don't show a stray "Reason...".
+                  const ranConclude = parts.some(p => (p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5)) === 'reflect_conclude');
+                  const hasText = parts.some(p => p.type === 'text' && p.text);
+                  if (ranConclude || hasText) return null;
                   const KNOWN_REFLECT = ['reflect_reason', 'reflect_observe', 'reflect_decide'];
                   const ranPhases = new Set(parts
                     .filter(p => { const n = p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5); return KNOWN_REFLECT.includes(n); })
@@ -321,20 +344,22 @@ export default function ChatPanel() {
                   if (!nextPhase) return null;
                   const REACT_PHASE_ICON = { reason: 'psychology', observe: 'search_insights' };
                   const REACT_PHASE_LABEL = { reason: 'Reason', observe: 'Observe' };
-                  const phaseKey = `${msg.id}:${nextPhase}`;
-                  if (!phaseStarts.current[phaseKey]) phaseStarts.current[phaseKey] = { start: Date.now() };
-                  const liveElapsed = ((Date.now() - phaseStarts.current[phaseKey].start) / 1000).toFixed(1);
                   return (
                     <div key="pending-step" className={`react-step react-${nextPhase} streaming`}>
                       <div className="react-step-header">
                         <span className="material-symbols react-step-icon">{REACT_PHASE_ICON[nextPhase]}</span>
                         <span className="react-step-label">{REACT_PHASE_LABEL[nextPhase]}...</span>
-                        <span className="react-step-streaming-dot" />
-                        <span className="react-step-latency">{liveElapsed}s</span>
                       </div>
                     </div>
                   );
                 })()}
+                {/* Single global live timer — total elapsed for the active generation */}
+                {msg.role === 'assistant' && isStreaming && msg.id === streamingMsgIdRef.current && globalStartRef.current && (
+                  <div className="react-global-timer">
+                    <span className="material-symbols">acute</span>
+                    {((Date.now() - globalStartRef.current) / 1000).toFixed(1)}s
+                  </div>
+                )}
                 {msg.role === 'assistant' && msg.metadata?.empty && (
                   <div className="message-text empty-response">
                     <span className="material-symbols">warning</span>
@@ -368,9 +393,9 @@ export default function ChatPanel() {
             or when the last message has no active tool stream (first step = Reason) */}
         {isStreaming && (() => {
           if (streamingMsgIdRef.current) return null; // placeholder lives inside the message
-          const phaseKey = `global:reason`;
-          if (!phaseStarts.current[phaseKey]) phaseStarts.current[phaseKey] = { start: Date.now() };
-          const liveElapsed = ((Date.now() - phaseStarts.current[phaseKey].start) / 1000).toFixed(1);
+          const liveElapsed = globalStartRef.current
+            ? ((Date.now() - globalStartRef.current) / 1000).toFixed(1)
+            : '0.0';
           return (
             <div className="message bot">
               <div className="message-avatar"><i className="otter-icon" /></div>
@@ -379,9 +404,11 @@ export default function ChatPanel() {
                   <div className="react-step-header">
                     <span className="material-symbols react-step-icon">psychology</span>
                     <span className="react-step-label">Reason...</span>
-                    <span className="react-step-streaming-dot" />
-                    <span className="react-step-latency">{liveElapsed}s</span>
                   </div>
+                </div>
+                <div className="react-global-timer">
+                  <span className="material-symbols">acute</span>
+                  {liveElapsed}s
                 </div>
               </div>
             </div>

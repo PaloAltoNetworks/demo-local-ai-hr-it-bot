@@ -67,15 +67,10 @@
           {
             "icon": "looks_two",
             "title": "Details angeben",
-            "text": "Ich muss Kundendemo-Daten für eine Präsentation nächste Woche exportieren. 5 Tage sollten ausreichen."
+            "text": "Ich muss Kundendemo-Daten für eine Präsentation nächste Woche exportieren. 5 Tage sollten ausreichen. Den Lenovo ThinkPad X1 Carbon (ASSET-00035)"
           },
           {
             "icon": "looks_3",
-            "title": "Laptop bestätigen",
-            "text": "Den Lenovo ThinkPad X1 Carbon (ASSET-00035)"
-          },
-          {
-            "icon": "looks_4",
             "title": "Genehmigung anfragen",
             "text": "Kannst du die Genehmigung direkt veranlassen? Sophie ist einverstanden!"
           }

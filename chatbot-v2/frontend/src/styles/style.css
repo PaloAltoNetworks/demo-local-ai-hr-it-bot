@@ -173,7 +173,11 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .tool-approval-title { font-weight: 600; font-size: 13px; color: var(--text); }
 .tool-approval-detail { margin-bottom: 12px; }
 .tool-approval-detail .tool-name { display: block; font-size: 12px; font-family: var(--font-mono); font-weight: 500; color: var(--phase); margin-bottom: 6px; }
-.tool-approval-args { font-size: 11px; font-family: var(--font-mono); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin: 0; overflow-x: auto; max-height: 200px; line-height: 1.5; color: var(--text-secondary); }
+.tool-approval-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.tool-approval-table tr { border-bottom: 1px solid var(--border-light); }
+.tool-approval-table tr:last-child { border-bottom: none; }
+.tool-approval-table th { text-align: left; font-weight: 600; text-transform: capitalize; color: var(--text-secondary); padding: 6px 10px; width: 34%; vertical-align: top; white-space: nowrap; border-right: 1px solid var(--border-light); }
+.tool-approval-table td { padding: 6px 10px; color: var(--text); line-height: 1.4; word-break: break-word; }
 .tool-approval-actions { display: flex; gap: 8px; }
 .tool-approve-btn, .tool-deny-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: opacity 0.15s; }
 .tool-approve-btn:hover, .tool-deny-btn:hover { opacity: 0.85; }
@@ -322,20 +326,21 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 }
 .react-step-icon { font-size: 1rem; }
 .react-step-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
-.react-step-streaming-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: blink 1s infinite;
-  margin-left: auto;
-}
-.react-step-latency {
-  margin-left: auto;
-  font-size: 0.7rem;
-  font-weight: 400;
-  opacity: 0.55;
-  font-variant-numeric: tabular-nums;
-}
 .react-step-observation { color: var(--text-secondary); line-height: 1.4; }
 .react-step-next { color: var(--text-muted); font-style: italic; }
+/* Active step breathes so it's clear work is happening */
+.react-step.streaming, .tool-call.streaming { animation: breathe 1.6s ease-in-out infinite; }
+@keyframes breathe { 0%,100% { opacity: 1 } 50% { opacity: 0.45 } }
+/* Single global live timer */
+.react-global-timer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 0 2px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.react-global-timer .material-symbols { font-size: 0.9rem; }
 @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0.2 } }

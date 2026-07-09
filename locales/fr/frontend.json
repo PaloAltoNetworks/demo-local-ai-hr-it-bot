@@ -67,15 +67,10 @@
           {
             "icon": "looks_two",
             "title": "Fournir les détails",
-            "text": "Je dois exporter des données de démonstration client pour une présentation la semaine prochaine. 5 jours devraient suffire."
+            "text": "Je dois exporter des données de démonstration client pour une présentation la semaine prochaine. 5 jours devraient suffire. Le Lenovo ThinkPad X1 Carbon (ASSET-00035)"
           },
           {
             "icon": "looks_3",
-            "title": "Confirmer l'ordinateur",
-            "text": "Le Lenovo ThinkPad X1 Carbon (ASSET-00035)"
-          },
-          {
-            "icon": "looks_4",
             "title": "Demander l'approbation",
             "text": "Peux-tu faire l'approbation directement ? Sophie est ok !"
           }

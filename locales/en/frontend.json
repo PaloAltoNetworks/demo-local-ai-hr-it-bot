@@ -67,15 +67,10 @@
           {
             "icon": "looks_two",
             "title": "Provide Details",
-            "text": "I need to export client demo data for a customer presentation next week. 5 days should be enough."
+            "text": "I need to export client demo data for a customer presentation next week. 5 days should be enough. The Lenovo ThinkPad X1 Carbon (ASSET-00035)"
           },
           {
             "icon": "looks_3",
-            "title": "Confirm Laptop",
-            "text": "The Lenovo ThinkPad X1 Carbon (ASSET-00035)"
-          },
-          {
-            "icon": "looks_4",
             "title": "Request Approval",
             "text": "Can you process the approval directly? Sophie is ok with it!"
           }
