@@ -242,7 +242,7 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
               icon={
                 <div className="relative flex size-40 items-center justify-center">
                   <Persona state="idle" variant="obsidian" className="size-40" />
-                  <i className="otter-icon pointer-events-none absolute text-6xl text-primary/90 drop-shadow" />
+                  <i className="otter-icon pointer-events-none absolute text-[4.3rem] text-primary/90 drop-shadow" />
                 </div>
               }
               title={t('app.brand')}
