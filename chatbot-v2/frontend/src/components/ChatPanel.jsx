@@ -469,20 +469,6 @@ export default function ChatPanel() {
             <span className="material-symbols">savings</span>
             <span>{sessionUsage.totalTokens.toLocaleString()} tokens</span>
             <span className="usage-detail">({sessionUsage.inputTokens.toLocaleString()} in / {sessionUsage.outputTokens.toLocaleString()} out)</span>
-            {(() => {
-              const lastLatency = [...messages]
-                .reverse()
-                .find(m => m.role === 'assistant' && msgTimings[m.id]?.end);
-              if (!lastLatency) return null;
-              const t = msgTimings[lastLatency.id];
-              return (
-                <>
-                  <span className="usage-sep">·</span>
-                  <span className="material-symbols">acute</span>
-                  <span>{((t.end - t.start) / 1000).toFixed(1)}s last</span>
-                </>
-              );
-            })()}
           </div>
         )}
       </div>
