@@ -225,24 +225,41 @@ async function initMCPClients() {
   }
 }
 
-async function getMCPTools() {
+// Tool lists are static per session but each tools/list is a Portkey MCP cloud round-trip
+// (~5-6s each). Fetching them on every chat request added ~15s before the agent could even
+// emit its first `start` frame. Cache the merged map after the first successful load and
+// fetch all clients in parallel; refresh() re-warms it.
+let cachedTools = null;
+
+async function loadMCPTools() {
   if (mcpClients.length === 0) return {};
   const merged = {};
-  for (const entry of mcpClients) {
+  const results = await Promise.all(mcpClients.map(async (entry) => {
     try {
-      const tools = await entry.client.tools();
-      // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() by default (type: 'dynamic'),
-      // which tells streamText to send them to the client for execution instead of running
-      // them server-side. Strip the flag so the execute() function runs on the backend.
-      for (const [name, tool] of Object.entries(tools)) {
-        if (tool.type === 'dynamic') delete tool.type;
-        merged[name] = tool;
-      }
+      return { url: entry.url, tools: await entry.client.tools() };
     } catch (err) {
       console.warn(`MCP tools unavailable from ${entry.url}: ${err.message}`);
+      return { url: entry.url, tools: {} };
+    }
+  }));
+  for (const { tools } of results) {
+    // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() by default (type: 'dynamic'),
+    // which tells streamText to send them to the client for execution instead of running
+    // them server-side. Strip the flag so the execute() function runs on the backend.
+    for (const [name, tool] of Object.entries(tools)) {
+      if (tool.type === 'dynamic') delete tool.type;
+      merged[name] = tool;
     }
   }
   console.log(`[mcp] tools loaded (${Object.keys(merged).length}): ${Object.keys(merged).join(', ')}`);
+  return merged;
+}
+
+async function getMCPTools() {
+  if (cachedTools) return cachedTools;
+  const merged = await loadMCPTools();
+  // Only cache a non-empty result so a transient failure doesn't pin an empty tool set.
+  if (Object.keys(merged).length > 0) cachedTools = merged;
   return merged;
 }
 
@@ -665,6 +682,8 @@ app.get('/{*path}', (_req, res) => {
 
 async function main() {
   await initMCPClients();
+  // Warm the tool cache at boot so the first chat request doesn't pay the tools/list round-trips.
+  await getMCPTools();
 
   app.listen(PORT, () => {
     console.log(`Chatbot V2 running on http://localhost:${PORT}`);
