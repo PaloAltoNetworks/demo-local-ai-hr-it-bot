@@ -461,7 +461,7 @@ function HaloOtter({ phase, state = 'thinking' }: { phase: string; state?: 'idle
         style={{
           transform: `translate(${offset.x}px, ${offset.y}px)`,
           // fast tracking while inside the zone, bouncy overshoot spring when snapping back
-          transition: following ? 'transform 320ms ease-out' : 'transform 700ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+          transition: following ? 'transform 550ms ease-out' : 'transform 700ms cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}
       >
         <div key={phase} className="animate-pop">
