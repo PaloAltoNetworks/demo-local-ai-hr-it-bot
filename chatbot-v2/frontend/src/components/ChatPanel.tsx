@@ -378,8 +378,31 @@ const MATRIX_PHRASES = atob('V2FrZSB1cCwgTmVvLi4uIFRoZSBNYXRyaXggaGFzIHlvdS4uLiB
 const EGG_HOLD_MS = 2600;
 const EGG_SPEED_MS = 55;
 
-// Matrix digital rain overlay — falling green glyphs, fades out then calls onDone.
-function MatrixRain({ durationMs = 7000, onDone }: { durationMs?: number; onDone?: () => void }) {
+// Split-flap / airport-board reveal: each position cycles random glyphs, then locks
+// to its target letter left-to-right.
+function SplitFlap({ text, className, style }: { text: string; className?: string; style?: React.CSSProperties }) {
+  const [display, setDisplay] = useState(() => text.replace(/\S/g, ' '));
+
+  useEffect(() => {
+    const glyphs = 'アカサタナハマヤ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const target = text.split('');
+    const lockAt = target.map((_, i) => 6 + i * 3); // frames until each position settles
+    const maxFrame = Math.max(0, ...lockAt) + 1;
+    let frame = 0;
+    const id = window.setInterval(() => {
+      frame += 1;
+      setDisplay(target.map((ch, i) => (ch === ' ' ? ' ' : frame >= lockAt[i] ? ch : glyphs[Math.floor(Math.random() * glyphs.length)])).join(''));
+      if (frame > maxFrame) window.clearInterval(id);
+    }, 55);
+    return () => window.clearInterval(id);
+  }, [text]);
+
+  return <span className={className} style={style}>{display}</span>;
+}
+
+// Matrix digital rain overlay — falling green glyphs. A brand word sits underneath,
+// drowned in the kanji, and surfaces as the rain fades out. Calls onDone at the end.
+function MatrixRain({ durationMs = 7000, revealText, onDone }: { durationMs?: number; revealText?: string; onDone?: () => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [opacity, setOpacity] = useState(0.9);
 
@@ -428,12 +451,19 @@ function MatrixRain({ durationMs = 7000, onDone }: { durationMs?: number; onDone
   }, [durationMs, onDone]);
 
   return (
-    <canvas
-      ref={ref}
-      className="pointer-events-none fixed inset-0 z-[100]"
-      style={{ opacity, transition: 'opacity 900ms ease-out' }}
-      aria-hidden
-    />
+    <div className="pointer-events-none fixed inset-0 z-[100]" aria-hidden>
+      {revealText && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <SplitFlap
+            text={revealText}
+            className="whitespace-pre font-mono text-6xl font-bold tracking-widest"
+            style={{ color: '#00CC66', textShadow: '0 0 18px #00CC66, 0 0 36px #00CC66' }}
+          />
+        </div>
+      )}
+      {/* Canvas above the text; as it fades the word surfaces from the rain. */}
+      <canvas ref={ref} className="absolute inset-0" style={{ opacity, transition: 'opacity 900ms ease-out' }} />
+    </div>
   );
 }
 
@@ -472,10 +502,11 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
   };
 
   const greeting = t('chat.greeting', { name: t('userProfile.name') });
+  const brand = t('app.brand');
 
   return (
     <>
-      {rain && <MatrixRain onDone={onRainDone} />}
+      {rain && <MatrixRain revealText={brand} onDone={onRainDone} />}
       <ConversationEmptyState
         title=""
         icon={<HaloOtter phase={phase} state={typing ? 'speaking' : 'thinking'} />}
