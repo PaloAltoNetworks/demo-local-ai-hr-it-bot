@@ -206,7 +206,7 @@
     "offline": "Hors ligne",
     "connectionRestored": "Connexion rétablie",
     "ollamaServersDown": "Serveurs IA indisponibles : {servers}",
-    "greeting": "Bonjour {{name}} ! Je suis La Loutre, votre assistant intelligent RH/IT. Je peux vous aider avec vos questions administratives et techniques. Posez-moi n'importe quoi !",
+    "greeting": "Bonjour {{name}} ! Je suis La Loutre, votre assistant intelligent RH/IT. Je peux vous aider sur vos questions administratives et techniques. Posez-moi vos questions !",
     "emptyResponse": "Le modèle a renvoyé une réponse vide. Veuillez réessayer.",
     "stop": "Arrêter"
   },

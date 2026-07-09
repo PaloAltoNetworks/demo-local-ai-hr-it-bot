@@ -206,7 +206,7 @@
     "offline": "Offline",
     "connectionRestored": "Conexão restaurada",
     "ollamaServersDown": "Servidores de IA indisponíveis: {servers}",
-    "greeting": "Olá {{name}}! Eu sou o The Otter, seu assistente inteligente de RH/TI. Posso ajudá-lo com suas perguntas administrativas e técnicas. Pergunte-me qualquer coisa!",
+    "greeting": "Olá {{name}}! Eu sou A Lontra, o seu assistente inteligente de RH/TI. Posso ajudá-lo com as suas perguntas administrativas e técnicas. Faça-me qualquer pergunta!",
     "emptyResponse": "O modelo retornou uma resposta vazia. Por favor, tente novamente.",
     "stop": "Parar"
   },
