@@ -940,11 +940,21 @@ function StreamError({ error, airsConfig, t, onRetry }: { error: any; airsConfig
               </p>
             </div>
             <p className="ps-6 text-muted-foreground">{isResponse ? t('guardrail.helpWithElse') : t('guardrail.rephraseRequest')}</p>
-            {reportUrl && (
-              <a href={reportUrl} target="_blank" rel="noopener noreferrer" className="ms-6 inline-flex items-center gap-1 text-xs font-medium text-destructive hover:underline">
-                <ExternalLink className="size-3.5" /> {t('guardrail.viewReport')}
-              </a>
-            )}
+            <div className="ms-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+              {reportUrl && (
+                <a href={reportUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-destructive hover:underline">
+                  <ExternalLink className="size-3.5" /> {t('guardrail.viewReport')}
+                </a>
+              )}
+              {error.tr_id && (
+                <a href={buildTraceUrl(error.tr_id)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground hover:underline">
+                  <ExternalLink className="size-3.5" /> {t('feedback.viewTrace')}
+                </a>
+              )}
+              {error.usage?.totalTokens > 0 && (
+                <span className="text-muted-foreground">{fmtTokens(error.usage.totalTokens)} {t('chat.totalTokens')}</span>
+              )}
+            </div>
           </div>
         </MessageContent>
       </Message>

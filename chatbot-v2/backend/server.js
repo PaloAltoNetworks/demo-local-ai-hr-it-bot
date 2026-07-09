@@ -426,6 +426,7 @@ function parseGuardrailBlock(parsed) {
     prompt_detected: isResponse ? undefined : data.prompt_detected,
     response_detected: isResponse ? (data.response_detected || {}) : undefined,
     isResponseBlock: isResponse,
+    usage: parsed?.usage || undefined,
     message: parsed?.error?.message || 'Request blocked by guardrail',
   });
 }
