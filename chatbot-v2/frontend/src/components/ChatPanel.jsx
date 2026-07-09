@@ -378,7 +378,7 @@ export default function ChatPanel() {
                     </button>
                   </div>
                 )}
-                {msg.role === 'assistant' && !isStreaming
+                {msg.role === 'assistant' && msg.id !== streamingMsgIdRef.current
                   && (msg.metadata?.usage?.totalTokens > 0
                       || (msg.metadata?.traceId && msg.parts?.some(p => p.type === 'text' && p.text))) && (
                   <div className="message-meta">
