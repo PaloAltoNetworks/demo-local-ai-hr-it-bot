@@ -378,92 +378,101 @@ const MATRIX_PHRASES = atob('V2FrZSB1cCwgTmVvLi4uIFRoZSBNYXRyaXggaGFzIHlvdS4uLiB
 const EGG_HOLD_MS = 2600;
 const EGG_SPEED_MS = 55;
 
-// Split-flap / airport-board reveal: each position cycles random glyphs, then locks
-// to its target letter left-to-right.
-function SplitFlap({ text, className, style }: { text: string; className?: string; style?: React.CSSProperties }) {
-  const [display, setDisplay] = useState(() => text.replace(/\S/g, ' '));
-
-  useEffect(() => {
-    const glyphs = 'アカサタナハマヤ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-    const target = text.split('');
-    const lockAt = target.map((_, i) => 6 + i * 3); // frames until each position settles
-    const maxFrame = Math.max(0, ...lockAt) + 1;
-    let frame = 0;
-    const id = window.setInterval(() => {
-      frame += 1;
-      setDisplay(target.map((ch, i) => (ch === ' ' ? ' ' : frame >= lockAt[i] ? ch : glyphs[Math.floor(Math.random() * glyphs.length)])).join(''));
-      if (frame > maxFrame) window.clearInterval(id);
-    }, 55);
-    return () => window.clearInterval(id);
-  }, [text]);
-
-  return <span className={className} style={style}>{display}</span>;
-}
-
-// Matrix digital rain overlay — falling green glyphs. A brand word sits underneath,
-// drowned in the kanji, and surfaces as the rain fades out. Calls onDone at the end.
-function MatrixRain({ durationMs = 7000, revealText, onDone }: { durationMs?: number; revealText?: string; onDone?: () => void }) {
+// Full-screen scramble reveal on a black mask: every grid cell flickers random green
+// glyphs at varying brightness. The brand word is embedded in the center and locks in;
+// the surrounding cells vanish at random times, leaving only the brand. Then fades out.
+function ScrambleReveal({ durationMs = 5200, revealText = '', onDone }: { durationMs?: number; revealText?: string; onDone?: () => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const [opacity, setOpacity] = useState(0.9);
+  const [opacity, setOpacity] = useState(1);
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const fontSize = 16;
+    const cw = 20;
+    const chh = 24;
+    const fontSize = 18;
+    const glyphs = 'アカサタナハマヤラワ0123456789ABCDEFｱｲｳｴｵ'.split('');
+    type Cell = { brand: boolean; target: string; goneAt: number; lockAt: number };
     let cols = 0;
-    let drops: number[] = [];
-    const resize = () => {
+    let cells: Cell[] = [];
+    const build = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      cols = Math.ceil(canvas.width / fontSize);
-      drops = new Array(cols).fill(0).map(() => Math.random() * -50);
+      cols = Math.ceil(canvas.width / cw);
+      const rows = Math.ceil(canvas.height / chh);
+      const brandRow = Math.floor(rows / 2);
+      const start = Math.max(0, Math.floor((cols - revealText.length) / 2));
+      const brandMap = new Map<number, string>();
+      for (let i = 0; i < revealText.length; i++) brandMap.set(brandRow * cols + start + i, revealText[i]);
+      cells = new Array(cols * rows).fill(null).map((_, idx) => {
+        const b = brandMap.has(idx);
+        return {
+          brand: b,
+          target: b ? (brandMap.get(idx) as string) : '',
+          goneAt: b ? Infinity : 400 + Math.random() * (durationMs - 1800),
+          lockAt: b ? 1000 + Math.random() * (durationMs - 2800) : Infinity,
+        };
+      });
     };
-    resize();
-    window.addEventListener('resize', resize);
-    const chars = 'アカサタナハマヤラワ0123456789ABCDEFｱｲｳｴｵ'.split('');
+    build();
+    window.addEventListener('resize', build);
+
+    ctx.textBaseline = 'top';
+    const startT = performance.now();
     let raf = 0;
     let running = true;
-    const draw = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+    let lastScramble = 0;
+    let cur: string[] = cells.map(() => glyphs[Math.floor(Math.random() * glyphs.length)]);
+
+    const draw = (t: number) => {
+      const now = t - startT;
+      if (now - lastScramble > 65) { // scramble step
+        cur = cells.map(() => glyphs[Math.floor(Math.random() * glyphs.length)]);
+        lastScramble = now;
+      }
+      ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#00CC66';
       ctx.font = `${fontSize}px monospace`;
-      for (let i = 0; i < drops.length; i++) {
-        const ch = chars[Math.floor(Math.random() * chars.length)];
-        ctx.fillText(ch, i * fontSize, drops[i] * fontSize);
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i] += 1;
+      for (let idx = 0; idx < cells.length; idx++) {
+        const c = cells[idx];
+        if (!c.brand && now >= c.goneAt) continue; // vanished
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const locked = c.brand && now >= c.lockAt;
+        const chr = locked ? c.target : cur[idx];
+        if (chr === ' ') continue;
+        if (locked) {
+          ctx.fillStyle = 'rgb(150,255,190)';
+        } else {
+          const g = Math.floor(110 + Math.random() * 145); // green brightness variation
+          ctx.fillStyle = `rgb(0,${g},${Math.floor(g * 0.45)})`;
+        }
+        ctx.fillText(chr, col * cw + 2, row * chh + 2);
       }
       if (running) raf = requestAnimationFrame(draw);
     };
-    draw();
-    const fadeTimer = window.setTimeout(() => setOpacity(0), durationMs - 900);
+    raf = requestAnimationFrame(draw);
+
+    const fadeTimer = window.setTimeout(() => setOpacity(0), durationMs - 800);
     const endTimer = window.setTimeout(() => { running = false; onDone?.(); }, durationMs);
     return () => {
       running = false;
       cancelAnimationFrame(raf);
       window.clearTimeout(fadeTimer);
       window.clearTimeout(endTimer);
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', build);
     };
-  }, [durationMs, onDone]);
+  }, [durationMs, revealText, onDone]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[100]" aria-hidden>
-      {revealText && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <SplitFlap
-            text={revealText}
-            className="whitespace-pre font-mono text-6xl font-bold tracking-widest"
-            style={{ color: '#00CC66', textShadow: '0 0 18px #00CC66, 0 0 36px #00CC66' }}
-          />
-        </div>
-      )}
-      {/* Canvas above the text; as it fades the word surfaces from the rain. */}
-      <canvas ref={ref} className="absolute inset-0" style={{ opacity, transition: 'opacity 900ms ease-out' }} />
-    </div>
+    <canvas
+      ref={ref}
+      className="pointer-events-none fixed inset-0 z-[100]"
+      style={{ opacity, transition: 'opacity 800ms ease-out', background: '#000' }}
+      aria-hidden
+    />
   );
 }
 
@@ -506,7 +515,7 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
 
   return (
     <>
-      {rain && <MatrixRain revealText={brand} onDone={onRainDone} />}
+      {rain && <ScrambleReveal revealText={brand} onDone={onRainDone} />}
       <ConversationEmptyState
         title=""
         icon={<HaloOtter phase={phase} state={typing ? 'speaking' : 'thinking'} />}
