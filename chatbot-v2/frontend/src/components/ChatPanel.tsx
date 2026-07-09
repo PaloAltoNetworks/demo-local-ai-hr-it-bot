@@ -372,13 +372,17 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 // Matrix easter egg: fires on the 2nd greeting cycle, or on demand by clicking the
 // greeting while holding the M key.
 // Obfuscated so the surprise isn't spoiled by a plain-text grep of the bundle.
-const MATRIX_EGG = atob('V2FrZSB1cCwgTmVvLi4uIFRoZSBNYXRyaXggaGFzIHlvdS4uLiBGb2xsb3cgdGhlIHdoaXRlIHJhYmJpdC4gS25vY2ssIGtub2NrLCBOZW8u');
+// Movie style: one phrase per line, cleared between, with a long dramatic hold.
+const MATRIX_PHRASES = atob('V2FrZSB1cCwgTmVvLi4uIFRoZSBNYXRyaXggaGFzIHlvdS4uLiBGb2xsb3cgdGhlIHdoaXRlIHJhYmJpdC4gS25vY2ssIGtub2NrLCBOZW8u')
+  .split(/(?<=\.)\s+(?=[A-Z])/);
+const EGG_HOLD_MS = 2600;
+const EGG_SPEED_MS = 55;
 
 // Home empty state: shares one `typing` flag so the halo shows speaking while the
 // greeting is being typed, and thinking once it settles.
 function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
   const [typing, setTyping] = useState(false);
-  const [override, setOverride] = useState<string | null>(null);
+  const [forceEgg, setForceEgg] = useState(false);
   const [runKey, setRunKey] = useState(0);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const mHeld = useRef(false);
@@ -399,10 +403,10 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
 
   const onMouseDown = () => {
     if (!mHeld.current || !matrixCtx) return;
-    setOverride(MATRIX_EGG);
+    setForceEgg(true);
     setRunKey(k => k + 1);
-    // Revert to the greeting after the egg has played out.
-    window.setTimeout(() => { setOverride(null); setRunKey(k => k + 1); }, MATRIX_EGG.length * 70 + 4000);
+    const dur = MATRIX_PHRASES.reduce((a, p) => a + p.length * EGG_SPEED_MS + EGG_HOLD_MS, 0) + 2000;
+    window.setTimeout(() => { setForceEgg(false); setRunKey(k => k + 1); }, dur);
   };
 
   const greeting = t('chat.greeting', { name: t('userProfile.name') });
@@ -415,9 +419,11 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
         <span onMouseDown={onMouseDown} className="cursor-pointer select-none">
           <Typewriter
             key={runKey}
-            text={override ?? greeting}
-            eggText={override || !matrixCtx ? undefined : MATRIX_EGG}
-            startDelayMs={override ? 0 : 700}
+            text={greeting}
+            eggPhrases={matrixCtx ? MATRIX_PHRASES : undefined}
+            startWithEgg={forceEgg}
+            eggHoldMs={EGG_HOLD_MS}
+            speedMs={EGG_SPEED_MS}
             onTypingChange={onTypingChange}
           />
         </span>
@@ -428,33 +434,39 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
 
 // Types out the greeting on load and re-types it every `repeatMs`. `text` changes
 // (e.g. language switch) restart the animation.
-function Typewriter({ text, eggText, repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700, cursorHideMs = 2500, onTypingChange }: { text: string; eggText?: string; repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number; cursorHideMs?: number; onTypingChange?: (typing: boolean) => void }) {
+function Typewriter({
+  text, eggPhrases, startWithEgg = false,
+  repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700, cursorHideMs = 2500, eggHoldMs = 2600,
+  onTypingChange,
+}: {
+  text: string; eggPhrases?: string[]; startWithEgg?: boolean;
+  repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number; cursorHideMs?: number; eggHoldMs?: number;
+  onTypingChange?: (typing: boolean) => void;
+}) {
   const [shown, setShown] = useState('');
   const [showCursor, setShowCursor] = useState(true);
 
   useEffect(() => {
-    let typeTimer: number;
+    let timer: number;
     let startTimer: number;
     let cycleTimer: number;
     let hideTimer: number;
     let cycle = 0;
-    // Longer beat after sentence-ending punctuation, so the greeting lands in phrases.
+    // Longer beat after sentence-ending punctuation, so a phrase lands in beats.
     const isPause = (ch: string) => '!.?…'.includes(ch);
-    const type = (str: string) => {
-      setShown('');
-      setShowCursor(true);
-      window.clearTimeout(hideTimer);
+
+    // Normal greeting: one continuous line with punctuation beats.
+    const typeLine = (str: string) => {
+      setShown(''); setShowCursor(true); window.clearTimeout(hideTimer);
       let i = 0;
       const step = () => {
         i += 1;
         setShown(str.slice(0, i));
-        onTypingChange?.(true); // speaking while emitting characters
+        onTypingChange?.(true);
         if (i < str.length) {
-          const justTyped = str[i - 1];
-          const next = str[i];
-          const pausing = isPause(justTyped) && next === ' ';
-          if (pausing) onTypingChange?.(false); // thinking during the beat
-          typeTimer = window.setTimeout(step, pausing ? pauseMs : speedMs);
+          const pausing = isPause(str[i - 1]) && str[i] === ' ';
+          if (pausing) onTypingChange?.(false);
+          timer = window.setTimeout(step, pausing ? pauseMs : speedMs);
         } else {
           onTypingChange?.(false);
           hideTimer = window.setTimeout(() => setShowCursor(false), cursorHideMs);
@@ -462,13 +474,41 @@ function Typewriter({ text, eggText, repeatMs = 300_000, speedMs = 55, pauseMs =
       };
       step();
     };
-    // Second appearance is the Matrix easter egg; every other cycle is the greeting.
-    const pick = () => (cycle === 1 && eggText ? eggText : text);
-    // Hold blank until the orb has popped in, then type.
-    startTimer = window.setTimeout(() => type(pick()), startDelayMs);
-    cycleTimer = window.setInterval(() => { cycle += 1; type(pick()); }, repeatMs);
-    return () => { window.clearTimeout(typeTimer); window.clearTimeout(startTimer); window.clearTimeout(hideTimer); window.clearInterval(cycleTimer); onTypingChange?.(false); };
-  }, [text, eggText, repeatMs, speedMs, pauseMs, startDelayMs, cursorHideMs, onTypingChange]);
+
+    // Matrix egg: each phrase types, holds on a long dramatic beat, clears, next phrase.
+    const typeSequence = (phrases: string[]) => {
+      setShowCursor(true); window.clearTimeout(hideTimer);
+      const playPhrase = (idx: number) => {
+        if (idx >= phrases.length) {
+          onTypingChange?.(false);
+          hideTimer = window.setTimeout(() => setShowCursor(false), cursorHideMs);
+          return;
+        }
+        const p = phrases[idx];
+        setShown('');
+        let i = 0;
+        const step = () => {
+          i += 1;
+          setShown(p.slice(0, i));
+          onTypingChange?.(true);
+          if (i < p.length) {
+            timer = window.setTimeout(step, speedMs);
+          } else {
+            onTypingChange?.(false); // thinking on the long between-line hold
+            timer = window.setTimeout(() => playPhrase(idx + 1), eggHoldMs);
+          }
+        };
+        step();
+      };
+      playPhrase(0);
+    };
+
+    const run = (egg: boolean) => (egg && eggPhrases ? typeSequence(eggPhrases) : typeLine(text));
+    startTimer = window.setTimeout(() => run(startWithEgg), startWithEgg ? 0 : startDelayMs);
+    // Second appearance plays the egg; every other cycle is the greeting.
+    cycleTimer = window.setInterval(() => { cycle += 1; run(!startWithEgg && cycle === 1 && !!eggPhrases); }, repeatMs);
+    return () => { window.clearTimeout(timer); window.clearTimeout(startTimer); window.clearTimeout(hideTimer); window.clearInterval(cycleTimer); onTypingChange?.(false); };
+  }, [text, eggPhrases, startWithEgg, repeatMs, speedMs, pauseMs, startDelayMs, cursorHideMs, eggHoldMs, onTypingChange]);
 
   return (
     <span>
