@@ -94,13 +94,14 @@ export default function ChatPanel() {
     const traceId = msg.metadata?.traceId;
     if (!traceId) return;
     const pick = value > 0 ? 'up' : 'down';
-    // Toggle off if the same thumb is clicked again.
-    const next = feedback[msg.id] === pick ? undefined : pick;
-    setFeedback(prev => ({ ...prev, [msg.id]: next }));
-    if (!next) return;
+    // Chosen thumb is locked; re-clicking it does nothing. The other thumb stays
+    // clickable so a misclick can be corrected by switching.
+    if (feedback[msg.id] === pick) return;
+    const prev = feedback[msg.id];
+    setFeedback(f => ({ ...f, [msg.id]: pick }));
     sendFeedback({ traceId, value }).catch(err => {
       console.error('[feedback]', err.message);
-      setFeedback(prev => ({ ...prev, [msg.id]: undefined }));
+      setFeedback(f => ({ ...f, [msg.id]: prev }));
     });
   };
 
@@ -385,6 +386,7 @@ export default function ChatPanel() {
                       className={`feedback-btn ${feedback[msg.id] === 'up' ? 'active up' : ''}`}
                       title={t('feedback.helpful')}
                       aria-label={t('feedback.helpful')}
+                      disabled={feedback[msg.id] === 'up'}
                       onClick={() => handleFeedback(msg, 1)}
                     >
                       <span className="material-symbols">thumb_up</span>
@@ -393,6 +395,7 @@ export default function ChatPanel() {
                       className={`feedback-btn ${feedback[msg.id] === 'down' ? 'active down' : ''}`}
                       title={t('feedback.notHelpful')}
                       aria-label={t('feedback.notHelpful')}
+                      disabled={feedback[msg.id] === 'down'}
                       onClick={() => handleFeedback(msg, -1)}
                     >
                       <span className="material-symbols">thumb_down</span>

@@ -273,6 +273,8 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .feedback-btn.active { opacity: 1; }
 .feedback-btn.active.up { color: var(--phase); }
 .feedback-btn.active.down { color: var(--orange); }
+.feedback-btn:disabled { cursor: default; }
+.feedback-btn:disabled:hover { background: none; }
 .feedback-thanks { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-left: 4px; }
 
 /* ═══ Animations ═══ */
