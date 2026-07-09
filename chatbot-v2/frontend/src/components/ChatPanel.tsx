@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { FormEvent, MouseEvent } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate } from '../context/LanguageContext';
@@ -246,12 +246,7 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
     <section className="flex min-h-0 flex-col overflow-hidden">
       <Conversation>
         <ConversationContent className="mx-auto w-full max-w-3xl">
-          {messages.length === 0 && (
-            <ConversationEmptyState
-              icon={<HaloOtter phase={phase} />}
-              description={<Typewriter text={t('chat.greeting', { name: t('userProfile.name') })} />}
-            />
-          )}
+          {messages.length === 0 && <EmptyGreeting phase={phase} t={t} />}
 
           {renderItems.map(item => {
             if (item.type === 'divider') return <PhaseDivider key={item.key} phase={item.phase} t={t} />;
@@ -374,9 +369,23 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+// Home empty state: shares one `typing` flag so the halo shows speaking while the
+// greeting is being typed, and thinking once it settles.
+function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
+  const [typing, setTyping] = useState(false);
+  const onTypingChange = useCallback((v: boolean) => setTyping(v), []);
+  return (
+    <ConversationEmptyState
+      title=""
+      icon={<HaloOtter phase={phase} state={typing ? 'speaking' : 'thinking'} />}
+      description={<Typewriter text={t('chat.greeting', { name: t('userProfile.name') })} onTypingChange={onTypingChange} />}
+    />
+  );
+}
+
 // Types out the greeting on load and re-types it every `repeatMs`. `text` changes
 // (e.g. language switch) restart the animation.
-function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700 }: { text: string; repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number }) {
+function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700, onTypingChange }: { text: string; repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number; onTypingChange?: (typing: boolean) => void }) {
   const [shown, setShown] = useState('');
 
   useEffect(() => {
@@ -387,6 +396,7 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
     const isPause = (ch: string) => '!.?…'.includes(ch);
     const type = () => {
       setShown('');
+      onTypingChange?.(true);
       let i = 0;
       const step = () => {
         i += 1;
@@ -396,6 +406,8 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
           const next = text[i];
           const delay = isPause(justTyped) && next === ' ' ? pauseMs : speedMs;
           typeTimer = window.setTimeout(step, delay);
+        } else {
+          onTypingChange?.(false);
         }
       };
       step();
@@ -403,8 +415,8 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
     // Hold blank until the orb has popped in, then type.
     startTimer = window.setTimeout(type, startDelayMs);
     cycleTimer = window.setInterval(type, repeatMs);
-    return () => { window.clearTimeout(typeTimer); window.clearTimeout(startTimer); window.clearInterval(cycleTimer); };
-  }, [text, repeatMs, speedMs, pauseMs, startDelayMs]);
+    return () => { window.clearTimeout(typeTimer); window.clearTimeout(startTimer); window.clearInterval(cycleTimer); onTypingChange?.(false); };
+  }, [text, repeatMs, speedMs, pauseMs, startDelayMs, onTypingChange]);
 
   return (
     <span>
@@ -417,7 +429,7 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
 // Home orb: halo Persona (phase-tinted) with the otter glyph superposed. The otter
 // magnet-follows the cursor inside the zone and springs back to center on leave.
 // Separate transform layers: magnet(translate) → pop(entrance scale) → breathe(idle scale).
-function HaloOtter({ phase }: { phase: string }) {
+function HaloOtter({ phase, state = 'thinking' }: { phase: string; state?: 'idle' | 'thinking' | 'speaking' }) {
   const zoneRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [following, setFollowing] = useState(false);
@@ -442,7 +454,7 @@ function HaloOtter({ phase }: { phase: string }) {
       onMouseLeave={onLeave}
       className="relative flex size-80 items-center justify-center p-10"
     >
-      <Persona key={phase} state="thinking" variant="halo" color={PHASE_COLOR[phase] || PHASE_COLOR.phase1} className="size-80" />
+      <Persona key={phase} state={state} variant="halo" color={PHASE_COLOR[phase] || PHASE_COLOR.phase1} className="size-80" />
       <div
         className="pointer-events-none absolute"
         style={{
