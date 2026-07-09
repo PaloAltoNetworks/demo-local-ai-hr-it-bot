@@ -392,7 +392,7 @@ export default function ChatPanel() {
                     {msg.metadata?.traceId && msg.parts?.some(p => p.type === 'text' && p.text) && (
                       <span className="message-feedback">
                         <button
-                          className={`feedback-btn ${feedback[msg.id] === 'up' ? 'active up' : ''}`}
+                          className={`feedback-btn feedback-up ${feedback[msg.id] === 'up' ? 'active up' : ''}`}
                           title={t('feedback.helpful')}
                           aria-label={t('feedback.helpful')}
                           data-tip={feedback[msg.id] === 'up' && tip[msg.id] ? t('feedback.thanks') : undefined}
@@ -402,7 +402,7 @@ export default function ChatPanel() {
                           <span className="material-symbols">thumb_up</span>
                         </button>
                         <button
-                          className={`feedback-btn ${feedback[msg.id] === 'down' ? 'active down' : ''}`}
+                          className={`feedback-btn feedback-down ${feedback[msg.id] === 'down' ? 'active down' : ''}`}
                           title={t('feedback.notHelpful')}
                           aria-label={t('feedback.notHelpful')}
                           data-tip={feedback[msg.id] === 'down' && tip[msg.id] ? t('feedback.thanks') : undefined}

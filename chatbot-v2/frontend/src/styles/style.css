@@ -273,6 +273,9 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .message-feedback { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
 .feedback-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; padding: 1px; border: none; background: none; border-radius: 4px; color: var(--text-muted); cursor: pointer; opacity: 0.55; transition: opacity 0.15s, background 0.15s, color 0.15s; }
 .feedback-btn:hover { opacity: 1; background: var(--bg); }
+/* Hover tints each thumb its own pastel (mixed toward the surface) for differentiation. */
+.feedback-btn.feedback-up:hover { color: color-mix(in srgb, var(--phase) 55%, var(--surface)); }
+.feedback-btn.feedback-down:hover { color: color-mix(in srgb, var(--orange) 55%, var(--surface)); }
 .feedback-btn .material-symbols { font-size: 13px; }
 .feedback-btn.active { opacity: 1; }
 .feedback-btn.active.up { color: var(--phase); }
