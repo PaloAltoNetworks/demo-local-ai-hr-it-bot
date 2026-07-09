@@ -428,7 +428,7 @@ export default function ChatPanel() {
             <div className="message-body">
               <div className="react-step react-reason streaming">
                 <div className="react-step-header">
-                  <span className="react-step-label">…</span>
+                  <span className="material-symbols react-step-icon">more_horiz</span>
                 </div>
               </div>
             </div>

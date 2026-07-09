@@ -106,7 +106,8 @@ const ICONS = [
     'stop',                // Stop icon
     'feedback',            // Feedback icon
     'thumb_up',            // Thumb up icon
-    'thumb_down'           // Thumb down icon
+    'thumb_down',          // Thumb down icon
+    'more_horiz'           // More horizontal icon
 ];
 
 // Sort icons alphabetically
