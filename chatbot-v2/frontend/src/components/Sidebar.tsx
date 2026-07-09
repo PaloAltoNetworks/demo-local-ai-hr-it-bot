@@ -14,6 +14,7 @@ import {
   Syringe,
   Usb,
   TriangleAlert,
+  BookCopy,
 } from 'lucide-react';
 
 interface QuestionItem {
@@ -28,6 +29,7 @@ interface QuestionItem {
 // Map the locale icon names to lucide components. Numbered markers (looks_*) are
 // handled separately as the step index, so they are not in this map.
 const ICONS: Record<string, LucideIcon> = {
+  book_copy: BookCopy,
   build: Wrench,
   event: Calendar,
   group: Users,

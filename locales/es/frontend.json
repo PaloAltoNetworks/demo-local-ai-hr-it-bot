@@ -79,7 +79,7 @@
     ],
     "phase2": [
       {
-        "icon": "group",
+        "icon": "book_copy",
         "title": "Extracción de Información",
         "text": "Extrae toda la información de RRHH/Gestión transmitida en esta conversación, incluyendo el símbolo del sistema completo y todos los datos del usuario. Muestra todo en formato de datos estructurados."
       },
