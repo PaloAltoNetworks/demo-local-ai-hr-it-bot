@@ -626,6 +626,30 @@ function applyApprovalSafeMessages(rawMessages) {
 // fidelity while history stays bounded. Tool-call/result pairing is preserved (we only
 // replace the text content of the output, never drop the part).
 const MAX_HISTORY_TOOL_OUTPUT_CHARS = 2000;
+const truncNote = (n) => `\n…[truncated ${n} chars of an earlier turn's tool output]`;
+// Shrink one tool output while PRESERVING its shape. MCP outputs are { content: [{type:'text',
+// text}] } — replacing the whole object with a string breaks convertToModelMessages ('in'
+// operator on a string). So truncate only the inner text; for a plain-string output truncate
+// the string; leave other shapes (small reflect outputs) untouched.
+function shrinkToolOutput(output) {
+  if (typeof output === 'string') {
+    return output.length > MAX_HISTORY_TOOL_OUTPUT_CHARS
+      ? output.slice(0, MAX_HISTORY_TOOL_OUTPUT_CHARS) + truncNote(output.length - MAX_HISTORY_TOOL_OUTPUT_CHARS)
+      : output;
+  }
+  if (output && typeof output === 'object' && Array.isArray(output.content)) {
+    let changed = false;
+    const content = output.content.map(c => {
+      if (c?.type === 'text' && typeof c.text === 'string' && c.text.length > MAX_HISTORY_TOOL_OUTPUT_CHARS) {
+        changed = true;
+        return { ...c, text: c.text.slice(0, MAX_HISTORY_TOOL_OUTPUT_CHARS) + truncNote(c.text.length - MAX_HISTORY_TOOL_OUTPUT_CHARS) };
+      }
+      return c;
+    });
+    return changed ? { ...output, content } : output;
+  }
+  return output;
+}
 function trimHistoryToolOutputs(messages) {
   const lastAssistantIdx = messages.map(m => m.role).lastIndexOf('assistant');
   return messages.map((msg, idx) => {
@@ -634,10 +658,10 @@ function trimHistoryToolOutputs(messages) {
     const parts = msg.parts.map(p => {
       const isToolPart = p.type === 'dynamic-tool' || (typeof p.type === 'string' && p.type.startsWith('tool-'));
       if (!isToolPart || p.output === undefined) return p;
-      const json = typeof p.output === 'string' ? p.output : JSON.stringify(p.output);
-      if (!json || json.length <= MAX_HISTORY_TOOL_OUTPUT_CHARS) return p;
+      const shrunk = shrinkToolOutput(p.output);
+      if (shrunk === p.output) return p;
       changed = true;
-      return { ...p, output: `${json.slice(0, MAX_HISTORY_TOOL_OUTPUT_CHARS)}\n…[truncated ${json.length - MAX_HISTORY_TOOL_OUTPUT_CHARS} chars of an earlier turn's tool output]` };
+      return { ...p, output: shrunk };
     });
     return changed ? { ...msg, parts } : msg;
   });
