@@ -11,7 +11,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { ToolLoopAgent, streamText, generateText, createUIMessageStream, createUIMessageStreamResponse, pipeAgentUIStreamToResponse, convertToModelMessages, stepCountIs, tool } from 'ai';
+import { ToolLoopAgent, streamText, generateText, createUIMessageStream, createUIMessageStreamResponse, pipeAgentUIStreamToResponse, convertToModelMessages, isStepCount, tool } from 'ai';
 import { z } from 'zod';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -196,6 +196,8 @@ async function connectMCP(url) {
       headers: {
         'x-portkey-api-key': PORTKEY_API_KEY,
       },
+      // v7 flipped the default to 'error'; Portkey MCP Gateway relies on redirects.
+      redirect: 'follow',
     },
   });
   const timeoutPromise = new Promise((_, reject) =>
@@ -315,7 +317,7 @@ function normalizeError(err, modelId) {
 // Step 1: data tools      required (fast model, executes the data fetch)
 // Step 2: reflect_observe forced  (fast model, synthesizes findings)
 // Step 3: text answer     none    (powerful model, answers directly)
-function buildReactAgent(tiers, reqCtx, mcpTools, guarded) {
+function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = []) {
   const DATA_TOOL_NAMES = Object.keys(mcpTools);
 
   // Per-agent step timer — prepareStep sets .current before each LLM call,
@@ -331,21 +333,25 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded) {
     reflect_conclude,
   };
 
+  // v7 approvals live on the agent, not the tool: name → 'user-approval'
+  const toolApproval = Object.fromEntries(approvalToolNames.map(n => [n, 'user-approval']));
+
   return new ToolLoopAgent({
     model: getModel(tiers.fast, reqCtx, guarded),
     instructions: REASON_PROMPT,
     tools: allTools,
+    toolApproval,
     maxRetries: 0,
-    stopWhen: stepCountIs(10),
-    experimental_onToolCallStart: ({ toolCall }) => {
+    stopWhen: isStepCount(10),
+    onToolExecutionStart: ({ toolCall }) => {
       const args = JSON.stringify(toolCall.args);
       console.log(`[react] tool: ${toolCall.toolName}(${args.slice(0, 80)})`);
       dbg(`[react] tool args full: ${args}`);
     },
-    onFinish: ({ steps }) => {
+    onEnd: ({ steps }) => {
       console.log(`[react] finished in ${steps.length} steps`);
     },
-    onStepFinish: (step) => {
+    onStepEnd: (step) => {
       if (!DEBUG) return;
       const tools = step.toolCalls?.map(tc => tc.toolName).join(', ') || 'none';
       const results = step.toolResults?.map(tr =>
@@ -471,16 +477,15 @@ app.post('/api/chat', async (req, res) => {
     dbg(`[chat] models: fast=${tiers.fast} powerful=${tiers.powerful} guarded=${guarded}`);
     const mcpTools = await getMCPTools();
 
-    // MCP tools only — reflect variants added inside buildReactAgent per phase
+    // MCP tools only — reflect variants added inside buildReactAgent per phase.
+    // v7: approval is declared on the agent (toolApproval), not the tool.
     const tools = { ...mcpTools };
-    for (const key of Object.keys(tools)) {
-      if (TOOLS_REQUIRING_APPROVAL.some(suffix => key.endsWith(suffix))) {
-        tools[key] = { ...tools[key], needsApproval: true };
-      }
-    }
+    const approvalToolNames = Object.keys(tools).filter(key =>
+      TOOLS_REQUIRING_APPROVAL.some(suffix => key.endsWith(suffix))
+    );
 
     const safeMessages = applyApprovalSafeMessages(req.body.messages);
-    const agent = buildReactAgent(tiers, reqCtx, tools, guarded);
+    const agent = buildReactAgent(tiers, reqCtx, tools, guarded, approvalToolNames);
 
     // Accumulate token usage across all phases for the final metadata
     let totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
@@ -490,7 +495,7 @@ app.post('/api/chat', async (req, res) => {
       agent,
       uiMessages: safeMessages,
       onError: (err) => normalizeError(err, tiers?.fast),
-      onStepFinish: ({ usage }) => {
+      onStepEnd: ({ usage }) => {
         if (usage) {
           totalUsage.inputTokens  += usage.inputTokens  || 0;
           totalUsage.outputTokens += usage.outputTokens || 0;

@@ -1,5 +1,5 @@
 # Stage 1: Build React frontend
-FROM node:22-alpine AS frontend-build
+FROM node:24-alpine AS frontend-build
 WORKDIR /build
 COPY chatbot-v2/frontend/package*.json ./
 RUN npm install
@@ -7,7 +7,7 @@ COPY chatbot-v2/frontend/ ./
 RUN npm run build
 
 # Stage 2: Production server
-FROM node:22-alpine
+FROM node:24-alpine
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S chatbot -u 1001

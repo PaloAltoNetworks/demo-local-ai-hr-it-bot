@@ -7,7 +7,7 @@
  *   and it-tools (get_ticket, search_tickets, create_ticket, etc.) — one client per server
  * - LLM via Portkey (api.portkey.ai/v1, OpenAI-compatible)
  */
-import { ToolLoopAgent, tool, stepCountIs } from 'ai';
+import { ToolLoopAgent, tool, isStepCount } from 'ai';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
@@ -57,6 +57,8 @@ async function connectMCP(url) {
       headers: {
         'x-portkey-api-key': PORTKEY_API_KEY,
       },
+      // v7 flipped the default to 'error'; Portkey MCP Gateway relies on redirects.
+      redirect: 'follow',
     },
   });
   const timeoutPromise = new Promise((_, reject) =>
@@ -313,18 +315,18 @@ The requesting employee's ID is ${employeeId}. Use this ID when looking up emplo
     model: openai.chat(MODEL_ID),
     instructions,
     tools,
-    stopWhen: stepCountIs(10),
-    experimental_onToolCallStart: ({ toolCall }) => {
+    stopWhen: isStepCount(10),
+    onToolExecutionStart: ({ toolCall }) => {
       console.log(`[it-triage] Tool call: ${toolCall.toolName}(${JSON.stringify(toolCall.args).substring(0, 120)})`);
     },
-    experimental_onToolCallFinish: ({ toolCall, durationMs, success, error }) => {
+    onToolExecutionEnd: ({ toolCall, durationMs, success, error }) => {
       if (success) {
         console.log(`[it-triage] Tool done: ${toolCall.toolName} (${durationMs}ms)`);
       } else {
         console.error(`[it-triage] Tool error: ${toolCall.toolName} (${durationMs}ms): ${error}`);
       }
     },
-    onFinish: ({ steps }) => {
+    onEnd: ({ steps }) => {
       console.log(`[it-triage] Agent finished in ${steps.length} steps`);
     },
   });

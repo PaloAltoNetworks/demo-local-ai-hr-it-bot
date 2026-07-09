@@ -9,9 +9,9 @@
     "dev": "nodemon backend/server.js"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^1.0.52",
-    "@ai-sdk/openai": "^3.0.73",
-    "ai": "^6.0.208",
+    "@ai-sdk/mcp": "^2.0.9",
+    "@ai-sdk/openai": "^4.0.9",
+    "ai": "^7.0.18",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1"
