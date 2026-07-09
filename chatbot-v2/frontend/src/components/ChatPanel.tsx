@@ -317,6 +317,7 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
                     </Button>
                   </ModelSelectorTrigger>
                   <ModelSelectorContent title={t('llmProvider.label')}>
+                    <p className="px-3 py-2 text-xs text-muted-foreground">{t('llmProvider.note')}</p>
                     <ModelSelectorInput placeholder={t('llmProvider.label')} />
                     <ModelSelectorList>
                       <ModelSelectorEmpty>—</ModelSelectorEmpty>

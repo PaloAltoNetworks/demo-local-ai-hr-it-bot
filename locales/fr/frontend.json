@@ -288,6 +288,7 @@
     "switchToLightMode": "Passer au mode clair"
   },
   "llmProvider": {
-    "label": "Fournisseur LLM"
+    "label": "Fournisseur LLM",
+    "note": "Un melange de Haiku 4.5 et Sonnet 4.6 sur le cloud choisi, avec les garde-fous natifs de chaque fournisseur actives par defaut dans chaque phase."
   }
 }
