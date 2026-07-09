@@ -91,6 +91,17 @@ const REFLECT_META: Record<string, { icon: typeof Brain; label: string }> = {
   conclude: { icon: Brain, label: 'Reason' },
 };
 
+// MCP tool results arrive wrapped as { content: [{ type: 'text', text: '<json>' }] }.
+// Passing that wrapper straight to ToolOutput → JSON.stringify double-escapes the inner
+// JSON, so the card fills with literal \n and \" (unreadable). Unwrap the text and parse it
+// back to an object so CodeBlock pretty-prints clean JSON.
+const unwrapMcpOutput = (output: any): any => {
+  if (!output || typeof output !== 'object' || !Array.isArray(output.content)) return output;
+  const text = output.content.filter((c: any) => c?.type === 'text').map((c: any) => c.text).join('\n');
+  if (!text) return output;
+  try { return JSON.parse(text); } catch { return text; }
+};
+
 const partToolName = (part: any): string =>
   part.type === 'dynamic-tool' ? part.toolName : String(part.type).slice(5);
 const isToolPart = (part: any) => part.type === 'dynamic-tool' || String(part.type || '').startsWith('tool-');
@@ -407,7 +418,7 @@ function AssistantParts({ msg, onApprove, t }: { msg: any; onApprove: (r: { id: 
               : <ToolHeader type={p.type} state={p.state} title={shortToolName(name)} />}
             <ToolContent>
               <ToolInput input={p.input} />
-              <ToolOutput output={p.output} errorText={p.errorText} />
+              <ToolOutput output={unwrapMcpOutput(p.output)} errorText={p.errorText} />
             </ToolContent>
           </Tool>
         );
