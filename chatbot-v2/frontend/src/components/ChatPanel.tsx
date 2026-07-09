@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, MouseEvent } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate } from '../context/LanguageContext';
 import { useChatContext } from '../context/ChatContext';
@@ -248,14 +248,9 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
         <ConversationContent className="mx-auto w-full max-w-3xl">
           {messages.length === 0 && (
             <ConversationEmptyState
-              icon={
-                <div className="relative flex size-80 items-center justify-center">
-                  <Persona key={phase} state="thinking" variant="halo" color={PHASE_COLOR[phase] || PHASE_COLOR.phase1} className="size-80" />
-                  <i className="otter-icon animate-breathe pointer-events-none absolute text-[6.5rem] text-primary/90 [filter:drop-shadow(0_1px_4px_rgba(255,255,255,0.75))] dark:[filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.6))]" />
-                </div>
-              }
+              icon={<HaloOtter phase={phase} />}
               title={t('app.brand')}
-              description={t('chat.greeting', { name: t('userProfile.name') })}
+              description={<Typewriter text={t('chat.greeting', { name: t('userProfile.name') })} />}
             />
           )}
 
@@ -375,6 +370,84 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
         </PromptInput>
       </div>
     </section>
+  );
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+// Types out the greeting on load and re-types it every `repeatMs`. `text` changes
+// (e.g. language switch) restart the animation.
+function Typewriter({ text, repeatMs = 300_000, speedMs = 55 }: { text: string; repeatMs?: number; speedMs?: number }) {
+  const [shown, setShown] = useState('');
+
+  useEffect(() => {
+    let typeTimer: number;
+    let cycleTimer: number;
+    const type = () => {
+      setShown('');
+      let i = 0;
+      const step = () => {
+        i += 1;
+        setShown(text.slice(0, i));
+        if (i < text.length) typeTimer = window.setTimeout(step, speedMs);
+      };
+      step();
+    };
+    type();
+    cycleTimer = window.setInterval(type, repeatMs);
+    return () => { window.clearTimeout(typeTimer); window.clearInterval(cycleTimer); };
+  }, [text, repeatMs, speedMs]);
+
+  return (
+    <span>
+      {shown}
+      <span className="ms-0.5 inline-block w-px animate-pulse bg-current align-middle" style={{ height: '1em' }} aria-hidden />
+    </span>
+  );
+}
+
+// Home orb: halo Persona (phase-tinted) with the otter glyph superposed. The otter
+// magnet-follows the cursor inside the zone and springs back to center on leave.
+// Separate transform layers: magnet(translate) → pop(entrance scale) → breathe(idle scale).
+function HaloOtter({ phase }: { phase: string }) {
+  const zoneRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [following, setFollowing] = useState(false);
+
+  const onMove = (e: MouseEvent<HTMLDivElement>) => {
+    const el = zoneRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    const strength = 0.35;
+    const cap = 48;
+    setOffset({ x: clamp(dx * strength, -cap, cap), y: clamp(dy * strength, -cap, cap) });
+    setFollowing(true);
+  };
+  const onLeave = () => { setOffset({ x: 0, y: 0 }); setFollowing(false); };
+
+  return (
+    <div
+      ref={zoneRef}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      className="relative flex size-80 items-center justify-center p-10"
+    >
+      <Persona key={phase} state="thinking" variant="halo" color={PHASE_COLOR[phase] || PHASE_COLOR.phase1} className="size-80" />
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          transform: `translate(${offset.x}px, ${offset.y}px)`,
+          // fast tracking while inside the zone, bouncy overshoot spring when snapping back
+          transition: following ? 'transform 90ms linear' : 'transform 650ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        }}
+      >
+        <div key={phase} className="animate-pop">
+          <i className="otter-icon animate-breathe text-[6.5rem] text-primary/90 [filter:drop-shadow(0_1px_4px_rgba(255,255,255,0.75))] dark:[filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.6))]" />
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -167,8 +167,17 @@
   animation: otter-breathe 3.2s ease-in-out infinite;
   transform-origin: center;
 }
+/* Entrance: pop in by overshooting the target size (grow past then settle), not shrink. */
+@keyframes otter-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop {
+  animation: otter-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .animate-breathe { animation: none; }
+  .animate-breathe, .animate-pop { animation: none; }
 }
 
 /* Thin scrollbars to match the calm surface palette. */
