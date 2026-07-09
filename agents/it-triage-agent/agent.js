@@ -27,7 +27,14 @@ const MODEL_ID = process.env.IT_TRIAGE_MODEL || process.env.PORTKEY_DEFAULT_MODE
 // Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
 const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';
 const MCP_SLUGS = [process.env.PORTKEY_MCP_HR_SLUG, process.env.PORTKEY_MCP_IT_SLUG].filter(Boolean);
-const MCP_URLS = MCP_SLUGS.map(slug => `${PORTKEY_MCP_BASE}/${slug}/mcp`);
+// IT_TRIAGE_MCP_URLS (comma-separated) points the agent's data-tool clients straight at
+// the tools servers over the docker network, skipping the Portkey MCP cloud round-trip
+// (~1-2s per call). The multi-step agent makes 6-9 data calls, so the nested cloud hops
+// dominate latency and trip Portkey's upstream gateway timeout → 502 on the write path.
+// LLM calls still go through Portkey. Falls back to Portkey slugs when unset.
+const MCP_URLS = process.env.IT_TRIAGE_MCP_URLS
+  ? process.env.IT_TRIAGE_MCP_URLS.split(',').map(s => s.trim()).filter(Boolean)
+  : MCP_SLUGS.map(slug => `${PORTKEY_MCP_BASE}/${slug}/mcp`);
 
 // --- IT Process Data (local — agent owns this domain) ---
 
