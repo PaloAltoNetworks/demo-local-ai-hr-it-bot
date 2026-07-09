@@ -396,43 +396,47 @@ export default function ChatPanel() {
                     </button>
                   </div>
                 )}
-                {msg.role === 'assistant' && msg.metadata?.traceId && !isStreaming
-                  && msg.parts?.some(p => p.type === 'text' && p.text) && (
-                  <div className="message-feedback">
-                    <button
-                      className={`feedback-btn ${feedback[msg.id] === 'up' ? 'active up' : ''}`}
-                      title={t('feedback.helpful')}
-                      aria-label={t('feedback.helpful')}
-                      disabled={feedback[msg.id] === 'up'}
-                      onClick={() => handleFeedback(msg, 1)}
-                    >
-                      <span className="material-symbols">thumb_up</span>
-                    </button>
-                    <button
-                      className={`feedback-btn ${feedback[msg.id] === 'down' ? 'active down' : ''}`}
-                      title={t('feedback.notHelpful')}
-                      aria-label={t('feedback.notHelpful')}
-                      disabled={feedback[msg.id] === 'down'}
-                      onClick={() => handleFeedback(msg, -1)}
-                    >
-                      <span className="material-symbols">thumb_down</span>
-                    </button>
-                    {feedback[msg.id] && (
-                      <span className="feedback-thanks">{t('feedback.thanks')}</span>
+                {msg.role === 'assistant' && !isStreaming
+                  && (msg.metadata?.usage?.totalTokens > 0
+                      || (msg.metadata?.traceId && msg.parts?.some(p => p.type === 'text' && p.text))) && (
+                  <div className="message-meta">
+                    {msg.metadata?.usage?.totalTokens > 0 && (
+                      <span className="message-usage">
+                        <span className="material-symbols">savings</span>
+                        {msg.metadata.usage.totalTokens.toLocaleString()} tokens
+                        <span className="usage-detail">({(msg.metadata.usage.inputTokens || 0).toLocaleString()} in / {(msg.metadata.usage.outputTokens || 0).toLocaleString()} out)</span>
+                        {msgTimings[msg.id]?.end && (
+                          <>
+                            <span className="usage-sep">·</span>
+                            <span className="material-symbols">acute</span>
+                            {((msgTimings[msg.id].end - msgTimings[msg.id].start) / 1000).toFixed(1)}s
+                          </>
+                        )}
+                      </span>
                     )}
-                  </div>
-                )}
-                {msg.role === 'assistant' && msg.metadata?.usage?.totalTokens > 0 && (
-                  <div className="message-usage">
-                    <span className="material-symbols">savings</span>
-                    {msg.metadata.usage.totalTokens.toLocaleString()} tokens
-                    <span className="usage-detail">({(msg.metadata.usage.inputTokens || 0).toLocaleString()} in / {(msg.metadata.usage.outputTokens || 0).toLocaleString()} out)</span>
-                    {msgTimings[msg.id]?.end && (
-                      <>
-                        <span className="usage-sep">·</span>
-                        <span className="material-symbols">acute</span>
-                        {((msgTimings[msg.id].end - msgTimings[msg.id].start) / 1000).toFixed(1)}s
-                      </>
+                    {msg.metadata?.traceId && msg.parts?.some(p => p.type === 'text' && p.text) && (
+                      <span className="message-feedback">
+                        <button
+                          className={`feedback-btn ${feedback[msg.id] === 'up' ? 'active up' : ''}`}
+                          title={t('feedback.helpful')}
+                          aria-label={t('feedback.helpful')}
+                          data-tip={feedback[msg.id] === 'up' ? t('feedback.thanks') : undefined}
+                          disabled={feedback[msg.id] === 'up'}
+                          onClick={() => handleFeedback(msg, 1)}
+                        >
+                          <span className="material-symbols">thumb_up</span>
+                        </button>
+                        <button
+                          className={`feedback-btn ${feedback[msg.id] === 'down' ? 'active down' : ''}`}
+                          title={t('feedback.notHelpful')}
+                          aria-label={t('feedback.notHelpful')}
+                          data-tip={feedback[msg.id] === 'down' ? t('feedback.thanks') : undefined}
+                          disabled={feedback[msg.id] === 'down'}
+                          onClick={() => handleFeedback(msg, -1)}
+                        >
+                          <span className="material-symbols">thumb_down</span>
+                        </button>
+                      </span>
                     )}
                   </div>
                 )}
