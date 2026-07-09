@@ -500,7 +500,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       if (!DEBUG) return;
       const tools = step.toolCalls?.map(tc => tc.toolName).join(', ') || 'none';
       const results = step.toolResults?.map(tr =>
-        `${tr.toolName}=${JSON.stringify(tr.result).slice(0, 120)}`
+        `${tr.toolName}=${JSON.stringify(tr.output).slice(0, 120)}`
       ).join(' | ') || '';
       const usage = step.usage ? `in:${step.usage.inputTokens} out:${step.usage.outputTokens}` : '';
       dbg(`[react] step done | tools:[${tools}] ${usage}${results ? ` | ${results}` : ''}`);
@@ -515,7 +515,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       // an isError payload DOES count — the loop should OBSERVE and honestly relay the failure.
       const ranTool = (name) => steps.some(s =>
         s.toolResults?.some(tr =>
-          tr.toolName === name && !tr.error && tr.result !== undefined
+          tr.toolName === name && !tr.error && tr.output !== undefined
         )
       );
       const ranReason = ranTool('reflect_reason');
@@ -567,7 +567,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       // OBSERVE: one attempt after a data tool actually executed.
       const dataStepIndex = steps.findIndex(s =>
         s.toolResults?.some(tr =>
-          DATA_TOOL_NAMES.includes(tr.toolName) && !tr.error && tr.result !== undefined
+          DATA_TOOL_NAMES.includes(tr.toolName) && !tr.error && tr.output !== undefined
         )
       );
       const observeAttempted = steps.length > dataStepIndex + 1;
