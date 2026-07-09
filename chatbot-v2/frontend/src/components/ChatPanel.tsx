@@ -420,8 +420,8 @@ function HaloOtter({ phase }: { phase: string }) {
     const r = el.getBoundingClientRect();
     const dx = e.clientX - (r.left + r.width / 2);
     const dy = e.clientY - (r.top + r.height / 2);
-    const strength = 0.35;
-    const cap = 48;
+    const strength = 0.16;
+    const cap = 26;
     setOffset({ x: clamp(dx * strength, -cap, cap), y: clamp(dy * strength, -cap, cap) });
     setFollowing(true);
   };
@@ -440,7 +440,7 @@ function HaloOtter({ phase }: { phase: string }) {
         style={{
           transform: `translate(${offset.x}px, ${offset.y}px)`,
           // fast tracking while inside the zone, bouncy overshoot spring when snapping back
-          transition: following ? 'transform 90ms linear' : 'transform 650ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+          transition: following ? 'transform 320ms ease-out' : 'transform 700ms cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}
       >
         <div key={phase} className="animate-pop">
