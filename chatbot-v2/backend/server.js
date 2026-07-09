@@ -169,11 +169,12 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
     }
     // Metadata feeds Portkey observability and the AIRS guardrail params
     // (ai_model={{metadata.model}}, app_user={{metadata._user}}).
+    // Keep it STABLE: metadata is part of the simple-cache key, so per-request volatile
+    // values (thread_id, user_ip) would bust every cache lookup. The thread trace lives in
+    // the x-portkey-trace-id header (not a cache-key field), so grouping is unaffected.
     headers.set('x-portkey-metadata', JSON.stringify({
       _user: STATIC_USER.employee_id,
       app_name: 'The Otter V2',
-      user_ip: reqCtx.userIp,
-      thread_id: reqCtx.threadId,
       model,
     }));
     return fetch(url, { ...init, headers });

@@ -56,13 +56,15 @@ function makeOpenAI({ traceId, employeeId }) {
     fetch: async (url, init) => {
       const headers = new Headers(init?.headers);
       headers.set('x-portkey-api-key', PORTKEY_API_KEY);
+      // trace-id is a header, NOT part of the cache key → safe to vary per run (groups
+      // this run's LLM steps in Portkey). Metadata IS part of the simple-cache key, so keep
+      // it stable — no per-run trace_id here, or the cache would never hit.
       headers.set('x-portkey-trace-id', traceId);
       if (CACHE_CONFIG) headers.set('x-portkey-config', CACHE_CONFIG);
       headers.set('x-portkey-metadata', JSON.stringify({
         _user: employeeId,
         app_name: 'IT Triage Agent',
         agent: 'it-triage',
-        trace_id: traceId,
       }));
       return fetch(url, { ...init, headers });
     },
