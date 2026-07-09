@@ -129,9 +129,18 @@ interface ChatPanelProps {
   providers: Provider[];
   provider: string;
   setProvider: (p: string) => void;
+  phase: string;
 }
 
-export default function ChatPanel({ providers, provider, setProvider }: ChatPanelProps) {
+// Brand hex per phase — mirrors .phaseN-active { --primary } in index.css. Used to tint
+// the halo persona (Rive dynamic color takes a hex, not a CSS var).
+const PHASE_COLOR: Record<string, string> = {
+  phase1: '#00CC66',
+  phase2: '#C84727',
+  phase3: '#00C0E8',
+};
+
+export default function ChatPanel({ providers, provider, setProvider, phase }: ChatPanelProps) {
   const { t } = useLanguage();
   const { messages, sendMessage, sendFeedback, regenerate, stop, addToolApprovalResponse, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
@@ -241,7 +250,7 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
             <ConversationEmptyState
               icon={
                 <div className="relative flex size-40 items-center justify-center">
-                  <Persona state="speaking" variant="halo" className="size-40" />
+                  <Persona state="speaking" variant="halo" color={PHASE_COLOR[phase] || PHASE_COLOR.phase1} className="size-40" />
                   <i className="otter-icon pointer-events-none absolute text-[6.5rem] text-primary/90 [filter:drop-shadow(0_1px_4px_rgba(255,255,255,0.75))] dark:[filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.6))]" />
                 </div>
               }

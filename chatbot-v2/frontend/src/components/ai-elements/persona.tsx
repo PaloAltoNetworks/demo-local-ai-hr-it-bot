@@ -51,7 +51,22 @@ interface PersonaProps {
   onStop?: RiveParameters["onStop"];
   className?: string;
   variant?: keyof typeof sources;
+  /** Optional hex color (e.g. "#00CC66") to tint a dynamic-color orb; overrides the
+      default theme-driven black/white. */
+  color?: string;
 }
+
+// Parse "#RRGGBB" / "#RGB" (or a computed color) into [r,g,b]. Returns null if unparseable.
+const hexToRgb = (hex: string): [number, number, number] | null => {
+  const h = hex.trim().replace(/^#/, "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return null;
+  return [
+    Number.parseInt(full.slice(0, 2), 16),
+    Number.parseInt(full.slice(2, 4), 16),
+    Number.parseInt(full.slice(4, 6), 16),
+  ];
+};
 
 // The state machine name is always 'default' for Elements AI visuals
 const stateMachine = "default";
@@ -127,11 +142,12 @@ const useTheme = (enabled: boolean) => {
 interface PersonaWithModelProps {
   rive: ReturnType<typeof useRive>["rive"];
   source: (typeof sources)[keyof typeof sources];
+  color?: string;
   children: React.ReactNode;
 }
 
 const PersonaWithModel = memo(
-  ({ rive, source, children }: PersonaWithModelProps) => {
+  ({ rive, source, color, children }: PersonaWithModelProps) => {
     const theme = useTheme(source.dynamicColor);
     const viewModel = useViewModel(rive, { useDefault: true });
     const viewModelInstance = useViewModelInstance(viewModel, {
@@ -148,9 +164,10 @@ const PersonaWithModel = memo(
         return;
       }
 
-      const [r, g, b] = theme === "dark" ? [255, 255, 255] : [0, 0, 0];
+      const explicit = color ? hexToRgb(color) : null;
+      const [r, g, b] = explicit ?? (theme === "dark" ? [255, 255, 255] : [0, 0, 0]);
       viewModelInstanceColor.setRgb(r, g, b);
-    }, [viewModelInstanceColor, theme, source.dynamicColor]);
+    }, [viewModelInstanceColor, theme, source.dynamicColor, color]);
 
     return children;
   }
@@ -179,6 +196,7 @@ export const Persona: FC<PersonaProps> = memo(
     onPlay,
     onStop,
     className,
+    color,
   }) => {
     const source = sources[variant];
 
@@ -277,7 +295,7 @@ export const Persona: FC<PersonaProps> = memo(
     const Component = source.hasModel ? PersonaWithModel : PersonaWithoutModel;
 
     return (
-      <Component rive={rive} source={source}>
+      <Component rive={rive} source={source} color={color}>
         <RiveComponent className={cn("size-16 shrink-0", className)} />
       </Component>
     );
