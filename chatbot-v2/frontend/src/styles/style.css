@@ -266,10 +266,10 @@ body { font-family: var(--font); font-size: 14px; color: var(--text); background
 .message-usage .material-symbols { font-size: 13px; }
 .usage-detail { opacity: 0.7; }
 .usage-sep { opacity: 0.4; }
-.message-feedback { display: flex; align-items: center; gap: 4px; padding: 4px 0 0; }
-.feedback-btn { display: inline-flex; align-items: center; justify-content: center; padding: 3px; border: none; background: none; border-radius: 6px; color: var(--text-muted); cursor: pointer; opacity: 0.55; transition: opacity 0.15s, background 0.15s, color 0.15s; }
+.message-feedback { display: flex; align-items: center; gap: 4px; padding: 2px 0 0; }
+.feedback-btn { display: inline-flex; align-items: center; justify-content: center; padding: 1px; border: none; background: none; border-radius: 4px; color: var(--text-muted); cursor: pointer; opacity: 0.55; transition: opacity 0.15s, background 0.15s, color 0.15s; }
 .feedback-btn:hover { opacity: 1; background: var(--bg); }
-.feedback-btn .material-symbols { font-size: 16px; }
+.feedback-btn .material-symbols { font-size: 13px; }
 .feedback-btn.active { opacity: 1; }
 .feedback-btn.active.up { color: var(--phase); }
 .feedback-btn.active.down { color: var(--orange); }
