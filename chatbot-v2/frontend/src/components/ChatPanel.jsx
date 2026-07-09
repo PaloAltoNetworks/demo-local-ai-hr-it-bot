@@ -361,13 +361,6 @@ export default function ChatPanel() {
                   }
                   return null;
                 })}
-                {/* Single global live timer — total elapsed for the active generation */}
-                {msg.role === 'assistant' && isStreaming && msg.id === streamingMsgIdRef.current && globalStartRef.current && (
-                  <div className="react-global-timer">
-                    <span className="material-symbols">acute</span>
-                    {((Date.now() - globalStartRef.current) / 1000).toFixed(1)}s
-                  </div>
-                )}
                 {msg.role === 'assistant' && msg.metadata?.empty && (
                   <div className="message-text empty-response">
                     <span className="material-symbols">warning</span>
@@ -427,25 +420,20 @@ export default function ChatPanel() {
           );
         })}
 
-        {/* Waiting indicator before any assistant part streams — just the live timer, no
-            speculative Reason card (the real Reason card renders when the server sends it). */}
-        {isStreaming && (() => {
-          if (streamingMsgIdRef.current) return null; // timer lives inside the message
-          const liveElapsed = globalStartRef.current
-            ? ((Date.now() - globalStartRef.current) / 1000).toFixed(1)
-            : '0.0';
-          return (
-            <div className="message bot">
-              <div className="message-avatar"><i className="otter-icon" /></div>
-              <div className="message-body">
-                <div className="react-global-timer">
-                  <span className="material-symbols">acute</span>
-                  {liveElapsed}s
+        {/* Waiting indicator before any assistant part streams (no live timer, no
+            speculative card — the real Reason card renders when the server sends it). */}
+        {isStreaming && !streamingMsgIdRef.current && (
+          <div className="message bot">
+            <div className="message-avatar"><i className="otter-icon" /></div>
+            <div className="message-body">
+              <div className="react-step react-reason streaming">
+                <div className="react-step-header">
+                  <span className="react-step-label">…</span>
                 </div>
               </div>
             </div>
-          );
-        })()}
+          </div>
+        )}
 
         {/* Native error display — hidden once captured as a sticky error */}
         {status === 'error' && error && !stickyErrors.some(se => se.error === error) && (
