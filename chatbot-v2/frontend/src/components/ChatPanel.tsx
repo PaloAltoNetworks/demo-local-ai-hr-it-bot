@@ -396,16 +396,17 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
     const isPause = (ch: string) => '!.?…'.includes(ch);
     const type = () => {
       setShown('');
-      onTypingChange?.(true);
       let i = 0;
       const step = () => {
         i += 1;
         setShown(text.slice(0, i));
+        onTypingChange?.(true); // speaking while emitting characters
         if (i < text.length) {
           const justTyped = text[i - 1];
           const next = text[i];
-          const delay = isPause(justTyped) && next === ' ' ? pauseMs : speedMs;
-          typeTimer = window.setTimeout(step, delay);
+          const pausing = isPause(justTyped) && next === ' ';
+          if (pausing) onTypingChange?.(false); // thinking during the beat
+          typeTimer = window.setTimeout(step, pausing ? pauseMs : speedMs);
         } else {
           onTypingChange?.(false);
         }
