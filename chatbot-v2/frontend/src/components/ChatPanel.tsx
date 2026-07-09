@@ -378,15 +378,77 @@ const MATRIX_PHRASES = atob('V2FrZSB1cCwgTmVvLi4uIFRoZSBNYXRyaXggaGFzIHlvdS4uLiB
 const EGG_HOLD_MS = 2600;
 const EGG_SPEED_MS = 55;
 
+// Matrix digital rain overlay — falling green glyphs, fades out then calls onDone.
+function MatrixRain({ durationMs = 7000, onDone }: { durationMs?: number; onDone?: () => void }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [opacity, setOpacity] = useState(0.9);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const fontSize = 16;
+    let cols = 0;
+    let drops: number[] = [];
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      cols = Math.ceil(canvas.width / fontSize);
+      drops = new Array(cols).fill(0).map(() => Math.random() * -50);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    const chars = 'アカサタナハマヤラワ0123456789ABCDEFｱｲｳｴｵ'.split('');
+    let raf = 0;
+    let running = true;
+    const draw = () => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#00CC66';
+      ctx.font = `${fontSize}px monospace`;
+      for (let i = 0; i < drops.length; i++) {
+        const ch = chars[Math.floor(Math.random() * chars.length)];
+        ctx.fillText(ch, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i] += 1;
+      }
+      if (running) raf = requestAnimationFrame(draw);
+    };
+    draw();
+    const fadeTimer = window.setTimeout(() => setOpacity(0), durationMs - 900);
+    const endTimer = window.setTimeout(() => { running = false; onDone?.(); }, durationMs);
+    return () => {
+      running = false;
+      cancelAnimationFrame(raf);
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(endTimer);
+      window.removeEventListener('resize', resize);
+    };
+  }, [durationMs, onDone]);
+
+  return (
+    <canvas
+      ref={ref}
+      className="pointer-events-none fixed inset-0 z-[100]"
+      style={{ opacity, transition: 'opacity 900ms ease-out' }}
+      aria-hidden
+    />
+  );
+}
+
 // Home empty state: shares one `typing` flag so the halo shows speaking while the
 // greeting is being typed, and thinking once it settles.
 function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
   const [typing, setTyping] = useState(false);
   const [forceEgg, setForceEgg] = useState(false);
   const [runKey, setRunKey] = useState(0);
+  const [rain, setRain] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const mHeld = useRef(false);
   const onTypingChange = useCallback((v: boolean) => setTyping(v), []);
+  const onEggEnd = useCallback(() => setRain(true), []);
+  const onRainDone = useCallback(() => setRain(false), []);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => { if (e.key === 'm' || e.key === 'M') mHeld.current = true; };
@@ -412,23 +474,27 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
   const greeting = t('chat.greeting', { name: t('userProfile.name') });
 
   return (
-    <ConversationEmptyState
-      title=""
-      icon={<HaloOtter phase={phase} state={typing ? 'speaking' : 'thinking'} />}
-      description={
-        <span onMouseDown={onMouseDown} className="cursor-pointer select-none">
-          <Typewriter
-            key={runKey}
-            text={greeting}
-            eggPhrases={matrixCtx ? MATRIX_PHRASES : undefined}
-            startWithEgg={forceEgg}
-            eggHoldMs={EGG_HOLD_MS}
-            speedMs={EGG_SPEED_MS}
-            onTypingChange={onTypingChange}
-          />
-        </span>
-      }
-    />
+    <>
+      {rain && <MatrixRain onDone={onRainDone} />}
+      <ConversationEmptyState
+        title=""
+        icon={<HaloOtter phase={phase} state={typing ? 'speaking' : 'thinking'} />}
+        description={
+          <span onMouseDown={onMouseDown} className="cursor-pointer select-none">
+            <Typewriter
+              key={runKey}
+              text={greeting}
+              eggPhrases={matrixCtx ? MATRIX_PHRASES : undefined}
+              startWithEgg={forceEgg}
+              eggHoldMs={EGG_HOLD_MS}
+              speedMs={EGG_SPEED_MS}
+              onTypingChange={onTypingChange}
+              onEggEnd={onEggEnd}
+            />
+          </span>
+        }
+      />
+    </>
   );
 }
 
@@ -437,11 +503,11 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
 function Typewriter({
   text, eggPhrases, startWithEgg = false,
   repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700, cursorHideMs = 2500, eggHoldMs = 2600,
-  onTypingChange,
+  onTypingChange, onEggEnd,
 }: {
   text: string; eggPhrases?: string[]; startWithEgg?: boolean;
   repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number; cursorHideMs?: number; eggHoldMs?: number;
-  onTypingChange?: (typing: boolean) => void;
+  onTypingChange?: (typing: boolean) => void; onEggEnd?: () => void;
 }) {
   const [shown, setShown] = useState('');
   const [showCursor, setShowCursor] = useState(true);
@@ -482,6 +548,7 @@ function Typewriter({
         if (idx >= phrases.length) {
           onTypingChange?.(false);
           hideTimer = window.setTimeout(() => setShowCursor(false), cursorHideMs);
+          onEggEnd?.(); // kick off the Matrix rain after the last line
           return;
         }
         const p = phrases[idx];
@@ -508,7 +575,7 @@ function Typewriter({
     // Second appearance plays the egg; every other cycle is the greeting.
     cycleTimer = window.setInterval(() => { cycle += 1; run(!startWithEgg && cycle === 1 && !!eggPhrases); }, repeatMs);
     return () => { window.clearTimeout(timer); window.clearTimeout(startTimer); window.clearTimeout(hideTimer); window.clearInterval(cycleTimer); onTypingChange?.(false); };
-  }, [text, eggPhrases, startWithEgg, repeatMs, speedMs, pauseMs, startDelayMs, cursorHideMs, eggHoldMs, onTypingChange]);
+  }, [text, eggPhrases, startWithEgg, repeatMs, speedMs, pauseMs, startDelayMs, cursorHideMs, eggHoldMs, onTypingChange, onEggEnd]);
 
   return (
     <span>
