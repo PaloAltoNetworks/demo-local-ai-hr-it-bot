@@ -79,6 +79,9 @@ You have all the data you need. Give a clear, professional, concise answer to th
 
 // Portkey Config ID that attaches the PANW Prisma AIRS guardrail (input + output) on guarded requests
 const GUARDED_CONFIG = process.env.PORTKEY_GUARDED_CONFIG || '';
+// Portkey Config ID (or inline JSON) enabling response caching on non-guarded requests.
+// Use a simple/exact-match cache config — semantic cache can mis-hit mid agent loop.
+const CACHE_CONFIG = process.env.PORTKEY_CACHE_CONFIG || '';
 const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
 const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
@@ -146,6 +149,8 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
     headers.set('x-portkey-trace-id', reqCtx.threadId);
     if (guarded && GUARDED_CONFIG) {
       headers.set('x-portkey-config', GUARDED_CONFIG);
+    } else if (CACHE_CONFIG) {
+      headers.set('x-portkey-config', CACHE_CONFIG);
     }
     let model = '';
     if (init?.body) {

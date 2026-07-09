@@ -11,6 +11,7 @@ import { ToolLoopAgent, tool, isStepCount } from 'ai';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -23,6 +24,9 @@ const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
 const MODEL_ID = process.env.IT_TRIAGE_MODEL || process.env.PORTKEY_DEFAULT_MODEL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`;
+// Portkey Config ID (or inline JSON) enabling response caching. Simple/exact-match — a
+// semantic cache can mis-hit mid agent loop and return a stale reasoning/tool call.
+const CACHE_CONFIG = process.env.PORTKEY_CACHE_CONFIG || '';
 
 // Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
 const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';
@@ -42,15 +46,28 @@ const IT_PROCESSES = JSON.parse(readFileSync(join(__dirname, 'it-processes.json'
 
 // --- LLM Provider ---
 
-const openai = createOpenAI({
-  baseURL: PORTKEY_BASE_URL,
-  apiKey: PORTKEY_API_KEY,
-  fetch: async (url, init) => {
-    const headers = new Headers(init?.headers);
-    headers.set('x-portkey-api-key', PORTKEY_API_KEY);
-    return fetch(url, { ...init, headers });
-  },
-});
+// Per-invocation provider: injects a shared trace-id so Portkey groups all of one
+// triage run's LLM steps into a single multi-step trace (not scattered tool calls),
+// plus metadata for log filtering and an optional response-cache config.
+function makeOpenAI({ traceId, employeeId }) {
+  return createOpenAI({
+    baseURL: PORTKEY_BASE_URL,
+    apiKey: PORTKEY_API_KEY,
+    fetch: async (url, init) => {
+      const headers = new Headers(init?.headers);
+      headers.set('x-portkey-api-key', PORTKEY_API_KEY);
+      headers.set('x-portkey-trace-id', traceId);
+      if (CACHE_CONFIG) headers.set('x-portkey-config', CACHE_CONFIG);
+      headers.set('x-portkey-metadata', JSON.stringify({
+        _user: employeeId,
+        app_name: 'IT Triage Agent',
+        agent: 'it-triage',
+        trace_id: traceId,
+      }));
+      return fetch(url, { ...init, headers });
+    },
+  });
+}
 
 // --- MCP Clients (consume hr-tools + it-tools via Portkey MCP Gateway) ---
 
@@ -263,6 +280,8 @@ Step D: Return a concise structured summary (severity, team, SLA, approval statu
 export async function runTriageAgent({ query, employeeId, onProgress = () => {} }) {
   const mcpTools = await getMCPTools();
   const toolTimings = [];
+  const traceId = `triage-${randomUUID()}`;
+  const openai = makeOpenAI({ traceId, employeeId });
 
   const tools = {
     ...mcpTools,
