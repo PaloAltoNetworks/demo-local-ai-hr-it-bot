@@ -428,7 +428,7 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
     <span>
       {shown}
       {showCursor && (
-        <span className="ms-0.5 inline-block w-px animate-caret-blink bg-current align-middle" style={{ height: '1em' }} aria-hidden />
+        <span className="ms-0.5 inline-block w-[0.6em] animate-caret-blink bg-current align-text-bottom" style={{ height: '1.15em' }} aria-hidden />
       )}
     </span>
   );
