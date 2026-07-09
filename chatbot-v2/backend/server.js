@@ -57,14 +57,19 @@ const STATIC_USER = {
 
 // --- Focused phase prompts for the forced ReAct loop ---
 
-const REASON_PROMPT = `You are a corporate assistant. The current user's employee ID is ${STATIC_USER.employee_id}.
+const REASON_PROMPT = `You are the REASON phase of a corporate assistant. The current user's employee ID is ${STATIC_USER.employee_id}.
 
-Use reflect_reason to plan which tools to call to answer the user's request.
-- State what the user is asking
-- Identify which tools are needed
+Call reflect_reason to PLAN only. In this phase you can ONLY call reflect_reason or reflect_conclude — data tools are not available yet, so do NOT try to call any other tool.
+- State what the user is asking and which tools you will need in the next phase
 - When asked about "my" anything, use employee ID: ${STATIC_USER.employee_id}
 - Do NOT answer the user — only plan
-- If NO data tools are needed (e.g. security refusal, policy clarification, identity override attempt, general question), call reflect_conclude instead of reflect_reason
+- If NO data tools are needed (e.g. security refusal, policy clarification, identity override attempt, general question), call reflect_conclude instead of reflect_reason`;
+
+// FETCH phase — data tools are now active. Routing guidance lives here (not in REASON) so
+// the model is never told to call these tools while they are inactive (→ NoSuchToolError).
+const FETCH_PROMPT = `You are the FETCH phase of a corporate assistant. The current user's employee ID is ${STATIC_USER.employee_id}.
+
+Call the data tool(s) needed to fulfill your plan. Do NOT answer the user yet — only call tools.
 
 Tool routing:
 - For any NEW IT support request (ticket creation, access requests, hardware/software/network/USB/VPN issues, IT troubleshooting), call triage_it_request — one agent tool that triages, classifies severity, routes to a team, and files the ticket end-to-end. Do NOT hand-assemble that flow with create_ticket.
@@ -503,18 +508,20 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
     prepareStep: async ({ stepNumber, steps }) => {
       stepStartRef.current = Date.now();
 
-      const ranReason = steps.some(s =>
-        s.toolCalls?.some(tc => tc.toolName === 'reflect_reason')
+      // A tool counts toward phase progress only if it actually EXECUTED (produced a result).
+      // A wrong-phase call that never ran (NoSuchToolError → no result) must not advance the
+      // loop, or a bogus triage_it_request attempt would mark data as "fetched", skip FETCH,
+      // and let the model fabricate a result it never obtained. A tool that ran but returned
+      // an isError payload DOES count — the loop should OBSERVE and honestly relay the failure.
+      const ranTool = (name) => steps.some(s =>
+        s.toolResults?.some(tr =>
+          tr.toolName === name && !tr.error && tr.result !== undefined
+        )
       );
-      const ranConclude = steps.some(s =>
-        s.toolCalls?.some(tc => tc.toolName === 'reflect_conclude')
-      );
-      const ranDataTools = steps.some(s =>
-        s.toolCalls?.some(tc => DATA_TOOL_NAMES.includes(tc.toolName))
-      );
-      const ranObserve = steps.some(s =>
-        s.toolCalls?.some(tc => tc.toolName === 'reflect_observe')
-      );
+      const ranReason = ranTool('reflect_reason');
+      const ranConclude = ranTool('reflect_conclude');
+      const ranObserve = ranTool('reflect_observe');
+      const ranDataTools = DATA_TOOL_NAMES.some(ranTool);
 
       // If model concluded no data tools needed → skip straight to ANSWER
       if (ranConclude) {
@@ -548,15 +555,17 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         modelRef.current = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded),
-          instructions: REASON_PROMPT,
+          instructions: FETCH_PROMPT,
           activeTools: DATA_TOOL_NAMES,
           toolChoice: 'required',
         };
       }
 
-      // OBSERVE: one attempt after data tools.
+      // OBSERVE: one attempt after a data tool actually executed.
       const dataStepIndex = steps.findIndex(s =>
-        s.toolCalls?.some(tc => DATA_TOOL_NAMES.includes(tc.toolName))
+        s.toolResults?.some(tr =>
+          DATA_TOOL_NAMES.includes(tr.toolName) && !tr.error && tr.result !== undefined
+        )
       );
       const observeAttempted = steps.length > dataStepIndex + 1;
       if (!ranObserve && !observeAttempted) {
