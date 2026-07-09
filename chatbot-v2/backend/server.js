@@ -56,7 +56,12 @@ Use reflect_reason to plan which tools to call to answer the user's request.
 - Identify which tools are needed
 - When asked about "my" anything, use employee ID: ${STATIC_USER.employee_id}
 - Do NOT answer the user — only plan
-- If NO data tools are needed (e.g. security refusal, policy clarification, identity override attempt, general question), call reflect_conclude instead of reflect_reason`;
+- If NO data tools are needed (e.g. security refusal, policy clarification, identity override attempt, general question), call reflect_conclude instead of reflect_reason
+
+Tool routing:
+- For any NEW IT support request (ticket creation, access requests, hardware/software/network/USB/VPN issues, IT troubleshooting), call triage_it_request — one agent tool that triages, classifies severity, routes to a team, and files the ticket end-to-end. Do NOT hand-assemble that flow with create_ticket.
+- Use the granular IT tools (get_ticket, get_tickets_by_employee, update_ticket_status) only to look up or modify an EXISTING ticket by id.
+- For HR/employee data questions, use the HR tools (get_employee, etc.) directly.`;
 
 const OBSERVE_PROMPT = `You are the OBSERVE phase of a corporate assistant's ReAct loop.
 The current user's employee ID is ${STATIC_USER.employee_id}.
