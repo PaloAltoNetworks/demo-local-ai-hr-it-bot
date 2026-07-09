@@ -239,7 +239,12 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
         <ConversationContent className="mx-auto w-full max-w-3xl">
           {messages.length === 0 && (
             <ConversationEmptyState
-              icon={<Persona state="idle" variant="obsidian" className="size-24" />}
+              icon={
+                <div className="relative flex size-40 items-center justify-center">
+                  <Persona state="idle" variant="obsidian" className="size-40" />
+                  <i className="otter-icon pointer-events-none absolute text-6xl text-primary/90 drop-shadow" />
+                </div>
+              }
               title={t('app.brand')}
               description={t('chat.greeting', { name: t('userProfile.name') })}
             />
@@ -284,10 +289,7 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
           {showWaiting && (
             <Message from="assistant">
               <MessageContent>
-                <div className="flex items-center gap-3">
-                  <Persona state="thinking" variant="obsidian" className="size-12" />
-                  <span className="text-sm text-muted-foreground">{t('chat.thinking')}</span>
-                </div>
+                <span className="text-sm text-muted-foreground">{t('chat.thinking')}</span>
               </MessageContent>
             </Message>
           )}
