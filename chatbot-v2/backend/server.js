@@ -263,6 +263,18 @@ async function getMCPTools() {
   return merged;
 }
 
+// Re-warm the tool cache periodically so newly added/removed MCP tools surface without a
+// restart. Swap atomically and keep the old map on failure (never blank out a working set).
+const TOOLS_REFRESH_MS = 60 * 60 * 1000; // 1 hour
+async function refreshMCPTools() {
+  try {
+    const merged = await loadMCPTools();
+    if (Object.keys(merged).length > 0) cachedTools = merged;
+  } catch (err) {
+    console.warn(`[mcp] tool refresh failed, keeping cached set: ${err.message}`);
+  }
+}
+
 // --- Middleware ---
 
 app.set('trust proxy', true);
@@ -684,6 +696,8 @@ async function main() {
   await initMCPClients();
   // Warm the tool cache at boot so the first chat request doesn't pay the tools/list round-trips.
   await getMCPTools();
+  // Re-warm hourly (unref'd so it never keeps the process alive).
+  setInterval(refreshMCPTools, TOOLS_REFRESH_MS).unref();
 
   app.listen(PORT, () => {
     console.log(`Chatbot V2 running on http://localhost:${PORT}`);
