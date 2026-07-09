@@ -262,7 +262,7 @@
   "feedback": {
     "helpful": "مفيد",
     "notHelpful": "غير مفيد",
-    "thanks": "شكرًا على ملاحظاتكم"
+    "copy": "نسخ"
   },
   "guardrail": {
     "cannotProcessRequest": "لا يمكنني معالجة هذا الطلب",

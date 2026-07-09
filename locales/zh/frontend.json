@@ -262,7 +262,7 @@
   "feedback": {
     "helpful": "有帮助",
     "notHelpful": "没有帮助",
-    "thanks": "感谢您的反馈"
+    "copy": "复制"
   },
   "guardrail": {
     "cannotProcessRequest": "无法处理此请求",

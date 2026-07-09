@@ -262,7 +262,7 @@
   "feedback": {
     "helpful": "Hilfreich",
     "notHelpful": "Nicht hilfreich",
-    "thanks": "Vielen Dank für Ihr Feedback"
+    "copy": "Kopieren"
   },
   "guardrail": {
     "cannotProcessRequest": "Ich kann diese Anfrage nicht bearbeiten",

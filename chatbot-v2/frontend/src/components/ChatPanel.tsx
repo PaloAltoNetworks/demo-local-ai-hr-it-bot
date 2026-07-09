@@ -70,6 +70,7 @@ import {
   CircleCheck,
   ThumbsUp,
   ThumbsDown,
+  Copy,
   ShieldCheck,
   ShieldAlert,
   Check,
@@ -110,11 +111,8 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
 
   const [modelOpen, setModelOpen] = useState(false);
   const currentProvider = providers.find(p => p.id === provider);
-  // msgId → 'up' | 'down'
+  // msgId → 'up' | 'down' (chosen thumb locks via the button's disabled state)
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({});
-  // msgId → true while the transient "thanks" note is shown (auto-hides after 5s)
-  const [thanks, setThanks] = useState<Record<string, boolean>>({});
-  const thanksTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [stickyErrors, setStickyErrors] = useState<{ error: any; afterId: string; key: string }[]>([]);
   const lastErrorRef = useRef<any>(null);
   const [msgTimings, setMsgTimings] = useState<Record<string, { start: number; end?: number }>>({});
@@ -185,9 +183,6 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
     const weight = toolsUsed.length > 0 ? 1 : 0.5;
 
     setFeedback(f => ({ ...f, [msg.id]: pick }));
-    setThanks(s => ({ ...s, [msg.id]: true }));
-    clearTimeout(thanksTimers.current[msg.id]);
-    thanksTimers.current[msg.id] = setTimeout(() => setThanks(s => ({ ...s, [msg.id]: false })), 5000);
     sendFeedback({ traceId, value, weight, toolsUsed }).catch((err: Error) => {
       console.error('[feedback]', err.message);
       setFeedback(f => ({ ...f, [msg.id]: prev }));
@@ -253,7 +248,7 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
                     </div>
                   )}
 
-                  {!isThisStreaming && <MetaRow msg={msg} timing={msgTimings[msg.id]} feedback={feedback[msg.id]} thanks={thanks[msg.id]} onFeedback={handleFeedback} t={t} />}
+                  {!isThisStreaming && <MetaRow msg={msg} timing={msgTimings[msg.id]} feedback={feedback[msg.id]} onFeedback={handleFeedback} onRetry={() => regenerate({ messageId: msg.id })} t={t} />}
                 </MessageContent>
               </Message>
             );
@@ -472,15 +467,15 @@ function UsageLine({ label, tokens, usd }: { label: string; tokens?: number; usd
   );
 }
 
-function MetaRow({ msg, timing, feedback, thanks, onFeedback, t }: {
-  msg: any; timing?: { start: number; end?: number }; feedback?: 'up' | 'down'; thanks?: boolean;
-  onFeedback: (msg: any, dir: number) => void; t: Translate;
+function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t }: {
+  msg: any; timing?: { start: number; end?: number }; feedback?: 'up' | 'down';
+  onFeedback: (msg: any, dir: number) => void; onRetry: () => void; t: Translate;
 }) {
   const usage = msg.metadata?.usage;
   const traceId = msg.metadata?.traceId;
   const cost = msg.metadata?.cost; // { total, input, output } USD, from tokens × Portkey pricing
-  const hasText = (msg.parts || []).some((p: any) => p.type === 'text' && p.text);
-  const canFeedback = traceId && hasText;
+  const text = (msg.parts || []).filter((p: any) => p.type === 'text' && p.text).map((p: any) => p.text).join('');
+  const canFeedback = traceId && !!text;
   if (!(usage?.totalTokens > 0 || canFeedback)) return null;
 
   const seconds = timing?.end ? ((timing.end - timing.start) / 1000).toFixed(1) : null;
@@ -508,25 +503,32 @@ function MetaRow({ msg, timing, feedback, thanks, onFeedback, t }: {
         </Context>
       )}
       {canFeedback && (
-        <div className="ms-auto flex items-center gap-1">
-          {thanks && <span className="text-muted-foreground/70">{t('feedback.thanks')}</span>}
+        <MessageActions className="ms-auto">
+          <MessageAction tooltip={t('buttons.regenerate')} label="Retry" onClick={onRetry}>
+            <RefreshCw className="size-3.5" />
+          </MessageAction>
+          <MessageAction tooltip={t('feedback.copy')} label="Copy" onClick={() => navigator.clipboard.writeText(text)}>
+            <Copy className="size-3.5" />
+          </MessageAction>
           <MessageAction
             tooltip={t('feedback.helpful')}
+            label="Like"
             disabled={feedback === 'up'}
             className={feedback === 'up' ? 'text-primary' : ''}
             onClick={() => onFeedback(msg, 1)}
           >
-            <ThumbsUp className="size-3.5" />
+            <ThumbsUp className="size-3.5" fill={feedback === 'up' ? 'currentColor' : 'none'} />
           </MessageAction>
           <MessageAction
             tooltip={t('feedback.notHelpful')}
+            label="Dislike"
             disabled={feedback === 'down'}
             className={feedback === 'down' ? 'text-[color:var(--brand-orange)]' : ''}
             onClick={() => onFeedback(msg, -1)}
           >
-            <ThumbsDown className="size-3.5" />
+            <ThumbsDown className="size-3.5" fill={feedback === 'down' ? 'currentColor' : 'none'} />
           </MessageAction>
-        </div>
+        </MessageActions>
       )}
     </div>
   );
