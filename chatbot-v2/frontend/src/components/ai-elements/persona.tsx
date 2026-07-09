@@ -56,13 +56,18 @@ interface PersonaProps {
 // The state machine name is always 'default' for Elements AI visuals
 const stateMachine = "default";
 
-// Only the obsidian orb is used, self-hosted (no runtime CDN). Other Elements AI
-// variants were removed along with their remote blob sources.
+// Self-hosted riv assets (no runtime CDN). Other Elements AI variants were removed
+// along with their remote blob sources.
 const sources = {
   obsidian: {
     dynamicColor: true,
     hasModel: true,
     source: "/rive/obsidian.riv",
+  },
+  halo: {
+    dynamicColor: true,
+    hasModel: true,
+    source: "/rive/halo.riv",
   },
 };
 
