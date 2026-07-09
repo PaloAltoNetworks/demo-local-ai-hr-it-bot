@@ -62,6 +62,7 @@ import {
   PromptInputTextarea,
   PromptInputFooter,
   PromptInputSubmit,
+  PromptInputTools,
 } from '@/components/ai-elements/prompt-input';
 import {
   Brain,
@@ -282,7 +283,7 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
             <PromptInputTextarea placeholder={t('chat.placeholder')} disabled={isStreaming} />
           </PromptInputBody>
           <PromptInputFooter>
-            <div className="flex items-center gap-2">
+            <PromptInputTools>
               {providers.length > 0 && (
                 <ModelSelector open={modelOpen} onOpenChange={setModelOpen}>
                   <ModelSelectorTrigger asChild>
@@ -334,7 +335,7 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
                   </ContextContent>
                 </Context>
               )}
-            </div>
+            </PromptInputTools>
             <PromptInputSubmit status={status} onStop={() => stop()} />
           </PromptInputFooter>
         </PromptInput>
