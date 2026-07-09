@@ -32,10 +32,33 @@ Do NOT use for: simple read-only lookups like "show my tickets" or "what's the s
       query: z.string().describe('The user\'s IT request in natural language. For follow-ups, include the full context: original request + user\'s answers to missing information.'),
       employee_id: z.string().describe('Employee ID of the requesting user (e.g. "EMP-034")'),
     },
-    async ({ query, employee_id }) => {
+    async ({ query, employee_id }, extra) => {
+      const progressToken = extra?._meta?.progressToken;
+      let progress = 0;
+      // The agent runs 6-10 steps (~16-27s). It returns a single JSON-RPC result at the
+      // very end, so the Cloudflare tunnel between Portkey and this server sees no bytes
+      // and 502s at ~15s idle. Stream progress notifications (real step updates + a
+      // heartbeat) to keep the connection warm.
+      const emit = (message) => {
+        if (!extra?.sendNotification) return;
+        extra.sendNotification({
+          method: 'notifications/progress',
+          params: {
+            progressToken: progressToken ?? 'triage',
+            progress: ++progress,
+            message,
+          },
+        }).catch(() => {});
+      };
+      const heartbeat = setInterval(() => emit('Working…'), 4000);
       try {
         console.log(`[mcp] triage_it_request: employee=${employee_id}, query="${query.substring(0, 80)}"`);
-        const result = await runTriageAgent({ query, employeeId: employee_id });
+        emit('Triaging request…');
+        const result = await runTriageAgent({
+          query,
+          employeeId: employee_id,
+          onProgress: ({ tool, detail }) => emit(detail ? `${tool}: ${detail}` : tool),
+        });
         return { content: [{ type: 'text', text: result }] };
       } catch (err) {
         console.error(`[mcp] triage_it_request error: ${err.message}`);
@@ -43,6 +66,8 @@ Do NOT use for: simple read-only lookups like "show my tickets" or "what's the s
           content: [{ type: 'text', text: JSON.stringify({ error: 'triage_failed', message: err.message }) }],
           isError: true,
         };
+      } finally {
+        clearInterval(heartbeat);
       }
     }
   );

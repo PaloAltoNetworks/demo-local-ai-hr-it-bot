@@ -229,70 +229,30 @@ const checkApprovalRequired = tool({
   },
 });
 
-const reflect = tool({
-  description: 'Record your observation from the last tool result and state your next action. Call this: (1) after every data tool result (get_employee, search_tickets, etc.), (2) before every decision tool (classify_severity, assign_team, check_approval_required). This enforces the ReAct loop: Observe → Reason → Decide.',
-  inputSchema: z.object({
-    phase: z.enum(['observe', 'reason', 'decide']).describe('Current ReAct phase'),
-    observation: z.string().describe('What did the last tool return? Was it expected? Any surprises?'),
-    gaps: z.string().describe('What is still unknown or ambiguous?'),
-    next_action: z.string().describe('What will you do next and why?'),
-  }),
-  execute: async ({ phase, observation, gaps, next_action }) => {
-    console.log(`[react:${phase}] ${observation} | gaps: ${gaps} | next: ${next_action}`);
-    return { phase, acknowledged: true };
-  },
-});
-
 // --- Agent Instructions ---
 
-const TRIAGE_INSTRUCTIONS = `You are an IT Triage Agent — a specialized assistant that handles IT support requests with structured reasoning.
+const TRIAGE_INSTRUCTIONS = `You are an IT Triage Agent — you handle IT support requests end-to-end: look up the process, fetch employee data, classify, route, and create the ticket.
 
-You have access to three types of tools:
-1. LOCAL PROCESS TOOLS (search_it_processes, get_it_process, list_it_processes) — look up IT process definitions, steps, and requirements
-2. LOCAL TRIAGE TOOLS (classify_severity, assign_team, check_approval_required) — deterministic business logic for evaluating and routing IT requests
-3. MCP DATA TOOLS (prefixed with server names) — for reading actual data (employees, tickets, assets)
+Tools:
+1. PROCESS TOOLS (search_it_processes, get_it_process, list_it_processes) — IT process definitions and requirements
+2. TRIAGE TOOLS (classify_severity, assign_team, check_approval_required) — deterministic classification/routing
+3. DATA TOOLS (get_employee, get_employee_assets, create_ticket, etc.) — read/write actual data
 
-## Reasoning before acting
+## Workflow — be efficient, minimize steps. Batch independent tool calls into ONE step:
 
-Before each tool call, think:
-- What do I know so far? What am I still missing?
-- Which tools can I call in parallel (independent) vs. must I call sequentially (one depends on another's result)?
-- Am I about to call a tool I've already called with the same arguments? If yes, stop and reason instead.
-
-## After each tool result, assess:
-
-After search_it_processes:
-- Did I get a matching process? If 0 results, try synonyms (e.g. "flash drive" for "usb", "remote access" for "vpn") before continuing.
-- If still no match after reformulation, proceed with the closest category and note the ambiguity.
-
-After get_employee:
-- Is the employee found? If not found, note it explicitly in the final summary — do not fabricate employee data.
-- Is the employee a director or above? That determines VIP escalation in severity classification.
-
-After classify_severity + assign_team + check_approval_required:
-- Do the results make sense together? (e.g. Critical severity should always route to escalation team)
-- If something looks inconsistent, reason about it before finalizing.
-
-## Workflow (enforce ReAct loop):
-1. Think: what category is this request? Call search_it_processes.
-2. reflect({ phase: 'observe', observation: <what search returned>, gaps: <what's missing>, next_action: 'fetch employee data' })
-3. In parallel: get_employee + get_employee_assets.
-4. reflect({ phase: 'observe', observation: <employee data summary>, gaps: <any missing fields>, next_action: 'classify and route' })
-5. In parallel: classify_severity + check_approval_required + assign_team.
-6. reflect({ phase: 'decide', observation: <summary of all classifications>, gaps: 'none' or <remaining unknowns>, next_action: 'return final triage result' })
-7. Return structured summary.
-
-If search_it_processes returns 0 results:
-- reflect({ phase: 'reason', observation: 'no process found for query X', gaps: 'correct category unknown', next_action: 'retry with synonym Y' })
-- Retry with a synonym before proceeding.
+Step A (parallel): search_it_processes for the request category + get_employee + get_employee_assets.
+Step B (parallel): classify_severity + check_approval_required + assign_team, using the process + employee data.
+Step C: If all required info is present, create_ticket. If required info is missing from the user, do NOT create a ticket — return a short question listing exactly what you still need.
+Step D: Return a concise structured summary (severity, team, SLA, approval status, ticket id).
 
 ## Rules:
-- ALWAYS use search_it_processes first — never assume you know the process steps
-- ALWAYS use local triage tools for classification — never guess severity or team assignment
-- Call MULTIPLE tools in PARALLEL when they are independent
-- If a tool returns empty or unexpected data, reason about it before deciding the next step
-- Be thorough but concise in your final summary
-- Include all structured data (severity, team, SLA, approval requirements) in your response`;
+- Do NOT narrate or "reflect" between tool calls — just call the tools and act. There is no thinking/reflect tool.
+- Call independent tools in PARALLEL in a single step (process lookup + employee lookup together; the three classification tools together).
+- Never call search_it_processes more than TWICE. If the first search returns 0 results, call list_it_processes ONCE, pick the closest process, and stop searching.
+- Use the triage tools for classification — never guess severity or team.
+- Employee is a director-or-above → VIP escalation in classify_severity. Use manager_name for approval routing.
+- If the employee is not found, say so — do not fabricate data.
+- Keep the final summary short.`;
 
 // --- Agent Factory ---
 
@@ -300,8 +260,9 @@ If search_it_processes returns 0 results:
  * Run the IT triage agent for a given query.
  * Creates a fresh ToolLoopAgent per invocation with current MCP tools.
  */
-export async function runTriageAgent({ query, employeeId }) {
+export async function runTriageAgent({ query, employeeId, onProgress = () => {} }) {
   const mcpTools = await getMCPTools();
+  const toolTimings = [];
 
   const tools = {
     ...mcpTools,
@@ -311,7 +272,6 @@ export async function runTriageAgent({ query, employeeId }) {
     classify_severity: classifySeverity,
     assign_team: assignTeam,
     check_approval_required: checkApprovalRequired,
-    reflect,
   };
 
   const instructions = `${TRIAGE_INSTRUCTIONS}
@@ -325,16 +285,26 @@ The requesting employee's ID is ${employeeId}. Use this ID when looking up emplo
     stopWhen: isStepCount(10),
     onToolExecutionStart: ({ toolCall }) => {
       console.log(`[it-triage] Tool call: ${toolCall.toolName}(${JSON.stringify(toolCall.args).substring(0, 120)})`);
+      // Emit real step progress so the caller can stream bytes on the wire — keeps the
+      // Cloudflare tunnel connection warm past its ~15s idle cap (prevents 502 on the
+      // slow write path). Not fake: this is the agent's actual next action.
+      const args = toolCall.args || {};
+      const detail = args.observation || args.next_action || args.query || Object.values(args)[0];
+      onProgress({ tool: toolCall.toolName, detail: typeof detail === 'string' ? detail.slice(0, 160) : '' });
     },
-    onToolExecutionEnd: ({ toolCall, durationMs, success, error }) => {
-      if (success) {
-        console.log(`[it-triage] Tool done: ${toolCall.toolName} (${durationMs}ms)`);
+    onToolExecutionEnd: ({ toolCall, toolExecutionMs, toolOutput }) => {
+      const ms = Math.round(toolExecutionMs);
+      toolTimings.push({ tool: toolCall.toolName, ms });
+      if (toolOutput?.type === 'tool-error') {
+        console.error(`[it-triage] Tool error: ${toolCall.toolName} (${ms}ms): ${toolOutput.error}`);
       } else {
-        console.error(`[it-triage] Tool error: ${toolCall.toolName} (${durationMs}ms): ${error}`);
+        console.log(`[it-triage] Tool done: ${toolCall.toolName} (${ms}ms)`);
       }
     },
     onEnd: ({ steps }) => {
-      console.log(`[it-triage] Agent finished in ${steps.length} steps`);
+      const total = toolTimings.reduce((a, t) => a + t.ms, 0);
+      const breakdown = toolTimings.map(t => `${t.tool}=${t.ms}ms`).join(' ');
+      console.log(`[it-triage] Agent finished in ${steps.length} steps | tool time ${total}ms | ${breakdown}`);
     },
   });
 
