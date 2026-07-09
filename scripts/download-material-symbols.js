@@ -104,6 +104,9 @@ const ICONS = [
     'search_insights',     // Search insights icon
     'acute',               // Acute icon
     'stop',                // Stop icon
+    'feedback',            // Feedback icon
+    'thumb_up',            // Thumb up icon
+    'thumb_down'           // Thumb down icon
 ];
 
 // Sort icons alphabetically

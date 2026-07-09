@@ -146,7 +146,7 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
   return async (url, init) => {
     const headers = new Headers(init?.headers);
     headers.set('x-portkey-api-key', PORTKEY_API_KEY);
-    headers.set('x-portkey-trace-id', reqCtx.threadId);
+    headers.set('x-portkey-trace-id', reqCtx.traceId);
     if (guarded && GUARDED_CONFIG) {
       headers.set('x-portkey-config', GUARDED_CONFIG);
     } else if (CACHE_CONFIG) {
@@ -474,6 +474,9 @@ app.post('/api/chat', async (req, res) => {
     const guarded = phase === 'phase3';
     const reqCtx = {
       threadId: req.body.threadId || crypto.randomUUID(),
+      // Per-turn trace-id: groups this turn's multi-step ReAct into ONE Portkey trace and
+      // is the key the user's thumbs up/down feedback targets. Returned in finish metadata.
+      traceId: `turn-${crypto.randomUUID()}`,
       userIp: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
     };
     const lastMsg = req.body.messages?.at(-1);
@@ -513,6 +516,7 @@ app.post('/api/chat', async (req, res) => {
           return {
             usage: totalUsage,
             empty: totalUsage.outputTokens === 0,
+            traceId: reqCtx.traceId,
           };
         }
       },
@@ -582,6 +586,41 @@ app.get('/api/airs-config', (_req, res) => {
     appName: AIRS_APP_NAME,
     baseUrl: 'https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/api-violations',
   });
+});
+
+// Forward user feedback (thumbs up/down) to Portkey, keyed by the turn's trace-id.
+// value: +1 (👍) / -1 (👎); Portkey accepts [-10,10]. Feedback shows on the trace's log.
+app.post('/api/feedback', async (req, res) => {
+  const { traceId, value, weight, comment } = req.body || {};
+  if (!traceId || typeof value !== 'number') {
+    return res.status(400).json({ error: 'traceId and numeric value are required' });
+  }
+  try {
+    const resp = await fetch(`${PORTKEY_BASE_URL}/feedback`, {
+      method: 'POST',
+      headers: { 'x-portkey-api-key': PORTKEY_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trace_id: traceId,
+        value,
+        weight: typeof weight === 'number' ? weight : 1,
+        metadata: {
+          _user: STATIC_USER.employee_id,
+          app_name: 'The Otter V2',
+          ...(comment ? { text: comment } : {}),
+        },
+      }),
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.warn(`[feedback] Portkey ${resp.status}: ${body.slice(0, 200)}`);
+      return res.status(502).json({ error: 'Feedback rejected by Portkey' });
+    }
+    console.log(`[feedback] trace:${traceId} value:${value}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[feedback] ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // i18n

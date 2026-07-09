@@ -259,6 +259,11 @@
     "approve": "批准",
     "deny": "拒绝"
   },
+  "feedback": {
+    "helpful": "有帮助",
+    "notHelpful": "没有帮助",
+    "thanks": "感谢您的反馈"
+  },
   "guardrail": {
     "cannotProcessRequest": "无法处理此请求",
     "cannotProvideResponse": "无法提供此回复",

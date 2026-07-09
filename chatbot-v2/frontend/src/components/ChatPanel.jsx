@@ -7,9 +7,11 @@ import { useAirsConfig, buildReportUrl } from '../hooks/useAirsConfig.js';
 
 export default function ChatPanel() {
   const { t } = useLanguage();
-  const { messages, sendMessage, regenerate, stop, addToolApprovalResponse, status, error, phaseMap, sessionUsage } = useChatContext();
+  const { messages, sendMessage, sendFeedback, regenerate, stop, addToolApprovalResponse, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
   const [input, setInput] = useState('');
+  // msgId → 'up' | 'down' (which thumb the user picked for that answer)
+  const [feedback, setFeedback] = useState({});
   const [stickyErrors, setStickyErrors] = useState([]);
   const messagesEndRef = useRef(null);
   const lastErrorRef = useRef(null);
@@ -86,6 +88,20 @@ export default function ChatPanel() {
     if (!input.trim() || isStreaming) return;
     sendMessage({ text: input });
     setInput('');
+  };
+
+  const handleFeedback = (msg, value) => {
+    const traceId = msg.metadata?.traceId;
+    if (!traceId) return;
+    const pick = value > 0 ? 'up' : 'down';
+    // Toggle off if the same thumb is clicked again.
+    const next = feedback[msg.id] === pick ? undefined : pick;
+    setFeedback(prev => ({ ...prev, [msg.id]: next }));
+    if (!next) return;
+    sendFeedback({ traceId, value }).catch(err => {
+      console.error('[feedback]', err.message);
+      setFeedback(prev => ({ ...prev, [msg.id]: undefined }));
+    });
   };
 
   // Build render list with phase dividers and sticky errors
@@ -360,6 +376,30 @@ export default function ChatPanel() {
                       <span className="material-symbols">refresh</span>
                       {t('buttons.regenerate')}
                     </button>
+                  </div>
+                )}
+                {msg.role === 'assistant' && msg.metadata?.traceId && !isStreaming
+                  && msg.parts?.some(p => p.type === 'text' && p.text) && (
+                  <div className="message-feedback">
+                    <button
+                      className={`feedback-btn ${feedback[msg.id] === 'up' ? 'active up' : ''}`}
+                      title={t('feedback.helpful')}
+                      aria-label={t('feedback.helpful')}
+                      onClick={() => handleFeedback(msg, 1)}
+                    >
+                      <span className="material-symbols">thumb_up</span>
+                    </button>
+                    <button
+                      className={`feedback-btn ${feedback[msg.id] === 'down' ? 'active down' : ''}`}
+                      title={t('feedback.notHelpful')}
+                      aria-label={t('feedback.notHelpful')}
+                      onClick={() => handleFeedback(msg, -1)}
+                    >
+                      <span className="material-symbols">thumb_down</span>
+                    </button>
+                    {feedback[msg.id] && (
+                      <span className="feedback-thanks">{t('feedback.thanks')}</span>
+                    )}
                   </div>
                 )}
                 {msg.role === 'assistant' && msg.metadata?.usage?.totalTokens > 0 && (

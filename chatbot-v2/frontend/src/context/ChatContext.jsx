@@ -105,6 +105,17 @@ export function ChatProvider({ provider, phase, children }) {
     return chat.sendMessage({ ...opts, metadata: { phase } });
   }, [chat.sendMessage, phase]);
 
+  // Send thumbs up/down to Portkey (keyed by the assistant turn's trace-id).
+  const sendFeedback = useCallback(async ({ traceId, value, comment }) => {
+    const resp = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ traceId, value, comment }),
+    });
+    if (!resp.ok) throw new Error('feedback request failed');
+    return resp.json();
+  }, []);
+
   const sessionUsage = useMemo(() =>
     chat.messages
       .filter(m => m.role === 'assistant' && m.metadata?.usage)
@@ -120,6 +131,7 @@ export function ChatProvider({ provider, phase, children }) {
     ...chat,
     error: parsedError,
     sendMessage: wrappedSendMessage,
+    sendFeedback,
     phaseMap,
     sessionUsage,
   };

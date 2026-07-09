@@ -259,6 +259,11 @@
     "approve": "Approve",
     "deny": "Deny"
   },
+  "feedback": {
+    "helpful": "Helpful",
+    "notHelpful": "Not helpful",
+    "thanks": "Thank you for your feedback"
+  },
   "guardrail": {
     "cannotProcessRequest": "I cannot process this request",
     "cannotProvideResponse": "I cannot provide this response",
