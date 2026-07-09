@@ -103,7 +103,7 @@ PRISMA_AIRS_TSG_ID=your_tsg_id            # For report links
 PRISMA_AIRS_APP_ID=your_app_id            # For report links
 ```
 
-Phase 3 sets the `x-portkey-config` header to a Portkey config that attaches the PANW Prisma AIRS guardrail as both `input_guardrails` and `output_guardrails`. Portkey runs input and output scanning through the configured AIRS profile before/after the LLM call.
+Phase 3 uses a separate guarded Portkey API key (`PORTKEY_API_KEY_GUARDED`) whose attached config carries the PANW Prisma AIRS guardrail as both `input_guardrails` and `output_guardrails` — not a per-request `x-portkey-config` header. Portkey runs input and output scanning through the configured AIRS profile before/after the LLM call. Response caching (and any other config) rides on the key's config the same way.
 
 ---
 

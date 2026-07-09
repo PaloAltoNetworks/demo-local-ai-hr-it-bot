@@ -24,9 +24,6 @@ const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
 const MODEL_ID = process.env.IT_TRIAGE_MODEL || process.env.PORTKEY_DEFAULT_MODEL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`;
-// Portkey Config ID (or inline JSON) enabling response caching. Simple/exact-match — a
-// semantic cache can mis-hit mid agent loop and return a stale reasoning/tool call.
-const CACHE_CONFIG = process.env.PORTKEY_CACHE_CONFIG || '';
 
 // Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
 const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';
@@ -56,11 +53,9 @@ function makeOpenAI({ traceId, employeeId }) {
     fetch: async (url, init) => {
       const headers = new Headers(init?.headers);
       headers.set('x-portkey-api-key', PORTKEY_API_KEY);
-      // trace-id is a header, NOT part of the cache key → safe to vary per run (groups
-      // this run's LLM steps in Portkey). Metadata IS part of the simple-cache key, so keep
-      // it stable — no per-run trace_id here, or the cache would never hit.
+      // trace-id groups this run's LLM steps in Portkey. Caching (and any other config)
+      // rides on the API key's attached Portkey config — no per-request x-portkey-config.
       headers.set('x-portkey-trace-id', traceId);
-      if (CACHE_CONFIG) headers.set('x-portkey-config', CACHE_CONFIG);
       headers.set('x-portkey-metadata', JSON.stringify({
         _user: employeeId,
         app_name: 'IT Triage Agent',
