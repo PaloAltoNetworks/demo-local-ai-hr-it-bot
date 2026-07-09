@@ -385,17 +385,21 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
 
 // Types out the greeting on load and re-types it every `repeatMs`. `text` changes
 // (e.g. language switch) restart the animation.
-function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700, onTypingChange }: { text: string; repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number; onTypingChange?: (typing: boolean) => void }) {
+function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700, cursorHideMs = 2500, onTypingChange }: { text: string; repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number; cursorHideMs?: number; onTypingChange?: (typing: boolean) => void }) {
   const [shown, setShown] = useState('');
+  const [showCursor, setShowCursor] = useState(true);
 
   useEffect(() => {
     let typeTimer: number;
     let startTimer: number;
     let cycleTimer: number;
+    let hideTimer: number;
     // Longer beat after sentence-ending punctuation, so the greeting lands in phrases.
     const isPause = (ch: string) => '!.?…'.includes(ch);
     const type = () => {
       setShown('');
+      setShowCursor(true);
+      window.clearTimeout(hideTimer);
       let i = 0;
       const step = () => {
         i += 1;
@@ -409,6 +413,7 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
           typeTimer = window.setTimeout(step, pausing ? pauseMs : speedMs);
         } else {
           onTypingChange?.(false);
+          hideTimer = window.setTimeout(() => setShowCursor(false), cursorHideMs);
         }
       };
       step();
@@ -416,13 +421,15 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
     // Hold blank until the orb has popped in, then type.
     startTimer = window.setTimeout(type, startDelayMs);
     cycleTimer = window.setInterval(type, repeatMs);
-    return () => { window.clearTimeout(typeTimer); window.clearTimeout(startTimer); window.clearInterval(cycleTimer); onTypingChange?.(false); };
-  }, [text, repeatMs, speedMs, pauseMs, startDelayMs, onTypingChange]);
+    return () => { window.clearTimeout(typeTimer); window.clearTimeout(startTimer); window.clearTimeout(hideTimer); window.clearInterval(cycleTimer); onTypingChange?.(false); };
+  }, [text, repeatMs, speedMs, pauseMs, startDelayMs, cursorHideMs, onTypingChange]);
 
   return (
     <span>
       {shown}
-      <span className="ms-0.5 inline-block w-px animate-pulse bg-current align-middle" style={{ height: '1em' }} aria-hidden />
+      {showCursor && (
+        <span className="ms-0.5 inline-block w-px animate-caret-blink bg-current align-middle" style={{ height: '1em' }} aria-hidden />
+      )}
     </span>
   );
 }
