@@ -12,6 +12,9 @@ export default function ChatPanel() {
   const [input, setInput] = useState('');
   // msgId → 'up' | 'down' (which thumb the user picked for that answer)
   const [feedback, setFeedback] = useState({});
+  // msgId → true while the "thanks" tooltip is visible (auto-hides after 5s)
+  const [tip, setTip] = useState({});
+  const tipTimers = useRef({});
   const [stickyErrors, setStickyErrors] = useState([]);
   const messagesEndRef = useRef(null);
   const lastErrorRef = useRef(null);
@@ -116,6 +119,12 @@ export default function ChatPanel() {
     const weight = toolsUsed.length > 0 ? 1 : 0.5;
 
     setFeedback(f => ({ ...f, [msg.id]: pick }));
+    // Show the thanks tooltip, auto-hide after 5s (thumb stays locked/colored).
+    setTip(s => ({ ...s, [msg.id]: true }));
+    clearTimeout(tipTimers.current[msg.id]);
+    tipTimers.current[msg.id] = setTimeout(() => {
+      setTip(s => ({ ...s, [msg.id]: false }));
+    }, 5000);
     sendFeedback({ traceId, value, weight, toolsUsed }).catch(err => {
       console.error('[feedback]', err.message);
       setFeedback(f => ({ ...f, [msg.id]: prev }));
@@ -420,7 +429,7 @@ export default function ChatPanel() {
                           className={`feedback-btn ${feedback[msg.id] === 'up' ? 'active up' : ''}`}
                           title={t('feedback.helpful')}
                           aria-label={t('feedback.helpful')}
-                          data-tip={feedback[msg.id] === 'up' ? t('feedback.thanks') : undefined}
+                          data-tip={feedback[msg.id] === 'up' && tip[msg.id] ? t('feedback.thanks') : undefined}
                           disabled={feedback[msg.id] === 'up'}
                           onClick={() => handleFeedback(msg, 1)}
                         >
@@ -430,7 +439,7 @@ export default function ChatPanel() {
                           className={`feedback-btn ${feedback[msg.id] === 'down' ? 'active down' : ''}`}
                           title={t('feedback.notHelpful')}
                           aria-label={t('feedback.notHelpful')}
-                          data-tip={feedback[msg.id] === 'down' ? t('feedback.thanks') : undefined}
+                          data-tip={feedback[msg.id] === 'down' && tip[msg.id] ? t('feedback.thanks') : undefined}
                           disabled={feedback[msg.id] === 'down'}
                           onClick={() => handleFeedback(msg, -1)}
                         >
