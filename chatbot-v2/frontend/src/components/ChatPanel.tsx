@@ -241,7 +241,7 @@ export default function ChatPanel({ providers, provider, setProvider }: ChatPane
             <ConversationEmptyState
               icon={
                 <div className="relative flex size-40 items-center justify-center">
-                  <Persona state="idle" variant="halo" className="size-40" />
+                  <Persona state="speaking" variant="halo" className="size-40" />
                   <i className="otter-icon pointer-events-none absolute text-[6.5rem] text-primary/90 [filter:drop-shadow(0_1px_4px_rgba(255,255,255,0.75))] dark:[filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.6))]" />
                 </div>
               }
