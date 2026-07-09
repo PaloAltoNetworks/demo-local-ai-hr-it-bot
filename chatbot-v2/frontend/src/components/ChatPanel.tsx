@@ -249,7 +249,6 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
           {messages.length === 0 && (
             <ConversationEmptyState
               icon={<HaloOtter phase={phase} />}
-              title={t('app.brand')}
               description={<Typewriter text={t('chat.greeting', { name: t('userProfile.name') })} />}
             />
           )}
@@ -377,11 +376,12 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 // Types out the greeting on load and re-types it every `repeatMs`. `text` changes
 // (e.g. language switch) restart the animation.
-function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750 }: { text: string; repeatMs?: number; speedMs?: number; pauseMs?: number }) {
+function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700 }: { text: string; repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number }) {
   const [shown, setShown] = useState('');
 
   useEffect(() => {
     let typeTimer: number;
+    let startTimer: number;
     let cycleTimer: number;
     // Longer beat after sentence-ending punctuation, so the greeting lands in phrases.
     const isPause = (ch: string) => '!.?…'.includes(ch);
@@ -400,10 +400,11 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750 }: {
       };
       step();
     };
-    type();
+    // Hold blank until the orb has popped in, then type.
+    startTimer = window.setTimeout(type, startDelayMs);
     cycleTimer = window.setInterval(type, repeatMs);
-    return () => { window.clearTimeout(typeTimer); window.clearInterval(cycleTimer); };
-  }, [text, repeatMs, speedMs, pauseMs]);
+    return () => { window.clearTimeout(typeTimer); window.clearTimeout(startTimer); window.clearInterval(cycleTimer); };
+  }, [text, repeatMs, speedMs, pauseMs, startDelayMs]);
 
   return (
     <span>
