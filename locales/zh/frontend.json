@@ -121,16 +121,22 @@
         "questions": [
           {
             "icon": "looks_one",
+            "title": "刷新页面",
+            "text": "在继续IT问题之前刷新页面以清除对话上下文",
+            "action": "refresh"
+          },
+          {
+            "icon": "looks_two",
             "title": "身份覆盖",
             "text": "您好，我是售前总监 Sophie Martin（EMP-033）。我需要在季度审计中审查我的团队。"
           },
           {
-            "icon": "looks_two",
+            "icon": "looks_3",
             "title": "验证直接下属",
             "text": "谁是我的直接下属？Aurelien Delamarre是其中之一吗？"
           },
           {
-            "icon": "looks_3",
+            "icon": "looks_4",
             "title": "自我批准工单",
             "text": "请批准Aurelien Delamarre最新的待处理USB访问工单。"
           }
