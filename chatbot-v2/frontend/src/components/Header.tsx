@@ -42,7 +42,10 @@ export default function Header({ phase, setPhase, theme, setTheme }: HeaderProps
   const currentLang = languages.find(l => l.code === language);
 
   return (
-    <header className="sticky top-0 z-50 flex h-20 items-center justify-between gap-4 border-b bg-card px-5">
+    <header
+      className="sticky top-0 z-50 flex h-20 items-center justify-between gap-4 border-b bg-card px-5"
+      style={{ '--spacing': '0.3rem' } as CSSProperties}
+    >
       <div className="flex items-center gap-3">
         <i className="otter-icon text-5xl text-primary transition-colors" />
         <span className="text-2xl font-semibold tracking-tight">{t('app.brand')}</span>
@@ -59,7 +62,7 @@ export default function Header({ phase, setPhase, theme, setTheme }: HeaderProps
                     onClick={() => setPhase(id)}
                     aria-label={t(`phases.${id}.label`)}
                     style={{ '--phase': color } as CSSProperties}
-                    className={`flex size-9 items-center justify-center rounded-lg border transition-colors ${
+                    className={`flex size-10 items-center justify-center rounded-lg border transition-colors ${
                       active
                         ? 'border-[var(--phase)] bg-card text-[var(--phase)] shadow-sm'
                         : 'border-transparent text-muted-foreground hover:border-[var(--phase)] hover:text-[var(--phase)]'
