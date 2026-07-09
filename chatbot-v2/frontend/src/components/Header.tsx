@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import type { Provider } from '../hooks/useProviders';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,18 +6,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorEmpty,
-  ModelSelectorGroup,
-  ModelSelectorInput,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorLogo,
-  ModelSelectorName,
-  ModelSelectorTrigger,
-} from '@/components/ai-elements/model-selector';
 import { Check, Languages, SunMoon, Moon, Sun } from 'lucide-react';
 
 type ThemeChoice = 'system' | 'light' | 'dark';
@@ -36,16 +22,11 @@ interface HeaderProps {
   setPhase: (p: string) => void;
   theme: ThemeChoice;
   setTheme: (t: ThemeChoice) => void;
-  providers: Provider[];
-  provider: string;
-  setProvider: (p: string) => void;
 }
 
-export default function Header({ phase, setPhase, theme, setTheme, providers, provider, setProvider }: HeaderProps) {
+export default function Header({ phase, setPhase, theme, setTheme }: HeaderProps) {
   const { t, language, setLanguage, languages } = useLanguage();
-  const [modelOpen, setModelOpen] = useState(false);
 
-  const current = providers.find(p => p.id === provider);
   const ThemeIcon = (THEMES.find(x => x.value === theme) || THEMES[0]).icon;
   const currentLang = languages.find(l => l.code === language);
 
@@ -75,36 +56,6 @@ export default function Header({ phase, setPhase, theme, setTheme, providers, pr
       </nav>
 
       <div className="flex items-center gap-2">
-        {/* Provider — icon only when collapsed, logo + label in the palette */}
-        {providers.length > 0 && (
-          <ModelSelector open={modelOpen} onOpenChange={setModelOpen}>
-            <ModelSelectorTrigger asChild>
-              <Button variant="outline" size="icon" className="size-10" title={current?.label || t('llmProvider.label')} aria-label={current?.label || t('llmProvider.label')}>
-                {current && <ModelSelectorLogo provider={current.id} className="size-6" />}
-              </Button>
-            </ModelSelectorTrigger>
-            <ModelSelectorContent title={t('llmProvider.label')}>
-              <ModelSelectorInput placeholder={t('llmProvider.label')} />
-              <ModelSelectorList>
-                <ModelSelectorEmpty>—</ModelSelectorEmpty>
-                <ModelSelectorGroup heading={t('llmProvider.label')}>
-                  {providers.map(p => (
-                    <ModelSelectorItem
-                      key={p.id}
-                      value={`${p.id} ${p.label}`}
-                      onSelect={() => { setProvider(p.id); setModelOpen(false); }}
-                    >
-                      <ModelSelectorLogo provider={p.id} />
-                      <ModelSelectorName>{p.label}</ModelSelectorName>
-                      {p.id === provider && <Check className="ms-auto size-4 text-primary" />}
-                    </ModelSelectorItem>
-                  ))}
-                </ModelSelectorGroup>
-              </ModelSelectorList>
-            </ModelSelectorContent>
-          </ModelSelector>
-        )}
-
         {/* Theme — icon only when collapsed, icon + label on open */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

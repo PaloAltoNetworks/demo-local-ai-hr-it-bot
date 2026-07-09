@@ -37,11 +37,10 @@ export default function App() {
         <Header
           phase={phase} setPhase={setPhase}
           theme={theme} setTheme={setTheme}
-          providers={providers} provider={provider} setProvider={setProvider}
         />
         <main className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[320px_1fr]">
           <Sidebar phase={phase} />
-          <ChatPanel />
+          <ChatPanel providers={providers} provider={provider} setProvider={setProvider} />
         </main>
       </div>
     </ChatProvider>

@@ -43,6 +43,19 @@ import {
   ContextOutputUsage,
 } from '@/components/ai-elements/context';
 import { Persona } from '@/components/ai-elements/persona';
+import type { Provider } from '../hooks/useProviders';
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorInput,
+  ModelSelectorItem,
+  ModelSelectorList,
+  ModelSelectorLogo,
+  ModelSelectorName,
+  ModelSelectorTrigger,
+} from '@/components/ai-elements/model-selector';
 import {
   PromptInput,
   PromptInputBody,
@@ -83,11 +96,19 @@ const isReflect = (name: string) => KNOWN_REFLECT.has(name) || name?.endsWith('-
 // Strip the MCP server prefix: "hr_tools_mcp_server-get_employee" → "get_employee"
 const shortToolName = (name: string) => (name.includes('-') ? name.split('-').slice(1).join('-') : name);
 
-export default function ChatPanel() {
+interface ChatPanelProps {
+  providers: Provider[];
+  provider: string;
+  setProvider: (p: string) => void;
+}
+
+export default function ChatPanel({ providers, provider, setProvider }: ChatPanelProps) {
   const { t } = useLanguage();
   const { messages, sendMessage, sendFeedback, regenerate, stop, addToolApprovalResponse, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
 
+  const [modelOpen, setModelOpen] = useState(false);
+  const currentProvider = providers.find(p => p.id === provider);
   // msgId → 'up' | 'down'
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({});
   // msgId → true while the transient "thanks" note is shown (auto-hides after 5s)
@@ -261,28 +282,59 @@ export default function ChatPanel() {
             <PromptInputTextarea placeholder={t('chat.placeholder')} disabled={isStreaming} />
           </PromptInputBody>
           <PromptInputFooter>
-            {sessionUsage.totalTokens > 0 ? (
-              <Context maxTokens={CONTEXT_WINDOW} usedTokens={sessionUsage.totalTokens} usage={sessionUsage}>
-                <ContextTrigger />
-                <ContextContent>
-                  <ContextContentHeader />
-                  <ContextContentBody>
-                    <ContextInputUsage>
-                      <UsageLine label="Input" tokens={sessionUsage.inputTokens} usd={sessionUsage.costInput} />
-                    </ContextInputUsage>
-                    <ContextOutputUsage>
-                      <UsageLine label="Output" tokens={sessionUsage.outputTokens} usd={sessionUsage.costOutput} />
-                    </ContextOutputUsage>
-                  </ContextContentBody>
-                  {sessionUsage.cost > 0 && (
-                    <ContextContentFooter>
-                      <span className="text-muted-foreground">{t('chat.totalTokens')}</span>
-                      <span>{fmtUSD(sessionUsage.cost)}</span>
-                    </ContextContentFooter>
-                  )}
-                </ContextContent>
-              </Context>
-            ) : <span />}
+            <div className="flex items-center gap-2">
+              {providers.length > 0 && (
+                <ModelSelector open={modelOpen} onOpenChange={setModelOpen}>
+                  <ModelSelectorTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2" title={currentProvider?.label || t('llmProvider.label')}>
+                      {currentProvider && <ModelSelectorLogo provider={currentProvider.id} className="size-4" />}
+                      <span className="text-xs font-medium">{currentProvider?.label || t('llmProvider.label')}</span>
+                    </Button>
+                  </ModelSelectorTrigger>
+                  <ModelSelectorContent title={t('llmProvider.label')}>
+                    <ModelSelectorInput placeholder={t('llmProvider.label')} />
+                    <ModelSelectorList>
+                      <ModelSelectorEmpty>—</ModelSelectorEmpty>
+                      <ModelSelectorGroup heading={t('llmProvider.label')}>
+                        {providers.map(p => (
+                          <ModelSelectorItem
+                            key={p.id}
+                            value={`${p.id} ${p.label}`}
+                            onSelect={() => { setProvider(p.id); setModelOpen(false); }}
+                          >
+                            <ModelSelectorLogo provider={p.id} />
+                            <ModelSelectorName>{p.label}</ModelSelectorName>
+                            {p.id === provider && <Check className="ms-auto size-4 text-primary" />}
+                          </ModelSelectorItem>
+                        ))}
+                      </ModelSelectorGroup>
+                    </ModelSelectorList>
+                  </ModelSelectorContent>
+                </ModelSelector>
+              )}
+              {sessionUsage.totalTokens > 0 && (
+                <Context maxTokens={CONTEXT_WINDOW} usedTokens={sessionUsage.totalTokens} usage={sessionUsage}>
+                  <ContextTrigger />
+                  <ContextContent>
+                    <ContextContentHeader />
+                    <ContextContentBody>
+                      <ContextInputUsage>
+                        <UsageLine label="Input" tokens={sessionUsage.inputTokens} usd={sessionUsage.costInput} />
+                      </ContextInputUsage>
+                      <ContextOutputUsage>
+                        <UsageLine label="Output" tokens={sessionUsage.outputTokens} usd={sessionUsage.costOutput} />
+                      </ContextOutputUsage>
+                    </ContextContentBody>
+                    {sessionUsage.cost > 0 && (
+                      <ContextContentFooter>
+                        <span className="text-muted-foreground">{t('chat.totalTokens')}</span>
+                        <span>{fmtUSD(sessionUsage.cost)}</span>
+                      </ContextContentFooter>
+                    )}
+                  </ContextContent>
+                </Context>
+              )}
+            </div>
             <PromptInputSubmit status={status} onStop={() => stop()} />
           </PromptInputFooter>
         </PromptInput>
