@@ -523,13 +523,16 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       const ranObserve = ranTool('reflect_observe');
       const ranDataTools = DATA_TOOL_NAMES.some(ranTool);
 
-      // If model concluded no data tools needed → skip straight to ANSWER
+      // If model concluded no data tools needed → skip straight to ANSWER.
+      // toolChoice:'none' forbids further tool calls (tools stay defined to avoid Bedrock's
+      // empty-tools 400) — without it the model keeps calling reflect tools and never answers.
       if (ranConclude) {
         console.log(`[react] step ${stepNumber}: ANSWER (no-data shortcut) (${tiers.powerful})`);
         modelRef.current = tiers.powerful;
         return {
           model: getModel(tiers.powerful, reqCtx, guarded),
           instructions: DECIDE_PROMPT,
+          toolChoice: 'none',
         };
       }
 
@@ -579,13 +582,14 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         };
       }
 
-      // DECIDE+ANSWER: keep full tool set so Bedrock doesn't error on empty tools array;
-      // DECIDE_PROMPT instructs the model not to call any tools
+      // DECIDE+ANSWER: keep the tool set defined (empty array → Bedrock 400) but forbid
+      // calling any via toolChoice:'none', so the model must emit the final text answer.
       console.log(`[react] step ${stepNumber}: ANSWER (${tiers.powerful})`);
       modelRef.current = tiers.powerful;
       return {
         model: getModel(tiers.powerful, reqCtx, guarded),
         instructions: DECIDE_PROMPT,
+        toolChoice: 'none',
       };
     },
   });
