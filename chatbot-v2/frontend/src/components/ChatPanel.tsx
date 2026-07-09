@@ -67,6 +67,7 @@ import {
 import {
   Brain,
   Search,
+  Wrench,
   CircleCheck,
   ThumbsUp,
   ThumbsDown,
@@ -371,73 +372,85 @@ function AssistantParts({ msg, onApprove, t }: { msg: any; onApprove: (r: { id: 
   // input-error/output-error part. Drop these: they're phase-lock noise, not real steps.
   // Genuine tool failures keep state 'output-available' with output.isError, so they stay.
   const isErroredToolPart = (p: any) => p.state === 'output-error' || p.state === 'input-error';
-  // Known reflect_* steps → Chain of Thought. Hallucinated variants (reflect_respond, …) are dropped.
-  const cotSteps = parts.filter(p => {
-    if (!isToolPart(p) || isErroredToolPart(p)) return false;
+  const isReflectPart = (p: any) => {
     const name = partToolName(p);
-    if (name?.startsWith('reflect_') && !KNOWN_REFLECT.has(name)) return false;
+    if (name?.startsWith('reflect_') && !KNOWN_REFLECT.has(name)) return false; // hallucinated reflect_*
     return isReflect(name);
-  });
-  // Real data tools = tool parts that aren't reflect steps (and aren't hallucinated reflect_*).
-  const dataTools = parts.filter(p => {
-    if (!isToolPart(p) || isErroredToolPart(p)) return false;
+  };
+
+  // Single ordered pass: reflect steps AND data-tool cards go into the chain in the exact
+  // order they streamed, so a fetch tool sits between the reason/observe steps that framed it.
+  // Approval cards are pulled out (interactive — must stay visible even when the chain is collapsed).
+  const chainItems: { kind: 'reflect' | 'tool'; part: any }[] = [];
+  const approvals: any[] = [];
+  for (const p of parts) {
+    if (!isToolPart(p) || isErroredToolPart(p)) continue;
+    if (isReflectPart(p)) { chainItems.push({ kind: 'reflect', part: p }); continue; }
     const name = partToolName(p);
-    if (name?.startsWith('reflect_')) return false;
-    return !isReflect(name);
-  });
+    if (name?.startsWith('reflect_')) continue; // hallucinated reflect_* that isn't a real reflect
+    if (p.state === 'approval-requested') { approvals.push(p); continue; }
+    chainItems.push({ kind: 'tool', part: p });
+  }
   const textParts = parts.filter(p => p.type === 'text' && p.text);
+
+  const renderReflect = (p: any, key: number) => {
+    const name = partToolName(p);
+    const phase = name.startsWith('reflect_') ? name.split('_')[1] : (p.input?.phase || 'reason');
+    const meta = REFLECT_META[phase] || REFLECT_META.reason;
+    const stepText = p.input?.observation || p.input?.reason;
+    const nextAction = p.input?.next_action;
+    const stepStatus = p.state === 'input-streaming' ? 'active' : 'complete';
+    const stepMs = p.output?.stepMs;
+    const label = (
+      <span className="flex items-center gap-2">
+        {meta.label}
+        {typeof stepMs === 'number' && (
+          <span className="font-mono text-xs text-muted-foreground">{(stepMs / 1000).toFixed(1)}s</span>
+        )}
+      </span>
+    );
+    return (
+      <ChainOfThoughtStep key={key} icon={meta.icon} label={label} status={stepStatus} description={stepText}>
+        {nextAction && p.state === 'output-available' && (
+          <div className="text-xs italic text-muted-foreground">→ {nextAction}</div>
+        )}
+      </ChainOfThoughtStep>
+    );
+  };
+
+  const renderToolStep = (p: any, key: number) => {
+    const name = shortToolName(partToolName(p));
+    return (
+      <ChainOfThoughtStep key={key} icon={Wrench} label={name} status={p.state === 'output-available' ? 'complete' : 'active'}>
+        <Tool defaultOpen={p.state === 'output-available'}>
+          {p.type === 'dynamic-tool'
+            ? <ToolHeader type="dynamic-tool" state={p.state} toolName={name} />
+            : <ToolHeader type={p.type} state={p.state} title={name} />}
+          <ToolContent>
+            <ToolInput input={p.input} />
+            <ToolOutput output={unwrapMcpOutput(p.output)} errorText={p.errorText} />
+          </ToolContent>
+        </Tool>
+      </ChainOfThoughtStep>
+    );
+  };
 
   return (
     <>
-      {cotSteps.length > 0 && (
+      {chainItems.length > 0 && (
         <ChainOfThought defaultOpen>
           <ChainOfThoughtHeader>{t('chat.viewThinking')}</ChainOfThoughtHeader>
           <ChainOfThoughtContent>
-            {cotSteps.map((p, i) => {
-              const name = partToolName(p);
-              const phase = name.startsWith('reflect_') ? name.split('_')[1] : (p.input?.phase || 'reason');
-              const meta = REFLECT_META[phase] || REFLECT_META.reason;
-              const stepText = p.input?.observation || p.input?.reason;
-              const nextAction = p.input?.next_action;
-              const stepStatus = p.state === 'input-streaming' ? 'active' : 'complete';
-              const stepMs = p.output?.stepMs;
-              const label = (
-                <span className="flex items-center gap-2">
-                  {meta.label}
-                  {typeof stepMs === 'number' && (
-                    <span className="font-mono text-xs text-muted-foreground">{(stepMs / 1000).toFixed(1)}s</span>
-                  )}
-                </span>
-              );
-              return (
-                <ChainOfThoughtStep key={i} icon={meta.icon} label={label} status={stepStatus} description={stepText}>
-                  {nextAction && p.state === 'output-available' && (
-                    <div className="text-xs italic text-muted-foreground">→ {nextAction}</div>
-                  )}
-                </ChainOfThoughtStep>
-              );
-            })}
+            {chainItems.map((it, i) =>
+              it.kind === 'reflect' ? renderReflect(it.part, i) : renderToolStep(it.part, i)
+            )}
           </ChainOfThoughtContent>
         </ChainOfThought>
       )}
 
-      {dataTools.map((p, i) => {
-        const name = partToolName(p);
-        if (p.state === 'approval-requested') {
-          return <ApprovalCard key={i} part={p} onApprove={onApprove} t={t} />;
-        }
-        return (
-          <Tool key={i} defaultOpen={p.state === 'output-available'}>
-            {p.type === 'dynamic-tool'
-              ? <ToolHeader type="dynamic-tool" state={p.state} toolName={shortToolName(name)} />
-              : <ToolHeader type={p.type} state={p.state} title={shortToolName(name)} />}
-            <ToolContent>
-              <ToolInput input={p.input} />
-              <ToolOutput output={unwrapMcpOutput(p.output)} errorText={p.errorText} />
-            </ToolContent>
-          </Tool>
-        );
-      })}
+      {approvals.map((p, i) => (
+        <ApprovalCard key={i} part={p} onApprove={onApprove} t={t} />
+      ))}
 
       {textParts.map((p, i) => (
         <MessageResponse key={i}>{p.text}</MessageResponse>
