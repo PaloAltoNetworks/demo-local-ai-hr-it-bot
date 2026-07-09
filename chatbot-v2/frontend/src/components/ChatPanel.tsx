@@ -369,23 +369,66 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+// Matrix easter egg: fires on the 2nd greeting cycle, or on demand by clicking the
+// greeting while holding the M key.
+// Obfuscated so the surprise isn't spoiled by a plain-text grep of the bundle.
+const MATRIX_EGG = atob('V2FrZSB1cCwgTmVvLi4uIFRoZSBNYXRyaXggaGFzIHlvdS4uLiBGb2xsb3cgdGhlIHdoaXRlIHJhYmJpdC4gS25vY2ssIGtub2NrLCBOZW8u');
+
 // Home empty state: shares one `typing` flag so the halo shows speaking while the
 // greeting is being typed, and thinking once it settles.
 function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
   const [typing, setTyping] = useState(false);
+  const [override, setOverride] = useState<string | null>(null);
+  const [runKey, setRunKey] = useState(0);
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const mHeld = useRef(false);
   const onTypingChange = useCallback((v: boolean) => setTyping(v), []);
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === 'm' || e.key === 'M') mHeld.current = true; };
+    const up = (e: KeyboardEvent) => { if (e.key === 'm' || e.key === 'M') mHeld.current = false; };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    const obs = new MutationObserver(() => setDark(document.documentElement.classList.contains('dark')));
+    obs.observe(document.documentElement, { attributeFilter: ['class'], attributes: true });
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); obs.disconnect(); };
+  }, []);
+
+  // Green-on-black Matrix vibe: only in phase 1 (green accent) and dark mode.
+  const matrixCtx = phase === 'phase1' && dark;
+
+  const onMouseDown = () => {
+    if (!mHeld.current || !matrixCtx) return;
+    setOverride(MATRIX_EGG);
+    setRunKey(k => k + 1);
+    // Revert to the greeting after the egg has played out.
+    window.setTimeout(() => { setOverride(null); setRunKey(k => k + 1); }, MATRIX_EGG.length * 70 + 4000);
+  };
+
+  const greeting = t('chat.greeting', { name: t('userProfile.name') });
+
   return (
     <ConversationEmptyState
       title=""
       icon={<HaloOtter phase={phase} state={typing ? 'speaking' : 'thinking'} />}
-      description={<Typewriter text={t('chat.greeting', { name: t('userProfile.name') })} onTypingChange={onTypingChange} />}
+      description={
+        <span onMouseDown={onMouseDown} className="cursor-pointer select-none">
+          <Typewriter
+            key={runKey}
+            text={override ?? greeting}
+            eggText={override || !matrixCtx ? undefined : MATRIX_EGG}
+            startDelayMs={override ? 0 : 700}
+            onTypingChange={onTypingChange}
+          />
+        </span>
+      }
     />
   );
 }
 
 // Types out the greeting on load and re-types it every `repeatMs`. `text` changes
 // (e.g. language switch) restart the animation.
-function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700, cursorHideMs = 2500, onTypingChange }: { text: string; repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number; cursorHideMs?: number; onTypingChange?: (typing: boolean) => void }) {
+function Typewriter({ text, eggText, repeatMs = 300_000, speedMs = 55, pauseMs = 750, startDelayMs = 700, cursorHideMs = 2500, onTypingChange }: { text: string; eggText?: string; repeatMs?: number; speedMs?: number; pauseMs?: number; startDelayMs?: number; cursorHideMs?: number; onTypingChange?: (typing: boolean) => void }) {
   const [shown, setShown] = useState('');
   const [showCursor, setShowCursor] = useState(true);
 
@@ -394,20 +437,21 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
     let startTimer: number;
     let cycleTimer: number;
     let hideTimer: number;
+    let cycle = 0;
     // Longer beat after sentence-ending punctuation, so the greeting lands in phrases.
     const isPause = (ch: string) => '!.?…'.includes(ch);
-    const type = () => {
+    const type = (str: string) => {
       setShown('');
       setShowCursor(true);
       window.clearTimeout(hideTimer);
       let i = 0;
       const step = () => {
         i += 1;
-        setShown(text.slice(0, i));
+        setShown(str.slice(0, i));
         onTypingChange?.(true); // speaking while emitting characters
-        if (i < text.length) {
-          const justTyped = text[i - 1];
-          const next = text[i];
+        if (i < str.length) {
+          const justTyped = str[i - 1];
+          const next = str[i];
           const pausing = isPause(justTyped) && next === ' ';
           if (pausing) onTypingChange?.(false); // thinking during the beat
           typeTimer = window.setTimeout(step, pausing ? pauseMs : speedMs);
@@ -418,11 +462,13 @@ function Typewriter({ text, repeatMs = 300_000, speedMs = 55, pauseMs = 750, sta
       };
       step();
     };
+    // Second appearance is the Matrix easter egg; every other cycle is the greeting.
+    const pick = () => (cycle === 1 && eggText ? eggText : text);
     // Hold blank until the orb has popped in, then type.
-    startTimer = window.setTimeout(type, startDelayMs);
-    cycleTimer = window.setInterval(type, repeatMs);
+    startTimer = window.setTimeout(() => type(pick()), startDelayMs);
+    cycleTimer = window.setInterval(() => { cycle += 1; type(pick()); }, repeatMs);
     return () => { window.clearTimeout(typeTimer); window.clearTimeout(startTimer); window.clearTimeout(hideTimer); window.clearInterval(cycleTimer); onTypingChange?.(false); };
-  }, [text, repeatMs, speedMs, pauseMs, startDelayMs, cursorHideMs, onTypingChange]);
+  }, [text, eggText, repeatMs, speedMs, pauseMs, startDelayMs, cursorHideMs, onTypingChange]);
 
   return (
     <span>
