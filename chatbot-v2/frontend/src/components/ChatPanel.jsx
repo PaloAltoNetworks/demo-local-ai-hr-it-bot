@@ -361,33 +361,6 @@ export default function ChatPanel() {
                   }
                   return null;
                 })}
-                {/* Placeholder card shown during inter-step gap — appears after existing parts */}
-                {msg.role === 'assistant' && isStreaming && msg.id === streamingMsgIdRef.current && (() => {
-                  const parts = msg.parts || [];
-                  const hasActiveStream = parts.some(p => (p.type === 'dynamic-tool' || p.type?.startsWith('tool-')) && p.state === 'input-streaming');
-                  if (hasActiveStream) return null;
-                  // No-data shortcut (reflect_conclude) or the answer text already
-                  // streaming → the reasoning card is done; don't show a stray "Reason...".
-                  const ranConclude = parts.some(p => (p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5)) === 'reflect_conclude');
-                  const hasText = parts.some(p => p.type === 'text' && p.text);
-                  if (ranConclude || hasText) return null;
-                  // Only ever preview the FIRST step (Reason). Never predict Observe —
-                  // the Observe card must appear only when reflect_observe actually
-                  // streams, not speculatively during the inter-step gap.
-                  const ranReason = parts.some(p => {
-                    const n = p.type === 'dynamic-tool' ? p.toolName : p.type?.slice(5);
-                    return n === 'reflect_reason';
-                  });
-                  if (ranReason) return null;
-                  return (
-                    <div key="pending-step" className="react-step react-reason streaming">
-                      <div className="react-step-header">
-                        <span className="material-symbols react-step-icon">psychology</span>
-                        <span className="react-step-label">Reason...</span>
-                      </div>
-                    </div>
-                  );
-                })()}
                 {/* Single global live timer — total elapsed for the active generation */}
                 {msg.role === 'assistant' && isStreaming && msg.id === streamingMsgIdRef.current && globalStartRef.current && (
                   <div className="react-global-timer">
@@ -454,10 +427,10 @@ export default function ChatPanel() {
           );
         })}
 
-        {/* Global streaming placeholder — shown when streaming but no assistant message yet,
-            or when the last message has no active tool stream (first step = Reason) */}
+        {/* Waiting indicator before any assistant part streams — just the live timer, no
+            speculative Reason card (the real Reason card renders when the server sends it). */}
         {isStreaming && (() => {
-          if (streamingMsgIdRef.current) return null; // placeholder lives inside the message
+          if (streamingMsgIdRef.current) return null; // timer lives inside the message
           const liveElapsed = globalStartRef.current
             ? ((Date.now() - globalStartRef.current) / 1000).toFixed(1)
             : '0.0';
@@ -465,12 +438,6 @@ export default function ChatPanel() {
             <div className="message bot">
               <div className="message-avatar"><i className="otter-icon" /></div>
               <div className="message-body">
-                <div className="react-step react-reason streaming">
-                  <div className="react-step-header">
-                    <span className="material-symbols react-step-icon">psychology</span>
-                    <span className="react-step-label">Reason...</span>
-                  </div>
-                </div>
                 <div className="react-global-timer">
                   <span className="material-symbols">acute</span>
                   {liveElapsed}s
