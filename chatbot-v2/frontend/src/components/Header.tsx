@@ -42,10 +42,10 @@ export default function Header({ phase, setPhase, theme, setTheme }: HeaderProps
   const currentLang = languages.find(l => l.code === language);
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center justify-between gap-4 border-b bg-card px-5">
-      <div className="flex items-center gap-2.5">
-        <i className="otter-icon text-3xl text-primary transition-colors" />
-        <span className="text-lg font-semibold tracking-tight">{t('app.brand')}</span>
+    <header className="sticky top-0 z-50 flex h-20 items-center justify-between gap-4 border-b bg-card px-5">
+      <div className="flex items-center gap-3">
+        <i className="otter-icon text-5xl text-primary transition-colors" />
+        <span className="text-2xl font-semibold tracking-tight">{t('app.brand')}</span>
       </div>
 
       <TooltipProvider>
