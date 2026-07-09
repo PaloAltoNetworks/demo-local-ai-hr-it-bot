@@ -28,11 +28,19 @@ const PORT = process.env.CHATBOT_V2_PORT || 3018;
 // --- Configuration ---
 
 const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai/v1';
+// Two workspace API keys, each carrying its own Portkey config (retry/cache/guardrail hooks):
+//   PORTKEY_API_KEY         — default/unguarded (config may enable response caching)
+//   PORTKEY_API_KEY_GUARDED — guarded (config attaches PANW Prisma AIRS input+output hooks)
+// Guardrails are enforced by the key's attached config, NOT by injecting x-portkey-config
+// per request. Guarded requests (phase3) swap to the guarded key; everything else uses default.
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
+const PORTKEY_API_KEY_GUARDED = process.env.PORTKEY_API_KEY_GUARDED || PORTKEY_API_KEY;
 const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
 const GCP_PROVIDER = process.env.PORTKEY_GCP_PROVIDER || '@vertex-prod';
 const AZURE_PROVIDER = process.env.PORTKEY_AZURE_PROVIDER || '@azure';
-const MODEL_ID = process.env.PORTKEY_DEFAULT_MODEL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`;
+// Default provider tier (AWS | GCP | Azure) — selects which PROVIDER_TIERS set a request
+// falls back to when the frontend sends none. MODEL_ID (display only) is derived from it.
+const DEFAULT_PROVIDER = process.env.PORTKEY_DEFAULT_PROVIDER || 'AWS';
 
 // Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
 const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';
@@ -82,11 +90,6 @@ You have all the data you need. Give a clear, professional, concise answer to th
 
 // --- LLM ---
 
-// Portkey Config ID that attaches the PANW Prisma AIRS guardrail (input + output) on guarded requests
-const GUARDED_CONFIG = process.env.PORTKEY_GUARDED_CONFIG || '';
-// Portkey Config ID (or inline JSON) enabling response caching on non-guarded requests.
-// Use a simple/exact-match cache config — semantic cache can mis-hit mid agent loop.
-const CACHE_CONFIG = process.env.PORTKEY_CACHE_CONFIG || '';
 const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
 const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
@@ -96,26 +99,31 @@ const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
 
 // Provider → fast (Reason/Observe) + powerful (Decide) model tiers.
 // Model IDs use Portkey's @provider-slug/model format.
+// Each fast/powerful tier is env-overridable (PORTKEY_{AWS,GCP,AZURE}_{FAST,POWERFUL})
+// so a workspace with different provider slugs/models can be pointed at without code changes.
 const PROVIDER_TIERS = {
   AWS: {
     label: 'AWS Bedrock',
     icon: 'cloud',
-    fast:     `${AWS_PROVIDER}/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
-    powerful: `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`,
+    fast:     process.env.PORTKEY_AWS_FAST     || `${AWS_PROVIDER}/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
+    powerful: process.env.PORTKEY_AWS_POWERFUL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`,
   },
   GCP: {
     label: 'GCP Vertex AI',
     icon: 'cloud',
-    fast:     `${GCP_PROVIDER}/anthropic.claude-haiku-4-5`,
-    powerful: `${GCP_PROVIDER}/anthropic.claude-sonnet-4-6`,
+    fast:     process.env.PORTKEY_GCP_FAST     || `${GCP_PROVIDER}/anthropic.claude-haiku-4-5`,
+    powerful: process.env.PORTKEY_GCP_POWERFUL || `${GCP_PROVIDER}/anthropic.claude-sonnet-4-6`,
   },
   Azure: {
     label: 'Azure AI Foundry',
     icon: 'cloud',
-    fast:     `${AZURE_PROVIDER}/claude-haiku-4-5`,
-    powerful: `${AZURE_PROVIDER}/claude-sonnet-4-6`,
+    fast:     process.env.PORTKEY_AZURE_FAST     || `${AZURE_PROVIDER}/claude-haiku-4-5`,
+    powerful: process.env.PORTKEY_AZURE_POWERFUL || `${AZURE_PROVIDER}/claude-sonnet-4-6`,
   },
 };
+
+// Display/fallback model id, derived from the default provider's powerful tier.
+const MODEL_ID = (PROVIDER_TIERS[DEFAULT_PROVIDER] || PROVIDER_TIERS.AWS).powerful;
 
 // Phase-locked reflect tools — instantiated per-agent so execute() can emit stepMs.
 // stepStartRef.current is set by prepareStep just before each step runs.
@@ -145,18 +153,14 @@ function makeReflectTools(stepStartRef) {
   return { reflect_reason: make('reason'), reflect_observe: make('observe'), reflect_conclude: conclude };
 }
 
-// Injects Portkey auth, user identity, thread trace, and guardrail config into every request.
-// reqCtx is captured per-request to avoid cross-request contamination.
+// Injects Portkey auth, user identity, and thread trace into every request.
+// The guardrail/cache config rides on the API key itself, so guarded requests just
+// use the guarded key. reqCtx is captured per-request to avoid cross-request contamination.
 function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
   return async (url, init) => {
     const headers = new Headers(init?.headers);
-    headers.set('x-portkey-api-key', PORTKEY_API_KEY);
+    headers.set('x-portkey-api-key', guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY);
     headers.set('x-portkey-trace-id', reqCtx.traceId);
-    if (guarded && GUARDED_CONFIG) {
-      headers.set('x-portkey-config', GUARDED_CONFIG);
-    } else if (CACHE_CONFIG) {
-      headers.set('x-portkey-config', CACHE_CONFIG);
-    }
     let model = '';
     if (init?.body) {
       const body = JSON.parse(init.body);
@@ -184,6 +188,63 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
     }));
     return fetch(url, { ...init, headers });
   };
+}
+
+// --- Model pricing (Portkey pricing JSON → per-token cents) ---
+// cost_cents = input*request_token.price + output*response_token.price (verified: the
+// price values ARE cents-per-token). Cached at boot, refreshed daily.
+const PROVIDER_PRICING_ID = { aws: 'bedrock', gcp: 'vertex-ai', azure: 'azure-ai', 'azure-openai': 'azure-openai' };
+const pricingCache = new Map(); // key: "@provider/model" → { in, out } | null
+
+async function fetchPrice(tierModel) {
+  const at = tierModel.replace(/^@/, '');
+  const slash = at.indexOf('/');
+  const providerSlug = at.slice(0, slash);
+  const model = at.slice(slash + 1);
+  const pricingId = PROVIDER_PRICING_ID[providerSlug] || providerSlug;
+  const resp = await fetch(`https://api.portkey.ai/model-configs/pricing/${pricingId}/${encodeURIComponent(model)}`);
+  if (!resp.ok) throw new Error(`pricing ${resp.status}`);
+  const p = await resp.json();
+  return {
+    in: p?.pay_as_you_go?.request_token?.price ?? 0,
+    out: p?.pay_as_you_go?.response_token?.price ?? 0,
+  };
+}
+
+async function ensurePrice(tierModel) {
+  if (!tierModel) return null;
+  if (pricingCache.has(tierModel)) return pricingCache.get(tierModel);
+  try {
+    const price = await fetchPrice(tierModel);
+    pricingCache.set(tierModel, price);
+    return price;
+  } catch (err) {
+    dbg(`[pricing] ${tierModel}: ${err.message}`);
+    pricingCache.set(tierModel, null);
+    return null;
+  }
+}
+
+// Refresh cached prices daily (Portkey updates its pricing JSON periodically).
+setInterval(() => {
+  for (const key of [...pricingCache.keys()]) {
+    fetchPrice(key).then(p => pricingCache.set(key, p)).catch(() => {});
+  }
+}, 24 * 60 * 60 * 1000).unref();
+
+// Cost breakdown in USD from per-model token usage, using cached prices.
+// Returns { total, input, output } or null if no model was priced.
+function computeCost(perModelUsage) {
+  let inCents = 0, outCents = 0, priced = false;
+  for (const [model, u] of Object.entries(perModelUsage)) {
+    const price = pricingCache.get(model);
+    if (!price) continue;
+    inCents  += (u.inputTokens  || 0) * price.in;
+    outCents += (u.outputTokens || 0) * price.out;
+    priced = true;
+  }
+  if (!priced) return null;
+  return { total: (inCents + outCents) / 100, input: inCents / 100, output: outCents / 100 };
 }
 
 function getModel(modelId, reqCtx, guarded = false, noParallel = false) {
@@ -387,12 +448,15 @@ function normalizeError(err, modelId) {
 // Step 1: data tools      required (fast model, executes the data fetch)
 // Step 2: reflect_observe forced  (fast model, synthesizes findings)
 // Step 3: text answer     none    (powerful model, answers directly)
-function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = []) {
+function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [], perModelUsage = {}) {
   const DATA_TOOL_NAMES = Object.keys(mcpTools);
 
   // Per-agent step timer — prepareStep sets .current before each LLM call,
   // reflect execute() reads it to emit stepMs.
   const stepStartRef = { current: null };
+  // Tracks which tier model the current step uses, so onStepEnd can attribute usage
+  // per model (fast vs powerful) for accurate cost.
+  const modelRef = { current: tiers.fast };
   const { reflect_reason, reflect_observe, reflect_conclude } = makeReflectTools(stepStartRef);
 
   // Full tool set: MCP data tools + reason + observe + conclude reflect variants
@@ -422,6 +486,12 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       console.log(`[react] finished in ${steps.length} steps`);
     },
     onStepEnd: (step) => {
+      if (step.usage) {
+        const m = modelRef.current;
+        const acc = perModelUsage[m] || (perModelUsage[m] = { inputTokens: 0, outputTokens: 0 });
+        acc.inputTokens += step.usage.inputTokens || 0;
+        acc.outputTokens += step.usage.outputTokens || 0;
+      }
       if (!DEBUG) return;
       const tools = step.toolCalls?.map(tc => tc.toolName).join(', ') || 'none';
       const results = step.toolResults?.map(tr =>
@@ -449,6 +519,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       // If model concluded no data tools needed → skip straight to ANSWER
       if (ranConclude) {
         console.log(`[react] step ${stepNumber}: ANSWER (no-data shortcut) (${tiers.powerful})`);
+        modelRef.current = tiers.powerful;
         return {
           model: getModel(tiers.powerful, reqCtx, guarded),
           instructions: DECIDE_PROMPT,
@@ -460,6 +531,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       // (contradictory "need data" + "no data" → two Reason cards).
       if (!ranReason && !ranDataTools) {
         console.log(`[react] step ${stepNumber}: REASON (${tiers.fast})`);
+        modelRef.current = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded, true),
           instructions: REASON_PROMPT,
@@ -468,9 +540,12 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         };
       }
 
-      // FETCH: model must call at least one data tool
-      if (!ranDataTools) {
+      // FETCH: model must call at least one data tool. Skip when no data tools are
+      // available (e.g. MCP gateway down) — forcing toolChoice:'required' with an empty
+      // tools array makes Bedrock 400 ("toolConfig must be defined"). Fall through to ANSWER.
+      if (!ranDataTools && DATA_TOOL_NAMES.length > 0) {
         console.log(`[react] step ${stepNumber}: FETCH (${tiers.fast})`);
+        modelRef.current = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded),
           instructions: REASON_PROMPT,
@@ -486,6 +561,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       const observeAttempted = steps.length > dataStepIndex + 1;
       if (!ranObserve && !observeAttempted) {
         console.log(`[react] step ${stepNumber}: OBSERVE (${tiers.fast})`);
+        modelRef.current = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded),
           instructions: OBSERVE_PROMPT,
@@ -497,6 +573,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       // DECIDE+ANSWER: keep full tool set so Bedrock doesn't error on empty tools array;
       // DECIDE_PROMPT instructs the model not to call any tools
       console.log(`[react] step ${stepNumber}: ANSWER (${tiers.powerful})`);
+      modelRef.current = tiers.powerful;
       return {
         model: getModel(tiers.powerful, reqCtx, guarded),
         instructions: DECIDE_PROMPT,
@@ -531,16 +608,20 @@ function applyApprovalSafeMessages(rawMessages) {
 
 // AI SDK native chat endpoint — useChat on frontend consumes this automatically
 app.post('/api/chat', async (req, res) => {
-  const providerId = req.body.provider || 'AWS';
-  const tiers = PROVIDER_TIERS[providerId] || PROVIDER_TIERS.AWS;
+  const providerId = req.body.provider || DEFAULT_PROVIDER;
+  const tiers = PROVIDER_TIERS[providerId] || PROVIDER_TIERS[DEFAULT_PROVIDER] || PROVIDER_TIERS.AWS;
   try {
     const phase = req.body.phase;
     const guarded = phase === 'phase3';
+    const threadId = req.body.threadId || crypto.randomUUID();
     const reqCtx = {
-      threadId: req.body.threadId || crypto.randomUUID(),
-      // Per-turn trace-id: groups this turn's multi-step ReAct into ONE Portkey trace and
-      // is the key the user's thumbs up/down feedback targets. Returned in finish metadata.
-      traceId: `turn-${crypto.randomUUID()}`,
+      threadId,
+      // Trace-id = the browser conversation (threadId). Portkey's AIRS plugin sends this as
+      // AIRS tr_id, which Strata treats as the AI-session id — so every turn of a conversation
+      // lands in ONE ai-sessions view. It's also the key thumbs feedback targets, so feedback
+      // is conversation-level (Portkey's hosted AIRS plugin does not forward a separate
+      // session_id, so per-turn trace is the only alternative and it splits the session view).
+      traceId: threadId,
       userIp: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
     };
     const lastMsg = req.body.messages?.at(-1);
@@ -558,7 +639,12 @@ app.post('/api/chat', async (req, res) => {
     );
 
     const safeMessages = applyApprovalSafeMessages(req.body.messages);
-    const agent = buildReactAgent(tiers, reqCtx, tools, guarded, approvalToolNames);
+    // Per-model token usage → local cost (input*price_in + output*price_out).
+    const perModelUsage = {};
+    const agent = buildReactAgent(tiers, reqCtx, tools, guarded, approvalToolNames, perModelUsage);
+
+    // Warm the pricing cache for this turn's tier models (cached across requests).
+    await Promise.all([ensurePrice(tiers.fast), ensurePrice(tiers.powerful)]);
 
     // Accumulate token usage across all phases for the final metadata
     let totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
@@ -581,6 +667,7 @@ app.post('/api/chat', async (req, res) => {
             usage: totalUsage,
             empty: totalUsage.outputTokens === 0,
             traceId: reqCtx.traceId,
+            cost: computeCost(perModelUsage),
           };
         }
       },
@@ -648,7 +735,7 @@ app.get('/api/airs-config', (_req, res) => {
     tsgId: AIRS_TSG_ID,
     appId: AIRS_APP_ID,
     appName: AIRS_APP_NAME,
-    baseUrl: 'https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/api-violations',
+    baseUrl: 'https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions',
   });
 });
 

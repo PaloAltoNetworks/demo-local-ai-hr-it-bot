@@ -1,8 +1,9 @@
 import { createContext, useContext, useCallback, useMemo, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 
-const ChatContext = createContext();
+const ChatContext = createContext<any>(null);
 
 export const useChatContext = () => useContext(ChatContext);
 
@@ -26,7 +27,15 @@ const transport = new DefaultChatTransport({
   }),
 });
 
-export function ChatProvider({ provider, phase, children }) {
+interface FeedbackArgs {
+  traceId: string;
+  value: number;
+  weight: number;
+  toolsUsed?: string[];
+  comment?: string;
+}
+
+export function ChatProvider({ provider, phase, children }: { provider: string; phase: string; children: ReactNode }) {
   dynamicRef.provider = provider;
   dynamicRef.phase = phase;
 
@@ -39,18 +48,18 @@ export function ChatProvider({ provider, phase, children }) {
     onFinish: ({ message, isAbort, isError }) => {
       if (isAbort) console.info('[chat] Response aborted');
       if (isError) console.warn('[chat] Response finished with error');
-      if (message.metadata?.empty) console.warn('[chat] Model returned empty response');
+      if ((message.metadata as any)?.empty) console.warn('[chat] Model returned empty response');
     },
   });
 
   // Derive phase for each message: user messages carry their phase in metadata,
   // assistant messages inherit the phase of the preceding user message.
   const phaseMap = useMemo(() => {
-    const map = {};
+    const map: Record<string, string> = {};
     let currentPhase = 'phase1';
     for (const msg of chat.messages) {
       if (msg.role === 'user') {
-        currentPhase = msg.metadata?.phase || 'phase1';
+        currentPhase = (msg.metadata as any)?.phase || 'phase1';
       }
       map[msg.id] = currentPhase;
     }
@@ -58,9 +67,8 @@ export function ChatProvider({ provider, phase, children }) {
   }, [chat.messages]);
 
   // Parse the error string from the SSE stream into a structured object once.
-  // Downstream components receive a typed object, never a raw string.
-  const lastRawError = useRef(null);
-  const lastParsedError = useRef(null);
+  const lastRawError = useRef<any>(null);
+  const lastParsedError = useRef<any>(null);
   const parsedError = useMemo(() => {
     if (!chat.error) return null;
     if (chat.error === lastRawError.current) return lastParsedError.current;
@@ -79,7 +87,7 @@ export function ChatProvider({ provider, phase, children }) {
       return lastParsedError.current;
     } catch { /* not JSON */ }
 
-    // 2. Plain text guardrail blocks: "Prompt blocked by X ..." or "Response blocked by X ..."
+    // 2. Plain text guardrail blocks
     const gr = msg.match(/(Prompt|Response) blocked by (\S+) .+?\(Category:\s*(\w+)\)/);
     if (gr) {
       const isResponse = gr[1] === 'Response';
@@ -96,17 +104,17 @@ export function ChatProvider({ provider, phase, children }) {
       return lastParsedError.current;
     }
 
-    // 3. Generic error (API errors, network failures, etc.)
+    // 3. Generic error
     lastParsedError.current = { type: 'error', message: msg };
     return lastParsedError.current;
   }, [chat.error]);
 
-  const wrappedSendMessage = useCallback((opts) => {
+  const wrappedSendMessage = useCallback((opts: any) => {
     return chat.sendMessage({ ...opts, metadata: { phase } });
   }, [chat.sendMessage, phase]);
 
   // Send thumbs up/down to Portkey (keyed by the assistant turn's trace-id).
-  const sendFeedback = useCallback(async ({ traceId, value, weight, toolsUsed, comment }) => {
+  const sendFeedback = useCallback(async ({ traceId, value, weight, toolsUsed, comment }: FeedbackArgs) => {
     const resp = await fetch('/api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -118,12 +126,19 @@ export function ChatProvider({ provider, phase, children }) {
 
   const sessionUsage = useMemo(() =>
     chat.messages
-      .filter(m => m.role === 'assistant' && m.metadata?.usage)
-      .reduce((acc, m) => ({
-        inputTokens: acc.inputTokens + (m.metadata.usage.inputTokens || 0),
-        outputTokens: acc.outputTokens + (m.metadata.usage.outputTokens || 0),
-        totalTokens: acc.totalTokens + (m.metadata.usage.totalTokens || 0),
-      }), { inputTokens: 0, outputTokens: 0, totalTokens: 0 }),
+      .filter(m => m.role === 'assistant' && (m.metadata as any)?.usage)
+      .reduce((acc, m) => {
+        const meta = m.metadata as any;
+        const u = meta.usage;
+        return {
+          inputTokens: acc.inputTokens + (u.inputTokens || 0),
+          outputTokens: acc.outputTokens + (u.outputTokens || 0),
+          totalTokens: acc.totalTokens + (u.totalTokens || 0),
+          cost: acc.cost + (meta.cost?.total || 0),
+          costInput: acc.costInput + (meta.cost?.input || 0),
+          costOutput: acc.costOutput + (meta.cost?.output || 0),
+        };
+      }, { inputTokens: 0, outputTokens: 0, totalTokens: 0, cost: 0, costInput: 0, costOutput: 0 }),
     [chat.messages]
   );
 

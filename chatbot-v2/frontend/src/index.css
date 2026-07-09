@@ -1,0 +1,164 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* --- Brand fonts (self-hosted, no CDN) --- */
+@font-face { font-family: 'TT Hoves'; src: url('/fonts/TTHoves-Regular_optimized.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'TT Hoves'; src: url('/fonts/TTHoves-Medium_optimized.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'TT Hoves'; src: url('/fonts/TTHoves-DemiBold_optimized.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'otter'; src: url('/fonts/otter.woff') format('woff'), url('/fonts/otter.ttf') format('truetype'); font-weight: normal; font-display: swap; }
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'TT Hoves', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --color-brand-orange: var(--brand-orange);
+    --color-brand-green: var(--brand-green);
+    --color-brand-red: var(--brand-red);
+    --color-brand-blue: var(--brand-blue);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    /* Palo Alto Networks brand palette */
+    --brand-orange: #FA582D;
+    --brand-green: #00CC66;
+    --brand-red: #C84727;
+    --brand-blue: #00C0E8;
+
+    --background: #FCFCF9;
+    --foreground: #134252;
+    --card: #FFFFFF;
+    --card-foreground: #134252;
+    --popover: #FFFFFF;
+    --popover-foreground: #134252;
+    /* --primary is driven per-phase (see .phaseN-active); green is the default (phase 1) */
+    --primary: var(--brand-green);
+    --primary-foreground: #FFFFFF;
+    --secondary: #F5F5F0;
+    --secondary-foreground: #134252;
+    --muted: #F5F5F0;
+    --muted-foreground: #5A6E78;
+    --accent: #F5F5F0;
+    --accent-foreground: #134252;
+    --destructive: var(--brand-red);
+    --border: #E0DDD5;
+    --input: #E0DDD5;
+    --ring: var(--primary);
+    --chart-1: var(--brand-green);
+    --chart-2: var(--brand-blue);
+    --chart-3: var(--brand-orange);
+    --chart-4: var(--brand-red);
+    --chart-5: #8A9BA5;
+    --radius: 0.75rem;
+    --sidebar: #FFFFFF;
+    --sidebar-foreground: #134252;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #F5F5F0;
+    --sidebar-accent-foreground: #134252;
+    --sidebar-border: #EBE8E2;
+    --sidebar-ring: var(--primary);
+}
+
+.dark {
+    --background: #1A1C1C;
+    --foreground: #F0F0EC;
+    --card: #222424;
+    --card-foreground: #F0F0EC;
+    --popover: #222424;
+    --popover-foreground: #F0F0EC;
+    --primary: var(--brand-green);
+    --primary-foreground: #0B1418;
+    --secondary: #2A2C2C;
+    --secondary-foreground: #F0F0EC;
+    --muted: #2A2C2C;
+    --muted-foreground: #A0AAB0;
+    --accent: #2A2C2C;
+    --accent-foreground: #F0F0EC;
+    --destructive: #E5744F;
+    --border: #3A3C3C;
+    --input: #3A3C3C;
+    --ring: var(--primary);
+    --sidebar: #222424;
+    --sidebar-foreground: #F0F0EC;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: #0B1418;
+    --sidebar-accent: #2A2C2C;
+    --sidebar-accent-foreground: #F0F0EC;
+    --sidebar-border: #323434;
+    --sidebar-ring: var(--primary);
+}
+
+/* Per-phase accent: overrides --primary so buttons, rings, avatars retint. */
+.phase1-active { --primary: var(--brand-green); }
+.phase2-active { --primary: var(--brand-red); }
+.phase3-active { --primary: var(--brand-blue); }
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Otter brand glyph (icon webfont) — used for the header logo. */
+.otter-icon {
+  font-family: 'otter';
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+}
+.otter-icon::before { content: "\e900"; }
+
+/* Thin scrollbars to match the calm surface palette. */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }

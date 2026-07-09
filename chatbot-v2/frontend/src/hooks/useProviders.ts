@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 
+export interface Provider {
+  id: string;
+  label: string;
+}
+
 export function useProviders() {
-  const [providers, setProviders] = useState([]);
-  const [provider, setProvider] = useState(() => localStorage.getItem('selectedProvider') || '');
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [provider, setProvider] = useState<string>(() => localStorage.getItem('selectedProvider') || '');
 
   useEffect(() => {
     fetch('/api/providers')
@@ -12,6 +17,7 @@ export function useProviders() {
         if (!provider && data.default) setProvider(data.default);
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

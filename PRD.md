@@ -55,27 +55,39 @@ Key details:
 - `pipeUIMessageStreamToResponse` (not `pipeDataStreamToResponse` which was removed in AI SDK v5+)
 - `getModel(modelId, guarded)` switches between normal and guardrail-injecting providers
 
-### Guardrail Provider
+### Guardrail Provider (two-key model)
 
-Phase 3 enforces Prisma AIRS guardrails via a custom `fetch` wrapper on `@ai-sdk/openai` that sets Portkey headers. The guardrail is a Portkey **config** (referenced by ID via `PORTKEY_GUARDED_CONFIG`) that attaches the PANW Prisma AIRS guardrail as both `input_guardrails` and `output_guardrails`:
+Phase 3 enforces Prisma AIRS guardrails through the **API key's attached Portkey config**, not a per-request `x-portkey-config` header. Two workspace keys are provisioned in the Portkey dashboard:
+
+- `PORTKEY_API_KEY` — default/unguarded. Its config may enable simple response caching, retry, etc.
+- `PORTKEY_API_KEY_GUARDED` — guarded. Its config attaches the PANW Prisma AIRS guardrail as both `before_request_hooks` (input) and `after_request_hooks` (output). Falls back to `PORTKEY_API_KEY` if unset.
+
+The `fetch` wrapper just swaps which key it sends — the guard rides on the key server-side, keeping guardrail wiring out of the app code:
 
 ```js
-const GUARDED_CONFIG = process.env.PORTKEY_GUARDED_CONFIG || '';
-
-const openaiGuarded = createOpenAI({
-  baseURL: PORTKEY_BASE_URL,
-  apiKey: PORTKEY_API_KEY,
-  fetch: async (url, init) => {
+function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
+  return async (url, init) => {
     const headers = new Headers(init?.headers);
-    headers.set('x-portkey-api-key', PORTKEY_API_KEY);
+    headers.set('x-portkey-api-key', guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY);
+    headers.set('x-portkey-trace-id', reqCtx.traceId);
     headers.set('x-portkey-metadata', JSON.stringify({ _user: STATIC_USER.employee_id, ... }));
-    if (guarded && GUARDED_CONFIG) headers.set('x-portkey-config', GUARDED_CONFIG);
     return fetch(url, { ...init, headers });
-  },
-});
+  };
+}
 ```
 
-Portkey runs the config's guardrails through the configured Prisma AIRS profile. Both input (pre-call) and output (post-call) scanning are effective — the config declares `input_guardrails` and `output_guardrails` separately.
+Example config attached to the guarded key (retry + cache + AIRS input/output hooks):
+
+```json
+{
+  "retry": { "attempts": 3 },
+  "cache": { "mode": "simple" },
+  "before_request_hooks": [{ "id": "<airs-input-guardrail-id>" }],
+  "after_request_hooks":  [{ "id": "<airs-output-guardrail-id>" }]
+}
+```
+
+Both input (pre-call) and output (post-call) scanning run through the configured Prisma AIRS profile.
 
 ### Model Discovery
 
@@ -89,10 +101,15 @@ Returns `{ models: [{ id, name, provider }], default: MODEL_ID }`.
 
 ### AIRS Config
 
-`GET /api/airs-config` returns `{ tsgId, appId, baseUrl }` for building Strata Cloud Manager report links in the frontend. Report URL format:
+`GET /api/airs-config` returns `{ tsgId, appId, appName, baseUrl }` for building Strata Cloud Manager report links in the frontend. The link opens the **AI-session** view (last segment is the literal source `Portkey`):
 ```
-{baseUrl}/{tr_id}/{appId}/Portkey/transactions/{scan_id}/0?tsg_id={tsgId}#date=24hr
+{baseUrl}/{tr_id}/{appId}/Portkey
 ```
+where `baseUrl = https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions`.
+
+### Trace-id / AIRS session model
+
+Portkey's hosted PANW AIRS plugin (`plugins/panw-prisma-airs/intercept.ts`) sends the incoming `x-portkey-trace-id` as the AIRS `tr_id` and never forwards a separate `session_id`. Strata's `/ai-sessions/{id}` view groups by that `tr_id`. So the backend sets `x-portkey-trace-id = threadId` (the stable browser-conversation id), making every turn of a conversation land in one AI-session. Consequence: thumbs feedback (which Portkey keys by trace-id) is conversation-level, not per-message — an accepted trade since the hosted plugin exposes no per-turn `session_id` field.
 
 ### Other Endpoints
 - `GET /health` — service health with MCP status
@@ -241,12 +258,12 @@ agents/it-triage-agent/
 
 **Chatbot V2**:
 - `PORTKEY_BASE_URL` — Portkey gateway URL (`https://api.portkey.ai/v1`)
-- `PORTKEY_API_KEY` — Portkey API key
-- `PORTKEY_DEFAULT_MODEL` — Default model in `@provider-slug/model` format
-- `PORTKEY_AWS_PROVIDER` / `PORTKEY_GCP_PROVIDER` — Provider integration slugs
+- `PORTKEY_API_KEY` — default/unguarded workspace key (config may enable caching/retry)
+- `PORTKEY_API_KEY_GUARDED` — guarded key; its config runs PANW AIRS input+output hooks (Phase 3). Falls back to `PORTKEY_API_KEY`
+- `PORTKEY_DEFAULT_PROVIDER` — default provider tier (AWS | GCP | Azure) when frontend sends none
+- `PORTKEY_AWS_PROVIDER` / `PORTKEY_GCP_PROVIDER` / `PORTKEY_AZURE_PROVIDER` — Provider integration slugs
 - `PORTKEY_MCP_BASE` — MCP Gateway base (`https://mcp.portkey.ai`)
 - `PORTKEY_MCP_HR_SLUG` / `PORTKEY_MCP_IT_SLUG` — Per-server MCP slugs
-- `PORTKEY_GUARDED_CONFIG` — Portkey config ID attaching PANW AIRS (Phase 3)
 - `PRISMA_AIRS_TSG_ID` — Strata Cloud Manager tenant ID (for report links)
 - `PRISMA_AIRS_APP_ID` — AIRS application ID (for report links)
 - `CHATBOT_V2_PORT` — Server port (default 3008)
