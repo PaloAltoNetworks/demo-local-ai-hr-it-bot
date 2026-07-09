@@ -214,7 +214,15 @@ async function connectMCP(url) {
 
 async function initMCPClients() {
   mcpClients = [];
-  for (const url of MCP_URLS) {
+  await reconnectMissingClients();
+}
+
+// Connect any configured MCP_URL that has no live client yet (boot, or after a drop).
+// Returns the number of URLs still unconnected afterwards.
+async function reconnectMissingClients() {
+  const connected = new Set(mcpClients.map(e => e.url));
+  const missing = MCP_URLS.filter(url => !connected.has(url));
+  await Promise.all(missing.map(async (url) => {
     try {
       const client = await connectMCP(url);
       mcpClients.push({ url, client });
@@ -222,7 +230,8 @@ async function initMCPClients() {
     } catch (err) {
       console.error(`Failed to connect MCP client ${url}: ${err.message}`);
     }
-  }
+  }));
+  return MCP_URLS.length - mcpClients.length;
 }
 
 // Tool lists are static per session but each tools/list is a Portkey MCP cloud round-trip
@@ -231,18 +240,26 @@ async function initMCPClients() {
 // fetch all clients in parallel; refresh() re-warms it.
 let cachedTools = null;
 
+// Loads tools from every live client in parallel. A client whose tools/list fails is dropped
+// from mcpClients so reconnectMissingClients() retries a fresh connection next cycle. Returns
+// the merged map plus the count of clients that failed this pass.
 async function loadMCPTools() {
-  if (mcpClients.length === 0) return {};
+  if (mcpClients.length === 0) return { merged: {}, failed: 0 };
   const merged = {};
+  let failed = 0;
   const results = await Promise.all(mcpClients.map(async (entry) => {
     try {
-      return { url: entry.url, tools: await entry.client.tools() };
+      return { entry, tools: await entry.client.tools() };
     } catch (err) {
       console.warn(`MCP tools unavailable from ${entry.url}: ${err.message}`);
-      return { url: entry.url, tools: {} };
+      failed++;
+      return { entry, tools: null };
     }
   }));
+  // Drop clients that failed so they get reconnected; keep the ones that answered.
+  mcpClients = results.filter(r => r.tools !== null).map(r => r.entry);
   for (const { tools } of results) {
+    if (!tools) continue;
     // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() by default (type: 'dynamic'),
     // which tells streamText to send them to the client for execution instead of running
     // them server-side. Strip the flag so the execute() function runs on the backend.
@@ -252,27 +269,40 @@ async function loadMCPTools() {
     }
   }
   console.log(`[mcp] tools loaded (${Object.keys(merged).length}): ${Object.keys(merged).join(', ')}`);
-  return merged;
+  return { merged, failed };
 }
 
 async function getMCPTools() {
   if (cachedTools) return cachedTools;
-  const merged = await loadMCPTools();
+  const { merged } = await loadMCPTools();
   // Only cache a non-empty result so a transient failure doesn't pin an empty tool set.
   if (Object.keys(merged).length > 0) cachedTools = merged;
   return merged;
 }
 
-// Re-warm the tool cache periodically so newly added/removed MCP tools surface without a
-// restart. Swap atomically and keep the old map on failure (never blank out a working set).
-const TOOLS_REFRESH_MS = 60 * 60 * 1000; // 1 hour
+// Self-scheduling refresh: re-warm the tool cache so tool changes surface without a restart.
+// Healthy (all servers reachable) → next check in 1h. Degraded (a server unreachable or a
+// client dropped) → retry in 1min until it recovers. Swap atomically; never blank a working set.
+const TOOLS_REFRESH_HEALTHY_MS = 60 * 60 * 1000; // 1 hour
+const TOOLS_REFRESH_DEGRADED_MS = 60 * 1000;     // 1 minute
+let refreshTimer = null;
+
 async function refreshMCPTools() {
+  let degraded = false;
   try {
-    const merged = await loadMCPTools();
+    // Re-establish any client that dropped or never connected before re-listing tools.
+    const stillMissing = await reconnectMissingClients();
+    const { merged, failed } = await loadMCPTools();
     if (Object.keys(merged).length > 0) cachedTools = merged;
+    degraded = stillMissing > 0 || failed > 0;
   } catch (err) {
     console.warn(`[mcp] tool refresh failed, keeping cached set: ${err.message}`);
+    degraded = true;
   }
+  const delay = degraded ? TOOLS_REFRESH_DEGRADED_MS : TOOLS_REFRESH_HEALTHY_MS;
+  if (degraded) console.warn(`[mcp] degraded — retrying tool refresh in ${delay / 1000}s`);
+  refreshTimer = setTimeout(refreshMCPTools, delay);
+  refreshTimer.unref();
 }
 
 // --- Middleware ---
@@ -696,8 +726,11 @@ async function main() {
   await initMCPClients();
   // Warm the tool cache at boot so the first chat request doesn't pay the tools/list round-trips.
   await getMCPTools();
-  // Re-warm hourly (unref'd so it never keeps the process alive).
-  setInterval(refreshMCPTools, TOOLS_REFRESH_MS).unref();
+  // Kick off the self-scheduling refresh (1h healthy, 1min while any server is unreachable).
+  // If a server didn't connect at boot, start on the fast cadence so it recovers quickly.
+  const bootDegraded = mcpClients.length < MCP_URLS.length;
+  refreshTimer = setTimeout(refreshMCPTools, bootDegraded ? TOOLS_REFRESH_DEGRADED_MS : TOOLS_REFRESH_HEALTHY_MS);
+  refreshTimer.unref();
 
   app.listen(PORT, () => {
     console.log(`Chatbot V2 running on http://localhost:${PORT}`);
