@@ -290,5 +290,30 @@
   "llmProvider": {
     "label": "Provedor LLM",
     "note": "Uma combinacao de Haiku 4.5 e Sonnet 4.6 na nuvem selecionada, com as protecoes nativas de cada provedor ativadas por padrao em todas as fases."
+  },
+  "workflow": {
+    "title": "Reproduzir fluxo",
+    "close": "Fechar",
+    "normal": "Normal",
+    "risky": "Com risco",
+    "protected": "Protegido",
+    "gateway": "GW",
+    "llm": "LLM",
+    "saas": "SaaS",
+    "onprem": "Local",
+    "single": "Único",
+    "balanced": "Balanceado",
+    "fallback": "Contingência",
+    "restart": "Reiniciar",
+    "iter": "iter",
+    "userPrompt": "prompt do utilizador",
+    "assistantResponse": "resposta do assistente",
+    "leakedResponse": "resposta divulgada",
+    "payload": "carga",
+    "extractedData": "dados extraídos",
+    "detections": "deteções",
+    "viewReport": "Ver relatório AIRS",
+    "viewTrace": "Ver rastreio Portkey",
+    "tokensConsumed": "tokens consumidos"
   }
 }

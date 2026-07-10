@@ -290,5 +290,30 @@
   "llmProvider": {
     "label": "LLMプロバイダー",
     "note": "選択したクラウド上で Haiku 4.5 と Sonnet 4.6 を組み合わせて使用し、各プロバイダーのネイティブガードレールをすべてのフェーズでデフォルトで有効にします。"
+  },
+  "workflow": {
+    "title": "ワークフロー再生",
+    "close": "閉じる",
+    "normal": "通常",
+    "risky": "リスクあり",
+    "protected": "保護済み",
+    "gateway": "GW",
+    "llm": "LLM",
+    "saas": "SaaS",
+    "onprem": "オンプレミス",
+    "single": "単一",
+    "balanced": "負荷分散",
+    "fallback": "フェイルオーバー",
+    "restart": "再開",
+    "iter": "反復",
+    "userPrompt": "ユーザープロンプト",
+    "assistantResponse": "アシスタントの応答",
+    "leakedResponse": "漏洩した応答",
+    "payload": "ペイロード",
+    "extractedData": "抽出データ",
+    "detections": "検出",
+    "viewReport": "AIRSレポートを表示",
+    "viewTrace": "Portkeyトレースを表示",
+    "tokensConsumed": "消費トークン"
   }
 }

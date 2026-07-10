@@ -290,5 +290,30 @@
   "llmProvider": {
     "label": "مزود LLM",
     "note": "مزيج من Haiku 4.5 و Sonnet 4.6 على السحابة المحددة، مع تفعيل الحواجز الأصلية لكل مزود افتراضيًا في كل مرحلة."
+  },
+  "workflow": {
+    "title": "إعادة تشغيل سير العمل",
+    "close": "إغلاق",
+    "normal": "عادي",
+    "risky": "محفوف بالمخاطر",
+    "protected": "محمي",
+    "gateway": "GW",
+    "llm": "LLM",
+    "saas": "سحابي",
+    "onprem": "محلي",
+    "single": "واحد",
+    "balanced": "موزّع الحمل",
+    "fallback": "احتياطي",
+    "restart": "إعادة التشغيل",
+    "iter": "تكرار",
+    "userPrompt": "طلب المستخدم",
+    "assistantResponse": "رد المساعد",
+    "leakedResponse": "رد مُسرَّب",
+    "payload": "الحمولة",
+    "extractedData": "البيانات المستخرجة",
+    "detections": "الاكتشافات",
+    "viewReport": "عرض تقرير AIRS",
+    "viewTrace": "عرض تتبّع Portkey",
+    "tokensConsumed": "الرموز المستهلكة"
   }
 }

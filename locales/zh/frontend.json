@@ -290,5 +290,30 @@
   "llmProvider": {
     "label": "LLM提供商",
     "note": "在所选云上混合使用 Haiku 4.5 和 Sonnet 4.6，并在每个阶段默认启用各提供商的原生防护。"
+  },
+  "workflow": {
+    "title": "回放工作流",
+    "close": "关闭",
+    "normal": "正常",
+    "risky": "高风险",
+    "protected": "受保护",
+    "gateway": "GW",
+    "llm": "LLM",
+    "saas": "SaaS",
+    "onprem": "本地部署",
+    "single": "单一",
+    "balanced": "负载均衡",
+    "fallback": "故障转移",
+    "restart": "重新开始",
+    "iter": "迭代",
+    "userPrompt": "用户提示",
+    "assistantResponse": "助手响应",
+    "leakedResponse": "泄露的响应",
+    "payload": "负载",
+    "extractedData": "提取的数据",
+    "detections": "检测项",
+    "viewReport": "查看 AIRS 报告",
+    "viewTrace": "查看 Portkey 跟踪",
+    "tokensConsumed": "已消耗令牌"
   }
 }

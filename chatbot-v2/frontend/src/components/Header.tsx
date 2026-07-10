@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Check, Languages, SunMoon, Moon, Sun, ShieldQuestionMark, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Check, Languages, SunMoon, Moon, Sun, ShieldQuestionMark, ShieldAlert, ShieldCheck, Route } from 'lucide-react';
 
 type ThemeChoice = 'system' | 'light' | 'dark';
 
@@ -33,9 +33,10 @@ interface HeaderProps {
   setPhase: (p: string) => void;
   theme: ThemeChoice;
   setTheme: (t: ThemeChoice) => void;
+  onOpenWorkflow: () => void;
 }
 
-export default function Header({ phase, setPhase, theme, setTheme }: HeaderProps) {
+export default function Header({ phase, setPhase, theme, setTheme, onOpenWorkflow }: HeaderProps) {
   const { t, language, setLanguage, languages } = useLanguage();
 
   const ThemeIcon = (THEMES.find(x => x.value === theme) || THEMES[0]).icon;
@@ -79,6 +80,18 @@ export default function Header({ phase, setPhase, theme, setTheme }: HeaderProps
       </TooltipProvider>
 
       <div className="flex items-center gap-2">
+        {/* Workflow replay — opens the AI Gateway pipeline visualizer */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" className="size-10" onClick={onOpenWorkflow} aria-label={t('workflow.title')}>
+                <Route className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('workflow.title')}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
         {/* Theme — icon only when collapsed, icon + label on open */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
