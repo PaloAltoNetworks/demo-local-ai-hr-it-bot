@@ -3,7 +3,7 @@ import type { FormEvent, MouseEvent } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate } from '../context/LanguageContext';
 import { useChatContext } from '../context/ChatContext';
-import { useAirsConfig, buildReportUrl } from '../hooks/useAirsConfig';
+import { useAirsConfig, buildReportUrl, buildTraceUrl } from '../hooks/useAirsConfig';
 import type { AirsConfig } from '../hooks/useAirsConfig';
 import { Button } from '@/components/ui/button';
 import {
@@ -83,21 +83,6 @@ import {
 
 // Estimated model context window — drives the Context usage ring (Claude-class).
 const CONTEXT_WINDOW = 200_000;
-
-// Portkey trace deep-link. Org/workspace are stable per Portkey workspace (not secrets — they
-// live in the dashboard URL). traceId comes from finish metadata; the app sets it = threadId.
-const PORTKEY_ORG = '8ce8561b-633e-49f4-8029-20b2021c3e7f';
-const PORTKEY_WORKSPACE = '991814d2-3517-4328-9af9-32ad1e2c0498';
-const buildTraceUrl = (traceId: string, createdAt?: number) => {
-  const q = new URLSearchParams({
-    workspaceId: PORTKEY_WORKSPACE,
-    traceView: 'true',
-    selectedTraceId: traceId,
-    logLogStoreFilePathFormat: 'v1',
-  });
-  if (createdAt) q.set('logCreatedAt', new Date(createdAt).toISOString());
-  return `https://app.portkey.ai/organisation/${PORTKEY_ORG}/logs?${q.toString()}`;
-};
 
 const KNOWN_REFLECT = new Set(['reflect', 'reflect_reason', 'reflect_observe', 'reflect_decide', 'reflect_conclude']);
 const REFLECT_META: Record<string, { icon: typeof Brain; label: string }> = {
@@ -278,7 +263,7 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
                     </div>
                   )}
 
-                  {!isThisStreaming && <MetaRow msg={msg} timing={msgTimings[msg.id]} feedback={feedback[msg.id]} onFeedback={handleFeedback} onRetry={() => regenerate({ messageId: msg.id })} t={t} />}
+                  {!isThisStreaming && <MetaRow msg={msg} timing={msgTimings[msg.id]} feedback={feedback[msg.id]} onFeedback={handleFeedback} onRetry={() => regenerate({ messageId: msg.id })} t={t} airsConfig={airsConfig} />}
                 </MessageContent>
               </Message>
             );
@@ -816,12 +801,14 @@ function UsageLine({ label, tokens, usd }: { label: string; tokens?: number; usd
   );
 }
 
-function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t }: {
+function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: {
   msg: any; timing?: { start: number; end?: number }; feedback?: 'up' | 'down';
   onFeedback: (msg: any, dir: number) => void; onRetry: () => void; t: Translate;
+  airsConfig: AirsConfig | null;
 }) {
   const usage = msg.metadata?.usage;
   const traceId = msg.metadata?.traceId;
+  const traceUrl = traceId ? buildTraceUrl(airsConfig, traceId, timing?.end) : null;
   const cost = msg.metadata?.cost; // { total, input, output } USD, from tokens × Portkey pricing
   const text = (msg.parts || []).filter((p: any) => p.type === 'text' && p.text).map((p: any) => p.text).join('');
   const canFeedback = traceId && !!text;
@@ -853,11 +840,11 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t }: {
       )}
       {canFeedback && (
         <MessageActions className="ms-auto">
-          {traceId && (
+          {traceUrl && (
             <MessageAction
               tooltip={t('feedback.viewTrace')}
               label="Trace"
-              onClick={() => window.open(buildTraceUrl(traceId, timing?.end), '_blank', 'noopener,noreferrer')}
+              onClick={() => window.open(traceUrl, '_blank', 'noopener,noreferrer')}
             >
               <img src="/images/portkey-light.svg" alt="" className="size-3.5 dark:hidden" />
               <img src="/images/portkey-dark.svg" alt="" className="hidden size-3.5 dark:block" />
@@ -909,6 +896,7 @@ function StreamError({ error, airsConfig, t, onRetry }: { error: any; airsConfig
   const isGuardrail = type === 'guardrail_violation' || type === 'guardrail_scan_error';
   const isGuardrailConfig = type === 'guardrail_config_error';
   const reportUrl = isGuardrail ? buildReportUrl(airsConfig, { trId: error.tr_id }) : null;
+  const traceUrl = error.tr_id ? buildTraceUrl(airsConfig, error.tr_id) : null;
 
   if (isGuardrailConfig) {
     return (
@@ -946,8 +934,8 @@ function StreamError({ error, airsConfig, t, onRetry }: { error: any; airsConfig
                   <ExternalLink className="size-3.5" /> {t('guardrail.viewReport')}
                 </a>
               )}
-              {error.tr_id && (
-                <a href={buildTraceUrl(error.tr_id)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground hover:underline">
+              {traceUrl && (
+                <a href={traceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground hover:underline">
                   <ExternalLink className="size-3.5" /> {t('feedback.viewTrace')}
                 </a>
               )}

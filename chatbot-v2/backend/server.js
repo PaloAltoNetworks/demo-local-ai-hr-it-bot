@@ -102,6 +102,12 @@ const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
 const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
 
+// Gateway observability deep links. Strata Cloud Manager needs the workspace and the
+// deployment (surfaced as `licenseId`) to resolve a log; standalone Portkey needs the org.
+const GW_WORKSPACE_ID = process.env.PORTKEY_WORKSPACE_ID || '';
+const GW_DEPLOYMENT_ID = process.env.PORTKEY_DEPLOYMENT_ID || '';
+const GW_ORG_ID = process.env.PORTKEY_ORG_ID || '';
+
 // Tools that mutate state — require explicit user approval before execution
 const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
 
@@ -801,6 +807,11 @@ app.get('/api/airs-config', (_req, res) => {
     appId: AIRS_APP_ID,
     appName: AIRS_APP_NAME,
     baseUrl: 'https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions',
+    gateway: {
+      workspaceId: GW_WORKSPACE_ID,
+      deploymentId: GW_DEPLOYMENT_ID,
+      orgId: GW_ORG_ID,
+    },
   });
 });
 
