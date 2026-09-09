@@ -354,8 +354,7 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-// Matrix easter egg: fires on the 2nd greeting cycle, or on demand by clicking the
-// greeting while holding the M key.
+// Matrix easter egg: fires only on demand, by clicking the greeting while holding M.
 // Obfuscated so the surprise isn't spoiled by a plain-text grep of the bundle.
 // Movie style: one phrase per line, cleared between, with a long dramatic hold.
 const MATRIX_PHRASES = atob('V2FrZSB1cCwgTmVvLi4uIFRoZSBNYXRyaXggaGFzIHlvdS4uLiBGb2xsb3cgdGhlIHdoaXRlIHJhYmJpdC4gS25vY2ssIGtub2NrLCBOZW8u')
@@ -542,7 +541,6 @@ function Typewriter({
     let startTimer: number;
     let cycleTimer: number;
     let hideTimer: number;
-    let cycle = 0;
     // Longer beat after sentence-ending punctuation, so a phrase lands in beats.
     const isPause = (ch: string) => '!.?…'.includes(ch);
 
@@ -597,8 +595,7 @@ function Typewriter({
 
     const run = (egg: boolean) => (egg && eggPhrases ? typeSequence(eggPhrases) : typeLine(text));
     startTimer = window.setTimeout(() => run(startWithEgg), startWithEgg ? 0 : startDelayMs);
-    // Second appearance plays the egg; every other cycle is the greeting.
-    cycleTimer = window.setInterval(() => { cycle += 1; run(!startWithEgg && cycle === 1 && !!eggPhrases); }, repeatMs);
+    cycleTimer = window.setInterval(() => run(false), repeatMs);
     return () => { window.clearTimeout(timer); window.clearTimeout(startTimer); window.clearTimeout(hideTimer); window.clearInterval(cycleTimer); onTypingChange?.(false); };
   }, [text, eggPhrases, startWithEgg, repeatMs, speedMs, pauseMs, startDelayMs, cursorHideMs, eggHoldMs, onTypingChange, onEggEnd]);
 
