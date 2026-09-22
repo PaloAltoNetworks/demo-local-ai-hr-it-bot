@@ -171,11 +171,17 @@ function makeReflectTools(stepStartRef) {
 // Injects Portkey auth, user identity, and thread trace into every request.
 // The guardrail/cache config rides on the API key itself, so guarded requests just
 // use the guarded key. reqCtx is captured per-request to avoid cross-request contamination.
-function portkeyFetch(reqCtx, guarded = false, noParallel = false) {
+function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = '') {
   return async (url, init) => {
     const headers = new Headers(init?.headers);
     headers.set('x-portkey-api-key', guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY);
     headers.set('x-portkey-trace-id', reqCtx.traceId);
+    // Every phase otherwise logs as span_name "llm", so a turn reads as N identical rows.
+    // Phases run in sequence, not nested, so they stay siblings — no parent_span_id.
+    if (spanName) {
+      headers.set('x-portkey-span-name', spanName);
+      headers.set('x-portkey-span-id', crypto.randomBytes(8).toString('hex'));
+    }
     let model = '';
     if (init?.body) {
       const body = JSON.parse(init.body);
@@ -262,11 +268,11 @@ function computeCost(perModelUsage) {
   return { total: (inCents + outCents) / 100, input: inCents / 100, output: outCents / 100 };
 }
 
-function getModel(modelId, reqCtx, guarded = false, noParallel = false) {
+function getModel(modelId, reqCtx, guarded = false, noParallel = false, spanName = '') {
   const provider = createOpenAI({
     baseURL: PORTKEY_BASE_URL,
     apiKey: PORTKEY_API_KEY,
-    fetch: portkeyFetch(reqCtx, guarded, noParallel),
+    fetch: portkeyFetch(reqCtx, guarded, noParallel, spanName),
   });
   return provider.chat(modelId || MODEL_ID);
 }
@@ -274,9 +280,8 @@ function getModel(modelId, reqCtx, guarded = false, noParallel = false) {
 // --- MCP Clients (Portkey MCP Gateway — one client per registered server) ---
 
 // MCP clients are long-lived and shared across requests, so their transport headers are
-// fixed at connect time and cannot carry the current turn's trace-id. Without it Portkey
-// mints its own trace per tools/call, so tool calls never join the LLM steps of the turn
-// that triggered them. The transport's fetch hook reads the active turn from here instead.
+// fixed at connect time and cannot carry the current turn's identity. The transport's
+// fetch hook reads the active turn from here instead.
 const mcpCtx = new AsyncLocalStorage();
 
 let mcpClients = [];
@@ -291,6 +296,12 @@ async function connectMCP(url) {
       },
       // v7 flipped the default to 'error'; Portkey MCP Gateway relies on redirects.
       redirect: 'follow',
+      // The MCP gateway currently discards inbound trace headers (x-portkey-trace-id,
+      // traceparent, span-id, parent-span-id) and mints its own trace per tools/call, so
+      // tool calls do not nest under the LLM span that triggered them. trace-id is sent
+      // anyway, ready for when the gateway honors it. Metadata IS honored today, so the
+      // turn's thread id rides there too: filtering MCP logs on thread_id recovers the
+      // tool calls belonging to a conversation.
       fetch: async (fetchUrl, init) => {
         const reqCtx = mcpCtx.getStore();
         if (!reqCtx) return fetch(fetchUrl, init);
@@ -299,6 +310,7 @@ async function connectMCP(url) {
         headers.set('x-portkey-metadata', JSON.stringify({
           _user: STATIC_USER.employee_id,
           app_name: 'The Otter V2',
+          thread_id: reqCtx.threadId,
         }));
         return fetch(fetchUrl, { ...init, headers });
       },
@@ -558,7 +570,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         console.log(`[react] step ${stepNumber}: ANSWER (no-data shortcut) (${tiers.powerful})`);
         modelRef.current = tiers.powerful;
         return {
-          model: getModel(tiers.powerful, reqCtx, guarded),
+          model: getModel(tiers.powerful, reqCtx, guarded, false, 'answer-no-data'),
           instructions: DECIDE_PROMPT,
           toolChoice: 'none',
         };
@@ -571,7 +583,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         console.log(`[react] step ${stepNumber}: REASON (${tiers.fast})`);
         modelRef.current = tiers.fast;
         return {
-          model: getModel(tiers.fast, reqCtx, guarded, true),
+          model: getModel(tiers.fast, reqCtx, guarded, true, 'reason'),
           instructions: REASON_PROMPT,
           activeTools: ['reflect_reason', 'reflect_conclude'],
           toolChoice: 'required',
@@ -585,7 +597,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         console.log(`[react] step ${stepNumber}: FETCH (${tiers.fast})`);
         modelRef.current = tiers.fast;
         return {
-          model: getModel(tiers.fast, reqCtx, guarded),
+          model: getModel(tiers.fast, reqCtx, guarded, false, 'fetch'),
           instructions: FETCH_PROMPT,
           activeTools: DATA_TOOL_NAMES,
           toolChoice: 'required',
@@ -603,7 +615,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         console.log(`[react] step ${stepNumber}: OBSERVE (${tiers.fast})`);
         modelRef.current = tiers.fast;
         return {
-          model: getModel(tiers.fast, reqCtx, guarded),
+          model: getModel(tiers.fast, reqCtx, guarded, false, 'observe'),
           instructions: OBSERVE_PROMPT,
           activeTools: ['reflect_observe'],
           toolChoice: 'required',
@@ -615,7 +627,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       console.log(`[react] step ${stepNumber}: ANSWER (${tiers.powerful})`);
       modelRef.current = tiers.powerful;
       return {
-        model: getModel(tiers.powerful, reqCtx, guarded),
+        model: getModel(tiers.powerful, reqCtx, guarded, false, 'answer'),
         instructions: DECIDE_PROMPT,
         toolChoice: 'none',
       };
