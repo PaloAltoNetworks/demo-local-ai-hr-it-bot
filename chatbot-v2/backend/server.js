@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import dotenv from 'dotenv';
 import { ToolLoopAgent, streamText, generateText, createUIMessageStream, createUIMessageStreamResponse, pipeAgentUIStreamToResponse, convertToModelMessages, isStepCount, tool } from 'ai';
 import { z } from 'zod';
@@ -272,6 +273,12 @@ function getModel(modelId, reqCtx, guarded = false, noParallel = false) {
 
 // --- MCP Clients (Portkey MCP Gateway — one client per registered server) ---
 
+// MCP clients are long-lived and shared across requests, so their transport headers are
+// fixed at connect time and cannot carry the current turn's trace-id. Without it Portkey
+// mints its own trace per tools/call, so tool calls never join the LLM steps of the turn
+// that triggered them. The transport's fetch hook reads the active turn from here instead.
+const mcpCtx = new AsyncLocalStorage();
+
 let mcpClients = [];
 
 async function connectMCP(url) {
@@ -284,6 +291,17 @@ async function connectMCP(url) {
       },
       // v7 flipped the default to 'error'; Portkey MCP Gateway relies on redirects.
       redirect: 'follow',
+      fetch: async (fetchUrl, init) => {
+        const reqCtx = mcpCtx.getStore();
+        if (!reqCtx) return fetch(fetchUrl, init);
+        const headers = new Headers(init?.headers);
+        headers.set('x-portkey-trace-id', reqCtx.traceId);
+        headers.set('x-portkey-metadata', JSON.stringify({
+          _user: STATIC_USER.employee_id,
+          app_name: 'The Otter V2',
+        }));
+        return fetch(fetchUrl, { ...init, headers });
+      },
     },
   });
   const timeoutPromise = new Promise((_, reject) =>
@@ -720,7 +738,8 @@ app.post('/api/chat', async (req, res) => {
     // Accumulate token usage across all phases for the final metadata
     let totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
-    await pipeAgentUIStreamToResponse({
+    // Run inside mcpCtx so tools/call requests made by the agent inherit this turn's trace.
+    await mcpCtx.run(reqCtx, () => pipeAgentUIStreamToResponse({
       response: res,
       agent,
       uiMessages: safeMessages,
@@ -742,7 +761,7 @@ app.post('/api/chat', async (req, res) => {
           };
         }
       },
-    });
+    }));
   } catch (err) {
     console.error(`[chat] ${err.message}`);
     const errMsg = normalizeError(err, tiers?.fast);

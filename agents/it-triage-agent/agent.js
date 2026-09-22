@@ -12,6 +12,7 @@ import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -68,6 +69,13 @@ function makeOpenAI({ traceId, employeeId }) {
 
 // --- MCP Clients (consume hr-tools + it-tools via Portkey MCP Gateway) ---
 
+// Clients are shared across triage runs, so their transport headers are fixed at connect
+// time and cannot carry the run's trace-id. Without it Portkey mints its own trace per
+// tools/call and the data calls never join the run's LLM steps. The fetch hook reads the
+// active run from here. Only meaningful when MCP_URLS points at Portkey; on the direct
+// docker-network path (IT_TRIAGE_MCP_URLS) there is no gateway to read the headers.
+const runCtx = new AsyncLocalStorage();
+
 let mcpClients = [];
 
 async function connectMCP(url) {
@@ -80,6 +88,18 @@ async function connectMCP(url) {
       },
       // v7 flipped the default to 'error'; Portkey MCP Gateway relies on redirects.
       redirect: 'follow',
+      fetch: async (fetchUrl, init) => {
+        const ctx = runCtx.getStore();
+        if (!ctx) return fetch(fetchUrl, init);
+        const headers = new Headers(init?.headers);
+        headers.set('x-portkey-trace-id', ctx.traceId);
+        headers.set('x-portkey-metadata', JSON.stringify({
+          _user: ctx.employeeId,
+          app_name: 'IT Triage Agent',
+          agent: 'it-triage',
+        }));
+        return fetch(fetchUrl, { ...init, headers });
+      },
     },
   });
   const timeoutPromise = new Promise((_, reject) =>
@@ -324,7 +344,8 @@ The requesting employee's ID is ${employeeId}. Use this ID when looking up emplo
     },
   });
 
-  const result = await agent.generate({ prompt: query });
+  // Run inside runCtx so MCP data-tool calls inherit this run's trace.
+  const result = await runCtx.run({ traceId, employeeId }, () => agent.generate({ prompt: query }));
   return result.text;
 }
 
