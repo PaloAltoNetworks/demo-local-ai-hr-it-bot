@@ -179,8 +179,12 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
     // Every phase otherwise logs as span_name "llm", so a turn reads as N identical rows.
     // Phases run in sequence, not nested, so they stay siblings — no parent_span_id.
     if (spanName) {
+      const spanId = crypto.randomBytes(8).toString('hex');
       headers.set('x-portkey-span-name', spanName);
-      headers.set('x-portkey-span-id', crypto.randomBytes(8).toString('hex'));
+      headers.set('x-portkey-span-id', spanId);
+      // Tool calls are emitted by the LLM step that runs just before them (the FETCH phase),
+      // so the latest span is the right parent for the MCP calls that follow.
+      reqCtx.lastSpanId = spanId;
     }
     let model = '';
     if (init?.body) {
@@ -296,17 +300,19 @@ async function connectMCP(url) {
       },
       // v7 flipped the default to 'error'; Portkey MCP Gateway relies on redirects.
       redirect: 'follow',
-      // The MCP gateway currently discards inbound trace headers (x-portkey-trace-id,
-      // traceparent, span-id, parent-span-id) and mints its own trace per tools/call, so
-      // tool calls do not nest under the LLM span that triggered them. trace-id is sent
-      // anyway, ready for when the gateway honors it. Metadata IS honored today, so the
-      // turn's thread id rides there too: filtering MCP logs on thread_id recovers the
-      // tool calls belonging to a conversation.
+      // Full span set so a tool call can nest under the LLM span that emitted it. As of
+      // this writing the MCP gateway drops these and mints its own trace per tools/call
+      // (metadata is the one thing it keeps), so thread_id also rides in the metadata:
+      // filtering MCP logs on it recovers the tool calls of a conversation either way.
       fetch: async (fetchUrl, init) => {
         const reqCtx = mcpCtx.getStore();
         if (!reqCtx) return fetch(fetchUrl, init);
         const headers = new Headers(init?.headers);
         headers.set('x-portkey-trace-id', reqCtx.traceId);
+        headers.set('x-portkey-span-id', crypto.randomBytes(8).toString('hex'));
+        headers.set('x-portkey-span-name', 'mcp-tool-call');
+        // Parent = the LLM span whose tool call triggered this request.
+        if (reqCtx.lastSpanId) headers.set('x-portkey-parent-span-id', reqCtx.lastSpanId);
         headers.set('x-portkey-metadata', JSON.stringify({
           _user: STATIC_USER.employee_id,
           app_name: 'The Otter V2',
