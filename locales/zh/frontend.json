@@ -289,7 +289,7 @@
   },
   "llmProvider": {
     "label": "LLM提供商",
-    "note": "在所选云上混合使用 Haiku 4.5 和 Sonnet 4.6，并在每个阶段默认启用各提供商的原生防护。"
+    "note": "在所选云上混合使用 Haiku 4.5 和 Sonnet 5，并在每个阶段默认启用各提供商的原生防护。"
   },
   "workflow": {
     "title": "回放工作流",

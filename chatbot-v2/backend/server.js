@@ -121,19 +121,19 @@ const PROVIDER_TIERS = {
     label: 'AWS Bedrock',
     icon: 'cloud',
     fast:     process.env.PORTKEY_AWS_FAST     || `${AWS_PROVIDER}/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
-    powerful: process.env.PORTKEY_AWS_POWERFUL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`,
+    powerful: process.env.PORTKEY_AWS_POWERFUL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-5`,
   },
   GCP: {
     label: 'GCP Vertex AI',
     icon: 'cloud',
     fast:     process.env.PORTKEY_GCP_FAST     || `${GCP_PROVIDER}/anthropic.claude-haiku-4-5`,
-    powerful: process.env.PORTKEY_GCP_POWERFUL || `${GCP_PROVIDER}/anthropic.claude-sonnet-4-6`,
+    powerful: process.env.PORTKEY_GCP_POWERFUL || `${GCP_PROVIDER}/anthropic.claude-sonnet-5`,
   },
   Azure: {
     label: 'Azure AI Foundry',
     icon: 'cloud',
     fast:     process.env.PORTKEY_AZURE_FAST     || `${AZURE_PROVIDER}/claude-haiku-4-5`,
-    powerful: process.env.PORTKEY_AZURE_POWERFUL || `${AZURE_PROVIDER}/claude-sonnet-4-6`,
+    powerful: process.env.PORTKEY_AZURE_POWERFUL || `${AZURE_PROVIDER}/claude-sonnet-5`,
   },
 };
 

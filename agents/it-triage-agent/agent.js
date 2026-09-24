@@ -24,7 +24,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai/v1';
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
-const MODEL_ID = process.env.IT_TRIAGE_MODEL || process.env.PORTKEY_DEFAULT_MODEL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-4-6`;
+const MODEL_ID = process.env.IT_TRIAGE_MODEL || process.env.PORTKEY_DEFAULT_MODEL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-5`;
 
 // Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
 const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';

@@ -289,7 +289,7 @@
   },
   "llmProvider": {
     "label": "LLM Provider",
-    "note": "A mix of Haiku 4.5 and Sonnet 4.6 on the selected cloud, with each provider's native guardrails enabled by default in every phase."
+    "note": "A mix of Haiku 4.5 and Sonnet 5 on the selected cloud, with each provider's native guardrails enabled by default in every phase."
   },
   "workflow": {
     "title": "Workflow replay",

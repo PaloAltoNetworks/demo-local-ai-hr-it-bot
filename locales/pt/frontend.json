@@ -289,7 +289,7 @@
   },
   "llmProvider": {
     "label": "Provedor LLM",
-    "note": "Uma combinacao de Haiku 4.5 e Sonnet 4.6 na nuvem selecionada, com as protecoes nativas de cada provedor ativadas por padrao em todas as fases."
+    "note": "Uma combinacao de Haiku 4.5 e Sonnet 5 na nuvem selecionada, com as protecoes nativas de cada provedor ativadas por padrao em todas as fases."
   },
   "workflow": {
     "title": "Reproduzir fluxo",

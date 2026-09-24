@@ -289,7 +289,7 @@
   },
   "llmProvider": {
     "label": "LLM-Anbieter",
-    "note": "Eine Kombination aus Haiku 4.5 und Sonnet 4.6 in der gewahlten Cloud, mit den nativen Schutzmechanismen des jeweiligen Anbieters, die in jeder Phase standardmassig aktiv sind."
+    "note": "Eine Kombination aus Haiku 4.5 und Sonnet 5 in der gewahlten Cloud, mit den nativen Schutzmechanismen des jeweiligen Anbieters, die in jeder Phase standardmassig aktiv sind."
   },
   "workflow": {
     "title": "Workflow abspielen",

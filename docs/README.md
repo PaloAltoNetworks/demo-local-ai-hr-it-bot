@@ -83,7 +83,7 @@ All services read from the same `.env` file via `env_file` in docker-compose.
 ```bash
 PORTKEY_API_KEY=pk-your-key
 PORTKEY_BASE_URL=https://api.portkey.ai/v1
-PORTKEY_DEFAULT_MODEL=@bedrock-prod/eu.anthropic.claude-sonnet-4-6
+PORTKEY_DEFAULT_MODEL=@bedrock-prod/eu.anthropic.claude-sonnet-5
 PORTKEY_AWS_PROVIDER=@bedrock-prod        # provider integration slugs
 PORTKEY_GCP_PROVIDER=@vertex-prod
 PORTKEY_MCP_BASE=https://mcp.portkey.ai
