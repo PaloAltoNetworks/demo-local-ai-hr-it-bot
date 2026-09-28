@@ -154,3 +154,5 @@ BrandGuidelines.md
 
 # Ignore GitHub folder
 .github
+# Personal demo pitch (kept local)
+docs/demo-3min-usb.md
