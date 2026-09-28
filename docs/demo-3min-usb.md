@@ -10,7 +10,8 @@ Texte à dire en anglais. Actions entre crochets.
 
 [Écran : The Otter ouvert, conversation vide. Ne rien cliquer.]
 
-> "True story. A big business event on AI in France, and Palo Alto Networks was the main partner. Our booth had TV screens looping a video. All I had to do was put that video on a USB stick.
+> "Hi everyone, my name is Aurélien Delamarre, and I'm here to tell you a true story.
+> A big business event on AI in France, and Palo Alto Networks was the main partner. Our booth had TV screens looping a video. All I had to do was put that video on a USB stick.
 > Except at Palo Alto Networks, USB ports are locked by default. Good policy. Bad timing.
 > Main partner of the event, and I couldn't get a video onto a TV.
 > I needed an exemption, right now, from my phone, on Slack. No way I was digging through IT documentation on a six-inch screen.
@@ -50,13 +51,13 @@ Texte à dire en anglais. Actions entre crochets.
 
 [Header : **Risky Usage**. Sidebar : **Manager Impersonation → 1 Refresh Page**, puis **2 Identity Override**]
 
-> "Now I don't hack anything. I just say I'm Sophie."
+> "Now I don't hack anything. I just say I'm Sophie, and ask who's on my team."
 
-[**3 Verify Direct Reports**]
+[Réponse : liste de l'équipe avec Aurélien]
 
 > "It confirms Aurélien is on my team. It believes me."
 
-[**4 Self-Approve Ticket** → si la carte de confirmation apparaît, **Approve**]
+[**3 Self-Approve Ticket** → si la carte de confirmation apparaît, **Approve**]
 
 > "I just approved my own USB access. No exploit, no tool, one sentence. And that's how client data walks out on a USB stick."
 
@@ -110,8 +111,7 @@ Ne jamais couper le hook : c'est lui qui accroche au stand.
 
 Couper dans cet ordre :
 1. Le sélecteur de modèle (Normal)
-2. **Verify Direct Reports** (Risky) : à tester en répétition, l'approbation peut moins bien passer sans ce tour
-3. Le clic **Fallback** (Gateway)
+2. Le clic **Fallback** (Gateway)
 
 ---
 
