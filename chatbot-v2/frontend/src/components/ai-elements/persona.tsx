@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { RiveParameters } from "@rive-app/react-webgl2";
 import {
   RuntimeLoader,
   useRive,
@@ -10,16 +9,18 @@ import {
   useViewModelInstance,
   useViewModelInstanceColor,
 } from "@rive-app/react-webgl2";
-import type { FC, ReactNode } from "react";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
-// Self-host the Rive WASM runtime — by default @rive-app fetches rive.wasm from
-// jsdelivr/unpkg at runtime. Point it at the local copy in public/ (no CDN).
+/**
+ * Self-hosted Rive WASM runtime; @rive-app otherwise fetches rive.wasm from a CDN at runtime.
+ */
 RuntimeLoader.setWasmUrl("/rive/rive.wasm");
 
-// Delays Rive initialization by one frame so that React Strict Mode's
-// immediate unmount cycle never creates a WebGL2 context. Only the
-// second (real) mount will initialise, avoiding context exhaustion.
+/**
+ * Delays Rive initialization by one frame so that React Strict Mode's
+ * immediate unmount cycle never creates a WebGL2 context. Only the
+ * second (real) mount will initialise, avoiding context exhaustion.
+ */
 const useStrictModeSafeInit = () => {
   const [ready, setReady] = useState(false);
 
@@ -34,29 +35,18 @@ const useStrictModeSafeInit = () => {
   return ready;
 };
 
-export type PersonaState =
-  | "idle"
-  | "listening"
-  | "thinking"
-  | "speaking"
-  | "asleep";
+export type PersonaState = "idle" | "thinking" | "speaking";
 
 interface PersonaProps {
   state: PersonaState;
-  onLoad?: RiveParameters["onLoad"];
-  onLoadError?: RiveParameters["onLoadError"];
-  onReady?: () => void;
-  onPause?: RiveParameters["onPause"];
-  onPlay?: RiveParameters["onPlay"];
-  onStop?: RiveParameters["onStop"];
   className?: string;
-  variant?: keyof typeof sources;
-  /** Optional hex color (e.g. "#00CC66") to tint a dynamic-color orb; overrides the
-      default theme-driven black/white. */
-  color?: string;
+  /** Hex color ("#RRGGBB" or "#RGB") that tints the orb. */
+  color: string;
 }
 
-// Parse "#RRGGBB" / "#RGB" (or a computed color) into [r,g,b]. Returns null if unparseable.
+/**
+ * Parses "#RRGGBB" / "#RGB" into [r,g,b]; null if unparseable.
+ */
 const hexToRgb = (hex: string): [number, number, number] | null => {
   const h = hex.trim().replace(/^#/, "");
   const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
@@ -68,238 +58,48 @@ const hexToRgb = (hex: string): [number, number, number] | null => {
   ];
 };
 
-// The state machine name is always 'default' for Elements AI visuals
+/** State machine name shared by the Elements AI Rive visuals. */
 const stateMachine = "default";
 
-// Self-hosted riv assets (no runtime CDN). Other Elements AI variants were removed
-// along with their remote blob sources.
-const sources = {
-  obsidian: {
-    dynamicColor: true,
-    hasModel: true,
-    source: "/rive/obsidian.riv",
-  },
-  halo: {
-    dynamicColor: true,
-    hasModel: true,
-    source: "/rive/halo.riv",
-  },
-};
+/**
+ * Halo orb (self-hosted `/rive/halo.riv`), tinted through the riv's `color` view-model property.
+ */
+export const Persona = memo(({ state = "idle", className, color }: PersonaProps) => {
+  const ready = useStrictModeSafeInit();
 
-const getCurrentTheme = (): "light" | "dark" => {
-  if (typeof window !== "undefined") {
-    if (document.documentElement.classList.contains("dark")) {
-      return "dark";
-    }
-    if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
-      return "dark";
-    }
-  }
-  return "light";
-};
+  const { rive, RiveComponent } = useRive(
+    ready
+      ? { autoplay: true, src: "/rive/halo.riv", stateMachines: stateMachine }
+      : null
+  );
 
-const useTheme = (enabled: boolean) => {
-  const [theme, setTheme] = useState<"light" | "dark">(getCurrentTheme);
+  const viewModel = useViewModel(rive, { useDefault: true });
+  const viewModelInstance = useViewModelInstance(viewModel, { rive, useDefault: true });
+  const colorProperty = useViewModelInstanceColor("color", viewModelInstance);
 
   useEffect(() => {
-    // Skip if not enabled (avoids unnecessary observers for non-dynamic-color variants)
-    if (!enabled) {
-      return;
+    const rgb = hexToRgb(color);
+    if (colorProperty && rgb) {
+      colorProperty.setRgb(...rgb);
     }
+  }, [colorProperty, color]);
 
-    // Watch for classList changes
-    const observer = new MutationObserver(() => {
-      setTheme(getCurrentTheme());
-    });
+  const thinkingInput = useStateMachineInput(rive, stateMachine, "thinking");
+  const speakingInput = useStateMachineInput(rive, stateMachine, "speaking");
 
-    observer.observe(document.documentElement, {
-      attributeFilter: ["class"],
-      attributes: true,
-    });
-
-    // Watch for OS-level theme changes
-    let mql: MediaQueryList | null = null;
-    const handleMediaChange = () => {
-      setTheme(getCurrentTheme());
-    };
-
-    if (window.matchMedia) {
-      mql = window.matchMedia("(prefers-color-scheme: dark)");
-      mql.addEventListener("change", handleMediaChange);
+  /**
+   * Rive state machine inputs are mutable objects set by direct assignment (the Rive API).
+   */
+  useEffect(() => {
+    if (thinkingInput) {
+      thinkingInput.value = state === "thinking";
     }
-
-    return () => {
-      observer.disconnect();
-      if (mql) {
-        mql.removeEventListener("change", handleMediaChange);
-      }
-    };
-  }, [enabled]);
-
-  return theme;
-};
-
-interface PersonaWithModelProps {
-  rive: ReturnType<typeof useRive>["rive"];
-  source: (typeof sources)[keyof typeof sources];
-  color?: string;
-  children: React.ReactNode;
-}
-
-const PersonaWithModel = memo(
-  ({ rive, source, color, children }: PersonaWithModelProps) => {
-    const theme = useTheme(source.dynamicColor);
-    const viewModel = useViewModel(rive, { useDefault: true });
-    const viewModelInstance = useViewModelInstance(viewModel, {
-      rive,
-      useDefault: true,
-    });
-    const viewModelInstanceColor = useViewModelInstanceColor(
-      "color",
-      viewModelInstance
-    );
-
-    useEffect(() => {
-      if (!(viewModelInstanceColor && source.dynamicColor)) {
-        return;
-      }
-
-      const explicit = color ? hexToRgb(color) : null;
-      const [r, g, b] = explicit ?? (theme === "dark" ? [255, 255, 255] : [0, 0, 0]);
-      viewModelInstanceColor.setRgb(r, g, b);
-    }, [viewModelInstanceColor, theme, source.dynamicColor, color]);
-
-    return children;
-  }
-);
-
-PersonaWithModel.displayName = "PersonaWithModel";
-
-interface PersonaWithoutModelProps {
-  children: ReactNode;
-}
-
-const PersonaWithoutModel = memo(
-  ({ children }: PersonaWithoutModelProps) => children
-);
-
-PersonaWithoutModel.displayName = "PersonaWithoutModel";
-
-export const Persona: FC<PersonaProps> = memo(
-  ({
-    variant = "obsidian",
-    state = "idle",
-    onLoad,
-    onLoadError,
-    onReady,
-    onPause,
-    onPlay,
-    onStop,
-    className,
-    color,
-  }) => {
-    const source = sources[variant];
-
-    if (!source) {
-      throw new Error(`Invalid variant: ${variant}`);
+    if (speakingInput) {
+      speakingInput.value = state === "speaking";
     }
+  }, [state, thinkingInput, speakingInput]);
 
-    // Stabilize callbacks to prevent useRive from reinitializing
-    const callbacksRef = useRef({
-      onLoad,
-      onLoadError,
-      onPause,
-      onPlay,
-      onReady,
-      onStop,
-    });
-
-    useEffect(() => {
-      callbacksRef.current = {
-        onLoad,
-        onLoadError,
-        onPause,
-        onPlay,
-        onReady,
-        onStop,
-      };
-    }, [onLoad, onLoadError, onPause, onPlay, onReady, onStop]);
-
-    const stableCallbacks = useMemo(
-      () => ({
-        onLoad: ((loadedRive) =>
-          callbacksRef.current.onLoad?.(
-            loadedRive
-          )) as RiveParameters["onLoad"],
-        onLoadError: ((err) =>
-          callbacksRef.current.onLoadError?.(
-            err
-          )) as RiveParameters["onLoadError"],
-        onPause: ((event) =>
-          callbacksRef.current.onPause?.(event)) as RiveParameters["onPause"],
-        onPlay: ((event) =>
-          callbacksRef.current.onPlay?.(event)) as RiveParameters["onPlay"],
-        onReady: () => callbacksRef.current.onReady?.(),
-        onStop: ((event) =>
-          callbacksRef.current.onStop?.(event)) as RiveParameters["onStop"],
-      }),
-      []
-    );
-
-    // Delay initialisation by one frame to avoid creating (and leaking)
-    // a WebGL2 context during React Strict Mode's first throw-away mount.
-    const ready = useStrictModeSafeInit();
-
-    const { rive, RiveComponent } = useRive(
-      ready
-        ? {
-            autoplay: true,
-            onLoad: stableCallbacks.onLoad,
-            onLoadError: stableCallbacks.onLoadError,
-            onPause: stableCallbacks.onPause,
-            onPlay: stableCallbacks.onPlay,
-            onRiveReady: stableCallbacks.onReady,
-            onStop: stableCallbacks.onStop,
-            src: source.source,
-            stateMachines: stateMachine,
-          }
-        : null
-    );
-
-    const listeningInput = useStateMachineInput(
-      rive,
-      stateMachine,
-      "listening"
-    );
-    const thinkingInput = useStateMachineInput(rive, stateMachine, "thinking");
-    const speakingInput = useStateMachineInput(rive, stateMachine, "speaking");
-    const asleepInput = useStateMachineInput(rive, stateMachine, "asleep");
-
-    // Rive state machine inputs are mutable objects that must be set via direct
-    // property assignment — this is the intended Rive API, not a React anti-pattern.
-    useEffect(() => {
-      if (listeningInput) {
-        listeningInput.value = state === "listening";
-      }
-      if (thinkingInput) {
-        thinkingInput.value = state === "thinking";
-      }
-      if (speakingInput) {
-        speakingInput.value = state === "speaking";
-      }
-      if (asleepInput) {
-        asleepInput.value = state === "asleep";
-      }
-    }, [state, listeningInput, thinkingInput, speakingInput, asleepInput]);
-
-    const Component = source.hasModel ? PersonaWithModel : PersonaWithoutModel;
-
-    return (
-      <Component rive={rive} source={source} color={color}>
-        <RiveComponent className={cn("size-16 shrink-0", className)} />
-      </Component>
-    );
-  }
-);
+  return <RiveComponent className={cn("size-16 shrink-0", className)} />;
+});
 
 Persona.displayName = "Persona";

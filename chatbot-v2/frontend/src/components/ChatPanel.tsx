@@ -618,7 +618,7 @@ function HaloOtter({ phase, state = 'thinking' }: { phase: string; state?: 'idle
       onMouseLeave={onLeave}
       className="relative flex size-80 items-center justify-center p-10"
     >
-      <Persona key={phase} state={state} variant="halo" color={PHASE_COLOR[phase] || PHASE_COLOR.phase1} className="size-80" />
+      <Persona key={phase} state={state} color={PHASE_COLOR[phase] || PHASE_COLOR.phase1} className="size-80" />
       <div
         className="pointer-events-none absolute"
         style={{
