@@ -1,7 +1,7 @@
 /**
  * IT Triage Agent — MCP Server
  *
- * MCP on the outside: exposes tools via MCP protocol (Streamable HTTP + SSE).
+ * MCP on the outside: exposes tools via MCP protocol (Streamable HTTP).
  * ToolLoopAgent on the inside: each tool invocation triggers multi-step agent reasoning.
  *
  * Registers with the Portkey MCP Gateway alongside hr-tools and it-tools.
@@ -10,13 +10,16 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 import { z } from 'zod';
 import { initMCPClient, closeMCPClient, runTriageAgent } from './agent.js';
 
 const PORT = process.env.PORT || 3000;
 
+/**
+ * employee_id is interpolated into the agent's instructions, so its format is pinned to EMP-NNN;
+ * a free-form value would be a prompt-injection channel. The SDK rejects non-matching arguments.
+ */
 function registerTools(server) {
   server.tool(
     'triage_it_request',
@@ -29,8 +32,8 @@ This tool owns the ENTIRE IT support lifecycle:
 Use for: USB access, software install, hardware issues, VPN, password reset, onboarding, access permissions, data recovery, and any other IT support request.
 Do NOT use for: simple read-only lookups like "show my tickets" or "what's the status of INC-2025-0001" — use individual data tools for those.`,
     {
-      query: z.string().describe('The user\'s IT request in natural language. For follow-ups, include the full context: original request + user\'s answers to missing information.'),
-      employee_id: z.string().describe('Employee ID of the requesting user (e.g. "EMP-034")'),
+      query: z.string().min(1).max(4000).describe('The user\'s IT request in natural language. For follow-ups, include the full context: original request + user\'s answers to missing information.'),
+      employee_id: z.string().regex(/^EMP-\d{3}$/, 'Expected EMP-NNN').describe('Employee ID of the requesting user (e.g. "EMP-034")'),
     },
     async ({ query, employee_id }, extra) => {
       const progressToken = extra?._meta?.progressToken;
@@ -139,26 +142,6 @@ async function main() {
   };
   app.get('/mcp', bySession);
   app.delete('/mcp', bySession);
-
-  // --- SSE transport (GET /sse + POST /messages) ---
-  const sseTransports = {};
-
-  app.get('/sse', async (req, res) => {
-    const server = createServer();
-    const transport = new SSEServerTransport('/messages', res);
-    sseTransports[transport.sessionId] = transport;
-    res.on('close', () => { delete sseTransports[transport.sessionId]; });
-    await server.connect(transport);
-  });
-
-  app.post('/messages', async (req, res) => {
-    const sessionId = req.query.sessionId;
-    const transport = sseTransports[sessionId];
-    if (!transport) {
-      return res.status(400).json({ error: 'Invalid or expired session' });
-    }
-    await transport.handlePostMessage(req, res);
-  });
 
   app.listen(PORT, () => {
     console.log(`IT Triage Agent MCP Server running on port ${PORT}`);

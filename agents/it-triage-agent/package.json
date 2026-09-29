@@ -5,8 +5,7 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^2.0.62",
@@ -15,9 +14,6 @@
     "ai": "^7.0.122",
     "express": "^5.2.1",
     "zod": "^4.6.5"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
   },
   "keywords": [
     "mcp",

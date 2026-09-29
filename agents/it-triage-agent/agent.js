@@ -3,8 +3,8 @@
  *
  * MCP on the outside, ToolLoopAgent on the inside.
  * - Local tools: classify severity, assign team, check approval, IT process lookup
- * - MCP tools via Portkey MCP Gateway: hr-tools (get_employee, get_employee_assets)
- *   and it-tools (get_ticket, search_tickets, create_ticket, etc.) — one client per server
+ * - MCP tools via Portkey MCP Gateway: hr-tools (get_employee, ...)
+ *   and it-tools (get_ticket, get_employee_assets, create_ticket, ...) — one client per server
  * - LLM via Portkey (api.portkey.ai/v1, OpenAI-compatible)
  */
 import { ToolLoopAgent, tool, isStepCount } from 'ai';
@@ -42,6 +42,13 @@ const MCP_URLS = process.env.IT_TRIAGE_MCP_URLS
 
 const IT_PROCESSES = JSON.parse(readFileSync(join(__dirname, 'it-processes.json'), 'utf-8'));
 
+/** Portkey log metadata shared by a triage run's LLM and MCP calls. */
+const portkeyMetadata = (employeeId) => JSON.stringify({
+  _user: employeeId,
+  app_name: 'IT Triage Agent',
+  agent: 'it-triage',
+});
+
 // --- LLM Provider ---
 
 // Per-invocation provider: injects a shared trace-id so Portkey groups all of one
@@ -57,11 +64,7 @@ function makeOpenAI({ traceId, employeeId }) {
       // trace-id groups this run's LLM steps in Portkey. Caching (and any other config)
       // rides on the API key's attached Portkey config — no per-request x-portkey-config.
       headers.set('x-portkey-trace-id', traceId);
-      headers.set('x-portkey-metadata', JSON.stringify({
-        _user: employeeId,
-        app_name: 'IT Triage Agent',
-        agent: 'it-triage',
-      }));
+      headers.set('x-portkey-metadata', portkeyMetadata(employeeId));
       return fetch(url, { ...init, headers });
     },
   });
@@ -93,11 +96,7 @@ async function connectMCP(url) {
         if (!ctx) return fetch(fetchUrl, init);
         const headers = new Headers(init?.headers);
         headers.set('x-portkey-trace-id', ctx.traceId);
-        headers.set('x-portkey-metadata', JSON.stringify({
-          _user: ctx.employeeId,
-          app_name: 'IT Triage Agent',
-          agent: 'it-triage',
-        }));
+        headers.set('x-portkey-metadata', portkeyMetadata(ctx.employeeId));
         return fetch(fetchUrl, { ...init, headers });
       },
     },
@@ -325,7 +324,7 @@ The requesting employee's ID is ${employeeId}. Use this ID when looking up emplo
       // Cloudflare tunnel connection warm past its ~15s idle cap (prevents 502 on the
       // slow write path). Not fake: this is the agent's actual next action.
       const args = toolCall.args || {};
-      const detail = args.observation || args.next_action || args.query || Object.values(args)[0];
+      const detail = args.query || Object.values(args)[0];
       onProgress({ tool: toolCall.toolName, detail: typeof detail === 'string' ? detail.slice(0, 160) : '' });
     },
     onToolExecutionEnd: ({ toolCall, toolExecutionMs, toolOutput }) => {
