@@ -137,7 +137,7 @@ const PROVIDER_TIERS = {
   Azure: {
     label: 'Azure AI Foundry',
     fast:     process.env.PORTKEY_AZURE_FAST     || `${AZURE_PROVIDER}/claude-haiku-4-5`,
-    powerful: process.env.PORTKEY_AZURE_POWERFUL || `${AZURE_PROVIDER}/claude-haiku-4-5`,
+    powerful: process.env.PORTKEY_AZURE_POWERFUL || `${AZURE_PROVIDER}/claude-sonnet-5-5`,
   },
 };
 

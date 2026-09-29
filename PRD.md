@@ -101,7 +101,7 @@ Portkey rejects a per-request `x-portkey-config` on API keys that carry a defaul
 
 Every LLM call sends `metadata.tier` = `fast` | `powerful`; the config routes on it to a fallback chain AWS → GCP → Azure. The `Fallback` tier reuses the AWS model strings for logs and pricing; the served model comes from the config.
 
-`otter-fallback` (`otter-fallback-guarded` adds `"retry": {"attempts": 3}`, `"input_guardrails": ["pg-otter-41f75b"]`, `"output_guardrails": ["pg-otter-e1977d"]`):
+`otter-fallback` (`otter-fallback-guarded` adds `"retry": {"attempts": 3}`, `"input_guardrails": ["pg-otter-1e5ab1"]`, `"output_guardrails": ["pg-otter-8dc1ad"]`, the SCM AI Gateway `theotter` guardrails):
 ```json
 {
   "cache": { "mode": "simple", "max_age": 3600 },
@@ -119,7 +119,7 @@ Every LLM call sends `metadata.tier` = `fast` | `powerful`; the config routes on
     { "name": "powerful", "strategy": { "mode": "fallback" }, "targets": [
       { "override_params": { "model": "@aws/global.anthropic.claude-sonnet-5-5" } },
       { "override_params": { "model": "@gcp/anthropic.claude-sonnet-5-5" } },
-      { "override_params": { "model": "@azure/claude-haiku-4-5" } }
+      { "override_params": { "model": "@azure/claude-sonnet-5-5" } }
     ] }
   ]
 }
