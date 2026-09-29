@@ -17,8 +17,6 @@ RUN npm install --only=production
 # Copy all source files (self-contained — no cross-workspace references)
 COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/server.js ./
 COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/service.js ./
-COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/database-manager.js ./
-COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/ticket-db.js ./
 COPY --chown=mcpserver:nodejs mcp-server/it-tools-mcp-server/tickets.db ./
 
 # Shared utils (logger)

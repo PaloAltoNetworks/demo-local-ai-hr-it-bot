@@ -1,118 +1,87 @@
-import { initializeDatabase } from './database-manager.js';
-import { initializeTicketService } from './ticket-db.js';
+/**
+ * IT ticket and asset data over the committed tickets.db (node:sqlite). Writes go straight to the file.
+ */
+import { DatabaseSync } from 'node:sqlite';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const DB_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'tickets.db');
 
 export class ITService {
   constructor() {
-    this.ticketService = null;
-  }
-
-  async init() {
-    try {
-      await initializeDatabase();
-      this.ticketService = await initializeTicketService();
-    } catch (error) {
-      throw new Error(`Failed to initialize IT service: ${error.message}`);
-    }
-  }
-
-  // --- Tickets ---
-
-  getAllTickets() {
-    return this.ticketService?.getAllTickets() || [];
+    if (!fs.existsSync(DB_PATH)) throw new Error(`Database file not found at ${DB_PATH}`);
+    this.db = new DatabaseSync(DB_PATH);
   }
 
   getTicketById(ticketId) {
-    return this.ticketService?.getTicketById(ticketId);
+    return this.db.prepare('SELECT * FROM tickets WHERE ticket_id = ?').get(ticketId);
   }
 
-  getTicketsByStatus(status) {
-    return this.ticketService?.getTicketsByStatus(status) || [];
-  }
-
-  getTicketsByPriority(priority) {
-    return this.ticketService?.getTicketsByPriority(priority) || [];
-  }
-
-  getTicketsByEmployee(employeeEmail) {
-    return this.ticketService?.getTicketsByEmployeeEmail(employeeEmail) || [];
+  getTicketsByEmployee(email) {
+    return this.db.prepare('SELECT * FROM tickets WHERE employee_email = ? ORDER BY date DESC').all(email);
   }
 
   getTicketsByEmployeeId(employeeId) {
-    return this.ticketService?.getTicketsByEmployeeId(employeeId) || [];
-  }
-
-  getTicketsByCategory(category) {
-    return this.ticketService?.getTicketsByCategory(category) || [];
+    return this.db.prepare('SELECT * FROM tickets WHERE employee_id = ? ORDER BY date DESC').all(employeeId);
   }
 
   getTicketDiscussions(ticketId) {
-    return this.ticketService?.getTicketDiscussions(ticketId) || [];
+    return this.db.prepare('SELECT * FROM ticket_discussions WHERE ticket_id = ? ORDER BY created_at ASC').all(ticketId);
   }
 
-  getStatistics() {
-    return this.ticketService?.getStatistics() || { total: 0, byStatus: [], byPriority: [], byAssignee: [] };
-  }
-
-  searchTickets(query) {
-    return this.ticketService?.searchTickets(query) || [];
-  }
-
-  // --- Ticket mutations ---
-
+  /**
+   * Opens a ticket dated today with the next INC-2025-NNNN id, assigned to the default IT agent unless given.
+   * @returns {{ ticket_id: string, status: string } | null}
+   */
   createTicket(data) {
-    const ticketId = this.ticketService.getNextTicketId();
-    const today = new Date().toISOString().split('T')[0];
-    const success = this.ticketService.createTicket({
-      ticket_id: ticketId,
-      employee_id: data.employee_id || null,
-      employee_email: data.employee_email,
-      employee_name: data.employee_name,
-      date: today,
-      status: data.status || 'Open',
-      description: data.description,
-      priority: data.priority || 'Medium',
-      category: data.category,
-      assigned_to_email: data.assigned_to_email || 'diego.martinez@company.com',
-      assigned_to: data.assigned_to || 'Diego Martinez',
-      tags: data.tags || data.category.toLowerCase(),
-      internal_notes: data.internal_notes || null,
-    });
-    if (success) {
-      return { ticket_id: ticketId, status: data.status || 'Open' };
-    }
-    return null;
+    const { max_num: maxNum } = this.db.prepare('SELECT MAX(CAST(SUBSTR(ticket_id, 10) AS INTEGER)) AS max_num FROM tickets').get();
+    const ticketId = `INC-2025-${String((maxNum || 0) + 1).padStart(4, '0')}`;
+    const status = data.status || 'Open';
+    const { changes } = this.db.prepare(`
+      INSERT INTO tickets (ticket_id, employee_id, employee_email, employee_name, date, status, description,
+        priority, category, assigned_to_email, assigned_to, tags, internal_notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      ticketId,
+      data.employee_id || null,
+      data.employee_email,
+      data.employee_name,
+      new Date().toISOString().split('T')[0],
+      status,
+      data.description,
+      data.priority || 'Medium',
+      data.category,
+      data.assigned_to_email || 'diego.martinez@company.com',
+      data.assigned_to || 'Diego Martinez',
+      data.tags || data.category.toLowerCase(),
+      data.internal_notes || null,
+    );
+    return changes > 0 ? { ticket_id: ticketId, status } : null;
   }
 
+  /**
+   * Sets a ticket's status and, when an approver is given, records an approval comment on it.
+   * @returns {{ ticket_id: string, status: string } | null} null when the ticket does not exist
+   */
   updateTicketStatus(ticketId, status, approverEmail, approverName) {
-    const ticket = this.getTicketById(ticketId);
-    if (!ticket) return null;
-
-    const success = this.ticketService.updateTicketStatus(ticketId, status);
-    if (success && approverEmail) {
-      this.ticketService.addDiscussion({
-        ticket_id: ticketId,
-        author_email: approverEmail,
-        author_name: approverName || approverEmail,
-        comment_type: 'approval',
-        content: `Ticket ${status.toLowerCase()} by ${approverName || approverEmail}`,
-        is_internal: false,
-      });
+    const { changes } = this.db.prepare('UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?').run(status, ticketId);
+    if (changes === 0) return null;
+    if (approverEmail) {
+      const author = approverName || approverEmail;
+      this.db.prepare(`
+        INSERT INTO ticket_discussions (ticket_id, author_email, author_name, comment_type, content, is_internal)
+        VALUES (?, ?, ?, 'approval', ?, 0)
+      `).run(ticketId, approverEmail, author, `Ticket ${status.toLowerCase()} by ${author}`);
     }
-    return success ? { ticket_id: ticketId, status } : null;
+    return { ticket_id: ticketId, status };
   }
-
-  // --- Assets ---
 
   getAssetsByEmployee(email) {
-    return this.ticketService?.getAssetsByEmployee(email) || [];
+    return this.db.prepare('SELECT * FROM assets WHERE employee_email = ? ORDER BY assigned_date DESC').all(email);
   }
 
   getAssetsByEmployeeId(employeeId) {
-    return this.ticketService?.getAssetsByEmployeeId(employeeId) || [];
+    return this.db.prepare('SELECT * FROM assets WHERE employee_id = ? ORDER BY assigned_date DESC').all(employeeId);
   }
-
-  getAssetById(assetId) {
-    return this.ticketService?.getAssetById(assetId);
-  }
-
 }
