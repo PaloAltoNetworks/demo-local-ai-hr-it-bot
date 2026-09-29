@@ -1,36 +1,20 @@
 {
   "app": {
-    "title": "La Lontra - Assistente Aziendale HR/IT",
-    "brand": "La Lontra",
-    "welcome": "Benvenuto su La Lontra",
-    "selectLanguage": "Scegli la tua lingua:"
+    "brand": "La Lontra"
   },
   "phases": {
     "phase1": {
-      "label": "Utilizzo Normale",
-      "status": "NORMALE"
+      "label": "Utilizzo Normale"
     },
     "phase2": {
-      "label": "Utilizzo Rischioso",
-      "status": "RISCHIO"
+      "label": "Utilizzo Rischioso"
     },
     "phase3": {
-      "label": "Modalità Protetta",
-      "status": "PROTETTA"
+      "label": "Modalità Protetta"
     }
   },
   "userProfile": {
-    "title": "Utente Connesso",
-    "name": "Aurélien Delamarre",
-    "role": "Ingegnere Pre-Vendita",
-    "department": "Reparto Commerciale",
-    "email": "aurelien.delamarre@company.com"
-  },
-  "userMenu": {
-    "label": "Utente",
-    "language": "Lingua",
-    "logout": "Disconnetti",
-    "logoutSuccess": "Disconnessione riuscita"
+    "name": "Aurélien Delamarre"
   },
   "questions": {
     "title": "Domande di Esempio",
@@ -185,70 +169,14 @@
   },
   "chat": {
     "placeholder": "Scrivi il tuo messaggio qui...",
-    "placeholderOffline": "Connessione persa - attendere...",
-    "send": "Invia",
-    "clear": "Cancella Chat",
     "thinking": "Sto pensando...",
     "viewThinking": "Visualizza catena di pensiero",
     "totalTokens": "Token totali utilizzati",
-    "coordinator": "Coordinatore",
-    "agents": "Agenti",
-    "errorSending": "Errore nell'invio del messaggio",
-    "connectionLost": "Connessione persa",
-    "reconnecting": "Riconnessione...",
-    "connected": "Connesso",
-    "online": "Online",
-    "offline": "Offline",
-    "connectionRestored": "Connessione ripristinata",
-    "ollamaServersDown": "Server IA non disponibili: {servers}",
     "greeting": "Salve {{name}}! Sono La Lontra, il Suo assistente intelligente HR/IT. Posso aiutarLa con le Sue domande amministrative e tecniche. Mi rivolga pure le Sue domande!",
-    "emptyResponse": "Il modello ha restituito una risposta vuota. La preghiamo di riprovare.",
-    "stop": "Interrompi"
+    "emptyResponse": "Il modello ha restituito una risposta vuota. La preghiamo di riprovare."
   },
   "buttons": {
-    "regenerate": "Rigenera",
-    "clearChat": "Cancella"
-  },
-  "footer": {
-    "title": "Bot Aziendale",
-    "description": "Assistente Intelligente HR/IT",
-    "version": "Versione 2.1 Enterprise",
-    "support": {
-      "title": "Supporto",
-      "itHelpdesk": "Helpdesk IT: int. 1234",
-      "hr": "Risorse Umane: int. 5678"
-    },
-    "security": {
-      "title": "Sicurezza",
-      "gdpr": "Conformità GDPR",
-      "audit": "Audit Automatizzato"
-    },
-    "language": {
-      "title": "Lingua"
-    }
-  },
-  "errors": {
-    "initError": "Inizializzazione dell'applicazione fallita",
-    "connectionError": "Errore di connessione",
-    "serverError": "Errore del server",
-    "timeout": "Timeout della richiesta - Il server impiega troppo tempo a rispondere. Riprova.",
-    "networkError": "Errore di rete - Impossibile raggiungere il server. Verifica la tua connessione.",
-    "agentTimeout": "L'agente IA sta impiegando più tempo del previsto per elaborare la tua richiesta. Potrebbe essere dovuto a un carico elevato del server.",
-    "agentError": "L'agente IA ha riscontrato un errore durante l'elaborazione della tua richiesta. Prova a riformulare la domanda.",
-    "serverOverload": "Il server sembra sovraccarico. Attendi un momento e riprova.",
-    "retrying": "Nuovo tentativo... (Tentativo {count} di {max})",
-    "mcpUnavailable": "I servizi IA sono attualmente non disponibili. Riprova più tardi.",
-    "servicesDegraded": "Alcuni servizi sono attualmente non disponibili per manutenzione."
-  },
-  "security": {
-    "title": "Analisi di Sicurezza",
-    "waiting": "In attesa dell'analisi di sicurezza...",
-    "clear": "Cancella",
-    "viewDetails": "Visualizza JSON Richiesta/Risposta",
-    "checkpoint": "Checkpoint",
-    "inputLabel": "INPUT",
-    "outputLabel": "OUTPUT (Risposta Prisma AIRS grezza)",
-    "viewInConsole": "Visualizza in Strata Cloud Manager"
+    "regenerate": "Rigenera"
   },
   "tools": {
     "approvalRequired": "Questa azione richiede la Sua conferma",
@@ -273,14 +201,9 @@
     "error": "Si è verificato un errore durante l'elaborazione della Sua richiesta."
   },
   "language": {
-    "code": "it",
     "name": "Italian",
     "nativeName": "Italiano",
     "dir": "ltr"
-  },
-  "theme": {
-    "switchToDarkMode": "Passa alla modalità scura",
-    "switchToLightMode": "Passa alla modalità chiara"
   },
   "llmProvider": {
     "label": "Provider LLM",

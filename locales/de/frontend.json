@@ -1,36 +1,20 @@
 {
   "app": {
-    "title": "Der Otter - Enterprise HR/IT-Assistent",
-    "brand": "Der Otter",
-    "welcome": "Willkommen bei Der Otter",
-    "selectLanguage": "Wählen Sie Ihre Sprache:"
+    "brand": "Der Otter"
   },
   "phases": {
     "phase1": {
-      "label": "Normale Nutzung",
-      "status": "NORMAL"
+      "label": "Normale Nutzung"
     },
     "phase2": {
-      "label": "Riskante Nutzung",
-      "status": "RISIKO"
+      "label": "Riskante Nutzung"
     },
     "phase3": {
-      "label": "Geschützter Modus",
-      "status": "GESCHÜTZT"
+      "label": "Geschützter Modus"
     }
   },
   "userProfile": {
-    "title": "Angemeldeter Benutzer",
-    "name": "Aurélien Delamarre",
-    "role": "Pre-Sales Engineer",
-    "department": "Verkaufsabteilung",
-    "email": "aurelien.delamarre@company.com"
-  },
-  "userMenu": {
-    "label": "Benutzer",
-    "language": "Sprache",
-    "logout": "Abmelden",
-    "logoutSuccess": "Erfolgreich abgemeldet"
+    "name": "Aurélien Delamarre"
   },
   "questions": {
     "title": "Beispielfragen",
@@ -185,70 +169,14 @@
   },
   "chat": {
     "placeholder": "Geben Sie Ihre Nachricht hier ein...",
-    "placeholderOffline": "Verbindung unterbrochen - bitte warten...",
-    "send": "Senden",
-    "clear": "Chat löschen",
     "thinking": "Überlegung läuft...",
     "viewThinking": "Denkprozess anzeigen",
     "totalTokens": "Verwendete Token insgesamt",
-    "coordinator": "Koordinator",
-    "agents": "Agenten",
-    "errorSending": "Fehler beim Senden der Nachricht",
-    "connectionLost": "Verbindung unterbrochen",
-    "reconnecting": "Wiederverbindung wird hergestellt...",
-    "connected": "Verbunden",
-    "online": "Online",
-    "offline": "Offline",
-    "connectionRestored": "Verbindung wiederhergestellt",
-    "ollamaServersDown": "KI-Server nicht verfügbar: {servers}",
     "greeting": "Hallo {{name}}! Ich bin Der Otter, Ihr intelligenter HR/IT-Assistent. Ich kann Ihnen bei Ihren administrativen und technischen Fragen helfen. Stellen Sie mir gerne Ihre Fragen!",
-    "emptyResponse": "Das Modell hat eine leere Antwort zurückgegeben. Bitte versuchen Sie es erneut.",
-    "stop": "Stoppen"
+    "emptyResponse": "Das Modell hat eine leere Antwort zurückgegeben. Bitte versuchen Sie es erneut."
   },
   "buttons": {
-    "regenerate": "Erneut generieren",
-    "clearChat": "Löschen"
-  },
-  "footer": {
-    "title": "Bot Enterprise",
-    "description": "Intelligenter HR/IT-Assistent",
-    "version": "Version 2.1 Enterprise",
-    "support": {
-      "title": "Support",
-      "itHelpdesk": "IT-Helpdesk: Durchwahl 1234",
-      "hr": "HR: Durchwahl 5678"
-    },
-    "security": {
-      "title": "Sicherheit",
-      "gdpr": "DSGVO-Compliance",
-      "audit": "Automatisierte Audits"
-    },
-    "language": {
-      "title": "Sprache"
-    }
-  },
-  "errors": {
-    "initError": "Die Anwendung konnte nicht initialisiert werden",
-    "connectionError": "Verbindungsfehler",
-    "serverError": "Serverfehler",
-    "timeout": "Anfrage-Timeout - Der Server antwortet zu langsam. Bitte versuchen Sie es erneut.",
-    "networkError": "Netzwerkfehler - Der Server ist nicht erreichbar. Bitte überprüfen Sie Ihre Verbindung.",
-    "agentTimeout": "Der KI-Agent braucht länger als erwartet, um Ihre Anfrage zu verarbeiten. Dies könnte an einer Serverüberlastung liegen.",
-    "agentError": "Der KI-Agent ist bei der Verarbeitung Ihrer Anfrage auf einen Fehler gestoßen. Bitte reformulieren Sie Ihre Frage.",
-    "serverOverload": "Der Server scheint überlastet zu sein. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
-    "retrying": "Anfrage wird wiederholt... (Versuch {count} von {max})",
-    "mcpUnavailable": "KI-Dienste sind derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.",
-    "servicesDegraded": "Einige Dienste sind derzeit aufgrund von Wartungsarbeiten nicht verfügbar."
-  },
-  "security": {
-    "title": "Sicherheitsanalyse",
-    "waiting": "Warte auf Sicherheitsanalyse...",
-    "clear": "Löschen",
-    "viewDetails": "Anfrage-/Antwort-JSON anzeigen",
-    "checkpoint": "Kontrollpunkt",
-    "inputLabel": "EINGABE",
-    "outputLabel": "AUSGABE (Rohe Prisma AIRS-Antwort)",
-    "viewInConsole": "In Strata Cloud Manager anzeigen"
+    "regenerate": "Erneut generieren"
   },
   "tools": {
     "approvalRequired": "Diese Aktion erfordert Ihre Bestätigung",
@@ -273,14 +201,9 @@
     "error": "Bei der Bearbeitung Ihrer Anfrage ist ein Fehler aufgetreten."
   },
   "language": {
-    "code": "de",
     "name": "Deutsch",
     "nativeName": "Deutsch",
     "dir": "ltr"
-  },
-  "theme": {
-    "switchToDarkMode": "Zum dunklen Modus wechseln",
-    "switchToLightMode": "Zum hellen Modus wechseln"
   },
   "llmProvider": {
     "label": "LLM-Anbieter",

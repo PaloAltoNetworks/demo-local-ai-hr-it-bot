@@ -1,36 +1,20 @@
 {
   "app": {
-    "title": "La Nutria - Asistente Empresarial de RRHH/IT",
-    "brand": "La Nutria",
-    "welcome": "Bienvenido a La Nutria",
-    "selectLanguage": "Elige tu idioma:"
+    "brand": "La Nutria"
   },
   "phases": {
     "phase1": {
-      "label": "Uso Normal",
-      "status": "NORMAL"
+      "label": "Uso Normal"
     },
     "phase2": {
-      "label": "Uso Riesgoso",
-      "status": "RIESGO"
+      "label": "Uso Riesgoso"
     },
     "phase3": {
-      "label": "Modo Protegido",
-      "status": "PROTEGIDO"
+      "label": "Modo Protegido"
     }
   },
   "userProfile": {
-    "title": "Usuario Conectado",
-    "name": "Aurélien Delamarre",
-    "role": "Ingeniero de Preventa",
-    "department": "Departamento de Ventas",
-    "email": "aurelien.delamarre@company.com"
-  },
-  "userMenu": {
-    "label": "Usuario",
-    "language": "Idioma",
-    "logout": "Cerrar Sesión",
-    "logoutSuccess": "Sesión cerrada correctamente"
+    "name": "Aurélien Delamarre"
   },
   "questions": {
     "title": "Preguntas de Ejemplo",
@@ -185,70 +169,14 @@
   },
   "chat": {
     "placeholder": "Escribe tu mensaje aquí...",
-    "placeholderOffline": "Conexión perdida - por favor espera...",
-    "send": "Enviar",
-    "clear": "Limpiar Chat",
     "thinking": "Pensando...",
     "viewThinking": "Ver cadena de pensamiento",
     "totalTokens": "Tokens totales utilizados",
-    "coordinator": "Coordinador",
-    "agents": "Agentes",
-    "errorSending": "Error al enviar mensaje",
-    "connectionLost": "Conexión perdida",
-    "reconnecting": "Reconectando...",
-    "connected": "Conectado",
-    "online": "En línea",
-    "offline": "Sin conexión",
-    "connectionRestored": "Conexión restaurada",
-    "ollamaServersDown": "Servidores de IA no disponibles: {servers}",
     "greeting": "¡Hola {{name}}! Soy La Nutria, su asistente inteligente de RRHH/TI. Puedo ayudarle con sus preguntas administrativas y técnicas. ¡Hágame cualquier pregunta!",
-    "emptyResponse": "El modelo devolvió una respuesta vacía. Por favor, inténtelo de nuevo.",
-    "stop": "Detener"
+    "emptyResponse": "El modelo devolvió una respuesta vacía. Por favor, inténtelo de nuevo."
   },
   "buttons": {
-    "regenerate": "Regenerar",
-    "clearChat": "Limpiar"
-  },
-  "footer": {
-    "title": "Bot Empresarial",
-    "description": "Asistente Inteligente de RRHH/IT",
-    "version": "Versión 2.1 Empresarial",
-    "support": {
-      "title": "Soporte",
-      "itHelpdesk": "IT Helpdesk: ext. 1234",
-      "hr": "RRHH: ext. 5678"
-    },
-    "security": {
-      "title": "Seguridad",
-      "gdpr": "Cumplimiento GDPR",
-      "audit": "Auditoría Automatizada"
-    },
-    "language": {
-      "title": "Idioma"
-    }
-  },
-  "errors": {
-    "initError": "No se pudo inicializar la aplicación",
-    "connectionError": "Error de conexión",
-    "serverError": "Error del servidor",
-    "timeout": "Tiempo de espera agotado - El servidor está tardando demasiado en responder. Por favor, intenta de nuevo.",
-    "networkError": "Error de red - No se puede alcanzar el servidor. Por favor, verifica tu conexión.",
-    "agentTimeout": "El agente de IA está tardando más de lo esperado en procesar tu solicitud. Esto puede deberse a una sobrecarga del servidor.",
-    "agentError": "El agente de IA encontró un error al procesar tu solicitud. Por favor, intenta reformular tu pregunta.",
-    "serverOverload": "El servidor parece estar sobrecargado. Por favor, espera un momento e intenta de nuevo.",
-    "retrying": "Reintentando solicitud... (Intento {count} de {max})",
-    "mcpUnavailable": "Los servicios de IA no están disponibles. Por favor, intenta más tarde.",
-    "servicesDegraded": "Algunos servicios no están disponibles debido a mantenimiento."
-  },
-  "security": {
-    "title": "Análisis de Seguridad",
-    "waiting": "Esperando análisis de seguridad...",
-    "clear": "Limpiar",
-    "viewDetails": "Ver JSON de Solicitud/Respuesta",
-    "checkpoint": "Checkpoint",
-    "inputLabel": "ENTRADA",
-    "outputLabel": "SALIDA (Respuesta Prisma AIRS sin filtrar)",
-    "viewInConsole": "Ver en Strata Cloud Manager"
+    "regenerate": "Regenerar"
   },
   "tools": {
     "approvalRequired": "Esta acción requiere su confirmación",
@@ -273,14 +201,9 @@
     "error": "Ocurrió un error al procesar su solicitud."
   },
   "language": {
-    "code": "es",
     "name": "Spanish",
     "nativeName": "Español",
     "dir": "ltr"
-  },
-  "theme": {
-    "switchToDarkMode": "Cambiar a modo oscuro",
-    "switchToLightMode": "Cambiar a modo claro"
   },
   "llmProvider": {
     "label": "Proveedor LLM",

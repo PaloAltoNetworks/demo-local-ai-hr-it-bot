@@ -1,36 +1,20 @@
 {
   "app": {
-    "title": "The Otter - Assistente Empresarial de RH/TI",
-    "brand": "The Otter",
-    "welcome": "Bem-vindo ao The Otter",
-    "selectLanguage": "Escolha seu idioma:"
+    "brand": "The Otter"
   },
   "phases": {
     "phase1": {
-      "label": "Uso Normal",
-      "status": "NORMAL"
+      "label": "Uso Normal"
     },
     "phase2": {
-      "label": "Uso de Risco",
-      "status": "RISCO"
+      "label": "Uso de Risco"
     },
     "phase3": {
-      "label": "Modo Protegido",
-      "status": "PROTEGIDO"
+      "label": "Modo Protegido"
     }
   },
   "userProfile": {
-    "title": "Usuário Conectado",
-    "name": "Aurélien Delamarre",
-    "role": "Engenheiro de Pré-Vendas",
-    "department": "Departamento de Vendas",
-    "email": "aurelien.delamarre@company.com"
-  },
-  "userMenu": {
-    "label": "Usuário",
-    "language": "Idioma",
-    "logout": "Sair",
-    "logoutSuccess": "Sessão encerrada com sucesso"
+    "name": "Aurélien Delamarre"
   },
   "questions": {
     "title": "Perguntas de Exemplo",
@@ -185,70 +169,14 @@
   },
   "chat": {
     "placeholder": "Digite sua mensagem aqui...",
-    "placeholderOffline": "Conexão perdida - aguarde...",
-    "send": "Enviar",
-    "clear": "Limpar Chat",
     "thinking": "Pensando...",
     "viewThinking": "Ver cadeia de pensamento",
     "totalTokens": "Total de tokens usados",
-    "coordinator": "Coordenador",
-    "agents": "Agentes",
-    "errorSending": "Erro ao enviar mensagem",
-    "connectionLost": "Conexão perdida",
-    "reconnecting": "Reconectando...",
-    "connected": "Conectado",
-    "online": "Online",
-    "offline": "Offline",
-    "connectionRestored": "Conexão restaurada",
-    "ollamaServersDown": "Servidores de IA indisponíveis: {servers}",
     "greeting": "Olá {{name}}! Eu sou A Lontra, o seu assistente inteligente de RH/TI. Posso ajudá-lo com as suas perguntas administrativas e técnicas. Faça-me qualquer pergunta!",
-    "emptyResponse": "O modelo retornou uma resposta vazia. Por favor, tente novamente.",
-    "stop": "Parar"
+    "emptyResponse": "O modelo retornou uma resposta vazia. Por favor, tente novamente."
   },
   "buttons": {
-    "regenerate": "Regenerar",
-    "clearChat": "Limpar"
-  },
-  "footer": {
-    "title": "Bot Empresarial",
-    "description": "Assistente Inteligente de RH/TI",
-    "version": "Versão 2.1 Empresarial",
-    "support": {
-      "title": "Suporte",
-      "itHelpdesk": "Helpdesk de TI: ramal 1234",
-      "hr": "RH: ramal 5678"
-    },
-    "security": {
-      "title": "Segurança",
-      "gdpr": "Conformidade LGPD/GDPR",
-      "audit": "Auditoria Automatizada"
-    },
-    "language": {
-      "title": "Idioma"
-    }
-  },
-  "errors": {
-    "initError": "Falha ao inicializar o aplicativo",
-    "connectionError": "Erro de conexão",
-    "serverError": "Erro do servidor",
-    "timeout": "Tempo limite da solicitação - O servidor está demorando muito para responder. Por favor, tente novamente.",
-    "networkError": "Erro de rede - Não foi possível alcançar o servidor. Por favor, verifique sua conexão.",
-    "agentTimeout": "O agente de IA está demorando mais do que o esperado para processar sua solicitação. Isso pode ser devido à alta carga do servidor.",
-    "agentError": "O agente de IA encontrou um erro ao processar sua solicitação. Por favor, tente reformular sua pergunta.",
-    "serverOverload": "O servidor parece estar sobrecarregado. Por favor, aguarde um momento e tente novamente.",
-    "retrying": "Tentando novamente... (Tentativa {count} de {max})",
-    "mcpUnavailable": "Os serviços de IA estão atualmente indisponíveis. Por favor, tente novamente mais tarde.",
-    "servicesDegraded": "Alguns serviços estão atualmente indisponíveis devido à manutenção."
-  },
-  "security": {
-    "title": "Análise de Segurança",
-    "waiting": "Aguardando análise de segurança...",
-    "clear": "Limpar",
-    "viewDetails": "Ver JSON de Solicitação/Resposta",
-    "checkpoint": "Checkpoint",
-    "inputLabel": "ENTRADA",
-    "outputLabel": "SAÍDA (Resposta Bruta do Prisma AIRS)",
-    "viewInConsole": "Ver no Strata Cloud Manager"
+    "regenerate": "Regenerar"
   },
   "tools": {
     "approvalRequired": "Esta ação requer a sua confirmação",
@@ -273,14 +201,9 @@
     "error": "Ocorreu um erro ao processar a sua solicitação."
   },
   "language": {
-    "code": "pt",
     "name": "Portuguese",
     "nativeName": "Português",
     "dir": "ltr"
-  },
-  "theme": {
-    "switchToDarkMode": "Mudar para modo escuro",
-    "switchToLightMode": "Mudar para modo claro"
   },
   "llmProvider": {
     "label": "Provedor LLM",
