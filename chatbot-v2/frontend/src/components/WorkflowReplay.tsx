@@ -24,9 +24,9 @@ import type { Translate } from '../context/LanguageContext';
 
 /* ---------- phase + deployment ---------- */
 export type Phase = 'phase1' | 'phase2' | 'phase3';
-export type Deploy = 'saas' | 'onprem';
+type Deploy = 'saas' | 'onprem';
 export type ProviderId = 'aws' | 'gcp' | 'azure';
-export type Routing = 'single' | 'balanced' | 'fallback';
+type Routing = 'single' | 'balanced' | 'fallback';
 
 const PHASE_VAR: Record<Phase, string> = {
   phase1: 'var(--brand-green)',
@@ -44,20 +44,28 @@ const PROVIDERS: { id: ProviderId; label: string; themed: boolean }[] = [
   { id: 'azure', label: 'Azure', themed: false },
 ];
 const providerOf = (id: ProviderId) => PROVIDERS.find((p) => p.id === id)!;
-const providerImg = (id: ProviderId, dark: boolean) => {
-  const p = providerOf(id);
-  return p.themed ? `/images/${id}-${dark ? 'dark' : 'light'}.svg` : `/images/${id}.svg`;
-};
+/**
+ * Provider logo. Themed providers ship a dark-ink file (light backgrounds) and a light-ink file (dark backgrounds), swapped by the `.dark` class.
+ */
+function ProviderImg({ id, className }: { id: ProviderId; className: string }) {
+  if (!providerOf(id).themed) return <img src={`/images/${id}.svg`} alt="" className={className} />;
+  return (
+    <>
+      <img src={`/images/${id}-dark.svg`} alt="" className={`${className} dark:hidden`} />
+      <img src={`/images/${id}-light.svg`} alt="" className={`hidden ${className} dark:block`} />
+    </>
+  );
+}
 
 /* ---------- replay script ---------- */
-export type Kind = 'req' | 'reason' | 'observe' | 'mcp' | 'extract' | 'guardrail' | 'final' | 'leak' | 'blocked';
-export type Step = { edge: string; reverse?: boolean; focus: string; label: string; kind: Kind; iter?: number; data?: unknown; sens?: boolean; detected?: string[] };
+type Kind = 'req' | 'reason' | 'observe' | 'mcp' | 'extract' | 'guardrail' | 'final' | 'leak' | 'blocked';
+type Step = { edge: string; reverse?: boolean; focus: string; label: string; kind: Kind; iter?: number; data?: unknown; sens?: boolean; detected?: string[] };
 
 /* ---------- node defs ---------- */
-type Role = 'agent' | 'gateway' | 'llm' | 'lb' | 'mcp' | 'triage' | 'cache' | 'rsapi' | 'scm' | 'blocked';
+type Role = 'agent' | 'gateway' | 'llm' | 'mcp' | 'triage' | 'rsapi' | 'scm';
 type Handles = { id: string; type: 'source' | 'target'; pos: Position; off?: string }[];
 type CardData = {
-  title: string; subtitle?: string; icon?: keyof typeof ICONS; iconColor?: string; logo?: 'mcp'; role: Role;
+  title: string; icon?: keyof typeof ICONS; iconColor?: string; logo?: 'mcp'; role: Role;
   provider?: ProviderId; failed?: boolean; w?: number;
   badge?: string; badgeTone?: 'saas' | 'onprem' | 'ctrl'; handles: Handles;
 };
@@ -84,7 +92,7 @@ const gwY = (routing: Routing) => topFor(hrCenter, gwHeightFor(routing));  // ke
 const SCM_TOP = 130;
 const RS_TOP = SCM_TOP + SCM_H + 90;
 
-const NODE_DEFS: { id: string; type: string; position: { x: number; y: number }; data: CardData; hidden?: boolean }[] = [
+const NODE_DEFS: { id: string; type: string; position: { x: number; y: number }; data: CardData }[] = [
   { id: 'agent', type: 'card', position: { x: COLX.data, y: dataY('agent') }, data: { title: 'The Otter', role: 'agent', badge: 'Agent', badgeTone: 'ctrl', w: CARD_W, handles: [H('r', 'source', Position.Right, '50%')] } },
   { id: 'hr', type: 'card', position: { x: COLX.data, y: dataY('hr') }, data: { title: 'HR tools', logo: 'mcp', role: 'mcp', badge: 'MCP', badgeTone: 'ctrl', w: CARD_W, handles: [H('r', 'target', Position.Right, '50%')] } },
   { id: 'triage', type: 'card', position: { x: COLX.data, y: dataY('triage') }, data: { title: 'IT Triage Agent', icon: 'Bot', role: 'triage', badge: 'Agent', badgeTone: 'ctrl', w: CARD_W, handles: [H('r', 'target', Position.Right, '50%'), H('snb', 'source', Position.Bottom, '50%')] } },
@@ -168,13 +176,12 @@ function CapChip({ cap, tone, flag }: { cap: Cap; tone?: string; flag?: boolean 
 
 /* ---------- custom nodes ---------- */
 function CardNode({ data }: NodeProps) {
-  const d = data as unknown as CardData & { active?: boolean; accent?: string; airsOn?: boolean; dark?: boolean };
+  const d = data as unknown as CardData & { active?: boolean; accent?: string; airsOn?: boolean };
   const Icon = d.icon ? ICONS[d.icon] : null;
   const isAirs = d.role === 'rsapi';
-  const isBlock = d.role === 'blocked';
   const isAgent = d.role === 'agent';
   const isProv = d.role === 'llm' && !!d.provider;
-  const accent = isBlock || d.failed ? RED : isAirs ? AIRS_VAR : d.accent || 'var(--foreground)';
+  const accent = d.failed ? RED : isAirs ? AIRS_VAR : d.accent || 'var(--foreground)';
   const airsDim = isAirs && !d.airsOn;
   const ring = d.failed ? RED : d.active ? accent : 'var(--border)';
   return (
@@ -187,7 +194,7 @@ function CardNode({ data }: NodeProps) {
         {isAgent ? (
           <i className="otter-icon text-[18px]" style={{ color: accent }} />
         ) : isProv ? (
-          <img src={providerImg(d.provider!, !!d.dark)} alt="" className="size-4" />
+          <ProviderImg id={d.provider!} className="size-4" />
         ) : d.logo === 'mcp' ? (
           <>
             <img src="/images/mcp-light.svg" alt="MCP" className="size-4 dark:hidden" />
@@ -199,7 +206,6 @@ function CardNode({ data }: NodeProps) {
         <div className="text-sm font-medium text-foreground">{d.title}</div>
         {d.badge && <span className="ms-auto ps-2"><Badge text={d.badge} tone={d.badgeTone} /></span>}
       </div>
-      {d.subtitle && <div className="mt-0.5 text-[11px] text-muted-foreground">{d.subtitle}</div>}
       {d.handles.map((h) => (
         <Handle key={h.id + h.type} id={h.id} type={h.type} position={h.pos} style={handleStyle(h)} />
       ))}
@@ -295,11 +301,11 @@ function RsapiNode({ data }: NodeProps) {
 }
 
 function ZoneNode({ data }: NodeProps) {
-  const d = data as unknown as { label: string; color: string; provider?: ProviderId; dark?: boolean; solid?: boolean; labelBottom?: boolean };
+  const d = data as unknown as { label: string; color: string; provider?: ProviderId; solid?: boolean; labelBottom?: boolean };
   return (
     <div className="pointer-events-none relative size-full rounded-3xl border-2" style={{ borderColor: d.color, borderStyle: d.solid ? 'solid' : 'dashed', background: `color-mix(in srgb, ${d.color} 5%, transparent)` }}>
       <span className={`absolute left-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest ${d.labelBottom ? 'bottom-2' : 'top-2'}`} style={{ color: d.color }}>
-        {d.provider && <img src={providerImg(d.provider, !!d.dark)} alt="" className="size-3.5" />}
+        {d.provider && <ProviderImg id={d.provider} className="size-3.5" />}
         {d.label}
       </span>
     </div>
@@ -387,7 +393,7 @@ const CLOUD: ProviderId[] = ['aws', 'gcp', 'azure'];
 
 // The load balancer / fallback logic lives INSIDE the AI Gateway (Portkey), so the GW fans
 // out directly to the external LLM providers — no separate LB node.
-function buildLlm(provider: ProviderId, routing: Routing, accent: string, dark: boolean, focus: string | undefined, activeEdge: string | undefined, reverse: boolean | undefined, providersY: number, activeLlmId: ProviderId, failedId: ProviderId | null, sensitive: boolean) {
+function buildLlm(provider: ProviderId, routing: Routing, accent: string, focus: string | undefined, activeEdge: string | undefined, reverse: boolean | undefined, providersY: number, activeLlmId: ProviderId, failedId: ProviderId | null, sensitive: boolean) {
   const nodes: any[] = [];
   const edges: any[] = [];
   const llmActive = focus === 'llm';
@@ -404,7 +410,7 @@ function buildLlm(provider: ProviderId, routing: Routing, accent: string, dark: 
     const failed = id === failedId;
     const isActive = id === activeId;
     nodes.push({ id, type: 'card', position: { x: xs[i], y: Y }, zIndex: 1, draggable: false, selectable: false,
-      data: { title: providerOf(id).label, role: 'llm', provider: id, failed, accent, dark, active: llmActive && isActive, w: BOX, handles: [H('t', 'target', Position.Top, '50%')] } });
+      data: { title: providerOf(id).label, role: 'llm', provider: id, failed, accent, active: llmActive && isActive, w: BOX, handles: [H('t', 'target', Position.Top, '50%')] } });
     const eid = isActive ? 'gw-llm' : `gw-${id}`;
     const liveLlm = eid === 'gw-llm' && activeEdge === 'gw-llm';
     edges.push({ id: eid, source: 'gw', target: id, sourceHandle: 'llm', targetHandle: 't', type: 'spoke',
@@ -418,14 +424,13 @@ function buildLlm(provider: ProviderId, routing: Routing, accent: string, dark: 
 }
 
 /* ---------- main flow ---------- */
-function Flow({ script, phase, deploy, provider, routing, dark, t }: { script: Step[]; phase: Phase; deploy: Deploy; provider: ProviderId; routing: Routing; dark: boolean; t?: Translate }) {
+function Flow({ script, phase, deploy, provider, routing, t }: { script: Step[]; phase: Phase; deploy: Deploy; provider: ProviderId; routing: Routing; t: Translate }) {
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const accent = PHASE_VAR[phase];
   const airsOn = phase === 'phase3';
   const step = script[idx];
-  const prov = providerOf(provider);
   const { fitView } = useReactFlow();
   const userZoomed = useRef(false);
 
@@ -487,13 +492,13 @@ function Flow({ script, phase, deploy, provider, routing, dark, t }: { script: S
   const activeLlmId: ProviderId = routing === 'balanced' ? rs.bal : routing === 'fallback' ? rs.fb : provider;
   const failedId: ProviderId | null = routing === 'fallback' && rs.fbFailed ? provider : null;
 
-  const llm = useMemo(() => buildLlm(provider, routing, accent, dark, focus, activeEdge, step?.reverse, providersY, activeLlmId, failedId, !!step?.sens), [provider, routing, accent, dark, focus, activeEdge, step, providersY, activeLlmId, failedId]);
+  const llm = useMemo(() => buildLlm(provider, routing, accent, focus, activeEdge, step?.reverse, providersY, activeLlmId, failedId, !!step?.sens), [provider, routing, accent, focus, activeEdge, step, providersY, activeLlmId, failedId]);
 
   const zones = useMemo(() => [
     { id: 'z-cust', type: 'zone', position: { x: custBox.x, y: custBox.y }, draggable: false, selectable: false, zIndex: 0, style: { width: custBox.width, height: custBox.height }, data: { label: 'APP', color: CUST_VAR } },
     { id: 'z-saas', type: 'zone', position: { x: saasBox.x, y: saasBox.y }, draggable: false, selectable: false, zIndex: 0, style: { width: saasBox.width, height: saasBox.height }, data: { label: 'PALO ALTO NETWORKS · SaaS', color: AIRS_VAR } },
     llm.zone,
-  ], [custBox, saasBox, prov, provider, dark, llm.zone]);
+  ], [custBox, saasBox, llm.zone]);
 
   // RS API detections stay lit red from the block step onward through the propagation back to the app
   const blockIdx = useMemo(() => script.findIndex((s) => s.kind === 'blocked' && s.focus === 'rsapi'), [script]);
@@ -505,11 +510,10 @@ function Flow({ script, phase, deploy, provider, routing, dark, t }: { script: S
       .map((n) => ({
         ...n, zIndex: 1, draggable: false, selectable: false,
         position: n.id === 'gw' ? { x: n.position.x, y: gwY(routing) } : n.id === 'it' ? { x: COLX.data + (CARD_W - PROV_W) / 2, y: providersY } : n.position,
-        hidden: n.hidden,
-        data: { ...n.data, accent, airsOn, active: focus === n.id, deploy, provider, routing, dark, ...(n.id === 'rsapi' ? { blocked: blockedCaps } : {}), ...(n.id === 'scm' && logActive ? { blocked: ['Logs'] } : {}) },
+        data: { ...n.data, accent, airsOn, active: focus === n.id, deploy, provider, routing, ...(n.id === 'rsapi' ? { blocked: blockedCaps } : {}), ...(n.id === 'scm' && logActive ? { blocked: ['Logs'] } : {}) },
       }));
     return [...zones, ...list, ...llm.nodes];
-  }, [zones, llm.nodes, accent, airsOn, focus, blockedCaps, logActive, deploy, provider, routing, dark]);
+  }, [zones, llm.nodes, accent, airsOn, focus, blockedCaps, logActive, deploy, provider, routing]);
 
   const edges = useMemo(() => {
     const base = EDGE_DEFS
@@ -555,14 +559,14 @@ function Flow({ script, phase, deploy, provider, routing, dark, t }: { script: S
       {/* controls */}
       <div className="absolute inset-x-0 bottom-3 flex justify-center">
         <div className="flex items-center gap-3 rounded-full border bg-card/90 px-4 py-2 shadow-lg backdrop-blur">
-          <button className="grid size-8 place-items-center rounded-full hover:bg-muted" onClick={() => { setIdx(0); setPlaying(false); }} title={t?.('workflow.restart') || 'Restart'}><RotateCcw className="size-4" /></button>
+          <button className="grid size-8 place-items-center rounded-full hover:bg-muted" onClick={() => { setIdx(0); setPlaying(false); }} title={t('workflow.restart')}><RotateCcw className="size-4" /></button>
           <button className="grid size-8 place-items-center rounded-full hover:bg-muted disabled:opacity-40" disabled={idx === 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}><SkipBack className="size-4" /></button>
           <button className="grid size-9 place-items-center rounded-full text-white" style={{ background: accent }} onClick={() => { if (idx >= script.length - 1) setIdx(0); setPlaying((p) => !p); }}>
             {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
           </button>
           <button className="grid size-8 place-items-center rounded-full hover:bg-muted disabled:opacity-40" disabled={idx >= script.length - 1} onClick={advance}><SkipForward className="size-4" /></button>
           <input type="range" min={0} max={script.length - 1} value={idx} onChange={(e) => { setPlaying(false); setIdx(Number(e.target.value)); }} className="w-56" style={{ accentColor: accent }} />
-          <span className="w-28 text-right font-mono text-[11px] text-muted-foreground">{idx + 1}/{script.length}{iters > 1 && step?.iter ? ` · ${t?.('workflow.iter') || 'iter'} ${step.iter}/${iters}` : ''}</span>
+          <span className="w-28 text-right font-mono text-[11px] text-muted-foreground">{idx + 1}/{script.length}{iters > 1 && step?.iter ? ` · ${t('workflow.iter')} ${step.iter}/${iters}` : ''}</span>
         </div>
       </div>
 
@@ -575,15 +579,15 @@ function Flow({ script, phase, deploy, provider, routing, dark, t }: { script: S
           <div className="text-sm font-medium text-foreground">{step?.label}</div>
         </div>
         <div className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{step?.kind}</div>
-        {sd?.prompt && <TextBlock label={t?.('workflow.userPrompt') || 'user prompt'} value={sd.prompt} tone={phase === 'phase2' ? RED : undefined} />}
-        {sd?.response && <TextBlock label={step?.kind === 'leak' ? (t?.('workflow.leakedResponse') || 'leaked response') : (t?.('workflow.assistantResponse') || 'assistant response')} value={sd.response} tone={step?.kind === 'leak' ? RED : undefined} />}
-        {step?.data != null && !sd?.prompt && !sd?.response && step.kind !== 'blocked' && <JsonBlock label={danger ? (t?.('workflow.extractedData') || 'extracted data') : (t?.('workflow.payload') || 'payload')} value={step.data} />}
+        {sd?.prompt && <TextBlock label={t('workflow.userPrompt')} value={sd.prompt} tone={phase === 'phase2' ? RED : undefined} />}
+        {sd?.response && <TextBlock label={step?.kind === 'leak' ? t('workflow.leakedResponse') : t('workflow.assistantResponse')} value={sd.response} tone={step?.kind === 'leak' ? RED : undefined} />}
+        {step?.data != null && !sd?.prompt && !sd?.response && step.kind !== 'blocked' && <JsonBlock label={danger ? t('workflow.extractedData') : t('workflow.payload')} value={step.data} />}
         {step?.kind === 'blocked' && bd?.detected != null && (
           <div className="mt-2 space-y-1 text-[11px]">
-            <JsonBlock label={t?.('workflow.detections') || 'detections'} value={bd.detected} />
-            {bd.reportUrl && <a className="inline-flex items-center gap-1 underline" href={bd.reportUrl} target="_blank" rel="noopener noreferrer" style={{ color: accent }}><ExternalLink className="size-3" /> {t?.('workflow.viewReport') || 'View AIRS report'}</a>}
-            {bd.traceUrl && <a className="inline-flex items-center gap-1 underline" href={bd.traceUrl} target="_blank" rel="noopener noreferrer" style={{ color: accent }}><ExternalLink className="size-3" /> {t?.('workflow.viewTrace') || 'View Portkey trace'}</a>}
-            {typeof bd.tokens === 'number' && <div className="text-muted-foreground">{t?.('workflow.tokensConsumed') || 'tokens consumed'}: {bd.tokens.toLocaleString()}</div>}
+            <JsonBlock label={t('workflow.detections')} value={bd.detected} />
+            {bd.reportUrl && <a className="inline-flex items-center gap-1 underline" href={bd.reportUrl} target="_blank" rel="noopener noreferrer" style={{ color: accent }}><ExternalLink className="size-3" /> {t('workflow.viewReport')}</a>}
+            {bd.traceUrl && <a className="inline-flex items-center gap-1 underline" href={bd.traceUrl} target="_blank" rel="noopener noreferrer" style={{ color: accent }}><ExternalLink className="size-3" /> {t('workflow.viewTrace')}</a>}
+            {typeof bd.tokens === 'number' && <div className="text-muted-foreground">{t('workflow.tokensConsumed')}: {bd.tokens.toLocaleString()}</div>}
           </div>
         )}
       </div>
@@ -592,7 +596,7 @@ function Flow({ script, phase, deploy, provider, routing, dark, t }: { script: S
 }
 
 /* ---------- segmented control (shared) ---------- */
-export function Seg<T extends string>({ value, opts, onChange }: { value: T; opts: { v: T; label: string; color?: string }[]; onChange: (v: T) => void }) {
+function Seg<T extends string>({ value, opts, onChange }: { value: T; opts: { v: T; label: string; color?: string }[]; onChange: (v: T) => void }) {
   return (
     <div className="flex gap-1">
       {opts.map((o) => (
@@ -603,108 +607,6 @@ export function Seg<T extends string>({ value, opts, onChange }: { value: T; opt
       ))}
     </div>
   );
-}
-
-/* ---------- real turn → replay script ---------- */
-const KNOWN_REFLECT = new Set(['reflect', 'reflect_reason', 'reflect_observe', 'reflect_decide', 'reflect_conclude']);
-const partToolName = (part: any): string => (part.type === 'dynamic-tool' ? part.toolName : String(part.type).slice(5));
-const isToolPart = (part: any) => part.type === 'dynamic-tool' || String(part.type || '').startsWith('tool-');
-const isReflect = (name: string) => KNOWN_REFLECT.has(name) || name?.endsWith('-reflect');
-const shortToolName = (name: string) => (name.includes('-') ? name.split('-').slice(1).join('-') : name);
-const unwrapMcpOutput = (output: any): any => {
-  if (!output || typeof output !== 'object' || !Array.isArray(output.content)) return output;
-  const text = output.content.filter((c: any) => c?.type === 'text').map((c: any) => c.text).join('\n');
-  if (!text) return output;
-  try { return JSON.parse(text); } catch { return text; }
-};
-
-// Which spoke a tool call travels: HR tools hit the HR MCP; IT/ticket tools go through the
-// IT Triage Agent, which in turn reaches ServiceNow. Everything else defaults to the triage lane.
-function toolLane(name: string): { edge: 'gw-hr' | 'gw-triage'; focus: 'hr' | 'triage'; serviceNow: boolean } {
-  const n = shortToolName(name).toLowerCase();
-  if (n.includes('employee') || n.startsWith('hr') || n.includes('_hr')) return { edge: 'gw-hr', focus: 'hr', serviceNow: false };
-  // ticket / triage / IT tools route through ServiceNow via the triage agent
-  return { edge: 'gw-triage', focus: 'triage', serviceNow: true };
-}
-
-export type BlockInfo = { detected?: Record<string, boolean>; tokens?: number; reportUrl?: string; traceUrl?: string; isResponseBlock?: boolean };
-
-// Convert a completed assistant message's real streamed parts into a replay script that
-// always crosses the AI Gateway hub. phase3 wraps each LLM boundary with an RS API assessment.
-export function buildScriptFromMessage(
-  msg: any,
-  phase: Phase,
-  opts: { prompt?: string; block?: BlockInfo } = {},
-): Step[] {
-  const parts: any[] = msg?.parts || [];
-  const isErroredToolPart = (p: any) => p.state === 'output-error' || p.state === 'input-error';
-  const chain: { kind: 'reflect' | 'tool'; part: any }[] = [];
-  for (const p of parts) {
-    if (!isToolPart(p) || isErroredToolPart(p)) continue;
-    const name = partToolName(p);
-    if (name?.startsWith('reflect_') && !KNOWN_REFLECT.has(name)) continue; // hallucinated reflect_*
-    if (isReflect(name)) { chain.push({ kind: 'reflect', part: p }); continue; }
-    if (p.state === 'approval-requested') continue; // interactive, not a transit step
-    chain.push({ kind: 'tool', part: p });
-  }
-  const text = parts.filter((p) => p.type === 'text' && p.text).map((p) => p.text).join('');
-
-  const airs = phase === 'phase3' && !opts.block;
-  const out: Step[] = [];
-  let iter = 0;
-  const assess = (label: string, what: string) => {
-    out.push({ edge: 'gw-rsapi', focus: 'rsapi', label, kind: 'guardrail', iter: iter || undefined, data: { scan: what, verdict: 'allow' } });
-    out.push({ edge: 'gw-rsapi', reverse: true, focus: 'gw', label: 'Verdict · allow', kind: 'guardrail', iter: iter || undefined });
-  };
-
-  out.push({ edge: 'agent-gw', focus: 'gw', label: 'Request received', kind: 'req', data: opts.prompt ? { prompt: opts.prompt } : undefined });
-
-  for (const it of chain) {
-    if (it.kind === 'reflect') {
-      const name = partToolName(it.part);
-      const reflectPhase = name.startsWith('reflect_') ? name.split('_')[1] : (it.part.input?.phase || 'reason');
-      const observe = reflectPhase === 'observe' || reflectPhase === 'decide';
-      const kind: Kind = observe ? 'observe' : 'reason';
-      if (!observe) iter += 1;
-      const data = { observation: it.part.input?.observation, gaps: it.part.input?.gaps, next_action: it.part.input?.next_action };
-      if (airs) assess('RS API · assess LLM request', 'prompt + context → LLM');
-      out.push({ edge: 'gw-llm', focus: 'llm', label: observe ? 'Observe · findings' : 'Reason · plan', kind, iter, data });
-      out.push({ edge: 'gw-llm', reverse: true, focus: 'gw', label: observe ? 'Answer ready' : 'LLM ready', kind, iter });
-      if (airs) assess('RS API · assess LLM output', 'LLM output');
-    } else {
-      const name = partToolName(it.part);
-      const short = shortToolName(name);
-      const lane = toolLane(name);
-      const input = it.part.input;
-      const output = unwrapMcpOutput(it.part.output);
-      out.push({ edge: lane.edge, focus: lane.focus, label: `${lane.focus === 'hr' ? 'HR tools' : 'IT Triage'} · ${short}`, kind: 'mcp', iter: iter || undefined, data: input });
-      if (lane.serviceNow) {
-        out.push({ edge: 'triage-it', focus: 'it', label: `ServiceNow · ${short}`, kind: 'mcp', iter: iter || undefined, data: input });
-        out.push({ edge: 'triage-it', reverse: true, focus: 'triage', label: 'ServiceNow → Triage', kind: 'mcp', iter: iter || undefined, data: output });
-      }
-      out.push({ edge: lane.edge, reverse: true, focus: 'gw', label: `${short} returned`, kind: 'mcp', iter: iter || undefined, data: output });
-    }
-  }
-
-  out.push({ edge: 'agent-gw', reverse: true, focus: 'agent', label: 'Response delivered', kind: 'final', data: text ? { response: text } : undefined });
-  return out;
-}
-
-// Build a block script for a phase3 guardrail_violation turn: the RS API catches the violation
-// and the refusal propagates GW → Otter, with the incident logged to SCM.
-export function buildBlockScript(block: BlockInfo, opts: { prompt?: string; refusal?: string } = {}): Step[] {
-  const flags = block.detected ? Object.entries(block.detected).filter(([, v]) => v).map(([k]) => k) : [];
-  const nice = flags.map((f) => (f === 'dlp' ? 'DLP' : f === 'topic_violation' ? 'Topics' : f.replace(/_/g, ' '))).map((s) => s[0].toUpperCase() + s.slice(1));
-  const blockData = { detected: block.detected, tokens: block.tokens, reportUrl: block.reportUrl, traceUrl: block.traceUrl };
-  const assessLabel = block.isResponseBlock ? 'RS API · assess LLM output' : 'RS API · assess LLM request';
-  return [
-    { edge: 'agent-gw', focus: 'gw', label: 'Request received', kind: 'req', data: opts.prompt ? { prompt: opts.prompt } : undefined },
-    { edge: 'gw-rsapi', focus: 'rsapi', label: assessLabel, kind: 'guardrail' },
-    { edge: 'gw-rsapi', reverse: true, focus: 'gw', label: 'Assessment in progress', kind: 'guardrail' },
-    { edge: 'gw-rsapi', focus: 'rsapi', label: `RS API · block (${nice.join(' · ') || 'policy'})`, kind: 'blocked', sens: true, detected: nice, data: blockData },
-    { edge: 'gw-rsapi', reverse: true, focus: 'gw', label: 'Block propagated to Gateway', kind: 'blocked', data: blockData },
-    { edge: 'agent-gw', reverse: true, focus: 'agent', label: 'The Otter shows the block to the user', kind: 'blocked', data: opts.refusal ? { response: opts.refusal } : blockData },
-  ];
 }
 
 /* ---------- curated demo scenarios (per phase, self-contained) ---------- */
@@ -801,70 +703,52 @@ const SCRIPT_BLOCKED: Step[] = [
   { edge: 'agent-gw', reverse: true, focus: 'agent', label: 'The Otter shows the block to the user', kind: 'blocked', data: { response: BLOCK_RESPONSE } },
 ];
 
-export function demoScriptFor(phase: Phase): Step[] {
+function demoScriptFor(phase: Phase): Step[] {
   if (phase === 'phase1') return SCRIPT_NORMAL;
   if (phase === 'phase2') return SCRIPT_RISKY;
   return SCRIPT_BLOCKED;   // Protected = same DLP scenario, but blocked
 }
 
-/* ---------- reusable canvas (mockup + modal share this) ---------- */
-export function WorkflowCanvas(props: { script: Step[]; phase: Phase; deploy: Deploy; provider: ProviderId; routing: Routing; dark: boolean; t?: Translate }) {
-  return (
-    <ReactFlowProvider>
-      <style>{`.react-flow__node{transition:transform 300ms cubic-bezier(0.4,0,0.2,1)}`}</style>
-      <Flow {...props} />
-    </ReactFlowProvider>
-  );
-}
-
 /* ---------- self-contained explorer (global entry point, opened from the header) ---------- */
-export default function WorkflowReplay({ initialPhase = 'phase1', initialProvider = 'aws', t }: { initialPhase?: Phase; initialProvider?: ProviderId; t?: Translate }) {
+export default function WorkflowReplay({ initialPhase = 'phase1', initialProvider = 'aws', t }: { initialPhase?: Phase; initialProvider?: ProviderId; t: Translate }) {
   const [phase, setPhase] = useState<Phase>(initialPhase);
   const provider = initialProvider;
   const [deploy, setDeploy] = useState<Deploy>('saas');
   const [routing, setRouting] = useState<Routing>('single');
-  const [dark, setDark] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const obs = new MutationObserver(() => setDark(document.documentElement.classList.contains('dark')));
-    obs.observe(document.documentElement, { attributeFilter: ['class'], attributes: true });
-    return () => obs.disconnect();
-  }, []);
-
   const script = useMemo(() => demoScriptFor(phase), [phase]);
 
   return (
     <div className={`phase${phase[5]}-active flex h-full w-full flex-col`}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-2.5">
         <Seg value={phase} onChange={setPhase} opts={[
-          { v: 'phase1', label: t?.('workflow.normal') || 'Normal', color: PHASE_VAR.phase1 },
-          { v: 'phase2', label: t?.('workflow.risky') || 'Risky', color: PHASE_VAR.phase2 },
-          { v: 'phase3', label: t?.('workflow.protected') || 'Protected', color: PHASE_VAR.phase3 },
+          { v: 'phase1', label: t('workflow.normal'), color: PHASE_VAR.phase1 },
+          { v: 'phase2', label: t('workflow.risky'), color: PHASE_VAR.phase2 },
+          { v: 'phase3', label: t('workflow.protected'), color: PHASE_VAR.phase3 },
         ]} />
         <div className="ms-auto flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t?.('workflow.gateway') || 'GW'}</span>
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('workflow.gateway')}</span>
             <Seg value={deploy} onChange={setDeploy} opts={[
-              { v: 'saas', label: t?.('workflow.saas') || 'SaaS', color: AIRS_VAR },
-              { v: 'onprem', label: t?.('workflow.onprem') || 'On-prem', color: CUST_VAR },
+              { v: 'saas', label: t('workflow.saas'), color: AIRS_VAR },
+              { v: 'onprem', label: t('workflow.onprem'), color: CUST_VAR },
             ]} />
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t?.('workflow.llm') || 'LLM'}</span>
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('workflow.llm')}</span>
             <Seg value={routing} onChange={setRouting} opts={[
-              { v: 'single', label: t?.('workflow.single') || 'Single' },
-              { v: 'balanced', label: t?.('workflow.balanced') || 'Load-balanced' },
-              { v: 'fallback', label: t?.('workflow.fallback') || 'Fallback', color: RED },
+              { v: 'single', label: t('workflow.single') },
+              { v: 'balanced', label: t('workflow.balanced') },
+              { v: 'fallback', label: t('workflow.fallback'), color: RED },
             ]} />
           </div>
         </div>
       </div>
       <div className="min-h-0 flex-1">
-        <WorkflowCanvas script={script} phase={phase} deploy={deploy} provider={provider} routing={routing} dark={dark} t={t} />
+        <ReactFlowProvider>
+          <style>{`.react-flow__node{transition:transform 300ms cubic-bezier(0.4,0,0.2,1)}`}</style>
+          <Flow script={script} phase={phase} deploy={deploy} provider={provider} routing={routing} t={t} />
+        </ReactFlowProvider>
       </div>
     </div>
   );
 }
-
-export { Flow };
