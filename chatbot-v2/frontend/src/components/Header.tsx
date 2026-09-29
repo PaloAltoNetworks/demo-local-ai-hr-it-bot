@@ -10,7 +10,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Check, Languages, SunMoon, Moon, Sun, ShieldQuestionMark, ShieldAlert, ShieldCheck, Route } from 'lucide-react';
@@ -52,45 +51,41 @@ export default function Header({ phase, setPhase, theme, setTheme, onOpenWorkflo
         <span className="text-2xl font-semibold tracking-tight">{t('app.brand')}</span>
       </div>
 
-      <TooltipProvider>
-        <nav className="flex gap-1 rounded-xl bg-secondary p-1">
-          {PHASES.map(({ id, icon: Icon, color }) => {
-            const active = phase === id;
-            return (
-              <Tooltip key={id}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setPhase(id)}
-                    aria-label={t(`phases.${id}.label`)}
-                    style={{ '--phase': color } as CSSProperties}
-                    className={`flex size-10 items-center justify-center rounded-lg border transition-colors ${
-                      active
-                        ? 'border-[var(--phase)] bg-card text-[var(--phase)] shadow-sm'
-                        : 'border-transparent text-muted-foreground hover:border-[var(--phase)] hover:text-[var(--phase)]'
-                    }`}
-                  >
-                    <Icon className="size-5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t(`phases.${id}.label`)}</TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </nav>
-      </TooltipProvider>
+      <nav className="flex gap-1 rounded-xl bg-secondary p-1">
+        {PHASES.map(({ id, icon: Icon, color }) => {
+          const active = phase === id;
+          return (
+            <Tooltip key={id}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setPhase(id)}
+                  aria-label={t(`phases.${id}.label`)}
+                  style={{ '--phase': color } as CSSProperties}
+                  className={`flex size-10 items-center justify-center rounded-lg border transition-colors ${
+                    active
+                      ? 'border-[var(--phase)] bg-card text-[var(--phase)] shadow-sm'
+                      : 'border-transparent text-muted-foreground hover:border-[var(--phase)] hover:text-[var(--phase)]'
+                  }`}
+                >
+                  <Icon className="size-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t(`phases.${id}.label`)}</TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </nav>
 
       <div className="flex items-center gap-2">
         {/* Workflow replay — opens the AI Gateway pipeline visualizer */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" className="size-10" onClick={onOpenWorkflow} aria-label={t('workflow.title')}>
-                <Route className="size-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t('workflow.title')}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon" className="size-10" onClick={onOpenWorkflow} aria-label={t('workflow.title')}>
+              <Route className="size-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('workflow.title')}</TooltipContent>
+        </Tooltip>
 
         {/* Theme — icon only when collapsed, icon + label on open */}
         <DropdownMenu>
