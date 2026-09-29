@@ -45,17 +45,12 @@ import {
 import { Persona } from '@/components/ai-elements/persona';
 import type { Provider } from '../hooks/useProviders';
 import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorEmpty,
-  ModelSelectorGroup,
-  ModelSelectorInput,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorLogo,
-  ModelSelectorName,
-  ModelSelectorTrigger,
-} from '@/components/ai-elements/model-selector';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   PromptInput,
   PromptInputBody,
@@ -130,7 +125,6 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
   const { messages, sendMessage, sendFeedback, regenerate, stop, addToolApprovalResponse, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
 
-  const [modelOpen, setModelOpen] = useState(false);
   const currentProvider = providers.find(p => p.id === provider);
   // msgId → 'up' | 'down' (chosen thumb locks via the button's disabled state)
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({});
@@ -291,34 +285,24 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
           <PromptInputFooter>
             <PromptInputTools>
               {providers.length > 0 && (
-                <ModelSelector open={modelOpen} onOpenChange={setModelOpen}>
-                  <ModelSelectorTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2" title={currentProvider?.label || t('llmProvider.label')}>
-                      {currentProvider && <ModelSelectorLogo provider={currentProvider.id} className="size-4" />}
+                      {currentProvider && <ProviderLogo provider={currentProvider.id} />}
                       <span className="text-xs font-medium">{currentProvider?.label || t('llmProvider.label')}</span>
                     </Button>
-                  </ModelSelectorTrigger>
-                  <ModelSelectorContent title={t('llmProvider.label')}>
-                    <p className="py-2 pe-10 ps-3 text-xs text-muted-foreground">{t('llmProvider.note')}</p>
-                    <ModelSelectorInput placeholder={t('llmProvider.label')} />
-                    <ModelSelectorList>
-                      <ModelSelectorEmpty>—</ModelSelectorEmpty>
-                      <ModelSelectorGroup heading={t('llmProvider.label')}>
-                        {providers.map(p => (
-                          <ModelSelectorItem
-                            key={p.id}
-                            value={`${p.id} ${p.label}`}
-                            onSelect={() => { setProvider(p.id); setModelOpen(false); }}
-                          >
-                            <ModelSelectorLogo provider={p.id} />
-                            <ModelSelectorName>{p.label}</ModelSelectorName>
-                            {p.id === provider && <Check className="ms-auto size-4 text-primary" />}
-                          </ModelSelectorItem>
-                        ))}
-                      </ModelSelectorGroup>
-                    </ModelSelectorList>
-                  </ModelSelectorContent>
-                </ModelSelector>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-w-72">
+                    <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{t('llmProvider.note')}</DropdownMenuLabel>
+                    {providers.map(p => (
+                      <DropdownMenuItem key={p.id} onClick={() => setProvider(p.id)}>
+                        <ProviderLogo provider={p.id} />
+                        <span>{p.label}</span>
+                        {p.id === provider && <Check className="ms-auto size-4 text-primary" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               {sessionUsage.totalTokens > 0 && (
                 <Context maxTokens={CONTEXT_WINDOW} usedTokens={sessionUsage.totalTokens} usage={sessionUsage}>
@@ -349,6 +333,21 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
       </div>
     </section>
   );
+}
+
+/**
+ * Self-hosted provider logos. AWS ships a dark-ink and a light-ink file, swapped by the `.dark` class.
+ */
+function ProviderLogo({ provider }: { provider: string }) {
+  if (provider === 'aws') {
+    return (
+      <>
+        <img src="/images/aws-dark.svg" alt="aws logo" className="size-4 dark:hidden" />
+        <img src="/images/aws-light.svg" alt="aws logo" className="hidden size-4 dark:inline-block" />
+      </>
+    );
+  }
+  return <img src={`/images/${provider}.svg`} alt={`${provider} logo`} className="size-4" />;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
