@@ -72,6 +72,7 @@ import {
   RefreshCw,
   TriangleAlert,
   ExternalLink,
+  Route,
 } from 'lucide-react';
 
 // Estimated model context window — drives the Context usage ring (Claude-class).
@@ -319,10 +320,13 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
 }
 
 /**
- * Self-hosted provider logos. AWS ships a dark-ink and a light-ink file, swapped by the `.dark` class.
+ * Self-hosted provider logos keyed by the lowercased provider id. AWS ships a dark-ink and a
+ * light-ink file, swapped by the `.dark` class. Providers without a logo (the Portkey fallback
+ * chain) get a routing icon.
  */
 function ProviderLogo({ provider }: { provider: string }) {
-  if (provider === 'aws') {
+  const id = provider.toLowerCase();
+  if (id === 'aws') {
     return (
       <>
         <img src="/images/aws-dark.svg" alt="aws logo" className="size-4 dark:hidden" />
@@ -330,7 +334,10 @@ function ProviderLogo({ provider }: { provider: string }) {
       </>
     );
   }
-  return <img src={`/images/${provider}.svg`} alt={`${provider} logo`} className="size-4" />;
+  if (id === 'gcp' || id === 'azure') {
+    return <img src={`/images/${id}.svg`} alt={`${id} logo`} className="size-4" />;
+  }
+  return <Route className="size-4 text-muted-foreground" />;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
