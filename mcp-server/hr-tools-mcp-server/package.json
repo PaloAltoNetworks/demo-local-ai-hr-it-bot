@@ -10,9 +10,9 @@
     "seed-db": "node database-seed.js"
   },
   "dependencies": {
-    "sql.js": "^1.14.1",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "express": "^5.2.1"
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "express": "^5.2.1",
+    "sql.js": "^1.14.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

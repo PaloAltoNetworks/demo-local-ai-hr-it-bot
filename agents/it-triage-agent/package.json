@@ -9,12 +9,12 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^2.0.9",
-    "@ai-sdk/openai": "^4.0.9",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "ai": "^7.0.18",
+    "@ai-sdk/mcp": "^2.0.62",
+    "@ai-sdk/openai": "^4.0.81",
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "ai": "^7.0.122",
     "express": "^5.2.1",
-    "zod": "^4.4.3"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
