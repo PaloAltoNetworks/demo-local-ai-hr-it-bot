@@ -8,6 +8,10 @@ MCP (Model Context Protocol) compliant multi-agent HR/IT chatbot system. Three-t
 
 Node.js 22, Express.js 5, ES modules (`"type": "module"`), npm workspaces monorepo.
 
+## Coding Standards
+
+All code follows @docs/CODING_STANDARDS.md (JSDoc-only comments stating ground truth, ponytail simplicity rules, root-cause fixes).
+
 ## Build & Run Commands
 
 ```bash
