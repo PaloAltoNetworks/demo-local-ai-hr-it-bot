@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { FormEvent, MouseEvent } from 'react';
+import type { MouseEvent } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate } from '../context/LanguageContext';
 import { useChatContext } from '../context/ChatContext';
@@ -176,12 +176,11 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
     }
   }, [isStreaming, messages]);
 
-  const handleSubmit = (message: { text?: string }, event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (message: { text: string }) => {
     if (isStreaming) return;
-    const text = message.text?.trim();
+    const text = message.text.trim();
     if (!text) return;
     sendMessage({ text });
-    event.currentTarget.reset();
   };
 
   const handleFeedback = (msg: any, direction: number) => {
