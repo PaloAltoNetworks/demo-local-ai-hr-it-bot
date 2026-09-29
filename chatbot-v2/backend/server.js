@@ -32,6 +32,14 @@ const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai
 // per request. Guarded requests (phase3) swap to the guarded key; everything else uses default.
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const PORTKEY_API_KEY_GUARDED = process.env.PORTKEY_API_KEY_GUARDED || PORTKEY_API_KEY;
+/**
+ * Keys whose attached Portkey config is a fallback chain (AWS → GCP → Azure) routed per tier on
+ * `metadata.tier`. Portkey refuses a per-request x-portkey-config on keys that carry a default
+ * config, so the chain rides on the key like the guardrails do. The Fallback provider is only
+ * offered when PORTKEY_API_KEY_FALLBACK is set.
+ */
+const PORTKEY_API_KEY_FALLBACK = process.env.PORTKEY_API_KEY_FALLBACK || '';
+const PORTKEY_API_KEY_FALLBACK_GUARDED = process.env.PORTKEY_API_KEY_FALLBACK_GUARDED || PORTKEY_API_KEY_FALLBACK;
 const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
 const GCP_PROVIDER = process.env.PORTKEY_GCP_PROVIDER || '@vertex-prod';
 const AZURE_PROVIDER = process.env.PORTKEY_AZURE_PROVIDER || '@azure';
@@ -133,6 +141,14 @@ const PROVIDER_TIERS = {
   },
 };
 
+/**
+ * Fallback tier: the model strings are the chain's primary (AWS) targets, used for logs and
+ * pricing; the key's config overrides the model on whichever target actually serves the call.
+ */
+if (PORTKEY_API_KEY_FALLBACK) {
+  PROVIDER_TIERS.Fallback = { ...PROVIDER_TIERS.AWS, label: 'Fallback (AWS → GCP → Azure)', fallback: true };
+}
+
 // Display/fallback model id, derived from the default provider's powerful tier.
 const MODEL_ID = (PROVIDER_TIERS[DEFAULT_PROVIDER] || PROVIDER_TIERS.AWS).powerful;
 
@@ -174,7 +190,10 @@ function makeReflectTools(stepStartRef) {
 function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = '') {
   return async (url, init) => {
     const headers = new Headers(init?.headers);
-    headers.set('x-portkey-api-key', guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY);
+    const apiKey = reqCtx.tiers.fallback
+      ? (guarded ? PORTKEY_API_KEY_FALLBACK_GUARDED : PORTKEY_API_KEY_FALLBACK)
+      : (guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY);
+    headers.set('x-portkey-api-key', apiKey);
     headers.set('x-portkey-trace-id', reqCtx.traceId);
     // Every phase otherwise logs as span_name "llm", so a turn reads as N identical rows.
     // Phases run in sequence, not nested, so they stay siblings — no parent_span_id.
@@ -210,6 +229,7 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
       _user: STATIC_USER.employee_id,
       app_name: 'The Otter V2',
       model,
+      tier: model === reqCtx.tiers.fast ? 'fast' : 'powerful',
     }));
     return fetch(url, { ...init, headers });
   };
@@ -791,6 +811,7 @@ app.post('/api/chat', async (req, res) => {
       // is conversation-level (Portkey's hosted AIRS plugin does not forward a separate
       // session_id, so per-turn trace is the only alternative and it splits the session view).
       traceId: threadId,
+      tiers,
     };
     const lastMsg = req.body.messages?.at(-1);
     const lastText = lastMsg?.parts?.find(p => p.type === 'text')?.text || lastMsg?.content || '';

@@ -91,7 +91,39 @@ Both input (pre-call) and output (post-call) scanning run through the configured
 
 ### Providers
 
-`GET /api/providers` returns the configured provider tiers `{ providers: [{ id, label }], default }` (AWS, GCP, Azure). The composer's provider dropdown lists them; the fast/powerful model per tier stays server-side in `PROVIDER_TIERS`.
+`GET /api/providers` returns the configured provider tiers `{ providers: [{ id, label }], default }` (AWS, GCP, Azure, and Fallback when configured). The composer's provider dropdown lists them; the fast/powerful model per tier stays server-side in `PROVIDER_TIERS`.
+
+### Fallback provider (Portkey fallback chain)
+
+Portkey rejects a per-request `x-portkey-config` on API keys that carry a default config ("Cannot override default config set for this API key"), so the chain rides on dedicated keys, like the guardrails:
+- `PORTKEY_API_KEY_FALLBACK` — key attached to the `otter-fallback` config (phases 1–2)
+- `PORTKEY_API_KEY_FALLBACK_GUARDED` — key attached to `otter-fallback-guarded` (phase 3, same chain + AIRS guardrails)
+
+Every LLM call sends `metadata.tier` = `fast` | `powerful`; the config routes on it to a fallback chain AWS → GCP → Azure. The `Fallback` tier reuses the AWS model strings for logs and pricing; the served model comes from the config.
+
+`otter-fallback` (`otter-fallback-guarded` adds `"retry": {"attempts": 3}`, `"input_guardrails": ["pg-otter-41f75b"]`, `"output_guardrails": ["pg-otter-e1977d"]`):
+```json
+{
+  "cache": { "mode": "simple", "max_age": 3600 },
+  "strategy": {
+    "mode": "conditional",
+    "conditions": [{ "query": { "metadata.tier": { "$eq": "fast" } }, "then": "fast" }],
+    "default": "powerful"
+  },
+  "targets": [
+    { "name": "fast", "strategy": { "mode": "fallback" }, "targets": [
+      { "override_params": { "model": "@aws/eu.anthropic.claude-haiku-4-5-20251001-v1:0" } },
+      { "override_params": { "model": "@gcp/anthropic.claude-haiku-4-5" } },
+      { "override_params": { "model": "@azure/claude-haiku-4-5" } }
+    ] },
+    { "name": "powerful", "strategy": { "mode": "fallback" }, "targets": [
+      { "override_params": { "model": "@aws/global.anthropic.claude-sonnet-5-5" } },
+      { "override_params": { "model": "@gcp/anthropic.claude-sonnet-5-5" } },
+      { "override_params": { "model": "@azure/claude-haiku-4-5" } }
+    ] }
+  ]
+}
+```
 
 ### AIRS Config
 
