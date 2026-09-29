@@ -84,8 +84,9 @@ const OBSERVE_PROMPT = `You are the OBSERVE phase of a corporate assistant's ReA
 The current user's employee ID is ${STATIC_USER.employee_id}.
 
 You have just received tool results. Your ONLY job: call reflect with phase EXACTLY equal to 'observe'.
-You MUST call: reflect({ phase: 'observe', observation: '<key facts from tool results>', gaps: '<still unknown if any>', next_action: '<done or needs more tools>' })
+You MUST call: reflect({ phase: 'observe', observation: '<key facts from tool results>', gaps: '<still unknown if any>', next_action: '<done or needs more tools>', needs_more_data: <true|false> })
 The phase field MUST be 'observe' — not 'decide', not 'reason'. Only 'observe'.
+- Set needs_more_data to true ONLY when fulfilling the user's request still requires another tool call that has not been made yet (e.g. you just looked up the pending ticket and the user asked to approve it). Otherwise false.
 - Do NOT answer the user — only observe
 - Never guess or fabricate — if a tool returned nothing, say so`;
 
@@ -108,6 +109,9 @@ const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
 const GW_WORKSPACE_ID = process.env.PORTKEY_WORKSPACE_ID || '';
 const GW_DEPLOYMENT_ID = process.env.PORTKEY_DEPLOYMENT_ID || '';
 const GW_ORG_ID = process.env.PORTKEY_ORG_ID || '';
+
+/** Maximum FETCH → OBSERVE rounds per request (e.g. a lookup followed by a write). */
+const MAX_FETCH_ROUNDS = 3;
 
 // Tools that mutate state — require explicit user approval before execution
 const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
@@ -143,12 +147,13 @@ const MODEL_ID = (PROVIDER_TIERS[DEFAULT_PROVIDER] || PROVIDER_TIERS.AWS).powerf
 // Phase-locked reflect tools — instantiated per-agent so execute() can emit stepMs.
 // stepStartRef.current is set by prepareStep just before each step runs.
 function makeReflectTools(stepStartRef) {
-  const make = (phaseName) => tool({
+  const make = (phaseName, extra = {}) => tool({
     description: `Record your ${phaseName} step.`,
     inputSchema: z.object({
       observation: z.string().describe('What did you observe or decide?'),
       gaps: z.string().describe('What is still unknown?'),
       next_action: z.string().describe('What will you do next?'),
+      ...extra,
     }),
     execute: async () => {
       const stepMs = stepStartRef.current ? Date.now() - stepStartRef.current : null;
@@ -165,7 +170,10 @@ function makeReflectTools(stepStartRef) {
       return { phase: 'conclude', acknowledged: true, stepMs };
     },
   });
-  return { reflect_reason: make('reason'), reflect_observe: make('observe'), reflect_conclude: conclude };
+  const needsMoreData = {
+    needs_more_data: z.boolean().describe('True if the request still needs another data tool call (e.g. a write after a lookup)'),
+  };
+  return { reflect_reason: make('reason'), reflect_observe: make('observe', needsMoreData), reflect_conclude: conclude };
 }
 
 // Injects Portkey auth, user identity, and thread trace into every request.
@@ -221,13 +229,29 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
 const PROVIDER_PRICING_ID = { aws: 'bedrock', gcp: 'vertex-ai', azure: 'azure-ai', 'azure-openai': 'azure-openai' };
 const pricingCache = new Map(); // key: "@provider/model" → { in, out } | null
 
+/**
+ * Per-token price for a tier model from Portkey's pricing catalog.
+ *
+ * Looks up the provider catalog first. Claude models missing there (Portkey lists Haiku 4.5
+ * under `anthropic` only) fall back to the `anthropic` catalog, with the provider's region
+ * prefix, `anthropic.` namespace and Bedrock version suffix stripped.
+ * ponytail: anthropic list price, ignores the ~10% premium of regional Bedrock/Vertex
+ * endpoints; add a per-provider multiplier if exact cost matters.
+ *
+ * @param {string} tierModel Portkey model string, e.g. "@azure/claude-haiku-4-5"
+ * @returns {Promise<{ in: number, out: number }>} cents per input/output token
+ */
 async function fetchPrice(tierModel) {
   const at = tierModel.replace(/^@/, '');
   const slash = at.indexOf('/');
   const providerSlug = at.slice(0, slash);
   const model = at.slice(slash + 1);
   const pricingId = PROVIDER_PRICING_ID[providerSlug] || providerSlug;
-  const resp = await fetch(`https://api.portkey.ai/model-configs/pricing/${pricingId}/${encodeURIComponent(model)}`);
+  const lookup = (id, m) => fetch(`https://api.portkey.ai/model-configs/pricing/${id}/${encodeURIComponent(m)}`);
+  let resp = await lookup(pricingId, model);
+  if (resp.status === 404 && model.includes('claude')) {
+    resp = await lookup('anthropic', model.replace(/^(eu|us|apac|global)\./, '').replace(/^anthropic\./, '').replace(/-v\d+:\d+$/, ''));
+  }
   if (!resp.ok) throw new Error(`pricing ${resp.status}`);
   const p = await resp.json();
   return {
@@ -493,21 +517,33 @@ function normalizeError(err, modelId) {
   return summary;
 }
 
-// Build a ToolLoopAgent with prepareStep-driven phase switching.
-// Phase-locked reflect tools enforce correct phase labels — model cannot mislabel.
-// Step 0: reflect_reason  forced  (fast model, plans which data tools to call)
-// Step 1: data tools      required (fast model, executes the data fetch)
-// Step 2: reflect_observe forced  (fast model, synthesizes findings)
-// Step 3: text answer     none    (powerful model, answers directly)
-function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [], perModelUsage = {}) {
+/**
+ * Build a ToolLoopAgent with prepareStep-driven phase switching.
+ * Phase-locked reflect tools enforce correct phase labels — model cannot mislabel.
+ *
+ * - REASON  reflect_reason forced   (fast model, plans which data tools to call)
+ * - FETCH   data tools required     (fast model, executes the data fetch)
+ * - OBSERVE reflect_observe forced  (fast model, synthesizes findings, one attempt per round)
+ * - ANSWER  no tools                (powerful model, answers directly)
+ *
+ * FETCH → OBSERVE repeats up to MAX_FETCH_ROUNDS while OBSERVE reports needs_more_data,
+ * or calls a tool other than reflect_observe. On an approval continuation (priorRan holds
+ * a data tool) the loop resumes at OBSERVE and goes to ANSWER without a new round.
+ *
+ * @param {object} tiers fast/powerful model ids for the selected provider
+ * @param {object} reqCtx per-request trace context
+ * @param {object} mcpTools MCP data tools keyed by name
+ * @param {boolean} guarded route LLM calls through the guardrail config
+ * @param {string[]} approvalToolNames tools that require user approval
+ * @param {string[]} stepModels filled with the tier model used at each step number
+ * @param {Set<string>} priorRan tools already run earlier in this turn (see priorRanTools)
+ */
+function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [], stepModels = [], priorRan = new Set()) {
   const DATA_TOOL_NAMES = Object.keys(mcpTools);
 
   // Per-agent step timer — prepareStep sets .current before each LLM call,
   // reflect execute() reads it to emit stepMs.
   const stepStartRef = { current: null };
-  // Tracks which tier model the current step uses, so onStepEnd can attribute usage
-  // per model (fast vs powerful) for accurate cost.
-  const modelRef = { current: tiers.fast };
   const { reflect_reason, reflect_observe, reflect_conclude } = makeReflectTools(stepStartRef);
 
   // Full tool set: MCP data tools + reason + observe + conclude reflect variants
@@ -537,12 +573,6 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       console.log(`[react] finished in ${steps.length} steps`);
     },
     onStepEnd: (step) => {
-      if (step.usage) {
-        const m = modelRef.current;
-        const acc = perModelUsage[m] || (perModelUsage[m] = { inputTokens: 0, outputTokens: 0 });
-        acc.inputTokens += step.usage.inputTokens || 0;
-        acc.outputTokens += step.usage.outputTokens || 0;
-      }
       if (!DEBUG) return;
       const tools = step.toolCalls?.map(tc => tc.toolName).join(', ') || 'none';
       const results = step.toolResults?.map(tr =>
@@ -559,14 +589,13 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       // loop, or a bogus triage_it_request attempt would mark data as "fetched", skip FETCH,
       // and let the model fabricate a result it never obtained. A tool that ran but returned
       // an isError payload DOES count — the loop should OBSERVE and honestly relay the failure.
-      const ranTool = (name) => steps.some(s =>
+      const ranTool = (name) => priorRan.has(name) || steps.some(s =>
         s.toolResults?.some(tr =>
           tr.toolName === name && !tr.error && tr.output !== undefined
         )
       );
       const ranReason = ranTool('reflect_reason');
       const ranConclude = ranTool('reflect_conclude');
-      const ranObserve = ranTool('reflect_observe');
       const ranDataTools = DATA_TOOL_NAMES.some(ranTool);
 
       // If model concluded no data tools needed → skip straight to ANSWER.
@@ -574,7 +603,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       // empty-tools 400) — without it the model keeps calling reflect tools and never answers.
       if (ranConclude) {
         console.log(`[react] step ${stepNumber}: ANSWER (no-data shortcut) (${tiers.powerful})`);
-        modelRef.current = tiers.powerful;
+        stepModels[stepNumber] = tiers.powerful;
         return {
           model: getModel(tiers.powerful, reqCtx, guarded, false, 'answer-no-data'),
           instructions: DECIDE_PROMPT,
@@ -587,7 +616,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       // (contradictory "need data" + "no data" → two Reason cards).
       if (!ranReason && !ranDataTools) {
         console.log(`[react] step ${stepNumber}: REASON (${tiers.fast})`);
-        modelRef.current = tiers.fast;
+        stepModels[stepNumber] = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded, true, 'reason'),
           instructions: REASON_PROMPT,
@@ -599,27 +628,26 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       // FETCH: model must call at least one data tool. Skip when no data tools are
       // available (e.g. MCP gateway down) — forcing toolChoice:'required' with an empty
       // tools array makes Bedrock 400 ("toolConfig must be defined"). Fall through to ANSWER.
-      if (!ranDataTools && DATA_TOOL_NAMES.length > 0) {
+      const fetch = () => {
         console.log(`[react] step ${stepNumber}: FETCH (${tiers.fast})`);
-        modelRef.current = tiers.fast;
+        stepModels[stepNumber] = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded, false, 'fetch'),
           instructions: FETCH_PROMPT,
           activeTools: DATA_TOOL_NAMES,
           toolChoice: 'required',
         };
-      }
+      };
+      if (!ranDataTools && DATA_TOOL_NAMES.length > 0) return fetch();
 
-      // OBSERVE: one attempt after a data tool actually executed.
-      const dataStepIndex = steps.findIndex(s =>
-        s.toolResults?.some(tr =>
-          DATA_TOOL_NAMES.includes(tr.toolName) && !tr.error && tr.output !== undefined
-        )
+      const isDataStep = (s) => s.toolResults?.some(tr =>
+        DATA_TOOL_NAMES.includes(tr.toolName) && !tr.error && tr.output !== undefined
       );
-      const observeAttempted = steps.length > dataStepIndex + 1;
-      if (!ranObserve && !observeAttempted) {
+      const lastDataIdx = steps.findLastIndex(isDataStep);
+      const observeAttempted = steps.length > lastDataIdx + 1;
+      if (!observeAttempted) {
         console.log(`[react] step ${stepNumber}: OBSERVE (${tiers.fast})`);
-        modelRef.current = tiers.fast;
+        stepModels[stepNumber] = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded, false, 'observe'),
           instructions: OBSERVE_PROMPT,
@@ -628,10 +656,20 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         };
       }
 
+      const observeStep = steps[lastDataIdx + 1];
+      const observeCall = observeStep.toolCalls?.find(tc => tc.toolName === 'reflect_observe');
+      const wantsMore = observeCall
+        ? observeCall.input?.needs_more_data === true
+        : observeStep.toolCalls?.length > 0;
+      const isContinuation = DATA_TOOL_NAMES.some(n => priorRan.has(n));
+      const fetchRounds = steps.filter(isDataStep).length;
+      const fetchAttempts = steps.length - lastDataIdx - 2;
+      if (wantsMore && !isContinuation && fetchRounds < MAX_FETCH_ROUNDS && fetchAttempts < 2) return fetch();
+
       // DECIDE+ANSWER: keep the tool set defined (empty array → Bedrock 400) but forbid
       // calling any via toolChoice:'none', so the model must emit the final text answer.
       console.log(`[react] step ${stepNumber}: ANSWER (${tiers.powerful})`);
-      modelRef.current = tiers.powerful;
+      stepModels[stepNumber] = tiers.powerful;
       return {
         model: getModel(tiers.powerful, reqCtx, guarded, false, 'answer'),
         instructions: DECIDE_PROMPT,
@@ -639,6 +677,28 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       };
     },
   });
+}
+
+/**
+ * Tools that already ran (or were approved/denied) earlier in the current turn.
+ *
+ * An approval continuation re-posts the same assistant message (last role = assistant) and
+ * the SDK runs the approved tool before step 0, so the agent's `steps` start empty. This set
+ * carries the turn's phase progress into prepareStep.
+ *
+ * @param {Array} messages UI messages sent by the client
+ * @returns {Set<string>} tool names; empty unless the last message is an assistant continuation
+ */
+function priorRanTools(messages) {
+  const last = messages?.at(-1);
+  const ran = new Set();
+  if (last?.role !== 'assistant' || !Array.isArray(last.parts)) return ran;
+  for (const p of last.parts) {
+    const name = p.type === 'dynamic-tool' ? p.toolName
+      : typeof p.type === 'string' && p.type.startsWith('tool-') ? p.type.slice(5) : null;
+    if (name && ['output-available', 'approval-responded', 'output-denied'].includes(p.state)) ran.add(name);
+  }
+  return ran;
 }
 
 // Normalize approval-responded parts so convertToModelMessages doesn't crash.
@@ -713,6 +773,43 @@ function trimHistoryToolOutputs(messages) {
   });
 }
 
+/**
+ * Per-turn token/cost meter, used as the UI stream's messageMetadata callback.
+ *
+ * Emits cumulative usage and cost on every finish-step and on finish, so a turn that ends
+ * on an error chunk (e.g. a guardrail block) still carries the tokens of its completed
+ * steps. Usage comes from the part itself and is priced per step through stepModels.
+ * `empty` is set on finish: no text was produced and the turn is not paused for approval.
+ *
+ * @param {string[]} stepModels tier model per step number of this request
+ * @param {string} traceId Portkey trace id the thumbs feedback targets
+ * @returns {({ part }: { part: object }) => object | undefined}
+ */
+function createTurnMeter(stepModels, traceId) {
+  const usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  const perModelUsage = {};
+  let step = 0;
+  let gotText = false;
+  const snapshot = () => ({ usage: { ...usage }, traceId, cost: computeCost(perModelUsage) });
+  return ({ part }) => {
+    if (part.type === 'text-delta' && part.text?.trim()) gotText = true;
+    if (part.type === 'finish-step') {
+      const u = part.usage || {};
+      const model = stepModels[step++];
+      const acc = perModelUsage[model] || (perModelUsage[model] = { inputTokens: 0, outputTokens: 0 });
+      acc.inputTokens += u.inputTokens || 0;
+      acc.outputTokens += u.outputTokens || 0;
+      usage.inputTokens += u.inputTokens || 0;
+      usage.outputTokens += u.outputTokens || 0;
+      usage.totalTokens += u.totalTokens || 0;
+      return snapshot();
+    }
+    if (part.type === 'finish') {
+      return { ...snapshot(), empty: !gotText && part.finishReason !== 'tool-calls' };
+    }
+  };
+}
+
 // AI SDK native chat endpoint — useChat on frontend consumes this automatically
 app.post('/api/chat', async (req, res) => {
   const providerId = req.body.provider || DEFAULT_PROVIDER;
@@ -746,15 +843,13 @@ app.post('/api/chat', async (req, res) => {
     );
 
     const safeMessages = trimHistoryToolOutputs(applyApprovalSafeMessages(req.body.messages));
-    // Per-model token usage → local cost (input*price_in + output*price_out).
-    const perModelUsage = {};
-    const agent = buildReactAgent(tiers, reqCtx, tools, guarded, approvalToolNames, perModelUsage);
+    const stepModels = [];
+    const priorRan = priorRanTools(safeMessages);
+    if (priorRan.size) dbg(`[chat] continuation, already ran: ${[...priorRan].join(', ')}`);
+    const agent = buildReactAgent(tiers, reqCtx, tools, guarded, approvalToolNames, stepModels, priorRan);
 
     // Warm the pricing cache for this turn's tier models (cached across requests).
     await Promise.all([ensurePrice(tiers.fast), ensurePrice(tiers.powerful)]);
-
-    // Accumulate token usage across all phases for the final metadata
-    let totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
     // Run inside mcpCtx so tools/call requests made by the agent inherit this turn's trace.
     await mcpCtx.run(reqCtx, () => pipeAgentUIStreamToResponse({
@@ -762,23 +857,7 @@ app.post('/api/chat', async (req, res) => {
       agent,
       uiMessages: safeMessages,
       onError: (err) => normalizeError(err, tiers?.fast),
-      onStepEnd: ({ usage }) => {
-        if (usage) {
-          totalUsage.inputTokens  += usage.inputTokens  || 0;
-          totalUsage.outputTokens += usage.outputTokens || 0;
-          totalUsage.totalTokens  += usage.totalTokens  || 0;
-        }
-      },
-      messageMetadata: ({ part }) => {
-        if (part.type === 'finish') {
-          return {
-            usage: totalUsage,
-            empty: totalUsage.outputTokens === 0,
-            traceId: reqCtx.traceId,
-            cost: computeCost(perModelUsage),
-          };
-        }
-      },
+      messageMetadata: createTurnMeter(stepModels, reqCtx.traceId),
     }));
   } catch (err) {
     console.error(`[chat] ${err.message}`);
