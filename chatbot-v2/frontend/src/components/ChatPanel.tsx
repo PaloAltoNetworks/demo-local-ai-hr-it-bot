@@ -246,7 +246,7 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
 
                   {msg.metadata?.empty && (
                     <div className="flex flex-wrap items-center gap-2 text-sm italic text-muted-foreground">
-                      <TriangleAlert className="size-4 text-[color:var(--brand-orange)]" />
+                      <TriangleAlert className="size-4 text-brand-orange" />
                       {t('chat.emptyResponse')}
                       <Button variant="outline" size="sm" onClick={() => regenerate({ messageId: msg.id })}>
                         <RefreshCw className="size-3.5" /> {t('buttons.regenerate')}
@@ -854,7 +854,7 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
             tooltip={t('feedback.notHelpful')}
             label="Dislike"
             disabled={feedback === 'down'}
-            className={feedback === 'down' ? 'text-[color:var(--brand-orange)]' : ''}
+            className={feedback === 'down' ? 'text-brand-orange' : ''}
             onClick={() => onFeedback(msg, -1)}
           >
             <ThumbsDown className="size-3.5" fill={feedback === 'down' ? 'currentColor' : 'none'} />
@@ -939,7 +939,7 @@ function StreamError({ error, airsConfig, t, onRetry }: { error: any; airsConfig
       <MessageContent>
         <div className="space-y-2 rounded-lg border p-3 text-sm" style={{ borderColor: 'color-mix(in srgb, var(--brand-orange) 30%, transparent)', background: 'color-mix(in srgb, var(--brand-orange) 8%, transparent)' }}>
           <div className="flex items-start gap-2">
-            <TriangleAlert className="mt-0.5 size-4 text-[color:var(--brand-orange)]" />
+            <TriangleAlert className="mt-0.5 size-4 text-brand-orange" />
             <p>{error?.message || t('guardrail.error')}</p>
           </div>
           {onRetry && (

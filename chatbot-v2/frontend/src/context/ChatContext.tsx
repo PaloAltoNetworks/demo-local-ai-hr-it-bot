@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useMemo, useRef } from 'react';
+import { createContext, useContext, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
@@ -67,12 +67,8 @@ export function ChatProvider({ provider, phase, children }: { provider: string; 
   }, [chat.messages]);
 
   // Parse the error string from the SSE stream into a structured object once.
-  const lastRawError = useRef<any>(null);
-  const lastParsedError = useRef<any>(null);
   const parsedError = useMemo(() => {
     if (!chat.error) return null;
-    if (chat.error === lastRawError.current) return lastParsedError.current;
-    lastRawError.current = chat.error;
     const msg = chat.error.message || String(chat.error);
 
     // 1. Embedded JSON — guardrail detail lives in provider_specific_fields.error
@@ -83,8 +79,7 @@ export function ChatProvider({ provider, phase, children }: { provider: string; 
       if (!data.tr_id) data.tr_id = threadId;
       if (!data.message) data.message = outer.message;
       if (outer.guardrail_mode) data.guardrail_mode = outer.guardrail_mode;
-      lastParsedError.current = data;
-      return lastParsedError.current;
+      return data;
     } catch { /* not JSON */ }
 
     // 2. Plain text guardrail blocks
@@ -92,7 +87,7 @@ export function ChatProvider({ provider, phase, children }: { provider: string; 
     if (gr) {
       const isResponse = gr[1] === 'Response';
       const category = gr[3].toLowerCase();
-      lastParsedError.current = {
+      return {
         type: 'guardrail_violation',
         guardrail: gr[2],
         category,
@@ -101,12 +96,10 @@ export function ChatProvider({ provider, phase, children }: { provider: string; 
         isResponseBlock: isResponse,
         detected: { [category]: true },
       };
-      return lastParsedError.current;
     }
 
     // 3. Generic error
-    lastParsedError.current = { type: 'error', message: msg };
-    return lastParsedError.current;
+    return { type: 'error', message: msg };
   }, [chat.error]);
 
   const wrappedSendMessage = useCallback((opts: any) => {
