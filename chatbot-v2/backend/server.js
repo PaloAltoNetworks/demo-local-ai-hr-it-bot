@@ -1,23 +1,19 @@
 /**
  * Chatbot V2 — AI SDK Native Backend
- * Uses streamText + pipeUIMessageStreamToResponse (AI SDK's native protocol).
+ * Uses a ToolLoopAgent streamed with pipeAgentUIStreamToResponse (AI SDK's native UI protocol).
  * MCP tools fetched from Portkey MCP Gateway (one client per registered server).
  * Frontend: React + useChat (consumes the data stream automatically).
  */
 import express from 'express';
-import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import dotenv from 'dotenv';
-import { ToolLoopAgent, streamText, generateText, createUIMessageStream, createUIMessageStreamResponse, pipeAgentUIStreamToResponse, convertToModelMessages, isStepCount, tool } from 'ai';
+import { ToolLoopAgent, pipeAgentUIStreamToResponse, isStepCount, isToolUIPart, getToolName, tool } from 'ai';
 import { z } from 'zod';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
-
-dotenv.config();
 
 const DEBUG = process.env.LOG_LEVEL === 'debug';
 function dbg(msg) { if (DEBUG) console.log(msg); }
@@ -102,7 +98,6 @@ You have all the data you need. Give a clear, professional, concise answer to th
 
 const AIRS_TSG_ID = process.env.PRISMA_AIRS_TSG_ID || '';
 const AIRS_APP_ID = process.env.PRISMA_AIRS_APP_ID || '';
-const AIRS_APP_NAME = process.env.PRISMA_AIRS_APP_NAME || '';
 
 // Gateway observability deep links. Strata Cloud Manager needs the workspace and the
 // deployment (surfaced as `licenseId`) to resolve a log; standalone Portkey needs the org.
@@ -123,19 +118,16 @@ const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
 const PROVIDER_TIERS = {
   AWS: {
     label: 'AWS Bedrock',
-    icon: 'cloud',
     fast:     process.env.PORTKEY_AWS_FAST     || `${AWS_PROVIDER}/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
     powerful: process.env.PORTKEY_AWS_POWERFUL || `${AWS_PROVIDER}/eu.anthropic.claude-sonnet-5`,
   },
   GCP: {
     label: 'GCP Vertex AI',
-    icon: 'cloud',
     fast:     process.env.PORTKEY_GCP_FAST     || `${GCP_PROVIDER}/anthropic.claude-haiku-4-5`,
     powerful: process.env.PORTKEY_GCP_POWERFUL || `${GCP_PROVIDER}/anthropic.claude-sonnet-5`,
   },
   Azure: {
     label: 'Azure AI Foundry',
-    icon: 'cloud',
     fast:     process.env.PORTKEY_AZURE_FAST     || `${AZURE_PROVIDER}/claude-haiku-4-5`,
     powerful: process.env.PORTKEY_AZURE_POWERFUL || `${AZURE_PROVIDER}/claude-sonnet-5`,
   },
@@ -225,8 +217,8 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
 
 // --- Model pricing (Portkey pricing JSON → per-token cents) ---
 // cost_cents = input*request_token.price + output*response_token.price (verified: the
-// price values ARE cents-per-token). Cached at boot, refreshed daily.
-const PROVIDER_PRICING_ID = { aws: 'bedrock', gcp: 'vertex-ai', azure: 'azure-ai', 'azure-openai': 'azure-openai' };
+// price values ARE cents-per-token). Cached per process on first use.
+const PROVIDER_PRICING_ID = { aws: 'bedrock', gcp: 'vertex-ai', azure: 'azure-ai' };
 const pricingCache = new Map(); // key: "@provider/model" → { in, out } | null
 
 /**
@@ -273,13 +265,6 @@ async function ensurePrice(tierModel) {
     return null;
   }
 }
-
-// Refresh cached prices daily (Portkey updates its pricing JSON periodically).
-setInterval(() => {
-  for (const key of [...pricingCache.keys()]) {
-    fetchPrice(key).then(p => pricingCache.set(key, p)).catch(() => {});
-  }
-}, 24 * 60 * 60 * 1000).unref();
 
 // Cost breakdown in USD from per-model token usage, using cached prices.
 // Returns { total, input, output } or null if no model was priced.
@@ -352,11 +337,6 @@ async function connectMCP(url) {
   return Promise.race([connectPromise, timeoutPromise]);
 }
 
-async function initMCPClients() {
-  mcpClients = [];
-  await reconnectMissingClients();
-}
-
 // Connect any configured MCP_URL that has no live client yet (boot, or after a drop).
 // Returns the number of URLs still unconnected afterwards.
 async function reconnectMissingClients() {
@@ -425,7 +405,6 @@ async function getMCPTools() {
 // client dropped) → retry in 1min until it recovers. Swap atomically; never blank a working set.
 const TOOLS_REFRESH_HEALTHY_MS = 60 * 60 * 1000; // 1 hour
 const TOOLS_REFRESH_DEGRADED_MS = 60 * 1000;     // 1 minute
-let refreshTimer = null;
 
 async function refreshMCPTools() {
   let degraded = false;
@@ -441,14 +420,11 @@ async function refreshMCPTools() {
   }
   const delay = degraded ? TOOLS_REFRESH_DEGRADED_MS : TOOLS_REFRESH_HEALTHY_MS;
   if (degraded) console.warn(`[mcp] degraded — retrying tool refresh in ${delay / 1000}s`);
-  refreshTimer = setTimeout(refreshMCPTools, delay);
-  refreshTimer.unref();
+  setTimeout(refreshMCPTools, delay).unref();
 }
 
 // --- Middleware ---
 
-app.set('trust proxy', true);
-app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 
 // Serve React build output
@@ -467,8 +443,6 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// No-op — kept for reference, synthetic reflect now handled via reflectTool in ToolLoopAgent
-
 // Extract structured guardrail detail from Portkey's hook_results (HTTP 446).
 // Returns a JSON string the frontend parses into a guardrail_violation error, or null.
 function parseGuardrailBlock(parsed) {
@@ -480,15 +454,9 @@ function parseGuardrailBlock(parsed) {
   if (!hook) return null;
   const data = hook.checks?.find(c => c.data)?.data || {};
   const isResponse = !before && !!after;
-  const toxic = data.prompt_detection_details?.toxic_content_details?.toxic_categories
-    || data.response_detection_details?.toxic_content_details?.toxic_categories || [];
   return JSON.stringify({
     type: 'guardrail_violation',
     tr_id: data.tr_id || data.session_id || '',
-    scan_id: data.scan_id || '',
-    report_id: data.report_id || '',
-    category: data.category || '',
-    toxic_categories: toxic,
     prompt_detected: isResponse ? undefined : data.prompt_detected,
     response_detected: isResponse ? (data.response_detected || {}) : undefined,
     isResponseBlock: isResponse,
@@ -694,9 +662,7 @@ function priorRanTools(messages) {
   const ran = new Set();
   if (last?.role !== 'assistant' || !Array.isArray(last.parts)) return ran;
   for (const p of last.parts) {
-    const name = p.type === 'dynamic-tool' ? p.toolName
-      : typeof p.type === 'string' && p.type.startsWith('tool-') ? p.type.slice(5) : null;
-    if (name && ['output-available', 'approval-responded', 'output-denied'].includes(p.state)) ran.add(name);
+    if (isToolUIPart(p) && ['output-available', 'approval-responded', 'output-denied'].includes(p.state)) ran.add(getToolName(p));
   }
   return ran;
 }
@@ -762,8 +728,7 @@ function trimHistoryToolOutputs(messages) {
     if (msg.role !== 'assistant' || !Array.isArray(msg.parts) || idx === lastAssistantIdx) return msg;
     let changed = false;
     const parts = msg.parts.map(p => {
-      const isToolPart = p.type === 'dynamic-tool' || (typeof p.type === 'string' && p.type.startsWith('tool-'));
-      if (!isToolPart || p.output === undefined) return p;
+      if (!isToolUIPart(p) || p.output === undefined) return p;
       const shrunk = shrinkToolOutput(p.output);
       if (shrunk === p.output) return p;
       changed = true;
@@ -826,7 +791,6 @@ app.post('/api/chat', async (req, res) => {
       // is conversation-level (Portkey's hosted AIRS plugin does not forward a separate
       // session_id, so per-turn trace is the only alternative and it splits the session view).
       traceId: threadId,
-      userIp: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
     };
     const lastMsg = req.body.messages?.at(-1);
     const lastText = lastMsg?.parts?.find(p => p.type === 'text')?.text || lastMsg?.content || '';
@@ -837,8 +801,7 @@ app.post('/api/chat', async (req, res) => {
 
     // MCP tools only — reflect variants added inside buildReactAgent per phase.
     // v7: approval is declared on the agent (toolApproval), not the tool.
-    const tools = { ...mcpTools };
-    const approvalToolNames = Object.keys(tools).filter(key =>
+    const approvalToolNames = Object.keys(mcpTools).filter(key =>
       TOOLS_REQUIRING_APPROVAL.some(suffix => key.endsWith(suffix))
     );
 
@@ -846,7 +809,7 @@ app.post('/api/chat', async (req, res) => {
     const stepModels = [];
     const priorRan = priorRanTools(safeMessages);
     if (priorRan.size) dbg(`[chat] continuation, already ran: ${[...priorRan].join(', ')}`);
-    const agent = buildReactAgent(tiers, reqCtx, tools, guarded, approvalToolNames, stepModels, priorRan);
+    const agent = buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames, stepModels, priorRan);
 
     // Warm the pricing cache for this turn's tier models (cached across requests).
     await Promise.all([ensurePrice(tiers.fast), ensurePrice(tiers.powerful)]);
@@ -866,53 +829,10 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Available models from Portkey
-const PROVIDER_LABELS = {
-  bedrock: 'AWS', bedrock_converse: 'AWS',
-  vertex_ai: 'GCP', 'vertex-ai': 'GCP',
-  azure: 'Azure', azure_ai: 'Azure',
-  anthropic: 'Anthropic', openai: 'OpenAI', ollama: 'Ollama',
-};
-
-function inferProvider(modelId) {
-  if (!modelId) return 'unknown';
-  if (modelId.includes('bedrock') || modelId.includes('anthropic.') || modelId.includes('amazon.') || modelId.includes('eu.anthropic') || modelId.includes('us.anthropic')) return 'AWS';
-  if (modelId.includes('vertex') || modelId.includes('gemini')) return 'GCP';
-  if (modelId.includes('azure')) return 'Azure';
-  if (modelId.includes('anthropic/') || modelId.startsWith('@anthropic')) return 'Anthropic';
-  if (modelId.includes('openai') || modelId.includes('gpt')) return 'OpenAI';
-  if (modelId.includes('ollama')) return 'Ollama';
-  const prefix = modelId.replace(/^@/, '').split('/')[0];
-  return PROVIDER_LABELS[prefix] || 'unknown';
-}
-
-app.get('/api/models', async (_req, res) => {
-  try {
-    let models = [];
-    const listResp = await fetch(`${PORTKEY_BASE_URL}/models`, {
-      headers: { 'x-portkey-api-key': PORTKEY_API_KEY },
-    });
-    if (listResp.ok) {
-      const data = await listResp.json();
-      models = (data.data || []).map(m => ({
-        id: m.id,
-        name: m.slug || m.id,
-        provider: inferProvider(m.id),
-      }));
-    }
-    const defaultModel = models.some(m => m.id === MODEL_ID) ? MODEL_ID : (models[0]?.id || MODEL_ID);
-    res.json({ models, default: defaultModel });
-  } catch (err) {
-    console.warn(`Failed to fetch models: ${err.message}`);
-    res.json({ models: [{ id: MODEL_ID, name: MODEL_ID, provider: 'unknown' }], default: MODEL_ID });
-  }
-});
-
 // Providers — all configured tiers. Portkey routes @provider-slug/model via passthrough,
 // so a model need not appear in the /v1/models catalog to be callable.
 app.get('/api/providers', (_req, res) => {
-  const providers = Object.entries(PROVIDER_TIERS)
-    .map(([id, t]) => ({ id, label: t.label, fast: t.fast, powerful: t.powerful }));
+  const providers = Object.entries(PROVIDER_TIERS).map(([id, t]) => ({ id, label: t.label }));
   res.json({ providers, default: providers[0]?.id || 'AWS' });
 });
 
@@ -921,7 +841,6 @@ app.get('/api/airs-config', (_req, res) => {
   res.json({
     tsgId: AIRS_TSG_ID,
     appId: AIRS_APP_ID,
-    appName: AIRS_APP_NAME,
     baseUrl: 'https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions',
     gateway: {
       workspaceId: GW_WORKSPACE_ID,
@@ -993,9 +912,9 @@ app.get('/api/languages', (_req, res) => {
       }
     });
 
-    res.json({ languages, defaultLanguage: 'en', totalLanguages: languages.length });
+    res.json({ languages });
   } catch {
-    res.json({ languages: [{ code: 'en', name: 'English', nativeName: 'English' }], defaultLanguage: 'en', totalLanguages: 1 });
+    res.json({ languages: [{ code: 'en', name: 'English', nativeName: 'English' }] });
   }
 });
 
@@ -1007,14 +926,13 @@ app.get('/{*path}', (_req, res) => {
 // --- Startup ---
 
 async function main() {
-  await initMCPClients();
+  await reconnectMissingClients();
   // Warm the tool cache at boot so the first chat request doesn't pay the tools/list round-trips.
   await getMCPTools();
   // Kick off the self-scheduling refresh (1h healthy, 1min while any server is unreachable).
   // If a server didn't connect at boot, start on the fast cadence so it recovers quickly.
   const bootDegraded = mcpClients.length < MCP_URLS.length;
-  refreshTimer = setTimeout(refreshMCPTools, bootDegraded ? TOOLS_REFRESH_DEGRADED_MS : TOOLS_REFRESH_HEALTHY_MS);
-  refreshTimer.unref();
+  setTimeout(refreshMCPTools, bootDegraded ? TOOLS_REFRESH_DEGRADED_MS : TOOLS_REFRESH_HEALTHY_MS).unref();
 
   app.listen(PORT, () => {
     console.log(`Chatbot V2 running on http://localhost:${PORT}`);

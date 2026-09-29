@@ -89,19 +89,13 @@ Example config attached to the guarded key (retry + cache + AIRS input/output ho
 
 Both input (pre-call) and output (post-call) scanning run through the configured Prisma AIRS profile.
 
-### Model Discovery
+### Providers
 
-`GET /api/models` fetches available models from Portkey's `/v1/models` endpoint and maps provider labels:
-- `bedrock` → AWS
-- `vertex` / `gemini` → GCP
-- `azure` → Azure
-- `anthropic` → Anthropic, `openai` → OpenAI, `ollama` → Ollama
-
-Returns `{ models: [{ id, name, provider }], default: MODEL_ID }`.
+`GET /api/providers` returns the configured provider tiers `{ providers: [{ id, label }], default }` (AWS, GCP, Azure). The composer's provider dropdown lists them; the fast/powerful model per tier stays server-side in `PROVIDER_TIERS`.
 
 ### AIRS Config
 
-`GET /api/airs-config` returns `{ tsgId, appId, appName, baseUrl }` for building Strata Cloud Manager report links in the frontend. The link opens the **AI-session** view (last segment is the literal source `Portkey`):
+`GET /api/airs-config` returns `{ tsgId, appId, baseUrl, gateway }` for building Strata Cloud Manager report links in the frontend. The link opens the **AI-session** view (last segment is the literal source `Portkey`):
 ```
 {baseUrl}/{tr_id}/{appId}/Portkey
 ```
@@ -114,7 +108,7 @@ Portkey's hosted PANW AIRS plugin (`plugins/panw-prisma-airs/intercept.ts`) send
 ### Other Endpoints
 - `GET /health` — service health with MCP status
 - `GET /api/translations/:language` — locale JSON for a language
-- `GET /api/languages` — available language codes
+- `GET /api/languages` — `{ languages: [{ code, name, nativeName }] }`
 - `GET /{*path}` — SPA fallback serving React build
 
 ---
@@ -180,7 +174,6 @@ LanguageProvider (context: t, language, setLanguage, languages)
     ├── Header
     │   ├── Brand (otter icon + t('app.brand'))
     │   ├── PhaseNav (3 buttons, labels from t('phases.phaseN.label'))
-    │   ├── ModelSelector (provider label + model name from /api/models)
     │   └── Controls (theme toggle, language selector, user chip)
     ├── Main
     │   ├── Sidebar (example questions from t('questions.phaseN'))
@@ -188,7 +181,7 @@ LanguageProvider (context: t, language, setLanguage, languages)
     │       ├── PhaseDivider (shown when phase changes between messages)
     │       ├── Messages (user + bot, styled per phase)
     │       ├── GuardrailError (Phase 3 blocks with report link)
-    │       └── ChatInput (local state, sendMessage on submit)
+    │       └── PromptInput (text box, provider dropdown from /api/providers, usage ring, send/stop)
     └── ChatProvider (wraps useChat, manages phaseMap, exposes context)
 ```
 

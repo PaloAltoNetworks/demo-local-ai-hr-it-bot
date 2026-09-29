@@ -28,6 +28,6 @@ COPY --from=frontend-build --chown=chatbot:nodejs /build/dist ./frontend/dist/
 # Copy locales for i18n
 COPY --chown=chatbot:nodejs locales/ ./frontend/dist/locales/
 
-EXPOSE 3008
+EXPOSE 3018
 
 CMD ["npm", "start"]

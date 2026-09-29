@@ -9,8 +9,5 @@
     "mcp-server/it-tools-mcp-server",
     "mcp-server/hr-tools-mcp-server"
   ],
-  "scripts": {
-    "install": "npm install --workspaces"
-  },
   "private": true
 }

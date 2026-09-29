@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 export interface AirsConfig {
   tsgId?: string;
   appId?: string;
-  appName?: string;
   baseUrl?: string;
   gateway?: {
     workspaceId?: string;

@@ -6,18 +6,14 @@
   "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js"
+    "dev": "node --watch backend/server.js"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^2.0.62",
     "@ai-sdk/openai": "^4.0.81",
     "ai": "^7.0.122",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
+    "express": "^5.2.1",
+    "zod": "^4.6.5"
   },
   "keywords": [
     "chatbot",

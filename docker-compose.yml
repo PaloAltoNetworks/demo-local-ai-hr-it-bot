@@ -61,8 +61,6 @@ services:
     env_file:
       - ./.env
     restart: unless-stopped
-    volumes:
-      - ./logs/it-triage-agent:/app/logs
     networks:
       - mcp-network
     healthcheck:
@@ -84,14 +82,8 @@ services:
     env_file:
       - ./.env
     environment:
-      - CHATBOT_V2_PORT=3018
       - NODE_TLS_REJECT_UNAUTHORIZED=0
-      - PRISMA_AIRS_TSG_ID=${PRISMA_AIRS_TSG_ID:-}
-      - PRISMA_AIRS_APP_ID=${PRISMA_AIRS_APP_ID:-}
-      - PRISMA_AIRS_APP_NAME=${PRISMA_AIRS_APP_NAME:-}
     restart: unless-stopped
-    volumes:
-      - ./logs/chatbot-v2:/app/logs
     networks:
       - mcp-network
     healthcheck:
@@ -104,6 +96,3 @@ services:
 networks:
   mcp-network:
     driver: bridge
-
-volumes:
-  it-db:
