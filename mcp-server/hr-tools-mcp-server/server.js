@@ -8,10 +8,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { randomUUID } from 'crypto';
 import express from 'express';
 import { z } from 'zod';
-import { initializeLogger } from './utils/logger.js';
 import { HRService } from './service.js';
-
-initializeLogger('hr-tools-mcp-server');
 
 const PORT = process.env.PORT || 3000;
 

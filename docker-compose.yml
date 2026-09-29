@@ -15,8 +15,6 @@ services:
     env_file:
       - ./.env
     restart: unless-stopped
-    volumes:
-      - ./logs/it-tools-mcp-server:/app/logs
     networks:
       - mcp-network
     healthcheck:
@@ -38,8 +36,6 @@ services:
     env_file:
       - ./.env
     restart: unless-stopped
-    volumes:
-      - ./logs/hr-tools-mcp-server:/app/logs
     networks:
       - mcp-network
     healthcheck:
