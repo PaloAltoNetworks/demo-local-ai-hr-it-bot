@@ -39,8 +39,6 @@ import {
   ContextContentHeader,
   ContextContentBody,
   ContextContentFooter,
-  ContextInputUsage,
-  ContextOutputUsage,
 } from '@/components/ai-elements/context';
 import { Persona } from '@/components/ai-elements/persona';
 import type { Provider } from '../hooks/useProviders';
@@ -305,26 +303,11 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
                 </DropdownMenu>
               )}
               {sessionUsage.totalTokens > 0 && (
-                <Context maxTokens={CONTEXT_WINDOW} usedTokens={sessionUsage.totalTokens} usage={sessionUsage}>
-                  <ContextTrigger />
-                  <ContextContent>
-                    <ContextContentHeader />
-                    <ContextContentBody>
-                      <ContextInputUsage>
-                        <UsageLine label="Input" tokens={sessionUsage.inputTokens} usd={sessionUsage.costInput} />
-                      </ContextInputUsage>
-                      <ContextOutputUsage>
-                        <UsageLine label="Output" tokens={sessionUsage.outputTokens} usd={sessionUsage.costOutput} />
-                      </ContextOutputUsage>
-                    </ContextContentBody>
-                    {sessionUsage.cost > 0 && (
-                      <ContextContentFooter>
-                        <span className="text-muted-foreground">{t('chat.totalTokens')}</span>
-                        <span>{fmtUSD(sessionUsage.cost)}</span>
-                      </ContextContentFooter>
-                    )}
-                  </ContextContent>
-                </Context>
+                <UsageContext
+                  usage={sessionUsage}
+                  cost={{ input: sessionUsage.costInput, output: sessionUsage.costOutput, total: sessionUsage.cost }}
+                  footerLabel={sessionUsage.cost > 0 ? t('chat.totalTokens') : undefined}
+                />
               )}
             </PromptInputTools>
             <PromptInputSubmit status={status} onStop={() => stop()} />
@@ -796,6 +779,34 @@ function UsageLine({ label, tokens, usd }: { label: string; tokens?: number; usd
   );
 }
 
+/**
+ * Context-window ring with an input/output token and cost breakdown. The footer row renders only when `footerLabel` is defined.
+ */
+function UsageContext({ usage, cost, footerLabel }: {
+  usage: { totalTokens: number; inputTokens?: number; outputTokens?: number };
+  cost?: { input?: number; output?: number; total?: number };
+  footerLabel?: string;
+}) {
+  return (
+    <Context maxTokens={CONTEXT_WINDOW} usedTokens={usage.totalTokens}>
+      <ContextTrigger />
+      <ContextContent>
+        <ContextContentHeader />
+        <ContextContentBody>
+          <UsageLine label="Input" tokens={usage.inputTokens} usd={cost?.input} />
+          <UsageLine label="Output" tokens={usage.outputTokens} usd={cost?.output} />
+        </ContextContentBody>
+        {footerLabel !== undefined && (
+          <ContextContentFooter>
+            <span className="text-muted-foreground">{footerLabel}</span>
+            <span>{fmtUSD(cost?.total)}</span>
+          </ContextContentFooter>
+        )}
+      </ContextContent>
+    </Context>
+  );
+}
+
 function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: {
   msg: any; timing?: { start: number; end?: number }; feedback?: 'up' | 'down';
   onFeedback: (msg: any, dir: number) => void; onRetry: () => void; t: Translate;
@@ -814,24 +825,7 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
   return (
     <div className="flex w-full items-center gap-3 pt-1 text-xs text-muted-foreground">
       {usage?.totalTokens > 0 && (
-        <Context maxTokens={CONTEXT_WINDOW} usedTokens={usage.totalTokens} usage={usage}>
-          <ContextTrigger />
-          <ContextContent>
-            <ContextContentHeader />
-            <ContextContentBody>
-              <ContextInputUsage>
-                <UsageLine label="Input" tokens={usage.inputTokens} usd={cost?.input} />
-              </ContextInputUsage>
-              <ContextOutputUsage>
-                <UsageLine label="Output" tokens={usage.outputTokens} usd={cost?.output} />
-              </ContextOutputUsage>
-            </ContextContentBody>
-            <ContextContentFooter>
-              <span className="text-muted-foreground">{seconds ? `${seconds}s` : ''}</span>
-              <span>{fmtUSD(cost?.total)}</span>
-            </ContextContentFooter>
-          </ContextContent>
-        </Context>
+        <UsageContext usage={usage} cost={cost} footerLabel={seconds ? `${seconds}s` : ''} />
       )}
       {canFeedback && (
         <MessageActions className="ms-auto">
