@@ -448,7 +448,6 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
   const [forceEgg, setForceEgg] = useState(false);
   const [runKey, setRunKey] = useState(0);
   const [rain, setRain] = useState(false);
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const mHeld = useRef(false);
   const onTypingChange = useCallback((v: boolean) => setTyping(v), []);
   const onEggEnd = useCallback(() => setRain(true), []);
@@ -459,15 +458,12 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
     const up = (e: KeyboardEvent) => { if (e.key === 'm' || e.key === 'M') mHeld.current = false; };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
-    const obs = new MutationObserver(() => setDark(document.documentElement.classList.contains('dark')));
-    obs.observe(document.documentElement, { attributeFilter: ['class'], attributes: true });
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); obs.disconnect(); };
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
   }, []);
 
-  // Green-on-black Matrix vibe: only in phase 1 (green accent) and dark mode.
-  const matrixCtx = phase === 'phase1' && dark;
-
+  /** Green-on-black Matrix vibe: only in phase 1 (green accent) and dark mode, checked at click time. */
   const onMouseDown = () => {
+    const matrixCtx = phase === 'phase1' && document.documentElement.classList.contains('dark');
     if (!mHeld.current || !matrixCtx) return;
     setForceEgg(true);
     setRunKey(k => k + 1);
@@ -489,7 +485,7 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
             <Typewriter
               key={runKey}
               text={greeting}
-              eggPhrases={matrixCtx ? MATRIX_PHRASES : undefined}
+              eggPhrases={MATRIX_PHRASES}
               startWithEgg={forceEgg}
               eggHoldMs={EGG_HOLD_MS}
               speedMs={EGG_SPEED_MS}
