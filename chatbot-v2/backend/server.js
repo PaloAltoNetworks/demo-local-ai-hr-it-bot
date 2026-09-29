@@ -124,7 +124,7 @@ const PROVIDER_TIERS = {
   GCP: {
     label: 'GCP Vertex AI',
     fast:     process.env.PORTKEY_GCP_FAST     || `${GCP_PROVIDER}/anthropic.claude-haiku-4-5`,
-    powerful: process.env.PORTKEY_GCP_POWERFUL || `${GCP_PROVIDER}/anthropic.claude-sonnet-4-6`,
+    powerful: process.env.PORTKEY_GCP_POWERFUL || `${GCP_PROVIDER}/anthropic.claude-sonnet-5-5`,
   },
   Azure: {
     label: 'Azure AI Foundry',
@@ -632,7 +632,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       const isContinuation = DATA_TOOL_NAMES.some(n => priorRan.has(n));
       const fetchRounds = steps.filter(isDataStep).length;
       const fetchAttempts = steps.length - lastDataIdx - 2;
-      if (wantsMore && !isContinuation && fetchRounds < MAX_FETCH_ROUNDS && fetchAttempts < 2) return fetch();
+      if (wantsMore && DATA_TOOL_NAMES.length > 0 && !isContinuation && fetchRounds < MAX_FETCH_ROUNDS && fetchAttempts < 2) return fetch();
 
       // DECIDE+ANSWER: keep the tool set defined (empty array → Bedrock 400) but forbid
       // calling any via toolChoice:'none', so the model must emit the final text answer.
