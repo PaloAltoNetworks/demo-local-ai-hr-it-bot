@@ -7,19 +7,20 @@ AI-powered HR/IT chatbot using Vercel AI SDK with native MCP (Model Context Prot
 ## Architecture
 
 ```
-Chatbot V2 (port 3008)           React + Express + AI SDK (streamText)
+Chatbot V2 (port 3018)           React + Express + AI SDK (ToolLoopAgent)
        |  AI SDK + @ai-sdk/mcp   One MCP client per server, tools merged
 mcp.portkey.ai/{slug}/mcp        Portkey MCP Gateway (per-server endpoints)
-       |--- hr-tools-mcp-server  HR data (CSV) — via Cloudflare tunnel
+       |--- hr-tools-mcp-server  HR data (SQLite) — via Cloudflare tunnel
        |--- it-tools-mcp-server  IT data (SQLite) — via Cloudflare tunnel
+       |--- it-triage-agent      Agentic MCP server (own LLM loop)
        |  LLM
 api.portkey.ai/v1                OpenAI-compatible endpoint
-       |--- AWS Bedrock, GCP Vertex AI, Azure OpenAI, Anthropic, OpenAI, Ollama
+       |--- AWS Bedrock, GCP Vertex AI, Azure AI Foundry
        |  Guardrails (Phase 3)
 Portkey guardrail config         Prisma AIRS (input + output scanning)
 ```
 
-A single `streamText` call handles everything. AI SDK manages the tool calling loop (up to 10 steps). Portkey acts as the LLM gateway; its MCP Gateway exposes one endpoint per registered server, so the app opens one MCP client per server and merges the tool sets. Portkey Cloud reaches the tools servers through a Cloudflare tunnel.
+A `ToolLoopAgent` runs a phase-locked ReAct loop (reason, fetch, observe, answer; up to 10 steps). Portkey acts as the LLM gateway; its MCP Gateway exposes one endpoint per registered server, so the app opens one MCP client per server and merges the tool sets. Portkey Cloud reaches the tools servers through a Cloudflare tunnel.
 
 ### Standalone Tools Servers
 
@@ -27,25 +28,26 @@ Pure data/tools MCP servers — no LLM, no routing. They expose data directly as
 
 | Server | Port | Data Source | Tools |
 |--------|------|-------------|-------|
-| it-tools-mcp-server | 3006 | SQLite (tickets) | get_ticket, search_tickets, ticket_stats |
-| hr-tools-mcp-server | 3007 | CSV (employees) | get_employee, search_employees, get_direct_reports |
+| it-tools-mcp-server | 3016 | SQLite (tickets, assets) | get_ticket, get_tickets_by_employee, create_ticket, update_ticket_status, get_employee_assets |
+| hr-tools-mcp-server | 3017 | SQLite (employees) | get_employee, search_employees, get_direct_reports |
 
-Transports: Streamable HTTP (`POST /mcp`) and SSE (`GET /sse` + `POST /messages`).
+Transport: Streamable HTTP (`POST/GET/DELETE /mcp`, stateful sessions). Tool arguments are validated against zod schemas (ID formats, email, lengths) before any handler runs.
 
 ### Service Ports
 
 | Service | Port | Description |
 |---------|------|-------------|
-| it-tools-mcp-server | 3006 | Standalone IT tools |
-| hr-tools-mcp-server | 3007 | Standalone HR tools |
-| chatbot-v2 | 3008 | Web UI + API |
+| it-tools-mcp-server | 3016 | Standalone IT tools |
+| hr-tools-mcp-server | 3017 | Standalone HR tools |
+| chatbot-v2 | 3018 | Web UI + API |
+| it-triage-agent | 3019 | Agentic IT triage (MCP) |
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js 22
+- Node.js 24
 - Docker & Docker Compose
 - Portkey account (API key), provider integrations, guardrail config
 - Tools servers registered in the Portkey MCP Gateway (exposed via Cloudflare tunnel)
@@ -64,10 +66,10 @@ cp .env.example .env
 docker compose up -d
 
 # Verify
-curl http://localhost:3008/health
+curl http://localhost:3018/health
 ```
 
-Open `http://localhost:3008` in a browser. The 3-phase demo:
+Open `http://localhost:3018` in a browser. The 3-phase demo:
 - **Phase 1** (green) — Normal HR/IT queries
 - **Phase 2** (red) — Risky/attack prompts
 - **Phase 3** (blue) — Guardrails enforced via Portkey
@@ -119,12 +121,12 @@ React context `LanguageProvider` with `t('key')` interpolation. Language persist
 
 | Component | Stack |
 |-----------|-------|
-| Runtime | Node.js 22, ES modules, npm workspaces |
-| Frontend | React 19, Vite, @ai-sdk/react v3 |
-| Backend | Express 5, AI SDK v6 (streamText, convertToModelMessages, stepCountIs) |
+| Runtime | Node.js 24, ES modules, npm workspaces |
+| Frontend | React 19, Vite, Tailwind 4, AI Elements, @ai-sdk/react |
+| Backend | Express 5, AI SDK v7 (ToolLoopAgent, pipeAgentUIStreamToResponse, isStepCount) |
 | MCP | @ai-sdk/mcp (native tool calling via Portkey MCP Gateway, one client per server) |
 | LLM | @ai-sdk/openai pointing at Portkey api.portkey.ai/v1 |
-| Data | CSV (HR), SQLite via sql.js (IT) |
+| Data | SQLite via node:sqlite (HR, IT) |
 | Containers | Docker Compose |
 
 ---
@@ -145,9 +147,10 @@ docker compose up chatbot-v2 --build -d
 docker compose logs -f chatbot-v2
 
 # Health checks
-curl http://localhost:3008/health
-curl http://localhost:3006/health          # IT tools
-curl http://localhost:3007/health          # HR tools
+curl http://localhost:3018/health
+curl http://localhost:3016/health          # IT tools
+curl http://localhost:3017/health          # HR tools
+curl http://localhost:3019/health          # IT triage agent
 ```
 
 ---
@@ -158,4 +161,4 @@ curl http://localhost:3007/health          # HR tools
 
 ---
 
-**Last Updated**: March 13, 2026
+**Last Updated**: September 29, 2026

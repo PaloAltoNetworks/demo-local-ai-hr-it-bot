@@ -259,7 +259,7 @@ agents/it-triage-agent/
 - `PORTKEY_MCP_HR_SLUG` / `PORTKEY_MCP_IT_SLUG` — Per-server MCP slugs
 - `PRISMA_AIRS_TSG_ID` — Strata Cloud Manager tenant ID (for report links)
 - `PRISMA_AIRS_APP_ID` — AIRS application ID (for report links)
-- `CHATBOT_V2_PORT` — Server port (default 3008)
+- `CHATBOT_V2_PORT` — Server port (default 3018)
 
 **IT Triage Agent**:
 - `PORTKEY_BASE_URL` — Portkey gateway URL (for LLM calls via `/v1`)
@@ -391,7 +391,7 @@ A standalone MCP server that wraps a `ToolLoopAgent` with its own LLM. From the 
 
 **Scope**:
 - [x] Create `agents/it-triage-agent/` as a new service:
-  - `server.js` — Express + MCP SDK server (`McpServer`), registers tools via `McpServer.tool()`, supports Streamable HTTP (`POST /mcp`) and SSE transports
+  - `server.js` — Express + MCP SDK server (`McpServer`), registers tools via `McpServer.tool()`, serves Streamable HTTP (`POST/GET/DELETE /mcp`); `employee_id` is pinned to `EMP-NNN` because it is interpolated into the agent instructions
   - `agent.js` — `ToolLoopAgent` with `instructions` (IT triage system prompt):
     - Local tools defined with `tool()` + `inputSchema`: classify severity, check SLA, assign team, check approval required
     - MCP tools via `@ai-sdk/mcp` connecting to the Portkey MCP Gateway (hr-tools, it-tools data; one client per server)

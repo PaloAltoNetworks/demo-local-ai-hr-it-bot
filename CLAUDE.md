@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MCP (Model Context Protocol) compliant multi-agent HR/IT chatbot system. Three-tier architecture: Chatbot Host (web UI + API) → MCP Gateway (intelligent routing) → Specialized MCP Agents (HR, IT, General).
+HR/IT chatbot demo on MCP (Model Context Protocol). A React + Express chatbot runs an AI SDK `ToolLoopAgent` whose data tools come from MCP servers reached through the Portkey MCP Gateway; LLM calls go through Portkey too, with Prisma AIRS guardrails in phase 3.
 
-Node.js 22, Express.js 5, ES modules (`"type": "module"`), npm workspaces monorepo.
+Node.js 24 (Docker images), Express 5, ES modules (`"type": "module"`), npm workspaces monorepo. `PRD.md` is the architecture reference.
 
 ## Coding Standards
 
@@ -15,58 +15,32 @@ All code follows @docs/CODING_STANDARDS.md (JSDoc-only comments stating ground t
 ## Build & Run Commands
 
 ```bash
-# Install all workspace dependencies
+# Install workspace dependencies (chatbot-v2 + tools servers)
 npm install
 
-# Start all services (Docker, primary workflow)
-docker compose up -d
+# Frontend deps/build (not a workspace; build from the repo root)
+npm install --prefix chatbot-v2/frontend
+npm run build --prefix chatbot-v2/frontend
 
-# Rebuild and start
+# Start all services
 docker compose up -d --build
 
-# Rebuild without cache
-docker compose build --no-cache
-
 # Start a single service
-docker compose up hr-mcp-server --build
+docker compose up -d --build chatbot-v2
 
-# View logs
-docker compose logs -f                    # all services
-docker compose logs -f mcp-gateway        # specific service
-
-# Local dev with Ollama (free)
-export OLLAMA_SERVER_URL=http://localhost:11434
-docker compose up -d
-
-# Cloud dev with AWS Bedrock
-export AWS_BEARER_TOKEN_BEDROCK=your_key
-export AWS_REGION=us-east-1
-docker compose up -d
+# Logs
+docker compose logs -f chatbot-v2
 
 # Health checks
 curl http://localhost:3016/health    # IT Tools (standalone MCP)
 curl http://localhost:3017/health    # HR Tools (standalone MCP)
 curl http://localhost:3018/health    # Chatbot V2 (AI SDK + MCP)
 curl http://localhost:3019/health    # IT Triage Agent (agentic MCP)
-
-# Seed IT ticket database
-cd mcp-server/it-mcp-server && npm run seed-db
-
-# Download frontend fonts
-cd chatbot-host && npm run download-fonts
 ```
 
-No formal test framework is configured. Testing is manual via curl and the web UI at `http://localhost:3002`.
+No formal test framework is configured. Testing is manual via curl and the web UI at `http://localhost:3018`.
 
 ## Architecture
-
-```
-Chatbot Host (port 3002)         Frontend (vanilla JS) + Express API
-       ↓ HTTP
-MCP Gateway (port 3001)          Coordinator routing, LLM abstraction, Prisma AIRS security
-       ↓ MCP (JSON-RPC 2.0)
-MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
-```
 
 ### Service Ports
 | Service | Host Port | Internal Port |
@@ -77,87 +51,53 @@ MCP Agents (ports 3003-3005)     HR (CSV), IT (SQLite), General (knowledge base)
 | it-triage-agent | 3019 | 3000 |
 
 ### Workspace Layout
-- `utils/` — Shared: logger (Winston), LLM provider factory (Vercel AI SDK), i18n (i18next)
-- `chatbot-host/` — Web UI (vanilla JS/CSS/HTML) + Express backend with session management and MCP client
-- `mcp-gateway/` — MCP protocol server, `coordinator.js` (LLM-based intelligent routing, agent registry), `prisma-airs.js` (optional security)
-- `mcp-server/shared/` — Base classes: `MCPAgentBase`, `ResourceManager`, `CoordinatorClient`, `TransportManager`, `QueryProcessor`
-- `mcp-server/hr-mcp-server/` — HR agent, data source: `employees.csv`
-- `mcp-server/it-mcp-server/` — IT agent, data source: SQLite via sql.js (`ticket-db.js`)
-- `mcp-server/general-mcp-server/` — General/fallback agent, built-in policy knowledge base
-- `mcp-server/it-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes IT ticket DB for external LLM hosts
-- `mcp-server/hr-tools-mcp-server/` — Standalone pure data/tools MCP server (no LLM, no coordinator), exposes HR employee DB for external LLM hosts
-- `chatbot-v2/` — AI SDK chatbot host with native MCP tool calling, connects directly to standalone tools servers (no coordinator/gateway needed)
-- `agents/it-triage-agent/` — Agentic MCP server: MCP on the outside (registers with the Portkey MCP Gateway), `ToolLoopAgent` on the inside (own LLM, local business logic tools + MCP data tools via Portkey)
-
-### Agent Pattern
-Each agent in `mcp-server/{name}-mcp-server/` follows the same structure:
-1. `config.js` — Agent metadata, LLM params, system prompt, routing keywords
-2. `service.js` — Data loading and querying logic
-3. `server.js` — Extends `MCPAgentBase`, registers MCP tools/resources, starts HTTP server
-
-To create a new agent: copy an existing agent directory, update `config.js`/`service.js`, add a new service block in `docker-compose.yml` with a unique `AGENT_NAME` build arg.
+- `chatbot-v2/` — `backend/server.js` (Express + AI SDK agent, one MCP client per Portkey MCP server) and `frontend/` (React 19, Vite, Tailwind 4, shadcn + vendored AI Elements)
+- `mcp-server/it-tools-mcp-server/` — Standalone data/tools MCP server (no LLM), IT tickets and assets in `tickets.db`
+- `mcp-server/hr-tools-mcp-server/` — Standalone data/tools MCP server (no LLM), HR employees in `employees.db`
+- `agents/it-triage-agent/` — Agentic MCP server: MCP on the outside, `ToolLoopAgent` on the inside
+- `locales/{lang}/frontend.json` — UI translations, copied into the chatbot image
 
 ### Standalone Tools Server Pattern
-Standalone tools servers in `mcp-server/{name}-tools-mcp-server/` are pure data/tools MCP servers — no LLM, no coordinator registration. They expose data directly as MCP tools for external LLM hosts (e.g. Claude Desktop, Cursor, Portkey) to consume. Each follows this structure:
-1. `service.js` — Data loading and querying logic (self-contained, no shared base classes)
-2. `server.js` — Express + MCP SDK server, registers tools via `McpServer`, supports both Streamable HTTP (`POST /mcp`) and SSE (`GET /sse` + `POST /messages`) transports
-3. `Dockerfile` — Own Dockerfile (not `Dockerfile.agent`), copies data files from the original agent and `utils/` for logging
-4. `package.json` — Dependencies: `@modelcontextprotocol/sdk`, `express`; no LLM or coordinator deps
+Pure data/tools MCP servers for external LLM hosts (Portkey, Claude Desktop, Cursor). Each has:
+1. `service.js` — SQL over the committed `.db` file via `node:sqlite` (parameterized queries only)
+2. `server.js` — Express + MCP SDK `McpServer`, Streamable HTTP (`POST/GET/DELETE /mcp`, stateful sessions). Tool arguments are zod schemas with format constraints (IDs, emails, lengths); the SDK rejects invalid calls before the handler runs
+3. `Dockerfile` — copies `server.js`, `service.js` and the `.db`
 
-To create a new tools server: copy `it-tools-mcp-server` or `hr-tools-mcp-server`, update `service.js`/`server.js`, add a Dockerfile and a new service block in `docker-compose.yml` with a unique host port.
+The committed `.db` files are the demo data source of truth (there is no seed script).
 
 ### Agentic MCP Server Pattern
-Agentic MCP servers in `agents/{name}/` wrap a `ToolLoopAgent` (AI SDK) inside an MCP server interface. From the outside they look like any other MCP server (registered with the Portkey MCP Gateway, expose tools via `/mcp`). On the inside, each tool invocation triggers multi-step agent reasoning with its own LLM. The agent consumes data from other MCP servers via the Portkey MCP Gateway (`mcp.portkey.ai/{slug}/mcp`, one client per server) and makes LLM calls via Portkey `api.portkey.ai/v1`. Structure:
-1. `agent.js` — `ToolLoopAgent` with local business logic tools + MCP client for data tools + LLM provider
-2. `server.js` — Express + MCP SDK server, registers high-level tools that internally invoke the agent
-3. `Dockerfile` — Own Dockerfile, copies agent source files
-4. `package.json` — Dependencies: `ai`, `@ai-sdk/mcp`, `@ai-sdk/openai`, `@modelcontextprotocol/sdk`, `express`, `zod`
+`agents/{name}/` wraps a `ToolLoopAgent` in an MCP server. From the outside it is a regular MCP server registered with the Portkey MCP Gateway; each tool call runs multi-step reasoning with its own LLM (via Portkey `api.portkey.ai/v1`) and consumes data tools from other MCP servers (Portkey MCP Gateway, or `IT_TRIAGE_MCP_URLS` for the docker network).
 
 ### Chatbot V2 (AI SDK + MCP via Portkey)
-`chatbot-v2/` is a drop-in replacement for chatbot-host + mcp-gateway. It uses Vercel AI SDK `generateText` with `@ai-sdk/mcp` for native tool calling. Portkey's MCP Gateway exposes one endpoint per registered server (no single aggregator), so the app opens one MCP client per server (HR, IT) and merges the tool sets. AI SDK handles the tool calling loop (up to 10 steps). Portkey Cloud reaches the tools servers through a Cloudflare tunnel. Architecture:
 ```
-Chatbot V2 (port 3018)           Frontend (vanilla JS) + Express + AI SDK
-       ↓ generateText + tools     @ai-sdk/mcp → one client per server, tools merged
+Chatbot V2 (port 3018)           React frontend + Express + AI SDK ToolLoopAgent
+       ↓ @ai-sdk/mcp              one client per server, tools merged
        mcp.portkey.ai/{slug}/mcp  Portkey MCP Gateway (per-server endpoints)
-       ├── hr-tools-mcp-server    HR data (CSV)   ── via Cloudflare tunnel
-       └── it-tools-mcp-server    IT data (SQLite) ── via Cloudflare tunnel
+       ├── hr-tools-mcp-server    ── via Cloudflare tunnel
+       ├── it-tools-mcp-server    ── via Cloudflare tunnel
+       └── it-triage-agent        ── via Cloudflare tunnel
        ↓ LLM
        api.portkey.ai/v1          OpenAI-compatible endpoint
 ```
-Config: `PORTKEY_BASE_URL`, `PORTKEY_API_KEY`, `PORTKEY_DEFAULT_MODEL`, `PORTKEY_MCP_BASE`, `PORTKEY_MCP_HR_SLUG`, `PORTKEY_MCP_IT_SLUG`, `PORTKEY_GUARDED_CONFIG`.
+Every `PORTKEY_MCP_*_SLUG` env var becomes an MCP client. Config: `PORTKEY_BASE_URL`, `PORTKEY_API_KEY`, `PORTKEY_API_KEY_GUARDED`, `PORTKEY_MCP_BASE`, `PORTKEY_{AWS,GCP,AZURE}_PROVIDER`, `PORTKEY_{AWS,GCP,AZURE}_{FAST,POWERFUL}`.
 
 ### LLM Provider System
-LLM calls go through Portkey Cloud (`api.portkey.ai/v1`, OpenAI-compatible) via `@ai-sdk/openai` `createOpenAI` with a custom fetch wrapper that injects `x-portkey-*` headers (auth, metadata, trace id, guardrail config). The target provider is selected via Portkey's `@provider-slug/model` model string; provider integrations (AWS Bedrock, GCP Vertex) are configured in the Portkey dashboard.
-
-Model can be configured per-role via `PORTKEY_DEFAULT_MODEL` and `IT_TRIAGE_MODEL` env vars.
-
-### MCP Protocol
-- JSON-RPC 2.0 over HTTP transport, protocol version `2025-06-18`
-- Agents register with the gateway coordinator on startup via `CoordinatorClient`
-- Resource URIs follow MCP patterns: `hr://employees/{id}/profile`, `it://tickets/{id}`
+LLM calls go through Portkey (`api.portkey.ai/v1`, or a self-hosted gateway via `PORTKEY_BASE_URL`) using `@ai-sdk/openai` `createOpenAI` with a fetch wrapper that injects `x-portkey-*` headers (auth, metadata, trace id). The target provider is selected by Portkey's `@provider-slug/model` model string; provider integrations are configured in the Portkey dashboard. Guardrails ride on the guarded API key's attached config.
 
 ### Internationalization
-- Backend: `utils/i18n.js` with `locales/{lang}/backend.json`
-- Frontend: `chatbot-host/frontend/js/i18n.js` with `locales/{lang}/frontend.json`
+- `chatbot-v2/frontend/src/context/LanguageContext.tsx` loads `/api/translations/{lang}` (from `locales/{lang}/frontend.json`)
 - Supported languages: en, fr, es, de, ja, pt, zh, ar, it
-- Default: `DEFAULT_LANGUAGE=en`
 - Always use **formal register** (vous/Sie/usted/Lei/您) in user-facing translations — this is a corporate assistant
 
 ## Environment Configuration
 
-Copy `.env.example` to `.env`. Key variables:
-- `LOG_LEVEL` — error, warn, info, debug
-- `PRISMA_AIRS_*` — Optional security integration
-
-Provider switching requires container restart. All services read from the same `.env` file via `env_file` in docker-compose.
+Copy `.env.example` to `.env`. All services read the same `.env` via `env_file` in docker-compose. Provider switching requires container restart.
 
 ## Gotchas
 
-- All services communicate via Docker `mcp-network` bridge. Use Docker hostnames (e.g., `http://mcp-gateway:3001`) in inter-service calls.
-- Agents and standalone tools servers run on internal port 3000 but are mapped to different host ports (3016-3017, 3019). Chatbot V2 runs on 3018.
-- MCP requests must include proper JSON-RPC 2.0 fields (`jsonrpc`, `id`, `method`, `params`).
-- The chatbot-host depends on all other services being healthy before starting.
-- Logs are volume-mounted to `./logs/{service-name}/` on the host.
+- Services share the Docker `mcp-network` bridge; use Docker hostnames (e.g. `http://it-tools-mcp-server:3000`) between services. `host.docker.internal` reaches host services such as a local AI gateway.
+- The chatbot's MCP traffic goes through the Portkey MCP Gateway, which reaches the tools servers registered in Portkey (Cloudflare tunnel), not necessarily the local containers.
+- MCP requests must include proper JSON-RPC 2.0 fields (`jsonrpc`, `id`, `method`, `params`) and an `mcp-session-id` after `initialize`.
 
 ## Git Workflow
 
