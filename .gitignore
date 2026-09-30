@@ -5,6 +5,7 @@ logs
 *.tsbuildinfo
 vite.config.ts.timestamp-*
 .DS_Store
+*.db
 
 # Secrets
 .env

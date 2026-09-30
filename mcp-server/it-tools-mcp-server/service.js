@@ -1,5 +1,5 @@
 /**
- * IT ticket and asset data over the committed tickets.db (node:sqlite). Writes go straight to the file.
+ * IT ticket and asset data over tickets.db, built from tickets.sql by seed.js (node:sqlite). Writes go straight to the file.
  */
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
@@ -10,7 +10,7 @@ const DB_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'tickets
 
 export class ITService {
   constructor() {
-    if (!fs.existsSync(DB_PATH)) throw new Error(`Database file not found at ${DB_PATH}`);
+    if (!fs.existsSync(DB_PATH)) throw new Error(`Database file not found at ${DB_PATH}. Run npm run seed-db first.`);
     this.db = new DatabaseSync(DB_PATH);
   }
 

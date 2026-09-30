@@ -1,5 +1,5 @@
 /**
- * HR employee data over the committed employees.db (node:sqlite), read-only.
+ * HR employee data over employees.db, built from employees.sql by seed.js (node:sqlite), read-only.
  */
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
@@ -21,7 +21,7 @@ const normalize = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLo
 
 export class HRService {
   constructor() {
-    if (!fs.existsSync(DB_PATH)) throw new Error(`Database file not found at ${DB_PATH}`);
+    if (!fs.existsSync(DB_PATH)) throw new Error(`Database file not found at ${DB_PATH}. Run npm run seed-db first.`);
     this.db = new DatabaseSync(DB_PATH, { readOnly: true });
   }
 

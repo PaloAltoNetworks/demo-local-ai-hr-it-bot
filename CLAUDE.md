@@ -52,18 +52,19 @@ No formal test framework is configured. Testing is manual via curl and the web U
 
 ### Workspace Layout
 - `chatbot-v2/` — `backend/server.js` (Express + AI SDK agent, one MCP client per Portkey MCP server) and `frontend/` (React 19, Vite, Tailwind 4, shadcn + vendored AI Elements)
-- `mcp-server/it-tools-mcp-server/` — Standalone data/tools MCP server (no LLM), IT tickets and assets in `tickets.db`
-- `mcp-server/hr-tools-mcp-server/` — Standalone data/tools MCP server (no LLM), HR employees in `employees.db`
+- `mcp-server/it-tools-mcp-server/` — Standalone data/tools MCP server (no LLM), IT tickets and assets in `tickets.sql`
+- `mcp-server/hr-tools-mcp-server/` — Standalone data/tools MCP server (no LLM), HR employees in `employees.sql`
 - `agents/it-triage-agent/` — Agentic MCP server: MCP on the outside, `ToolLoopAgent` on the inside
 - `locales/{lang}/frontend.json` — UI translations, copied into the chatbot image
 
 ### Standalone Tools Server Pattern
 Pure data/tools MCP servers for external LLM hosts (Portkey, Claude Desktop, Cursor). Each has:
-1. `service.js` — SQL over the committed `.db` file via `node:sqlite` (parameterized queries only)
+1. `service.js` — SQL over the `.db` file via `node:sqlite` (parameterized queries only)
 2. `server.js` — Express + MCP SDK `McpServer`, Streamable HTTP (`POST/GET/DELETE /mcp`, stateful sessions). Tool arguments are zod schemas with format constraints (IDs, emails, lengths); the SDK rejects invalid calls before the handler runs
-3. `Dockerfile` — copies `server.js`, `service.js` and the `.db`
+3. `seed.js` — rebuilds the `.db` from the committed `.sql` dump (runs at image build)
+4. `Dockerfile` — copies `server.js`, `service.js`, `seed.js` and the `.sql`, then runs `node seed.js`
 
-The committed `.db` files are the demo data source of truth (there is no seed script).
+The committed `.sql` dumps are the demo data source of truth; the `.db` files are build artifacts (gitignored). `npm run seed-db` in a tools server resets its local database to that clean base, and recreating the container does the same in Docker. To change the demo data, edit the `.sql`, or edit the `.db` and re-dump it with `sqlite3 tickets.db .dump` (keep the `DELETE FROM sqlite_sequence;` line before the sequence inserts).
 
 ### Agentic MCP Server Pattern
 `agents/{name}/` wraps a `ToolLoopAgent` in an MCP server. From the outside it is a regular MCP server registered with the Portkey MCP Gateway; each tool call runs multi-step reasoning with its own LLM (via Portkey `api.portkey.ai/v1`) and consumes data tools from other MCP servers (Portkey MCP Gateway, or `IT_TRIAGE_MCP_URLS` for the docker network).

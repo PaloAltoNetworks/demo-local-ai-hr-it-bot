@@ -5,7 +5,8 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed-db": "node seed.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
