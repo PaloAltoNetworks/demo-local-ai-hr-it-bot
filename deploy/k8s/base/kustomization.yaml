@@ -33,3 +33,7 @@ patches:
         value:
           allowPrivilegeEscalation: false
           capabilities: { drop: [ALL] }
+# The official Caddy binary carries the cap_net_bind_service file capability; the kernel
+# refuses to exec it when that capability is outside the container's bounding set.
+  - target: { kind: Deployment, name: caddy }
+    patch: '[{"op": "add", "path": "/spec/template/spec/containers/0/securityContext/capabilities/add", "value": ["NET_BIND_SERVICE"]}]'
