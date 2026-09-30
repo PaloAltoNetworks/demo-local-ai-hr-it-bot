@@ -52,6 +52,10 @@ module "vpc" {
 /**
  * The service CIDR is pinned because deploy/k8s/overlays/aws gives the MCP
  * services fixed ClusterIPs inside it (the AIRS gateway maps *.otter-lab.com to them).
+ *
+ * The Kubernetes version is EKS's default at creation. STANDARD support makes AWS
+ * upgrade the cluster when standard support ends, instead of moving it to the
+ * paid extended support.
  */
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
@@ -60,6 +64,7 @@ module "eks" {
   name                   = var.name
   endpoint_public_access = true
   service_ipv4_cidr      = "172.20.0.0/16"
+  upgrade_policy         = { support_type = "STANDARD" }
 
   enable_cluster_creator_admin_permissions = true
 
