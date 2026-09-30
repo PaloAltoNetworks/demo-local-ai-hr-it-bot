@@ -1,0 +1,75 @@
+# Deploys an already-published image version to one cloud's cluster. Called by
+# release.yml, or run by hand to redeploy or roll back to an older tag.
+# Only the login steps are cloud-specific; everything after them is plain kubectl/helm.
+# A new cloud adds its login steps here, its choice below, a GitHub environment of the
+# same name, deploy/k8s/overlays/<cloud> and deploy/helm/airs-gw/values-<cloud>.yaml.
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      cloud: { type: string, required: true }
+      version: { type: string, required: true }
+  workflow_dispatch:
+    inputs:
+      cloud:
+        type: choice
+        options: [aws]
+        default: aws
+      version:
+        description: Image tag already on GHCR (e.g. v0.1.1)
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.cloud }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.cloud }}
+    env:
+      CLOUD: ${{ inputs.cloud }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - if: inputs.cloud == 'aws'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - if: inputs.cloud == 'aws'
+        run: aws eks update-kubeconfig --name "${{ vars.EKS_CLUSTER }}" --region "${{ vars.AWS_REGION }}"
+
+      - name: External Secrets Operator
+        run: >
+          helm upgrade --install external-secrets external-secrets
+          --repo https://charts.external-secrets.io --version 2.11.0
+          --namespace external-secrets --create-namespace --wait
+
+      - name: Demo services, tunnel and secrets
+        working-directory: deploy/k8s/overlays/${{ inputs.cloud }}
+        run: |
+          for svc in chatbot-v2 hr-tools-mcp-server it-tools-mcp-server it-triage-agent; do
+            kustomize edit set image "ghcr.io/${GITHUB_REPOSITORY,,}/$svc:$VERSION"
+          done
+          kubectl apply -k .
+          kubectl -n hr-it-bot wait externalsecret --all --for=condition=Ready --timeout=2m
+
+      - name: AIRS gateway
+        run: >
+          helm upgrade --install airs-gw airs-gw
+          --repo https://portkey-ai.github.io/airs-gw-helm --version 1.2.0
+          --namespace hr-it-bot
+          -f deploy/helm/airs-gw/values.yaml -f "deploy/helm/airs-gw/values-$CLOUD.yaml"
+          --wait --timeout 5m
+
+      - name: Rollout
+        run: |
+          for d in it-tools hr-tools it-triage chatbot-v2 cloudflared; do
+            kubectl -n hr-it-bot rollout status "deploy/$d" --timeout=5m
+          done
