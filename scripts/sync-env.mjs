@@ -35,7 +35,8 @@ const out = example.map((l) => {
 const exampleKeys = new Set(example.filter((l) => l.key).map((l) => l.key));
 const extra = [...envValues.keys()].filter((k) => !exampleKeys.has(k));
 if (extra.length) {
-  out.push('', '# Not in .env.example: add them to the template or delete them', ...extra.map((k) => `${k}=${envValues.get(k)}`));
+  while (out.at(-1) === '') out.pop();
+  out.push('','# Not in .env.example: add them to the template or delete them', ...extra.map((k) => `${k}=${envValues.get(k)}`));
 }
 
 if (envText) fs.copyFileSync(envPath, `${envPath}.bak`);
