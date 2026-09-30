@@ -284,7 +284,7 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
       <div className="mx-auto w-full max-w-3xl p-4">
         {showAutoHint && (
           <div className="mb-2 flex w-fit max-w-full items-center gap-2 rounded-lg border border-primary/40 bg-popover px-2.5 py-2 text-xs leading-5 shadow-sm">
-            <AutomationIcon className="size-4 shrink-0 text-primary" />
+            <Route className="size-4 shrink-0 text-primary" />
             <p className="flex-1">
               {t('autoHint.text')}{' '}
               <Tip label={t('autoHint.tryTip')}>
@@ -345,11 +345,6 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
       </div>
     </section>
   );
-}
-
-/** Material Symbols "automation" glyph (public/images/automation.svg), tinted through a CSS mask. */
-function AutomationIcon({ className }: { className?: string }) {
-  return <span aria-hidden className={`inline-block bg-current [mask:url(/images/automation.svg)_center/contain_no-repeat] ${className ?? ''}`} />;
 }
 
 /**
