@@ -3,6 +3,19 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.1
+
+### Sign in with your company email
+The Otter now asks who you are before it answers. Enter your `@paloaltonetworks.com` address and
+click the link you receive by email: you stay signed in for a week. There is no seat limit, so you
+can share the demo link with as many colleagues and customers as you need.
+
+### The whole demo runs in one Kubernetes cluster
+The assistant, the HR and IT data, and the Prisma AIRS AI Gateway now run side by side in a
+Kubernetes cluster on AWS. Model and tool calls stay inside the cluster, so replies are quicker
+and the demo keeps running even when one component restarts. Only the sign-in page and the chat
+are reachable from the internet.
+
 ## 0.1.0
 
 ### Load balance & fallback: the Prisma AIRS AI Gateway picks the cloud for you

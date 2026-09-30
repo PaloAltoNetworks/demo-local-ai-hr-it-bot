@@ -18,5 +18,11 @@ credentials/
 
 # Kept local
 BrandGuidelines.md
-.github
+.github/*
+!.github/workflows/
 docs/demo-3min-usb.md
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*

@@ -1,0 +1,19 @@
+# CyberArk Secure Workload Access server (chart swa-server), release "swa-server" in
+# namespace default with ServiceAccount swa-server-sa: together they form the subject
+# system:serviceaccount:default:swa-server-sa registered on the tenant's server component.
+# controlPlane.url and controlPlane.auth.authnID are tenant-specific and come from the
+# hr-it-bot-swa secret at install time. The images are proprietary and amd64-only,
+# pulled from private ECR: image.repository (<account>.dkr.ecr.<region>.amazonaws.com/swa/swa-server)
+# is set at install time from the deploying AWS identity, so no account ID lives in git.
+image:
+  tag: "1.1.3"
+
+serviceAccount:
+  name: swa-server-sa
+
+nodeSelector:
+  kubernetes.io/arch: amd64
+
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { memory: 512Mi }

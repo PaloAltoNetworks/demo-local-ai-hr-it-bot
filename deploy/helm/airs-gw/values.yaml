@@ -1,0 +1,25 @@
+# Prisma AIRS AI Gateway (hybrid data plane), chart Portkey-AI/airs-gw-helm.
+# Installed as release "airs-gw" in namespace hr-it-bot, so its Service is
+# airs-gw:8787 (LLM) and airs-gw:8788 (MCP). Redis is the chart's bundled StatefulSet.
+# The SCM registration (client auth, orgs) and the registry.portkey.ai credentials
+# come from Secrets synced by External Secrets (deploy/k8s/base/external-secrets.yaml).
+imagePullSecrets:
+  - airs-gw-registry
+
+environment:
+  create: false
+  existingSecret: airs-gw-env
+  secretKeys:
+    - PORTKEY_CLIENT_AUTH
+    - ORGANISATIONS_TO_SYNC
+  data:
+    SERVICE_NAME: airsgateway
+    PORT: "8787"
+    MCP_PORT: "8788"
+    SERVER_MODE: "all"
+    LOG_STORE_FILE_PATH_FORMAT: "v2"
+    TRUSTED_CUSTOM_HOSTS: "hr-tools.otter-lab.com,it-tools.otter-lab.com,it-triage.otter-lab.com"
+
+resources:
+  requests: { cpu: 250m, memory: 512Mi }
+  limits: { memory: 2Gi }

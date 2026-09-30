@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - cluster-secret-store.yaml
+  - storage-class.yaml
+# Public identity of this deployment: the chatbot and login hostnames routed by the
+# Cloudflare tunnel to Caddy, and the auth session cookie. The prefix keeps this
+# instance's cookie apart from other auth instances sharing the .panw.pro domain.
+configMapGenerator:
+  - name: edge
+    namespace: hr-it-bot
+    literals:
+      - APP_HOST=otter-v3.panw.pro
+      - AUTH_HOST=auth2.panw.pro
+      - AUTH_COOKIE_DOMAIN=panw.pro
+      - AUTH_COOKIE_PREFIX=otter-eks
+      - TRUSTED_ORIGINS=https://*.panw.pro
+      - ALLOWED_EMAIL_DOMAIN=paloaltonetworks.com
+# The AIRS gateway resolves the SCM-registered MCP origins (*.otter-lab.com) through
+# hostAlias entries in deploy/helm/airs-gw/values-aws.yaml, which point at these
+# ClusterIPs inside the service CIDR pinned by infra/aws (172.20.0.0/16).
+# ponytail: IPs are fixed by hand per cloud; past a handful of origins, switch to an
+# in-cluster DNS rewrite.
+patches:
+  - target: { kind: Service, name: it-tools }
+    patch: '[{"op": "add", "path": "/spec/clusterIP", "value": "172.20.200.16"}]'
+  - target: { kind: Service, name: hr-tools }
+    patch: '[{"op": "add", "path": "/spec/clusterIP", "value": "172.20.200.17"}]'
+  - target: { kind: Service, name: it-triage }
+    patch: '[{"op": "add", "path": "/spec/clusterIP", "value": "172.20.200.19"}]'

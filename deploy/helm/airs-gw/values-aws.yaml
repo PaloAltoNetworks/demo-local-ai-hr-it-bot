@@ -1,0 +1,10 @@
+# MCP origins are registered in SCM as http://<name>.otter-lab.com:<port>/mcp, a public-TLD
+# name absent from public DNS. The gateway resolves them to the fixed ClusterIPs set in
+# deploy/k8s/overlays/aws (keep both files in sync).
+hostAlias:
+  - ip: "172.20.200.16"
+    hostnames: ["it-tools.otter-lab.com"]
+  - ip: "172.20.200.17"
+    hostnames: ["hr-tools.otter-lab.com"]
+  - ip: "172.20.200.19"
+    hostnames: ["it-triage.otter-lab.com"]

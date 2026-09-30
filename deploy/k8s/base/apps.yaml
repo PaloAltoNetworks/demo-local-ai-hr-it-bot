@@ -1,0 +1,129 @@
+# The four demo services. Every pod loads the full .env from the app-env Secret, then
+# the env entries below override the endpoints for the cluster: LLM and MCP traffic goes
+# to the in-cluster AIRS gateway, and it-triage reaches the tools servers directly.
+# Service ports match the MCP registrations in SCM (it-tools 3016, hr-tools 3017, it-triage 3019).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: it-tools
+spec:
+  selector:
+    matchLabels: { app: it-tools }
+  template:
+    metadata:
+      labels: { app: it-tools }
+    spec:
+      containers:
+        - name: it-tools
+          image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/it-tools-mcp-server
+          ports: [{ containerPort: 3000 }]
+          envFrom: [{ secretRef: { name: app-env } }]
+          readinessProbe: { httpGet: { path: /health, port: 3000 } }
+          livenessProbe: { httpGet: { path: /health, port: 3000 } }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 384Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: it-tools
+spec:
+  selector: { app: it-tools }
+  ports: [{ port: 3016, targetPort: 3000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hr-tools
+spec:
+  selector:
+    matchLabels: { app: hr-tools }
+  template:
+    metadata:
+      labels: { app: hr-tools }
+    spec:
+      containers:
+        - name: hr-tools
+          image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/hr-tools-mcp-server
+          ports: [{ containerPort: 3000 }]
+          envFrom: [{ secretRef: { name: app-env } }]
+          readinessProbe: { httpGet: { path: /health, port: 3000 } }
+          livenessProbe: { httpGet: { path: /health, port: 3000 } }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 384Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hr-tools
+spec:
+  selector: { app: hr-tools }
+  ports: [{ port: 3017, targetPort: 3000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: it-triage
+spec:
+  selector:
+    matchLabels: { app: it-triage }
+  template:
+    metadata:
+      labels: { app: it-triage }
+    spec:
+      containers:
+        - name: it-triage
+          image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/it-triage-agent
+          ports: [{ containerPort: 3000 }]
+          envFrom: [{ secretRef: { name: app-env } }]
+          env:
+            - { name: PORTKEY_BASE_URL, value: "http://airs-gw:8787/v1" }
+            - { name: IT_TRIAGE_MCP_URLS, value: "http://it-tools:3016/mcp,http://hr-tools:3017/mcp" }
+          readinessProbe: { httpGet: { path: /health, port: 3000 } }
+          livenessProbe: { httpGet: { path: /health, port: 3000 } }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 384Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: it-triage
+spec:
+  selector: { app: it-triage }
+  ports: [{ port: 3019, targetPort: 3000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot-v2
+spec:
+  selector:
+    matchLabels: { app: chatbot-v2 }
+  template:
+    metadata:
+      labels: { app: chatbot-v2 }
+    spec:
+      containers:
+        - name: chatbot-v2
+          image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/chatbot-v2
+          ports: [{ containerPort: 3018 }]
+          envFrom: [{ secretRef: { name: app-env } }]
+          env:
+            - { name: PORTKEY_BASE_URL, value: "http://airs-gw:8787/v1" }
+            - { name: PORTKEY_MCP_BASE, value: "http://airs-gw:8788" }
+          readinessProbe: { httpGet: { path: /health, port: 3018 } }
+          livenessProbe: { httpGet: { path: /health, port: 3018 } }
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot-v2
+spec:
+  selector: { app: chatbot-v2 }
+  ports: [{ port: 3018, targetPort: 3018 }]
