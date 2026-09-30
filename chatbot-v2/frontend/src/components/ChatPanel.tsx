@@ -283,8 +283,8 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
 
       <div className="mx-auto w-full max-w-3xl p-4">
         {showAutoHint && (
-          <div className="mb-2 flex w-fit max-w-full items-start gap-2 rounded-lg border border-primary/40 bg-popover p-2.5 text-xs shadow-sm">
-            <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+          <div className="mb-2 flex w-fit max-w-full items-center gap-2 rounded-lg border border-primary/40 bg-popover px-2.5 py-2 text-xs leading-5 shadow-sm">
+            <Sparkles className="size-4 shrink-0 text-primary" />
             <p className="flex-1">
               {t('autoHint.text')}{' '}
               <button className="font-medium text-primary hover:underline" onClick={() => { setProvider('Auto'); dismissAutoHint(); }}>
