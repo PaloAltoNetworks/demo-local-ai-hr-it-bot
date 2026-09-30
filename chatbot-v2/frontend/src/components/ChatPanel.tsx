@@ -291,7 +291,7 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
                       <span className="text-xs font-medium">{currentProvider?.label || t('llmProvider.label')}</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="max-w-72">
+                  <DropdownMenuContent align="start" className="w-80">
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{t('llmProvider.note')}</DropdownMenuLabel>
                     {providers.map(p => (
                       <DropdownMenuItem key={p.id} onClick={() => setProvider(p.id)}>
