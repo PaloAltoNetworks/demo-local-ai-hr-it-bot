@@ -148,7 +148,7 @@ const PROVIDER_TIERS = {
  * the saved config overrides the model on whichever target actually serves the call.
  */
 if (PORTKEY_AUTO_CONFIG) {
-  PROVIDER_TIERS.Auto = { ...PROVIDER_TIERS.AWS, label: 'Auto (AI Gateway routing)', auto: true };
+  PROVIDER_TIERS.Auto = { ...PROVIDER_TIERS.AWS, label: 'Auto (Prisma AIRS AI Gateway)', auto: true };
 }
 
 // Display/fallback model id, derived from the default provider's powerful tier.
