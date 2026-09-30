@@ -94,6 +94,8 @@ LLM calls go through Portkey (`api.portkey.ai/v1`, or a self-hosted gateway via 
 
 Copy `.env.example` to `.env`. All services read the same `.env` via `env_file` in docker-compose. Provider switching requires container restart.
 
+After adding or removing a variable in `.env`, run `node scripts/sync-env-example.mjs` to realign `.env.example` (same variables, secrets replaced by `<set-me>`), then review `git diff .env.example`.
+
 ## Gotchas
 
 - Services share the Docker `mcp-network` bridge; use Docker hostnames (e.g. `http://it-tools-mcp-server:3000`) between services. `host.docker.internal` reaches host services such as a local AI gateway.
