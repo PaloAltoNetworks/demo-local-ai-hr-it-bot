@@ -3,7 +3,7 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
-## 0.0.26
+## 0.1.0
 
 ### Load balance & fallback: the Prisma AIRS AI Gateway picks the cloud for you
 The LLM Provider menu now opens on **Load balance & fallback**. Instead of pinning one cloud, you let the AI Gateway
