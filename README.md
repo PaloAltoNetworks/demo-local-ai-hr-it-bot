@@ -22,7 +22,7 @@ agents/it-triage-agent Agentic MCP server (ToolLoopAgent inside)    :3019
 locales/               UI translations (9 languages)
 ```
 
-See [docs/README.md](./docs/README.md) for configuration and [PRD.md](./PRD.md) for the architecture.
+See [docs/README.md](./docs/README.md) for configuration, [docs/DEPLOY.md](./docs/DEPLOY.md) for the Kubernetes deployment (a GitHub release builds and deploys to EKS) and [PRD.md](./PRD.md) for the architecture.
 
 ## License
 

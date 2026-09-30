@@ -40,6 +40,22 @@ curl http://localhost:3019/health    # IT Triage Agent (agentic MCP)
 
 No formal test framework is configured. Testing is manual via curl and the web UI at `http://localhost:3018`.
 
+### Kubernetes (EKS)
+
+A published GitHub release builds the four images to GHCR and deploys them to EKS (`.github/workflows/release.yml` → `deploy.yml`). Setup, secrets and rollback: `docs/DEPLOY.md`.
+
+```bash
+# Render locally before pushing
+terraform -chdir=infra/aws validate
+kubectl kustomize deploy/k8s/overlays/aws
+docker run --rm -v "$PWD/deploy/helm/airs-gw:/v:ro" alpine/helm:3 template airs-gw airs-gw \
+  --repo https://portkey-ai.github.io/airs-gw-helm --version 1.2.0 -n hr-it-bot -f /v/values.yaml -f /v/values-aws.yaml
+
+# Cluster status
+aws eks update-kubeconfig --name hr-it-bot --region eu-west-3
+kubectl -n hr-it-bot get pods,externalsecrets
+```
+
 ## Architecture
 
 ### Service Ports
@@ -56,6 +72,7 @@ No formal test framework is configured. Testing is manual via curl and the web U
 - `mcp-server/hr-tools-mcp-server/` — Standalone data/tools MCP server (no LLM), HR employees in `employees.sql`
 - `agents/it-triage-agent/` — Agentic MCP server: MCP on the outside, `ToolLoopAgent` on the inside
 - `locales/{lang}/frontend.json` — UI translations, copied into the chatbot image
+- `infra/aws/` — Terraform for the EKS landing zone; `deploy/k8s/` (kustomize base + per-cloud overlays) and `deploy/helm/airs-gw/` (AIRS gateway chart values). Cloud-specific files are suffixed or foldered by cloud so AKS/GKE can be added without touching the base
 
 ### Standalone Tools Server Pattern
 Pure data/tools MCP servers for external LLM hosts (Portkey, Claude Desktop, Cursor). Each has:
@@ -128,7 +145,7 @@ When asked to merge, release and prep next version, follow this exact sequence:
 3. `git checkout main && git pull origin main && git remote prune origin`
 4. Delete local branch if still present: `git branch -D <branch>`
 5. Tag: `git tag v<version> main && git push origin v<version>`
-6. Release notes = the version's section of `CHANGELOG.md` (written before the version bump, written for demo users, not developers: what each change brings to the demo, newest first; the chatbot shows this file from its version link). Copy that section to `/tmp/release-notes-v<version>.md`, then `gh release create`
+6. Release notes = the version's section of `CHANGELOG.md` (written before the version bump, written for demo users, not developers: what each change brings to the demo, newest first; the chatbot shows this file from its version link). Copy that section to `/tmp/release-notes-v<version>.md`, then `gh release create`. Publishing the release triggers the image build and the EKS deploy
 7. Prep next: `git checkout -b v.0.0.<next> && git push -u origin v.0.0.<next>`
 
 ### Working Branch Convention

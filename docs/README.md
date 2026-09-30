@@ -95,7 +95,8 @@ PORTKEY_MCP_IT_SLUG=it-tools
 
 Tools servers are reached by Portkey Cloud through a host-level Cloudflare tunnel (managed
 outside compose): each hostname (e.g. `hr-tools.<domain>/mcp` → `127.0.0.1:3017`) is registered
-in the Portkey MCP Gateway, which returns the slug used above.
+in the Portkey MCP Gateway, which returns the slug used above. On Kubernetes the AIRS gateway
+runs in the cluster and reaches the tools servers directly; see [DEPLOY.md](./DEPLOY.md).
 
 ### Guardrails (Phase 3)
 

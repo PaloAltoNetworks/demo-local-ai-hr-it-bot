@@ -245,6 +245,9 @@ LanguageProvider (context: t, language, setLanguage, languages)
 ### Docker
 Multi-stage Dockerfile: Stage 1 builds React with Vite, Stage 2 runs Express serving built frontend + locales.
 
+### Kubernetes (CI/CD)
+A published GitHub release runs `.github/workflows/release.yml`: the four images go to GHCR under the release tag, then `deploy.yml` deploys that tag to EKS (GitHub OIDC, no static keys). The cluster runs the chatbot, the three MCP servers, the Prisma AIRS AI Gateway (chart `Portkey-AI/airs-gw-helm`) and cloudflared, which publishes only the chatbot. Secrets live in AWS Secrets Manager and are synced by External Secrets Operator. Cloud-specific parts are isolated (`infra/<cloud>`, `deploy/k8s/overlays/<cloud>`, `values-<cloud>.yaml`, the login steps) so AKS or GKE can be added later. See `docs/DEPLOY.md`.
+
 ### Package Structure
 ```
 chatbot-v2/
