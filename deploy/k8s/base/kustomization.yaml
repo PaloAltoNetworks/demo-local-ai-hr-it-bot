@@ -8,9 +8,14 @@ resources:
   - external-secrets.yaml
 # Every pod runs as the non-root uid 1001 the images create, with no privilege
 # escalation and no capabilities (each Deployment has a single container).
+# Service links are off: Kubernetes would otherwise inject <SERVICE>_PORT=tcp://...
+# variables, and CHATBOT_V2_PORT is the chatbot's own listen-port setting.
 patches:
   - target: { kind: Deployment }
     patch: |-
+      - op: add
+        path: /spec/template/spec/enableServiceLinks
+        value: false
       - op: add
         path: /spec/template/spec/securityContext
         value:
