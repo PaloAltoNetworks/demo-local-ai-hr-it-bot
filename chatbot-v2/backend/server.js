@@ -33,21 +33,29 @@ const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const PORTKEY_API_KEY_GUARDED = process.env.PORTKEY_API_KEY_GUARDED || PORTKEY_API_KEY;
 /**
- * Saved AI Gateway configs for the Auto provider: load-balanced fallback chains across AWS, GCP and Azure,
- * routed per tier on `metadata.tier`. The SCM gateway blocks inline configs but accepts a saved
- * config slug in x-portkey-config, which replaces the key's default config for that request, so
- * the guarded variant must carry the AIRS guardrails itself. Auto is offered only when
- * PORTKEY_AUTO_CONFIG is set.
+ * Saved AI Gateway configs for the Load balance & fallback provider, one per model tier: a
+ * top-level load balancer (what gateway logs report) over fallback chains across AWS, GCP and
+ * Azure. The SCM gateway blocks inline configs but accepts a saved config slug in
+ * x-portkey-config, which replaces the key's default config for that request, so the guarded
+ * variants carry the AIRS guardrails themselves. The provider is offered only when both
+ * unguarded slugs are set.
  */
-const PORTKEY_AUTO_CONFIG = process.env.PORTKEY_AUTO_CONFIG || '';
-const PORTKEY_AUTO_CONFIG_GUARDED = process.env.PORTKEY_AUTO_CONFIG_GUARDED || PORTKEY_AUTO_CONFIG;
+const AUTO_CONFIGS = {
+  fast: process.env.PORTKEY_AUTO_FAST_CONFIG || '',
+  powerful: process.env.PORTKEY_AUTO_POWERFUL_CONFIG || '',
+};
+const AUTO_CONFIGS_GUARDED = {
+  fast: process.env.PORTKEY_AUTO_FAST_CONFIG_GUARDED || AUTO_CONFIGS.fast,
+  powerful: process.env.PORTKEY_AUTO_POWERFUL_CONFIG_GUARDED || AUTO_CONFIGS.powerful,
+};
+const AUTO_CONFIGURED = Boolean(AUTO_CONFIGS.fast && AUTO_CONFIGS.powerful);
 const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
 const GCP_PROVIDER = process.env.PORTKEY_GCP_PROVIDER || '@vertex-prod';
 const AZURE_PROVIDER = process.env.PORTKEY_AZURE_PROVIDER || '@azure';
 // Default provider tier (AWS | GCP | Azure | Auto) — preselected in the UI and used when a
 // request sends none. Auto when its gateway config is set, AWS otherwise. MODEL_ID (display
 // only) is derived from it.
-const DEFAULT_PROVIDER = process.env.PORTKEY_DEFAULT_PROVIDER || (PORTKEY_AUTO_CONFIG ? 'Auto' : 'AWS');
+const DEFAULT_PROVIDER = process.env.PORTKEY_DEFAULT_PROVIDER || (AUTO_CONFIGURED ? 'Auto' : 'AWS');
 
 // Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
 const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';
@@ -147,7 +155,7 @@ const PROVIDER_TIERS = {
  * Auto tier: the model strings are the chain's primary (AWS) targets, used for logs and pricing;
  * the saved config overrides the model on whichever target actually serves the call.
  */
-if (PORTKEY_AUTO_CONFIG) {
+if (AUTO_CONFIGURED) {
   PROVIDER_TIERS.Auto = { ...PROVIDER_TIERS.AWS, label: 'Load balance & fallback', auto: true };
 }
 
@@ -193,9 +201,6 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
   return async (url, init) => {
     const headers = new Headers(init?.headers);
     headers.set('x-portkey-api-key', guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY);
-    if (reqCtx.tiers.auto) {
-      headers.set('x-portkey-config', guarded ? PORTKEY_AUTO_CONFIG_GUARDED : PORTKEY_AUTO_CONFIG);
-    }
     headers.set('x-portkey-trace-id', reqCtx.traceId);
     // Every phase otherwise logs as span_name "llm", so a turn reads as N identical rows.
     // Phases run in sequence, not nested, so they stay siblings — no parent_span_id.
@@ -222,6 +227,10 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
       init = { ...init, body: JSON.stringify(body) };
       dbg(`[llm] → ${model} | msgs:${body.messages?.length ?? 0} tools:${body.tools?.length ?? 0}`);
     }
+    if (reqCtx.tiers.auto) {
+      const tier = model === reqCtx.tiers.fast ? 'fast' : 'powerful';
+      headers.set('x-portkey-config', (guarded ? AUTO_CONFIGS_GUARDED : AUTO_CONFIGS)[tier]);
+    }
     // Metadata feeds Portkey observability and the AIRS guardrail params
     // (ai_model={{metadata.model}}, app_user={{metadata._user}}).
     // Keep it STABLE: metadata is part of the simple-cache key, so per-request volatile
@@ -231,7 +240,6 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
       _user: STATIC_USER.employee_id,
       app_name: 'The Otter V2',
       model,
-      tier: model === reqCtx.tiers.fast ? 'fast' : 'powerful',
     }));
     return fetch(url, { ...init, headers });
   };
