@@ -42,7 +42,7 @@ No formal test framework is configured. Testing is manual via curl and the web U
 
 ### Kubernetes (EKS)
 
-A published GitHub release builds the four images to GHCR and deploys them to EKS (`.github/workflows/release.yml` → `deploy.yml`). Setup, secrets and rollback: `docs/DEPLOY.md`.
+A published GitHub release builds the five images to GHCR and deploys them to EKS (`.github/workflows/release.yml` → `deploy.yml`). Setup, secrets and rollback: `docs/DEPLOY.md`.
 
 ```bash
 # Render locally before pushing
@@ -72,6 +72,7 @@ kubectl -n hr-it-bot get pods,externalsecrets
 - `mcp-server/hr-tools-mcp-server/` — Standalone data/tools MCP server (no LLM), HR employees in `employees.sql`
 - `agents/it-triage-agent/` — Agentic MCP server: MCP on the outside, `ToolLoopAgent` on the inside
 - `locales/{lang}/frontend.json` — UI translations, copied into the chatbot image
+- `auth-service/` — Magic-link login (Hono + Better Auth, SQLite in `/data`), used as Caddy's `forward_auth` target in front of the chatbot on Kubernetes. Not a workspace (own `package-lock.json`, built with `npm ci`); not part of `docker-compose.yml`
 - `infra/aws/` — Terraform for the EKS landing zone; `deploy/k8s/` (kustomize base + per-cloud overlays) and `deploy/helm/airs-gw/` (AIRS gateway chart values). Cloud-specific files are suffixed or foldered by cloud so AKS/GKE can be added without touching the base
 
 ### Standalone Tools Server Pattern
