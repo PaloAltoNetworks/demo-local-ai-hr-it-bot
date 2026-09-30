@@ -1,0 +1,173 @@
+[
+  {
+    "id": 1,
+    "name": "USB Device Access Request",
+    "category": "Security",
+    "description": "Request temporary or permanent USB storage device access on a company laptop. USB ports are disabled by default as a security measure.",
+    "steps": [
+      "Employee submits a request specifying the laptop (asset ID) and the business justification.",
+      "IT creates a ticket with category \"USB Access\" and status \"Pending Approval\".",
+      "The employee's direct manager must approve the request.",
+      "Once approved, IT enables USB access on the specified laptop and updates the ticket.",
+      "Access is granted for a maximum of 30 days, after which it is automatically revoked."
+    ],
+    "required_info": [
+      "Employee ID",
+      "Asset ID of the target laptop",
+      "Business justification for USB access",
+      "Requested duration (max 30 days)"
+    ],
+    "approval_required": true,
+    "approver_role": "direct_manager",
+    "keywords": "usb,usb drive,usb stick,flash drive,thumb drive,removable storage,external storage,usb access,usb port"
+  },
+  {
+    "id": 2,
+    "name": "Software Installation Request",
+    "category": "Software",
+    "description": "Request installation of new software or upgrade of existing software on a company device.",
+    "steps": [
+      "Employee submits a request specifying the software name, version, and business need.",
+      "IT verifies the software is on the approved list or evaluates it for security compliance.",
+      "If the software is not pre-approved, manager approval is required.",
+      "IT installs the software and verifies functionality.",
+      "Ticket is updated and closed."
+    ],
+    "required_info": [
+      "Software name and version",
+      "Business justification",
+      "Target device asset ID"
+    ],
+    "approval_required": true,
+    "approver_role": "direct_manager",
+    "keywords": "software,install,application,program,upgrade,license"
+  },
+  {
+    "id": 3,
+    "name": "Laptop Replacement",
+    "category": "Hardware",
+    "description": "Request a replacement laptop due to hardware failure, performance degradation, or end-of-life cycle.",
+    "steps": [
+      "Employee reports the issue with their current laptop.",
+      "IT runs diagnostics to confirm replacement is needed.",
+      "IT selects a replacement model and prepares it with the standard image.",
+      "Data migration is performed from the old device.",
+      "New laptop is shipped or handed to the employee. Old device is decommissioned."
+    ],
+    "required_info": [
+      "Current laptop asset ID",
+      "Description of the issue",
+      "Preferred shipping address (for remote employees)"
+    ],
+    "approval_required": false,
+    "approver_role": null,
+    "keywords": "laptop,replacement,new laptop,broken laptop,slow laptop,hardware failure,end of life"
+  },
+  {
+    "id": 4,
+    "name": "VPN Access Request",
+    "category": "Network",
+    "description": "Request VPN access for remote work or access to internal resources from outside the office.",
+    "steps": [
+      "Employee submits a request with their employee ID and the resources they need to access.",
+      "IT verifies employment status and access requirements.",
+      "VPN client is deployed to the employee's device.",
+      "Access credentials are provisioned and sent securely.",
+      "Employee tests the connection and confirms."
+    ],
+    "required_info": [
+      "Employee ID",
+      "Device asset ID",
+      "Resources to access"
+    ],
+    "approval_required": false,
+    "approver_role": null,
+    "keywords": "vpn,remote access,work from home,remote work,connect remotely"
+  },
+  {
+    "id": 5,
+    "name": "Password Reset",
+    "category": "Security",
+    "description": "Request a password reset for a locked or compromised account.",
+    "steps": [
+      "Employee contacts IT via chat or phone with identity verification.",
+      "IT verifies the employee's identity through security questions or manager confirmation.",
+      "Password is reset and a temporary password is provided via secure channel.",
+      "Employee must change the temporary password on first login."
+    ],
+    "required_info": [
+      "Employee ID",
+      "Account to reset (Active Directory, email, application)",
+      "Reason for reset (forgotten, locked, compromised)"
+    ],
+    "approval_required": false,
+    "approver_role": null,
+    "keywords": "password,reset,locked,account locked,forgot password,compromised,change password"
+  },
+  {
+    "id": 6,
+    "name": "New Employee Onboarding",
+    "category": "Onboarding",
+    "description": "IT setup for new employees including hardware provisioning, account creation, and access configuration.",
+    "steps": [
+      "HR submits onboarding request with employee details and start date.",
+      "IT provisions a laptop with the standard image and required software.",
+      "Active Directory, email, and application accounts are created.",
+      "Access permissions are configured based on role and department.",
+      "Equipment is shipped or prepared for Day 1. Welcome email is sent."
+    ],
+    "required_info": [
+      "Employee name and email",
+      "Department and role",
+      "Start date",
+      "Manager name",
+      "Required software and access levels"
+    ],
+    "approval_required": true,
+    "approver_role": "hr_manager",
+    "keywords": "onboarding,new employee,new hire,new starter,setup,provisioning"
+  },
+  {
+    "id": 7,
+    "name": "Access Permission Change",
+    "category": "Security",
+    "description": "Request to add, modify, or revoke access permissions to internal systems, shared drives, or applications.",
+    "steps": [
+      "Employee or manager submits a request specifying the target system and desired access level.",
+      "IT verifies the request against the employee's role-based access matrix.",
+      "Manager approval is required for elevated or cross-department access.",
+      "IT applies the permission change and verifies access.",
+      "Change is logged in the access audit trail."
+    ],
+    "required_info": [
+      "Employee ID",
+      "Target system or resource",
+      "Requested access level (read, write, admin)",
+      "Business justification"
+    ],
+    "approval_required": true,
+    "approver_role": "direct_manager",
+    "keywords": "access,permissions,shared drive,folder access,system access,elevated access,admin access"
+  },
+  {
+    "id": 8,
+    "name": "Data Recovery Request",
+    "category": "Software",
+    "description": "Request recovery of accidentally deleted or corrupted files from backups.",
+    "steps": [
+      "Employee reports the lost data with file paths and approximate date of loss.",
+      "IT checks available backup snapshots for the relevant period.",
+      "If data is found, IT restores it to a temporary location for employee review.",
+      "Employee confirms the recovered data is correct.",
+      "Files are moved to the original location or a designated folder."
+    ],
+    "required_info": [
+      "File or folder path",
+      "Approximate date of deletion or corruption",
+      "Description of the data"
+    ],
+    "approval_required": false,
+    "approver_role": null,
+    "keywords": "data recovery,deleted files,lost data,restore,backup,corrupted files"
+  }
+]

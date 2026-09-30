@@ -1,0 +1,165 @@
+/**
+ * IT Triage Agent — MCP Server
+ *
+ * MCP on the outside: exposes tools via MCP protocol (Streamable HTTP).
+ * ToolLoopAgent on the inside: each tool invocation triggers multi-step agent reasoning.
+ *
+ * Registers with the Portkey MCP Gateway alongside hr-tools and it-tools.
+ * Any MCP client (chatbot-v2, Claude Desktop, Cursor) can discover and call its tools.
+ */
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { randomUUID } from 'crypto';
+import express from 'express';
+import { z } from 'zod';
+import { initMCPClient, closeMCPClient, runTriageAgent } from './agent.js';
+
+const PORT = process.env.PORT || 3000;
+
+/**
+ * employee_id is interpolated into the agent's instructions, so its format is pinned to EMP-NNN;
+ * a free-form value would be a prompt-injection channel. The SDK rejects non-matching arguments.
+ */
+function registerTools(server) {
+  server.tool(
+    'triage_it_request',
+    `Triage and execute IT support requests end-to-end using multi-step AI reasoning.
+
+This tool owns the ENTIRE IT support lifecycle:
+1. INITIAL TRIAGE — looks up the employee profile, finds the relevant IT process, classifies severity, determines team assignment, and checks approval requirements. Returns a structured triage summary with any missing information needed from the user.
+2. TICKET CREATION — once the user provides all required information, call this tool AGAIN with the full context (original request + user's answers). The agent will create the ticket with proper classification, routing, priority, and approval status. Never call create_ticket or update_ticket_status directly — always delegate through this tool.
+
+Use for: USB access, software install, hardware issues, VPN, password reset, onboarding, access permissions, data recovery, and any other IT support request.
+Do NOT use for: simple read-only lookups like "show my tickets" or "what's the status of INC-2025-0001" — use individual data tools for those.`,
+    {
+      query: z.string().min(1).max(4000).describe('The user\'s IT request in natural language. For follow-ups, include the full context: original request + user\'s answers to missing information.'),
+      employee_id: z.string().regex(/^EMP-\d{3}$/, 'Expected EMP-NNN').describe('Employee ID of the requesting user (e.g. "EMP-034")'),
+    },
+    async ({ query, employee_id }, extra) => {
+      const progressToken = extra?._meta?.progressToken;
+      let progress = 0;
+      // The agent runs 6-10 steps (~16-27s). It returns a single JSON-RPC result at the
+      // very end, so the Cloudflare tunnel between Portkey and this server sees no bytes
+      // and 502s at ~15s idle. Stream progress notifications (real step updates + a
+      // heartbeat) to keep the connection warm.
+      const emit = (message) => {
+        if (!extra?.sendNotification) return;
+        extra.sendNotification({
+          method: 'notifications/progress',
+          params: {
+            progressToken: progressToken ?? 'triage',
+            progress: ++progress,
+            message,
+          },
+        }).catch(() => {});
+      };
+      const heartbeat = setInterval(() => emit('Working…'), 4000);
+      try {
+        console.log(`[mcp] triage_it_request: employee=${employee_id}, query="${query.substring(0, 80)}"`);
+        emit('Triaging request…');
+        const result = await runTriageAgent({
+          query,
+          employeeId: employee_id,
+          onProgress: ({ tool, detail }) => emit(detail ? `${tool}: ${detail}` : tool),
+        });
+        return { content: [{ type: 'text', text: result }] };
+      } catch (err) {
+        // AI SDK APICallError carries the upstream body/status — err.message alone is just
+        // "Bad Request". Log the real Bedrock rejection so tool-schema/400 causes are visible.
+        console.error(`[mcp] triage_it_request error: ${err.message}`, {
+          statusCode: err.statusCode,
+          url: err.url,
+          responseBody: err.responseBody,
+        });
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: 'triage_failed', message: err.message }) }],
+          isError: true,
+        };
+      } finally {
+        clearInterval(heartbeat);
+      }
+    }
+  );
+
+}
+
+function createServer() {
+  const server = new McpServer({ name: 'it-triage-agent', version: '1.0.0' });
+  registerTools(server);
+  return server;
+}
+
+// --- Express + MCP Transport ---
+
+async function main() {
+  // Connect to Portkey MCP Gateway for consuming hr-tools + it-tools
+  await initMCPClient();
+
+  const app = express();
+
+  app.use((req, _res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from ${req.ip}`);
+    next();
+  });
+
+  // Ensure MCP clients can always reach Streamable HTTP transport
+  app.use('/mcp', (req, _res, next) => {
+    req.headers['accept'] = 'application/json, text/event-stream';
+    const idx = req.rawHeaders.findIndex(h => h.toLowerCase() === 'accept');
+    if (idx !== -1) {
+      req.rawHeaders[idx + 1] = 'application/json, text/event-stream';
+    } else {
+      req.rawHeaders.push('Accept', 'application/json, text/event-stream');
+    }
+    next();
+  });
+
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'healthy', name: 'it-triage-agent', timestamp: new Date().toISOString() });
+  });
+
+  // --- Streamable HTTP transport (stateful — Portkey MCP Gateway requires sessions) ---
+  const httpTransports = {};
+
+  app.post('/mcp', async (req, res) => {
+    const sessionId = req.headers['mcp-session-id'];
+    let transport = sessionId ? httpTransports[sessionId] : undefined;
+    if (!transport) {
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => { httpTransports[sid] = transport; },
+      });
+      transport.onclose = () => { if (transport.sessionId) delete httpTransports[transport.sessionId]; };
+      await createServer().connect(transport);
+    }
+    await transport.handleRequest(req, res);
+  });
+
+  const bySession = async (req, res) => {
+    const transport = httpTransports[req.headers['mcp-session-id']];
+    if (!transport) return res.status(400).json({ error: 'Invalid or missing session' });
+    await transport.handleRequest(req, res);
+  };
+  app.get('/mcp', bySession);
+  app.delete('/mcp', bySession);
+
+  app.listen(PORT, () => {
+    console.log(`IT Triage Agent MCP Server running on port ${PORT}`);
+    console.log(`MCP endpoint: http://localhost:${PORT}/mcp`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+  });
+}
+
+main().catch(err => {
+  console.error('Failed to start IT Triage Agent:', err);
+  process.exit(1);
+});
+
+async function shutdown() {
+  console.log('Shutting down...');
+  await closeMCPClient();
+  process.exit(0);
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

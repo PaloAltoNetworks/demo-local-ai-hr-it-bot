@@ -1,104 +1,20 @@
+x-common: &common
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
 services:
-  # MCP Gateway - Enterprise routing and security layer
-  mcp-gateway:
+  # IT Tools MCP Server (standalone — pure data tools)
+  it-tools-mcp-server:
+    <<: *common
     build:
       context: .
-      dockerfile: mcp-gateway/Dockerfile
-    hostname: mcp-gateway
+      dockerfile: mcp-server/it-tools-mcp-server/Dockerfile
+    hostname: it-tools-mcp-server
     ports:
-      - "3001:3001"
+      - "3016:3000"
     env_file:
       - ./.env
-    environment:
-      - MCP_GATEWAY_PORT=3001
     restart: unless-stopped
-    volumes:
-      - ./logs/mcp-gateway:/app/logs
-      - ./credentials:/app/credentials:ro
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    
-  # HR MCP Server
-  hr-mcp-server:
-    build:
-      context: .
-      dockerfile: mcp-server/Dockerfile.agent
-      args:
-        AGENT_NAME: hr
-    hostname: hr-mcp-server
-    ports:
-      - "3003:3000"
-    env_file:
-      - ./.env
-    depends_on:
-      mcp-gateway:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ./logs/hr-mcp-server:/app/logs
-      - ./credentials:/app/credentials:ro
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    
-  # IT MCP Server  
-  it-mcp-server:
-    build:
-      context: .
-      dockerfile: mcp-server/Dockerfile.agent
-      args:
-        AGENT_NAME: it
-    hostname: it-mcp-server
-    ports:
-      - "3004:3000"
-    env_file:
-      - ./.env
-    depends_on:
-      mcp-gateway:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ./logs/it-mcp-server:/app/logs
-      - ./credentials:/app/credentials:ro
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    
-  # General MCP Server
-  general-mcp-server:
-    build:
-      context: .
-      dockerfile: mcp-server/Dockerfile.agent
-      args:
-        AGENT_NAME: general
-    hostname: general-mcp-server
-    ports:
-      - "3005:3000"
-    env_file:
-      - ./.env
-    depends_on:
-      mcp-gateway:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ./logs/general-mcp-server:/app/logs
-      - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
     healthcheck:
@@ -108,56 +24,71 @@ services:
       retries: 3
       start_period: 5s
 
-  # MCP Host - User-facing chatbot application
-  chatbot-host:
+  # HR Tools MCP Server (standalone — pure data tools)
+  hr-tools-mcp-server:
+    <<: *common
     build:
       context: .
-      dockerfile: chatbot-host/Dockerfile
-    hostname: chatbot-host
+      dockerfile: mcp-server/hr-tools-mcp-server/Dockerfile
+    hostname: hr-tools-mcp-server
     ports:
-      - "3002:3002"
+      - "3017:3000"
     env_file:
       - ./.env
-    environment:
-      - CHATBOT_HOST_PORT=3002
-      - MCP_GATEWAY_URL=http://mcp-gateway:3001
-    depends_on:
-      mcp-gateway:
-        condition: service_healthy
-      hr-mcp-server:
-        condition: service_healthy
-      it-mcp-server:
-        condition: service_healthy
-      general-mcp-server:
-        condition: service_healthy
     restart: unless-stopped
-    volumes:
-      - ./logs/chatbot-host:/app/logs
-      - ./credentials:/app/credentials:ro
     networks:
       - mcp-network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 5s
 
-  # Optional: Ollama service (uncomment if you want to run Ollama in Docker)
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
+  # IT Triage Agent — Agentic MCP server (ToolLoopAgent inside, MCP outside)
+  it-triage-agent:
+    <<: *common
+    build:
+      context: .
+      dockerfile: agents/it-triage-agent/Dockerfile
+    hostname: it-triage-agent
+    ports:
+      - "3019:3000"
+    env_file:
+      - ./.env
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Chatbot V2 — AI SDK + native MCP tool calling via Portkey
+  chatbot-v2:
+    <<: *common
+    build:
+      context: .
+      dockerfile: chatbot-v2/Dockerfile
+    hostname: chatbot-v2
+    ports:
+      - "3018:3018"
+    env_file:
+      - ./.env
+    environment:
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3018/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 networks:
   mcp-network:
     driver: bridge
-
-volumes:
-  it-db:
-
-# Uncomment if using Ollama service
-# volumes:
-#   ollama_data:

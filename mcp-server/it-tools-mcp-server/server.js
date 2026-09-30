@@ -1,0 +1,206 @@
+/**
+ * IT Tools MCP Server
+ * Pure data/tools MCP server — no LLM, no coordinator registration.
+ * Exposes IT ticket database and assets as MCP tools.
+ * IT processes are owned by the IT Triage Agent.
+ */
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { randomUUID } from 'crypto';
+import express from 'express';
+import { z } from 'zod';
+import { ITService } from './service.js';
+
+const PORT = process.env.PORT || 3000;
+
+const service = new ITService();
+
+function json(data) {
+  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+}
+
+/**
+ * Argument formats enforced at the MCP boundary. The SDK rejects a tools/call whose arguments
+ * fail these schemas before the handler runs; SQL always binds values as parameters on top of that.
+ */
+const TICKET_ID = z.string().regex(/^INC-\d{4}-\d{4}$/, 'Expected INC-YYYY-NNNN');
+const EMPLOYEE_ID = z.string().regex(/^EMP-\d{3}$/, 'Expected EMP-NNN');
+const EMPLOYEE_REF = z.string().max(254).regex(/^(EMP-\d{3}|[^\s@]+@[^\s@]+\.[^\s@]+)$/, 'Expected EMP-NNN or an email address');
+const EMAIL = z.email().max(254);
+const NAME = z.string().min(1).max(100);
+
+function registerTools(server) {
+  // --- Ticket read tools ---
+
+  server.tool(
+    'get_ticket',
+    'Get a specific IT ticket by its ID (e.g. INC-2025-0120). Returns full ticket details and discussion history.',
+    {
+      ticket_id: TICKET_ID.describe('Ticket ID in INC-XXXX-XXXX format')
+    },
+    async ({ ticket_id }) => {
+      const ticket = service.getTicketById(ticket_id);
+      if (!ticket) {
+        return json({ error: 'not_found', message: `Ticket ${ticket_id} not found` });
+      }
+      const discussions = service.getTicketDiscussions(ticket_id);
+      return json({ ...ticket, discussions });
+    }
+  );
+
+  server.tool(
+    'get_tickets_by_employee',
+    'Get all tickets for a specific employee by their employee ID (e.g. "EMP-008") or email address.',
+    {
+      identifier: EMPLOYEE_REF.describe('Employee ID (e.g. "EMP-008") or email address')
+    },
+    async ({ identifier }) => {
+      const tickets = identifier.startsWith('EMP-')
+        ? service.getTicketsByEmployeeId(identifier)
+        : service.getTicketsByEmployee(identifier);
+      return json({ count: tickets.length, identifier, tickets });
+    }
+  );
+
+  // --- Ticket mutation tools ---
+
+  server.tool(
+    'create_ticket',
+    'Create a new IT ticket. Returns the new ticket ID. Use this when an employee needs to open a support request, such as USB access, software installation, hardware replacement, etc.',
+    {
+      employee_id: EMPLOYEE_ID.describe('Employee ID (e.g. "EMP-034")'),
+      employee_email: EMAIL.describe('Email of the employee requesting support'),
+      employee_name: NAME.describe('Full name of the employee'),
+      description: z.string().min(1).max(2000).describe('Detailed description of the request or issue'),
+      priority: z.enum(['Critical', 'High', 'Medium', 'Low']).default('Medium').describe('Ticket priority'),
+      category: z.string().min(1).max(50).describe('Category (e.g. USB Access, Software, Hardware, Network, Security, Email, Onboarding)'),
+      status: z.enum(['Open', 'Pending Approval']).default('Open').describe('Initial status. Use "Pending Approval" for requests that require manager approval.'),
+      asset_id: z.string().regex(/^ASSET-\d{5}$/, 'Expected ASSET-NNNNN').optional().describe('Asset ID if the request is linked to a specific device'),
+    },
+    async ({ employee_id, employee_email, employee_name, description, priority, category, status, asset_id }) => {
+      // Security-sensitive requests always require manager approval — enforce regardless
+      // of the model's chosen status so the approval workflow is deterministic.
+      const approvalText = `${category} ${description}`.toLowerCase();
+      const requiresApproval = /\b(usb|vpn|security|access request|privileged|admin access)\b/.test(approvalText);
+      const effectiveStatus = requiresApproval ? 'Pending Approval' : status;
+      const result = service.createTicket({
+        employee_id,
+        employee_email,
+        employee_name,
+        description: asset_id ? `${description} [Asset: ${asset_id}]` : description,
+        priority,
+        category,
+        status: effectiveStatus,
+        tags: category.toLowerCase(),
+      });
+      if (!result) {
+        return json({ error: 'creation_failed', message: 'Failed to create ticket' });
+      }
+      return json({ success: true, ...result, message: `Ticket ${result.ticket_id} created successfully` });
+    }
+  );
+
+  server.tool(
+    'update_ticket_status',
+    'Update the status of an existing IT ticket. Use this to approve, reject, resolve, or close tickets.',
+    {
+      ticket_id: TICKET_ID.describe('Ticket ID to update'),
+      status: z.enum(['Open', 'In Progress', 'Pending Approval', 'Approved', 'Rejected', 'Resolved', 'Closed']).describe('New status'),
+      approver_email: EMAIL.optional().describe('Email of the person approving/rejecting (required for approval actions)'),
+      approver_name: NAME.optional().describe('Name of the person approving/rejecting'),
+    },
+    async ({ ticket_id, status, approver_email, approver_name }) => {
+      const result = service.updateTicketStatus(ticket_id, status, approver_email, approver_name);
+      if (!result) {
+        return json({ error: 'update_failed', message: `Ticket ${ticket_id} not found or update failed` });
+      }
+      return json({ success: true, ...result, message: `Ticket ${ticket_id} status updated to "${status}"` });
+    }
+  );
+
+  // --- Asset tools ---
+
+  server.tool(
+    'get_employee_assets',
+    'Get all IT assets (laptops, devices) assigned to an employee by their employee ID (e.g. "EMP-008") or email address. Use this to find which devices an employee has before creating device-specific requests.',
+    {
+      identifier: EMPLOYEE_REF.describe('Employee ID (e.g. "EMP-008") or email address')
+    },
+    async ({ identifier }) => {
+      const assets = identifier.startsWith('EMP-')
+        ? service.getAssetsByEmployeeId(identifier)
+        : service.getAssetsByEmployee(identifier);
+      return json({ count: assets.length, identifier, assets });
+    }
+  );
+
+}
+
+function createServer() {
+  const server = new McpServer({ name: 'it-tools', version: '1.0.0' });
+  registerTools(server);
+  return server;
+}
+
+// --- Express + MCP Transport ---
+
+async function main() {
+  const app = express();
+
+  app.use((req, _res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from ${req.ip}`);
+    next();
+  });
+
+  // Ensure MCP clients can always reach Streamable HTTP transport
+  app.use('/mcp', (req, _res, next) => {
+    req.headers['accept'] = 'application/json, text/event-stream';
+    const idx = req.rawHeaders.findIndex(h => h.toLowerCase() === 'accept');
+    if (idx !== -1) {
+      req.rawHeaders[idx + 1] = 'application/json, text/event-stream';
+    } else {
+      req.rawHeaders.push('Accept', 'application/json, text/event-stream');
+    }
+    next();
+  });
+
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'healthy', name: 'it-tools', timestamp: new Date().toISOString() });
+  });
+
+  // --- Streamable HTTP transport (stateful — Portkey MCP Gateway requires sessions) ---
+  const httpTransports = {};
+
+  app.post('/mcp', async (req, res) => {
+    const sessionId = req.headers['mcp-session-id'];
+    let transport = sessionId ? httpTransports[sessionId] : undefined;
+    if (!transport) {
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => { httpTransports[sid] = transport; },
+      });
+      transport.onclose = () => { if (transport.sessionId) delete httpTransports[transport.sessionId]; };
+      await createServer().connect(transport);
+    }
+    await transport.handleRequest(req, res);
+  });
+
+  const bySession = async (req, res) => {
+    const transport = httpTransports[req.headers['mcp-session-id']];
+    if (!transport) return res.status(400).json({ error: 'Invalid or missing session' });
+    await transport.handleRequest(req, res);
+  };
+  app.get('/mcp', bySession);
+  app.delete('/mcp', bySession);
+
+  app.listen(PORT, () => {
+    console.log(`IT Tools MCP Server running on port ${PORT}`);
+    console.log(`MCP endpoint: http://localhost:${PORT}/mcp`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+  });
+}
+
+main().catch(err => {
+  console.error('Failed to start IT Tools MCP Server:', err);
+  process.exit(1);
+});

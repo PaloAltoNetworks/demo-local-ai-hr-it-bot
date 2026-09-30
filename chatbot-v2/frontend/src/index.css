@@ -1,0 +1,164 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* --- Brand fonts (self-hosted, no CDN) --- */
+@font-face { font-family: 'TT Hoves'; src: url('/fonts/TTHoves-Regular_optimized.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'TT Hoves'; src: url('/fonts/TTHoves-Medium_optimized.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'TT Hoves'; src: url('/fonts/TTHoves-DemiBold_optimized.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'otter'; src: url('/fonts/otter.woff') format('woff'); font-weight: normal; font-display: swap; }
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'TT Hoves', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --color-brand-orange: var(--brand-orange);
+    --color-brand-green: var(--brand-green);
+    --color-brand-red: var(--brand-red);
+    --color-brand-blue: var(--brand-blue);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    /* Palo Alto Networks brand palette */
+    --brand-orange: #FA582D;
+    --brand-green: #00CC66;
+    --brand-red: #C84727;
+    --brand-blue: #00C0E8;
+
+    --background: #FCFCF9;
+    --foreground: #134252;
+    --card: #FFFFFF;
+    --card-foreground: #134252;
+    --popover: #FFFFFF;
+    --popover-foreground: #134252;
+    /* --primary is driven per-phase (see .phaseN-active); green is the default (phase 1) */
+    --primary: var(--brand-green);
+    --primary-foreground: #FFFFFF;
+    --secondary: #F5F5F0;
+    --secondary-foreground: #134252;
+    --muted: #F5F5F0;
+    --muted-foreground: #5A6E78;
+    --accent: #F5F5F0;
+    --accent-foreground: #134252;
+    --destructive: var(--brand-red);
+    --border: #E0DDD5;
+    --input: #E0DDD5;
+    --ring: var(--primary);
+    --radius: 0.75rem;
+}
+
+.dark {
+    --background: #1A1C1C;
+    --foreground: #F0F0EC;
+    --card: #222424;
+    --card-foreground: #F0F0EC;
+    --popover: #222424;
+    --popover-foreground: #F0F0EC;
+    --primary: var(--brand-green);
+    --primary-foreground: #0B1418;
+    --secondary: #2A2C2C;
+    --secondary-foreground: #F0F0EC;
+    --muted: #2A2C2C;
+    --muted-foreground: #A0AAB0;
+    --accent: #2A2C2C;
+    --accent-foreground: #F0F0EC;
+    --destructive: #E5744F;
+    --border: #3A3C3C;
+    --input: #3A3C3C;
+    --ring: var(--primary);
+}
+
+/* Per-phase accent: overrides --primary so buttons, rings, avatars retint. */
+.phase1-active { --primary: var(--brand-green); }
+.phase2-active { --primary: var(--brand-red); }
+.phase3-active { --primary: var(--brand-blue); }
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+    font-size: 115%;
+  }
+}
+
+/* Otter brand glyph (icon webfont) — used for the header logo. */
+.otter-icon {
+  font-family: 'otter';
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+}
+.otter-icon::before { content: "\e900"; }
+
+/* Breathing pulse for the otter over the halo orb: gentle scale + opacity blink. */
+@keyframes otter-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+.animate-breathe {
+  animation: otter-breathe 5s ease-in-out infinite;
+  transform-origin: center;
+}
+/* Entrance: pop in by overshooting the target size (grow past then settle), not shrink. */
+@keyframes otter-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop {
+  animation: otter-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both;
+}
+/* Typewriter caret: hard on/off blink. */
+@keyframes caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.animate-caret-blink {
+  animation: caret-blink 1s steps(1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-breathe, .animate-pop, .animate-caret-blink { animation: none; }
+}
+
+/* Thin scrollbars to match the calm surface palette. */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }

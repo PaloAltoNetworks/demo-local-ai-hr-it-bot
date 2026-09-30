@@ -1,0 +1,24 @@
+{
+  "name": "hr-tools-mcp-server",
+  "version": "0.1.0",
+  "description": "HR Tools MCP Server - Pure data/tools server exposing HR employee data via MCP",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "seed-db": "node seed.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "express": "^5.2.1",
+    "zod": "^4.6.5"
+  },
+  "keywords": [
+    "mcp",
+    "hr",
+    "tools",
+    "data"
+  ],
+  "author": "System",
+  "license": "MIT"
+}
