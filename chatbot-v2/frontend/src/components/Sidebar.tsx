@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useChatContext } from '../context/ChatContext';
+import { MessageResponse } from '@/components/ai-elements/message';
 import type { LucideIcon } from 'lucide-react';
 import {
   Lightbulb,
@@ -15,6 +17,7 @@ import {
   Usb,
   TriangleAlert,
   BookCopy,
+  X,
 } from 'lucide-react';
 
 interface QuestionItem {
@@ -61,7 +64,7 @@ export default function Sidebar({ phase }: { phase: string }) {
   };
 
   return (
-    <aside className="hidden overflow-y-auto border-e bg-card p-5 md:block">
+    <aside className="hidden flex-col overflow-y-auto border-e bg-card p-5 md:flex">
       <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
         <Lightbulb className="size-5 text-primary" />
         {t('questions.title')}
@@ -88,7 +91,49 @@ export default function Sidebar({ phase }: { phase: string }) {
           return <QuestionCard key={i} item={item} onClick={handleClick} />;
         })}
       </div>
+      <VersionLink />
     </aside>
+  );
+}
+
+/**
+ * App version from GET /api/about; clicking it opens the changelog (CHANGELOG.md) in a native
+ * modal <dialog>, rendered as Markdown.
+ */
+function VersionLink() {
+  const { t } = useLanguage();
+  const [about, setAbout] = useState<{ version: string; changelog: string } | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    fetch('/api/about').then(r => r.json()).then(setAbout).catch(() => {});
+  }, []);
+
+  if (!about) return null;
+  return (
+    <>
+      <button
+        onClick={() => dialogRef.current?.showModal()}
+        className="mt-auto self-start pt-4 text-xs text-muted-foreground hover:text-primary hover:underline"
+        title={t('changelog.title')}
+      >
+        v{about.version} · {t('changelog.title')}
+      </button>
+      <dialog
+        ref={dialogRef}
+        onClick={e => { if (e.target === e.currentTarget) e.currentTarget.close(); }}
+        className="m-auto max-h-[80vh] w-[min(42rem,90vw)] overflow-y-auto rounded-xl border bg-card p-6 text-foreground shadow-xl backdrop:bg-black/50"
+      >
+        <button
+          onClick={() => dialogRef.current?.close()}
+          aria-label={t('changelog.close')}
+          className="float-end grid size-8 place-items-center rounded-md hover:bg-muted"
+        >
+          <X className="size-4" />
+        </button>
+        <MessageResponse>{about.changelog}</MessageResponse>
+      </dialog>
+    </>
   );
 }
 

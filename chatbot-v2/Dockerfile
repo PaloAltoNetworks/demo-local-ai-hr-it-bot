@@ -25,6 +25,9 @@ COPY --chown=chatbot:nodejs chatbot-v2/backend/ ./backend/
 # Copy built frontend
 COPY --from=frontend-build --chown=chatbot:nodejs /build/dist ./frontend/dist/
 
+# Changelog shown in the UI (GET /api/about)
+COPY --chown=chatbot:nodejs CHANGELOG.md ./
+
 # Copy locales for i18n
 COPY --chown=chatbot:nodejs locales/ ./frontend/dist/locales/
 

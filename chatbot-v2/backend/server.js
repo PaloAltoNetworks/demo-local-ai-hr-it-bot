@@ -925,6 +925,16 @@ app.post('/api/feedback', async (req, res) => {
   }
 });
 
+/**
+ * App version (chatbot-v2 package.json) and the Markdown changelog. CHANGELOG.md sits next to
+ * package.json in the image and at the repo root when run from source.
+ */
+app.get('/api/about', (_req, res) => {
+  const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'));
+  const changelogPath = [path.join(__dirname, '../CHANGELOG.md'), path.join(__dirname, '../../CHANGELOG.md')].find(p => fs.existsSync(p));
+  res.json({ version, changelog: changelogPath ? fs.readFileSync(changelogPath, 'utf-8') : '' });
+});
+
 // i18n
 app.get('/api/translations/:language', (req, res) => {
   const langFile = path.join(__dirname, '../frontend/dist/locales', req.params.language, 'frontend.json');

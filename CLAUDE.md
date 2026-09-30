@@ -128,7 +128,7 @@ When asked to merge, release and prep next version, follow this exact sequence:
 3. `git checkout main && git pull origin main && git remote prune origin`
 4. Delete local branch if still present: `git branch -D <branch>`
 5. Tag: `git tag v<version> main && git push origin v<version>`
-6. Release notes to `/tmp/release-notes-v<version>.md`, then `gh release create`
+6. Release notes = the version's section of `CHANGELOG.md` (written before the version bump, user-facing, newest first; the chatbot shows this file from its version link). Copy that section to `/tmp/release-notes-v<version>.md`, then `gh release create`
 7. Prep next: `git checkout -b v.0.0.<next> && git push -u origin v.0.0.<next>`
 
 ### Working Branch Convention

@@ -5,6 +5,7 @@ yarn-error.log*
 .git
 .gitignore
 *.md
+!CHANGELOG.md
 .env
 .DS_Store
 Dockerfile

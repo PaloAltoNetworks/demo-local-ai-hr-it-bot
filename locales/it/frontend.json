@@ -234,5 +234,14 @@
     "viewReport": "Vedi report AIRS",
     "viewTrace": "Vedi traccia Portkey",
     "tokensConsumed": "token consumati"
+  },
+  "changelog": {
+    "title": "Novità",
+    "close": "Chiudi"
+  },
+  "autoHint": {
+    "text": "Novità: la modalità Auto lascia scegliere il cloud all'AI Gateway, con bilanciamento del carico e fallback.",
+    "try": "Prova Auto",
+    "dismiss": "Non mostrare più"
   }
 }

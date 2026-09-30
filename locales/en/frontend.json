@@ -234,5 +234,14 @@
     "viewReport": "View AIRS report",
     "viewTrace": "View Portkey trace",
     "tokensConsumed": "tokens consumed"
+  },
+  "changelog": {
+    "title": "What's new",
+    "close": "Close"
+  },
+  "autoHint": {
+    "text": "New: Auto mode lets the AI Gateway pick the cloud, with load balancing and fallback.",
+    "try": "Try Auto",
+    "dismiss": "Don't show again"
   }
 }

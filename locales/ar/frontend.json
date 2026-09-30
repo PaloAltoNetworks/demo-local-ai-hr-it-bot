@@ -234,5 +234,14 @@
     "viewReport": "عرض تقرير AIRS",
     "viewTrace": "عرض تتبّع Portkey",
     "tokensConsumed": "الرموز المستهلكة"
+  },
+  "changelog": {
+    "title": "ما الجديد",
+    "close": "إغلاق"
+  },
+  "autoHint": {
+    "text": "جديد: يتيح وضع Auto لـ AI Gateway اختيار السحابة، مع موازنة الأحمال والتحويل الاحتياطي.",
+    "try": "جرّب Auto",
+    "dismiss": "عدم الإظهار مرة أخرى"
   }
 }

@@ -234,5 +234,14 @@
     "viewReport": "查看 AIRS 报告",
     "viewTrace": "查看 Portkey 跟踪",
     "tokensConsumed": "已消耗令牌"
+  },
+  "changelog": {
+    "title": "更新内容",
+    "close": "关闭"
+  },
+  "autoHint": {
+    "text": "新功能：Auto 模式由 AI Gateway 选择云，并提供负载均衡和故障转移。",
+    "try": "试用 Auto",
+    "dismiss": "不再显示"
   }
 }

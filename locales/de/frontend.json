@@ -234,5 +234,14 @@
     "viewReport": "AIRS-Bericht ansehen",
     "viewTrace": "Portkey-Trace ansehen",
     "tokensConsumed": "verbrauchte Token"
+  },
+  "changelog": {
+    "title": "Neuigkeiten",
+    "close": "Schließen"
+  },
+  "autoHint": {
+    "text": "Neu: Im Auto-Modus wählt das AI Gateway die Cloud, mit Load Balancing und Fallback.",
+    "try": "Auto ausprobieren",
+    "dismiss": "Nicht mehr anzeigen"
   }
 }
