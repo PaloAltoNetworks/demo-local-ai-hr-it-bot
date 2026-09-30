@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: hr-it-bot
+resources:
+  - namespace.yaml
+  - apps.yaml
+  - cloudflared.yaml
+  - external-secrets.yaml
+# Every pod runs as the non-root uid 1001 the images create, with no privilege
+# escalation and no capabilities (each Deployment has a single container).
+patches:
+  - target: { kind: Deployment }
+    patch: |-
+      - op: add
+        path: /spec/template/spec/securityContext
+        value:
+          runAsNonRoot: true
+          runAsUser: 1001
+          seccompProfile: { type: RuntimeDefault }
+      - op: add
+        path: /spec/template/spec/containers/0/securityContext
+        value:
+          allowPrivilegeEscalation: false
+          capabilities: { drop: [ALL] }

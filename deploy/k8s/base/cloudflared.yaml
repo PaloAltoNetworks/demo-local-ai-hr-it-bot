@@ -1,0 +1,27 @@
+# Remote-managed Cloudflare tunnel: the public hostname and its route to
+# http://chatbot-v2.hr-it-bot.svc.cluster.local:3018 live in the Cloudflare dashboard,
+# the pod only needs the tunnel token. Only the chatbot is published; the MCP servers
+# and the AIRS gateway stay cluster-internal.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: cloudflared }
+  template:
+    metadata:
+      labels: { app: cloudflared }
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:2026.9.3
+          args: [tunnel, --no-autoupdate, --metrics, "0.0.0.0:2000", run]
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom: { secretKeyRef: { name: cloudflared, key: TUNNEL_TOKEN } }
+          livenessProbe: { httpGet: { path: /ready, port: 2000 } }
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits: { memory: 256Mi }

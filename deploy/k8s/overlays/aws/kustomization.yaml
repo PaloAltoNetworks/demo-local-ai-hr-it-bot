@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - cluster-secret-store.yaml
+# The AIRS gateway resolves the SCM-registered MCP origins (*.otter-lab.com) through
+# hostAlias entries in deploy/helm/airs-gw/values-aws.yaml, which point at these
+# ClusterIPs inside the service CIDR pinned by infra/aws (172.20.0.0/16).
+# ponytail: IPs are fixed by hand per cloud; past a handful of origins, switch to an
+# in-cluster DNS rewrite.
+patches:
+  - target: { kind: Service, name: it-tools }
+    patch: '[{"op": "add", "path": "/spec/clusterIP", "value": "172.20.200.16"}]'
+  - target: { kind: Service, name: hr-tools }
+    patch: '[{"op": "add", "path": "/spec/clusterIP", "value": "172.20.200.17"}]'
+  - target: { kind: Service, name: it-triage }
+    patch: '[{"op": "add", "path": "/spec/clusterIP", "value": "172.20.200.19"}]'
