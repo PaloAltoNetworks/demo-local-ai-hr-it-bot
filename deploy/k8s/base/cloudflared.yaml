@@ -1,7 +1,7 @@
-# Remote-managed Cloudflare tunnel: the public hostname and its route to
-# http://chatbot-v2.hr-it-bot.svc.cluster.local:3018 live in the Cloudflare dashboard,
-# the pod only needs the tunnel token. Only the chatbot is published; the MCP servers
-# and the AIRS gateway stay cluster-internal.
+# Remote-managed Cloudflare tunnel: the public hostnames (app and login) and their
+# route to http://caddy.hr-it-bot.svc.cluster.local:3010 live in the Cloudflare
+# dashboard, the pod only needs the tunnel token. Only Caddy is published; the chatbot,
+# the MCP servers and the AIRS gateway stay cluster-internal.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

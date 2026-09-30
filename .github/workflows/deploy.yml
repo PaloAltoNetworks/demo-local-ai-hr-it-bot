@@ -54,7 +54,7 @@ jobs:
       - name: Demo services, tunnel and secrets
         working-directory: deploy/k8s/overlays/${{ inputs.cloud }}
         run: |
-          for svc in chatbot-v2 hr-tools-mcp-server it-tools-mcp-server it-triage-agent; do
+          for svc in chatbot-v2 hr-tools-mcp-server it-tools-mcp-server it-triage-agent auth-service; do
             kustomize edit set image "ghcr.io/${GITHUB_REPOSITORY,,}/$svc:$VERSION"
           done
           kubectl apply -k .
@@ -70,6 +70,6 @@ jobs:
 
       - name: Rollout
         run: |
-          for d in it-tools hr-tools it-triage chatbot-v2 cloudflared; do
+          for d in it-tools hr-tools it-triage chatbot-v2 auth-service caddy cloudflared; do
             kubectl -n hr-it-bot rollout status "deploy/$d" --timeout=5m
           done

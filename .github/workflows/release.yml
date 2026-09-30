@@ -1,4 +1,4 @@
-# Publishing a GitHub release builds the four demo images, pushes them to GHCR tagged
+# Publishing a GitHub release builds the five demo images, pushes them to GHCR tagged
 # with the release tag (plus sha-<commit>), then deploys that version to the cluster.
 # Manual runs build and deploy the checked-out ref under the given tag.
 name: Release
@@ -28,6 +28,7 @@ jobs:
           - { image: hr-tools-mcp-server, dockerfile: mcp-server/hr-tools-mcp-server/Dockerfile }
           - { image: it-tools-mcp-server, dockerfile: mcp-server/it-tools-mcp-server/Dockerfile }
           - { image: it-triage-agent, dockerfile: agents/it-triage-agent/Dockerfile }
+          - { image: auth-service, dockerfile: auth-service/Dockerfile }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0

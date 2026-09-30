@@ -1,0 +1,34 @@
+# Public entry point behind the Cloudflare tunnel. The app host is only served to
+# visitors with a valid auth-service session (magic link); anyone else is sent to the
+# login page on the auth host. Hostnames come from the "edge" ConfigMap of the overlay.
+{
+	http_port 3010
+	auto_https off
+	admin off
+}
+
+(auth) {
+	forward_auth auth-service:3001 {
+		uri /auth/check
+		copy_headers X-Auth-User X-Auth-Email X-Auth-Roles X-Auth-Origin
+
+		@unauthorized status 401
+		handle_response @unauthorized {
+			redir * https://{$AUTH_HOST}/auth/login?redirect_url=https://{http.request.host}{http.request.uri} 302
+		}
+	}
+	reverse_proxy {args[0]}
+}
+
+http://{$AUTH_HOST} {
+	handle /auth/* {
+		reverse_proxy auth-service:3001
+	}
+	handle /api/auth/* {
+		reverse_proxy auth-service:3001
+	}
+}
+
+http://{$APP_HOST} {
+	import auth chatbot-v2:3018
+}
