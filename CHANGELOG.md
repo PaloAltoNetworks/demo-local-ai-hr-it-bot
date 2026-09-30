@@ -1,11 +1,11 @@
 # What's new in The Otter
 
-The Otter is an HR and IT assistant that shows how an AI Gateway and Prisma AIRS keep a company
+The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
 ## 0.0.26
 
-### Auto mode: the AI Gateway picks the cloud for you
+### Auto mode: the Prisma AIRS AI Gateway picks the cloud for you
 The LLM Provider menu now opens on **Auto**. Instead of pinning one cloud, you let the AI Gateway
 spread questions across AWS, Google Cloud and Azure, and switch to another cloud on its own if one
 of them has a problem. In the demo, this shows that the assistant keeps answering even when a

@@ -107,6 +107,10 @@
   body {
     @apply bg-background text-foreground;
   }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
   html {
     @apply font-sans;
     font-size: 115%;

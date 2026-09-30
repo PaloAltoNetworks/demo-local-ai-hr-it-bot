@@ -208,7 +208,7 @@
   "llmProvider": {
     "label": "LLM Provider",
     "note": "A mix of Haiku 4.5 and Sonnet 5.5 on the selected cloud, with each provider's native guardrails enabled by default in every phase.",
-    "autoNote": "All requests go through the AI Gateway. AWS, GCP or Azure pins the cloud; Auto lets the gateway load-balance across the three and fall back to another cloud if one fails."
+    "autoNote": "All requests go through the Prisma AIRS AI Gateway. AWS, GCP or Azure pins the cloud; Auto lets the gateway load-balance across the three and fall back to another cloud if one fails."
   },
   "workflow": {
     "title": "Workflow replay",
@@ -240,7 +240,7 @@
     "close": "Close"
   },
   "autoHint": {
-    "text": "New: Auto mode lets the AI Gateway pick the cloud, with load balancing and fallback.",
+    "text": "New: Auto mode lets the Prisma AIRS AI Gateway pick the cloud, with load balancing and fallback.",
     "try": "Try Auto",
     "dismiss": "Don't show again"
   }
