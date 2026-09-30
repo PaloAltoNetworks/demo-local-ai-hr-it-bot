@@ -31,7 +31,7 @@ export default function WorkflowOverlay({ phase, provider, onClose }: { phase: s
         </button>
       </div>
       <div className="min-h-0 flex-1">
-        <WorkflowReplay initialPhase={initialPhase} initialProvider={toDiagramProvider(provider)} t={t} />
+        <WorkflowReplay initialPhase={initialPhase} initialProvider={toDiagramProvider(provider)} initialRouting={provider === 'Auto' ? 'fallback' : 'single'} t={t} />
       </div>
     </div>
   );

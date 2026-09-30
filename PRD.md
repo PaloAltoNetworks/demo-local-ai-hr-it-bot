@@ -91,19 +91,20 @@ Both input (pre-call) and output (post-call) scanning run through the configured
 
 ### Providers
 
-`GET /api/providers` returns the configured provider tiers `{ providers: [{ id, label }], default }` (AWS, GCP, Azure, and Fallback when configured). The composer's provider dropdown lists them; the fast/powerful model per tier stays server-side in `PROVIDER_TIERS`.
+`GET /api/providers` returns the configured provider tiers `{ providers: [{ id, label }], default }` (AWS, GCP, Azure, and Auto when configured). The composer's provider dropdown lists them; the fast/powerful model per tier stays server-side in `PROVIDER_TIERS`.
 
-### Fallback provider (Portkey fallback chain)
+### Auto provider (AI Gateway routing)
 
-Portkey rejects a per-request `x-portkey-config` on API keys that carry a default config ("Cannot override default config set for this API key"), so the chain rides on dedicated keys, like the guardrails:
-- `PORTKEY_API_KEY_FALLBACK` — key attached to the `otter-fallback` config (phases 1–2)
-- `PORTKEY_API_KEY_FALLBACK_GUARDED` — key attached to `otter-fallback-guarded` (phase 3, same chain + AIRS guardrails)
+A fourth entry, `Auto (AI Gateway routing)`, lets the AI Gateway pick the provider: a fallback chain AWS → GCP → Azure per tier. The SCM gateway blocks inline configs (`inline_config_blocked`) but accepts a **saved config slug** in `x-portkey-config`, and that config replaces the key's default config for the request. So the regular keys are reused and two saved configs are referenced:
+- `PORTKEY_AUTO_CONFIG` — slug of `otter-auto` (phases 1–2)
+- `PORTKEY_AUTO_CONFIG_GUARDED` — slug of `otter-auto-guarded` (phase 3, same chain + AIRS guardrails, since it replaces the guarded key's config)
 
-Every LLM call sends `metadata.tier` = `fast` | `powerful`; the config routes on it to a fallback chain AWS → GCP → Azure. The `Fallback` tier reuses the AWS model strings for logs and pricing; the served model comes from the config.
+Configs are created in the SCM UI (config writes are not exposed by API). Every LLM call sends `metadata.tier` = `fast` | `powerful`; the config routes on it. The `Auto` tier reuses the AWS model strings for logs and pricing; the served model comes from the config. Opening the workflow replay while Auto is selected starts it in Fallback routing.
 
-`otter-fallback` (`otter-fallback-guarded` adds `"retry": {"attempts": 3}`, `"input_guardrails": ["pg-otter-1e5ab1"]`, `"output_guardrails": ["pg-otter-8dc1ad"]`, the SCM AI Gateway `theotter` guardrails):
+`otter-auto` (`otter-auto-guarded` adds `"input_guardrails": ["pg-otter-1e5ab1"]`, `"output_guardrails": ["pg-otter-8dc1ad"]`, the SCM AI Gateway `theotter` guardrails):
 ```json
 {
+  "retry": { "attempts": 3 },
   "cache": { "mode": "simple", "max_age": 3600 },
   "strategy": {
     "mode": "conditional",

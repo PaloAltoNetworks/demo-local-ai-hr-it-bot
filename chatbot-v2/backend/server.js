@@ -33,13 +33,14 @@ const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const PORTKEY_API_KEY_GUARDED = process.env.PORTKEY_API_KEY_GUARDED || PORTKEY_API_KEY;
 /**
- * Keys whose attached Portkey config is a fallback chain (AWS → GCP → Azure) routed per tier on
- * `metadata.tier`. Portkey refuses a per-request x-portkey-config on keys that carry a default
- * config, so the chain rides on the key like the guardrails do. The Fallback provider is only
- * offered when PORTKEY_API_KEY_FALLBACK is set.
+ * Saved AI Gateway configs for the Auto provider: a fallback chain across AWS, GCP and Azure,
+ * routed per tier on `metadata.tier`. The SCM gateway blocks inline configs but accepts a saved
+ * config slug in x-portkey-config, which replaces the key's default config for that request, so
+ * the guarded variant must carry the AIRS guardrails itself. Auto is offered only when
+ * PORTKEY_AUTO_CONFIG is set.
  */
-const PORTKEY_API_KEY_FALLBACK = process.env.PORTKEY_API_KEY_FALLBACK || '';
-const PORTKEY_API_KEY_FALLBACK_GUARDED = process.env.PORTKEY_API_KEY_FALLBACK_GUARDED || PORTKEY_API_KEY_FALLBACK;
+const PORTKEY_AUTO_CONFIG = process.env.PORTKEY_AUTO_CONFIG || '';
+const PORTKEY_AUTO_CONFIG_GUARDED = process.env.PORTKEY_AUTO_CONFIG_GUARDED || PORTKEY_AUTO_CONFIG;
 const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
 const GCP_PROVIDER = process.env.PORTKEY_GCP_PROVIDER || '@vertex-prod';
 const AZURE_PROVIDER = process.env.PORTKEY_AZURE_PROVIDER || '@azure';
@@ -142,11 +143,11 @@ const PROVIDER_TIERS = {
 };
 
 /**
- * Fallback tier: the model strings are the chain's primary (AWS) targets, used for logs and
- * pricing; the key's config overrides the model on whichever target actually serves the call.
+ * Auto tier: the model strings are the chain's primary (AWS) targets, used for logs and pricing;
+ * the saved config overrides the model on whichever target actually serves the call.
  */
-if (PORTKEY_API_KEY_FALLBACK) {
-  PROVIDER_TIERS.Fallback = { ...PROVIDER_TIERS.AWS, label: 'Fallback (AWS → GCP → Azure)', fallback: true };
+if (PORTKEY_AUTO_CONFIG) {
+  PROVIDER_TIERS.Auto = { ...PROVIDER_TIERS.AWS, label: 'Auto (AI Gateway routing)', auto: true };
 }
 
 // Display/fallback model id, derived from the default provider's powerful tier.
@@ -190,10 +191,10 @@ function makeReflectTools(stepStartRef) {
 function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = '') {
   return async (url, init) => {
     const headers = new Headers(init?.headers);
-    const apiKey = reqCtx.tiers.fallback
-      ? (guarded ? PORTKEY_API_KEY_FALLBACK_GUARDED : PORTKEY_API_KEY_FALLBACK)
-      : (guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY);
-    headers.set('x-portkey-api-key', apiKey);
+    headers.set('x-portkey-api-key', guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY);
+    if (reqCtx.tiers.auto) {
+      headers.set('x-portkey-config', guarded ? PORTKEY_AUTO_CONFIG_GUARDED : PORTKEY_AUTO_CONFIG);
+    }
     headers.set('x-portkey-trace-id', reqCtx.traceId);
     // Every phase otherwise logs as span_name "llm", so a turn reads as N identical rows.
     // Phases run in sequence, not nested, so they stay siblings — no parent_span_id.

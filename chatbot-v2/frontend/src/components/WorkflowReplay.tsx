@@ -710,11 +710,11 @@ function demoScriptFor(phase: Phase): Step[] {
 }
 
 /* ---------- self-contained explorer (global entry point, opened from the header) ---------- */
-export default function WorkflowReplay({ initialPhase = 'phase1', initialProvider = 'aws', t }: { initialPhase?: Phase; initialProvider?: ProviderId; t: Translate }) {
+export default function WorkflowReplay({ initialPhase = 'phase1', initialProvider = 'aws', initialRouting = 'single', t }: { initialPhase?: Phase; initialProvider?: ProviderId; initialRouting?: Routing; t: Translate }) {
   const [phase, setPhase] = useState<Phase>(initialPhase);
   const provider = initialProvider;
   const [deploy, setDeploy] = useState<Deploy>('saas');
-  const [routing, setRouting] = useState<Routing>('single');
+  const [routing, setRouting] = useState<Routing>(initialRouting);
   const script = useMemo(() => demoScriptFor(phase), [phase]);
 
   return (
