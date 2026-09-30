@@ -49,6 +49,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tip } from '@/components/ui/tooltip';
 import {
   PromptInput,
   PromptInputBody,
@@ -290,9 +291,11 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
                 {t('autoHint.try')}
               </button>
             </p>
-            <button onClick={dismissAutoHint} aria-label={t('autoHint.dismiss')} title={t('autoHint.dismiss')} className="grid size-5 shrink-0 place-items-center rounded hover:bg-muted">
-              <X className="size-3.5" />
-            </button>
+            <Tip label={t('autoHint.dismiss')}>
+              <button onClick={dismissAutoHint} aria-label={t('autoHint.dismiss')} className="grid size-5 shrink-0 place-items-center rounded hover:bg-muted">
+                <X className="size-3.5" />
+              </button>
+            </Tip>
           </div>
         )}
         <PromptInput onSubmit={handleSubmit}>
@@ -303,12 +306,14 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
             <PromptInputTools>
               {providers.length > 0 && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2" title={currentProvider?.label || t('llmProvider.label')}>
-                      {currentProvider && <ProviderLogo provider={currentProvider.id} />}
-                      <span className="text-xs font-medium">{currentProvider?.label || t('llmProvider.label')}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <Tip label={t('llmProvider.label')}>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2">
+                        {currentProvider && <ProviderLogo provider={currentProvider.id} />}
+                        <span className="text-xs font-medium">{currentProvider?.label || t('llmProvider.label')}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </Tip>
                   <DropdownMenuContent align="start" className="w-80">
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{t('llmProvider.note')}</DropdownMenuLabel>
                     {providers.some(p => p.id === 'Auto') && (

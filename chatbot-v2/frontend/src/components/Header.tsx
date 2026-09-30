@@ -7,11 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tip } from '@/components/ui/tooltip';
 import { Check, Languages, SunMoon, Moon, Sun, ShieldQuestionMark, ShieldAlert, ShieldCheck, Route } from 'lucide-react';
 
 type ThemeChoice = 'system' | 'light' | 'dark';
@@ -55,45 +51,41 @@ export default function Header({ phase, setPhase, theme, setTheme, onOpenWorkflo
         {PHASES.map(({ id, icon: Icon, color }) => {
           const active = phase === id;
           return (
-            <Tooltip key={id}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setPhase(id)}
-                  aria-label={t(`phases.${id}.label`)}
-                  style={{ '--phase': color } as CSSProperties}
-                  className={`flex size-10 items-center justify-center rounded-lg border transition-colors ${
-                    active
-                      ? 'border-[var(--phase)] bg-card text-[var(--phase)] shadow-sm'
-                      : 'border-transparent text-muted-foreground hover:border-[var(--phase)] hover:text-[var(--phase)]'
-                  }`}
-                >
-                  <Icon className="size-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t(`phases.${id}.label`)}</TooltipContent>
-            </Tooltip>
+            <Tip key={id} label={t(`phases.${id}.label`)}>
+              <button
+                onClick={() => setPhase(id)}
+                aria-label={t(`phases.${id}.label`)}
+                style={{ '--phase': color } as CSSProperties}
+                className={`flex size-10 items-center justify-center rounded-lg border transition-colors ${
+                  active
+                    ? 'border-[var(--phase)] bg-card text-[var(--phase)] shadow-sm'
+                    : 'border-transparent text-muted-foreground hover:border-[var(--phase)] hover:text-[var(--phase)]'
+                }`}
+              >
+                <Icon className="size-5" />
+              </button>
+            </Tip>
           );
         })}
       </nav>
 
       <div className="flex items-center gap-2">
         {/* Workflow replay — opens the AI Gateway pipeline visualizer */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="outline" size="icon" className="size-10" onClick={onOpenWorkflow} aria-label={t('workflow.title')}>
-              <Route className="size-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{t('workflow.title')}</TooltipContent>
-        </Tooltip>
+        <Tip label={t('workflow.title')}>
+          <Button variant="outline" size="icon" className="size-10" onClick={onOpenWorkflow} aria-label={t('workflow.title')}>
+            <Route className="size-5" />
+          </Button>
+        </Tip>
 
         {/* Theme — icon only when collapsed, icon + label on open */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="size-10" title="Theme" aria-label="Theme">
-              <ThemeIcon className="size-5" />
-            </Button>
-          </DropdownMenuTrigger>
+          <Tip label="Theme">
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="size-10" aria-label="Theme">
+                <ThemeIcon className="size-5" />
+              </Button>
+            </DropdownMenuTrigger>
+          </Tip>
           <DropdownMenuContent align="end">
             {THEMES.map(({ value, icon: Icon, label }) => (
               <DropdownMenuItem key={value} onClick={() => setTheme(value)}>
@@ -108,11 +100,13 @@ export default function Header({ phase, setPhase, theme, setTheme, onOpenWorkflo
         {/* Language — icon only when collapsed, label list on open */}
         {languages.length > 1 && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="size-10" title={currentLang?.nativeName || currentLang?.name || 'Language'} aria-label="Language">
-                <Languages className="size-5" />
-              </Button>
-            </DropdownMenuTrigger>
+            <Tip label={currentLang?.nativeName || currentLang?.name || 'Language'}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="size-10" aria-label="Language">
+                  <Languages className="size-5" />
+                </Button>
+              </DropdownMenuTrigger>
+            </Tip>
             <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
               {languages.map(l => (
                 <DropdownMenuItem key={l.code} onClick={() => setLanguage(l.code)}>

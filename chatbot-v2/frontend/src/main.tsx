@@ -8,7 +8,7 @@ import './index.css';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <LanguageProvider>
-      <TooltipProvider delayDuration={200}>
+      <TooltipProvider delayDuration={100}>
         <App />
       </TooltipProvider>
     </LanguageProvider>

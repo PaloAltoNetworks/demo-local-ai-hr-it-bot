@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Translate } from '../context/LanguageContext';
+import { Tip } from '@/components/ui/tooltip';
 
 /* ---------- phase + deployment ---------- */
 export type Phase = 'phase1' | 'phase2' | 'phase3';
@@ -166,11 +167,13 @@ const GW_CAPS: Cap[] = [
 function CapChip({ cap, tone, flag }: { cap: Cap; tone?: string; flag?: boolean }) {
   const Icon = cap.icon;
   return (
-    <span title={cap.label} className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 ${flag ? 'animate-pulse' : ''}`}
-      style={{ background: flag ? `color-mix(in srgb, ${RED} 22%, transparent)` : tone ? `color-mix(in srgb, ${tone} 12%, transparent)` : 'var(--muted)', color: tone || 'var(--foreground)', outline: flag ? `1px solid ${RED}` : undefined }}>
-      <Icon className="size-3.5 shrink-0" />
-      <span className="text-[10px] font-semibold leading-none">{cap.short}</span>
-    </span>
+    <Tip label={cap.label}>
+      <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 ${flag ? 'animate-pulse' : ''}`}
+        style={{ background: flag ? `color-mix(in srgb, ${RED} 22%, transparent)` : tone ? `color-mix(in srgb, ${tone} 12%, transparent)` : 'var(--muted)', color: tone || 'var(--foreground)', outline: flag ? `1px solid ${RED}` : undefined }}>
+        <Icon className="size-3.5 shrink-0" />
+        <span className="text-[10px] font-semibold leading-none">{cap.short}</span>
+      </span>
+    </Tip>
   );
 }
 
@@ -559,7 +562,7 @@ function Flow({ script, phase, deploy, provider, routing, t }: { script: Step[];
       {/* controls */}
       <div className="absolute inset-x-0 bottom-3 flex justify-center">
         <div className="flex items-center gap-3 rounded-full border bg-card/90 px-4 py-2 shadow-lg backdrop-blur">
-          <button className="grid size-8 place-items-center rounded-full hover:bg-muted" onClick={() => { setIdx(0); setPlaying(false); }} title={t('workflow.restart')}><RotateCcw className="size-4" /></button>
+          <Tip label={t('workflow.restart')}><button className="grid size-8 place-items-center rounded-full hover:bg-muted" onClick={() => { setIdx(0); setPlaying(false); }} aria-label={t('workflow.restart')}><RotateCcw className="size-4" /></button></Tip>
           <button className="grid size-8 place-items-center rounded-full hover:bg-muted disabled:opacity-40" disabled={idx === 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}><SkipBack className="size-4" /></button>
           <button className="grid size-9 place-items-center rounded-full text-white" style={{ background: accent }} onClick={() => { if (idx >= script.length - 1) setIdx(0); setPlaying((p) => !p); }}>
             {playing ? <Pause className="size-4" /> : <Play className="size-4" />}

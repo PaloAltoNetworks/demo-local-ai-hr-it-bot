@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useChatContext } from '../context/ChatContext';
 import { MessageResponse } from '@/components/ai-elements/message';
+import { Tip } from '@/components/ui/tooltip';
 import type { LucideIcon } from 'lucide-react';
 import {
   Lightbulb,
@@ -115,7 +116,6 @@ function VersionLink() {
       <button
         onClick={() => dialogRef.current?.showModal()}
         className="mt-auto self-start pt-4 text-xs text-muted-foreground hover:text-primary hover:underline"
-        title={t('changelog.title')}
       >
         v{about.version} · {t('changelog.title')}
       </button>
@@ -142,19 +142,20 @@ function QuestionCard({ item, index, onClick }: { item: QuestionItem; index?: nu
   const numbered = item.icon && NUMBERED.has(item.icon) && index != null;
 
   return (
-    <button
-      title={item.text}
-      onClick={() => onClick(item)}
-      className="flex w-full items-start gap-2.5 rounded-md border bg-card p-2.5 text-start transition-colors hover:border-primary/40 hover:bg-primary/5"
-    >
-      {numbered ? (
-        <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">{index}</span>
-      ) : Icon ? (
-        <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
-      ) : (
-        <MessageSquare className="mt-0.5 size-4 shrink-0 text-primary" />
-      )}
-      <span className="text-sm font-medium leading-snug">{item.title}</span>
-    </button>
+    <Tip label={item.text} side="right">
+      <button
+        onClick={() => onClick(item)}
+        className="flex w-full items-start gap-2.5 rounded-md border bg-card p-2.5 text-start transition-colors hover:border-primary/40 hover:bg-primary/5"
+      >
+        {numbered ? (
+          <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">{index}</span>
+        ) : Icon ? (
+          <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
+        ) : (
+          <MessageSquare className="mt-0.5 size-4 shrink-0 text-primary" />
+        )}
+        <span className="text-sm font-medium leading-snug">{item.title}</span>
+      </button>
+    </Tip>
   );
 }

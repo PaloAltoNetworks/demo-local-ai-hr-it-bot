@@ -54,4 +54,26 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
+/**
+ * Tooltip shorthand for a single trigger element: shows `label` after the provider's short delay,
+ * instead of the browser's slow native `title` tooltip.
+ */
+function Tip({
+  label,
+  side,
+  children,
+}: {
+  label: React.ReactNode
+  side?: React.ComponentProps<typeof TooltipPrimitive.Content>["side"]
+  children: React.ReactElement
+}) {
+  if (!label) return children
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side}>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export { Tip, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
