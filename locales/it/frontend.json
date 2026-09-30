@@ -208,7 +208,7 @@
   "llmProvider": {
     "label": "Provider LLM",
     "note": "Una combinazione di Haiku 4.5 e Sonnet 5.5 sul cloud selezionato, con le protezioni native di ciascun provider attive per impostazione predefinita in ogni fase.",
-    "autoNote": "Tutte le richieste passano dal Prisma AIRS AI Gateway. AWS, GCP o Azure fissano il cloud; con Auto il gateway distribuisce il carico tra i tre (bilanciamento del carico) e passa a un altro cloud in caso di errore (fallback)."
+    "autoNote": "Tutte le richieste passano dal Prisma AIRS AI Gateway. AWS, GCP o Azure fissano il cloud; con Load balance & fallback il gateway distribuisce il carico tra i tre e passa a un altro cloud in caso di errore."
   },
   "workflow": {
     "title": "Riproduci workflow",
@@ -240,8 +240,8 @@
     "close": "Chiudi"
   },
   "autoHint": {
-    "text": "Novità: la modalità Auto lascia scegliere il cloud al Prisma AIRS AI Gateway, con bilanciamento del carico e fallback.",
-    "try": "Prova Auto",
+    "text": "Novità: lasci scegliere il cloud al Prisma AIRS AI Gateway, con bilanciamento del carico e fallback.",
+    "try": "Prova",
     "dismiss": "Non mostrare più"
   }
 }

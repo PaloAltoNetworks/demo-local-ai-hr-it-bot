@@ -95,7 +95,7 @@ Both input (pre-call) and output (post-call) scanning run through the configured
 
 ### Auto provider (AI Gateway routing)
 
-A fourth entry, `Auto (Prisma AIRS AI Gateway)`, lets the AI Gateway pick the provider. AWS, GCP and Azure force their cloud; Auto delegates to a saved gateway config that **load-balances** (equal weights) across three **fallback** chains, each led by a different cloud and falling back to the other two. The app holds no routing logic: it sends the config slug in `x-portkey-config` and `metadata.tier` = `fast` | `powerful`, and the config picks the chain for that tier (Haiku 4.5 or Sonnet 5.5, with each cloud's model name).
+A fourth entry, `Load balance & fallback`, lets the AI Gateway pick the provider. AWS, GCP and Azure force their cloud; Auto delegates to a saved gateway config that **load-balances** (equal weights) across three **fallback** chains, each led by a different cloud and falling back to the other two. The app holds no routing logic: it sends the config slug in `x-portkey-config` and `metadata.tier` = `fast` | `powerful`, and the config picks the chain for that tier (Haiku 4.5 or Sonnet 5.5, with each cloud's model name).
 
 The SCM gateway blocks inline configs (`inline_config_blocked`) but accepts a saved config slug, which replaces the key's default config for that request, so the regular keys are reused:
 - `PORTKEY_AUTO_CONFIG` — slug of `otter-auto` (phases 1–2): retry, cache, routing

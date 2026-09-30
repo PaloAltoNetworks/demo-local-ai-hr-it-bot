@@ -351,7 +351,7 @@ function AutomationIcon({ className }: { className?: string }) {
 
 /**
  * Self-hosted provider logos keyed by the lowercased provider id. AWS ships a dark-ink and a
- * light-ink file, swapped by the `.dark` class; Auto (Prisma AIRS AI Gateway) shows the Portkey logo
+ * light-ink file, swapped by the `.dark` class; Load balance & fallback shows the Portkey logo
  * the same way. Any other provider gets a routing icon.
  */
 function ProviderLogo({ provider }: { provider: string }) {

@@ -208,7 +208,7 @@
   "llmProvider": {
     "label": "LLMプロバイダー",
     "note": "選択したクラウド上で Haiku 4.5 と Sonnet 5.5 を組み合わせて使用し、各プロバイダーのネイティブガードレールをすべてのフェーズでデフォルトで有効にします。",
-    "autoNote": "すべてのリクエストは Prisma AIRS AI Gateway を経由します。AWS・GCP・Azure を選ぶとそのクラウドに固定され、Auto では Gateway が 3 つに負荷を分散し（ロードバランシング）、障害時は別のクラウドに切り替えます（フォールバック）。"
+    "autoNote": "すべてのリクエストは Prisma AIRS AI Gateway を経由します。AWS・GCP・Azure を選ぶとそのクラウドに固定され、Load balance & fallback では Gateway が 3 つに負荷を分散し、障害時は別のクラウドに切り替えます。"
   },
   "workflow": {
     "title": "ワークフロー再生",
@@ -240,8 +240,8 @@
     "close": "閉じる"
   },
   "autoHint": {
-    "text": "新機能：Auto モードでは Prisma AIRS AI Gateway がクラウドを選択し、ロードバランシングとフォールバックを行います。",
-    "try": "Auto を試す",
+    "text": "新機能：Prisma AIRS AI Gateway にクラウドの選択を任せられます（ロードバランシングとフォールバック）。",
+    "try": "試す",
     "dismiss": "今後表示しない"
   }
 }

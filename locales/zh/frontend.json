@@ -208,7 +208,7 @@
   "llmProvider": {
     "label": "LLM提供商",
     "note": "在所选云上混合使用 Haiku 4.5 和 Sonnet 5.5，并在每个阶段默认启用各提供商的原生防护。",
-    "autoNote": "所有请求都经过 Prisma AIRS AI Gateway。选择 AWS、GCP 或 Azure 会固定使用该云；选择 Auto 时，Gateway 在三者之间分配负载（负载均衡），某一云故障时自动切换到其他云（故障转移）。"
+    "autoNote": "所有请求都经过 Prisma AIRS AI Gateway。选择 AWS、GCP 或 Azure 会固定使用该云；选择 Load balance & fallback 时，Gateway 在三者之间分配负载，某一云故障时自动切换到其他云。"
   },
   "workflow": {
     "title": "回放工作流",
@@ -240,8 +240,8 @@
     "close": "关闭"
   },
   "autoHint": {
-    "text": "新功能：Auto 模式由 Prisma AIRS AI Gateway 选择云，并提供负载均衡和故障转移。",
-    "try": "试用 Auto",
+    "text": "新功能：让 Prisma AIRS AI Gateway 为您选择云，并提供负载均衡和故障转移。",
+    "try": "试用",
     "dismiss": "不再显示"
   }
 }

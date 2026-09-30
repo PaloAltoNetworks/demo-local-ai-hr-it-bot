@@ -5,8 +5,8 @@ chatbot reliable and safe. Newest version first.
 
 ## 0.0.26
 
-### Auto mode: the Prisma AIRS AI Gateway picks the cloud for you
-The LLM Provider menu now opens on **Auto**. Instead of pinning one cloud, you let the AI Gateway
+### Load balance & fallback: the Prisma AIRS AI Gateway picks the cloud for you
+The LLM Provider menu now opens on **Load balance & fallback**. Instead of pinning one cloud, you let the AI Gateway
 spread questions across AWS, Google Cloud and Azure, and switch to another cloud on its own if one
 of them has a problem. In the demo, this shows that the assistant keeps answering even when a
 provider goes down, with no change in the app. You can still pick AWS, GCP or Azure to force a
@@ -42,7 +42,7 @@ The demo data (employees, tickets, laptops) returns to its original state on eve
 each audience sees the same story.
 
 ### Also
-- A "try Auto" tip for people who had picked a single cloud before.
+- A tip to try load balance & fallback for people who had picked a single cloud before.
 - This page: click the version number in the suggestions panel to see what's new.
 - Smoother display in dark mode and a roomier provider menu.
 
