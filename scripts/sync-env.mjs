@@ -3,9 +3,10 @@
  * Rebuilds .env from .env.example, the template that dictates which variables exist, their order
  * and their comments. Each variable keeps its current .env value; variables new to the template
  * take the example value. Variables only in .env are kept, not lost, in a trailing section to
- * review. Writes .env.bak first and prints variable names only, never values.
+ * review, or dropped with --prune. Writes .env.bak first and prints variable names only, never
+ * values.
  *
- * Usage: node scripts/sync-env.mjs
+ * Usage: node scripts/sync-env.mjs [--prune]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,7 +35,8 @@ const out = example.map((l) => {
 
 const exampleKeys = new Set(example.filter((l) => l.key).map((l) => l.key));
 const extra = [...envValues.keys()].filter((k) => !exampleKeys.has(k));
-if (extra.length) {
+const prune = process.argv.includes('--prune');
+if (extra.length && !prune) {
   while (out.at(-1) === '') out.pop();
   out.push('','# Not in .env.example: add them to the template or delete them', ...extra.map((k) => `${k}=${envValues.get(k)}`));
 }
@@ -42,4 +44,4 @@ if (extra.length) {
 if (envText) fs.copyFileSync(envPath, `${envPath}.bak`);
 fs.writeFileSync(envPath, out.join('\n').replace(/\n*$/, '\n'));
 console.log(`taken from .env.example (check the value): ${fromExample.join(', ') || 'none'}`);
-console.log(`only in .env (kept at the end):             ${extra.join(', ') || 'none'}`);
+console.log(`only in .env (${prune ? 'dropped' : 'kept at the end'}): ${extra.join(', ') || 'none'}`);
