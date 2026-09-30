@@ -207,7 +207,8 @@
   },
   "llmProvider": {
     "label": "Provider LLM",
-    "note": "Una combinazione di Haiku 4.5 e Sonnet 5.5 sul cloud selezionato, con le protezioni native di ciascun provider attive per impostazione predefinita in ogni fase."
+    "note": "Una combinazione di Haiku 4.5 e Sonnet 5.5 sul cloud selezionato, con le protezioni native di ciascun provider attive per impostazione predefinita in ogni fase.",
+    "autoNote": "Auto: l'AI Gateway distribuisce le richieste tra AWS, GCP e Azure (bilanciamento del carico) e passa a un altro cloud in caso di errore (fallback)."
   },
   "workflow": {
     "title": "Riproduci workflow",

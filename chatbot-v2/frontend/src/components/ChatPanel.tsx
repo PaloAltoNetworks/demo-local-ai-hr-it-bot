@@ -293,6 +293,9 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-80">
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{t('llmProvider.note')}</DropdownMenuLabel>
+                    {providers.some(p => p.id === 'Auto') && (
+                      <DropdownMenuLabel className="pt-0 text-xs font-normal text-muted-foreground">{t('llmProvider.autoNote')}</DropdownMenuLabel>
+                    )}
                     {providers.map(p => (
                       <DropdownMenuItem key={p.id} onClick={() => setProvider(p.id)}>
                         <ProviderLogo provider={p.id} />
@@ -321,8 +324,8 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
 
 /**
  * Self-hosted provider logos keyed by the lowercased provider id. AWS ships a dark-ink and a
- * light-ink file, swapped by the `.dark` class. Providers without a logo (the Portkey fallback
- * chain) get a routing icon.
+ * light-ink file, swapped by the `.dark` class; Auto (AI Gateway routing) shows the Portkey logo
+ * the same way. Any other provider gets a routing icon.
  */
 function ProviderLogo({ provider }: { provider: string }) {
   const id = provider.toLowerCase();
@@ -331,6 +334,14 @@ function ProviderLogo({ provider }: { provider: string }) {
       <>
         <img src="/images/aws-dark.svg" alt="aws logo" className="size-4 dark:hidden" />
         <img src="/images/aws-light.svg" alt="aws logo" className="hidden size-4 dark:inline-block" />
+      </>
+    );
+  }
+  if (id === 'auto') {
+    return (
+      <>
+        <img src="/images/portkey-light.svg" alt="AI Gateway logo" className="size-4 dark:hidden" />
+        <img src="/images/portkey-dark.svg" alt="AI Gateway logo" className="hidden size-4 dark:inline-block" />
       </>
     );
   }

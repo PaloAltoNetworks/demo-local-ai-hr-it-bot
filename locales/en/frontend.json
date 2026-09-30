@@ -207,7 +207,8 @@
   },
   "llmProvider": {
     "label": "LLM Provider",
-    "note": "A mix of Haiku 4.5 and Sonnet 5.5 on the selected cloud, with each provider's native guardrails enabled by default in every phase."
+    "note": "A mix of Haiku 4.5 and Sonnet 5.5 on the selected cloud, with each provider's native guardrails enabled by default in every phase.",
+    "autoNote": "Auto: the AI Gateway load-balances requests across AWS, GCP and Azure, and falls back to another cloud if one fails."
   },
   "workflow": {
     "title": "Workflow replay",

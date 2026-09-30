@@ -33,7 +33,7 @@ const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const PORTKEY_API_KEY_GUARDED = process.env.PORTKEY_API_KEY_GUARDED || PORTKEY_API_KEY;
 /**
- * Saved AI Gateway configs for the Auto provider: a fallback chain across AWS, GCP and Azure,
+ * Saved AI Gateway configs for the Auto provider: load-balanced fallback chains across AWS, GCP and Azure,
  * routed per tier on `metadata.tier`. The SCM gateway blocks inline configs but accepts a saved
  * config slug in x-portkey-config, which replaces the key's default config for that request, so
  * the guarded variant must carry the AIRS guardrails itself. Auto is offered only when
@@ -44,9 +44,10 @@ const PORTKEY_AUTO_CONFIG_GUARDED = process.env.PORTKEY_AUTO_CONFIG_GUARDED || P
 const AWS_PROVIDER = process.env.PORTKEY_AWS_PROVIDER || '@bedrock-prod';
 const GCP_PROVIDER = process.env.PORTKEY_GCP_PROVIDER || '@vertex-prod';
 const AZURE_PROVIDER = process.env.PORTKEY_AZURE_PROVIDER || '@azure';
-// Default provider tier (AWS | GCP | Azure) — selects which PROVIDER_TIERS set a request
-// falls back to when the frontend sends none. MODEL_ID (display only) is derived from it.
-const DEFAULT_PROVIDER = process.env.PORTKEY_DEFAULT_PROVIDER || 'AWS';
+// Default provider tier (AWS | GCP | Azure | Auto) — preselected in the UI and used when a
+// request sends none. Auto when its gateway config is set, AWS otherwise. MODEL_ID (display
+// only) is derived from it.
+const DEFAULT_PROVIDER = process.env.PORTKEY_DEFAULT_PROVIDER || (PORTKEY_AUTO_CONFIG ? 'Auto' : 'AWS');
 
 // Portkey MCP Gateway — one endpoint per registered server (no single aggregator)
 const PORTKEY_MCP_BASE = process.env.PORTKEY_MCP_BASE || 'https://mcp.portkey.ai';
@@ -507,6 +508,16 @@ function normalizeError(err, modelId) {
 }
 
 /**
+ * Closes the model input with a user turn asking for the final answer. Without it, Sonnet 5.5
+ * regularly ends the ANSWER step on the last tool result with no text (0-3 output tokens).
+ * Model input only: the UI message history is unchanged.
+ */
+const withAnswerTurn = (messages) => [
+  ...messages,
+  { role: 'user', content: 'Write the final answer to my request now, using the information gathered above.' },
+];
+
+/**
  * Build a ToolLoopAgent with prepareStep-driven phase switching.
  * Phase-locked reflect tools enforce correct phase labels — model cannot mislabel.
  *
@@ -570,7 +581,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       const usage = step.usage ? `in:${step.usage.inputTokens} out:${step.usage.outputTokens}` : '';
       dbg(`[react] step done | tools:[${tools}] ${usage}${results ? ` | ${results}` : ''}`);
     },
-    prepareStep: async ({ stepNumber, steps }) => {
+    prepareStep: async ({ stepNumber, steps, messages }) => {
       stepStartRef.current = Date.now();
 
       // A tool counts toward phase progress only if it actually EXECUTED (produced a result).
@@ -596,6 +607,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         return {
           model: getModel(tiers.powerful, reqCtx, guarded, false, 'answer-no-data'),
           instructions: DECIDE_PROMPT,
+          messages: withAnswerTurn(messages),
           toolChoice: 'none',
         };
       }
@@ -662,6 +674,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       return {
         model: getModel(tiers.powerful, reqCtx, guarded, false, 'answer'),
         instructions: DECIDE_PROMPT,
+        messages: withAnswerTurn(messages),
         toolChoice: 'none',
       };
     },
@@ -854,8 +867,10 @@ app.post('/api/chat', async (req, res) => {
 // Providers — all configured tiers. Portkey routes @provider-slug/model via passthrough,
 // so a model need not appear in the /v1/models catalog to be callable.
 app.get('/api/providers', (_req, res) => {
-  const providers = Object.entries(PROVIDER_TIERS).map(([id, t]) => ({ id, label: t.label }));
-  res.json({ providers, default: providers[0]?.id || 'AWS' });
+  const providers = Object.entries(PROVIDER_TIERS)
+    .sort(([, a], [, b]) => Number(!!b.auto) - Number(!!a.auto))
+    .map(([id, t]) => ({ id, label: t.label }));
+  res.json({ providers, default: PROVIDER_TIERS[DEFAULT_PROVIDER] ? DEFAULT_PROVIDER : providers[0]?.id });
 });
 
 // AIRS config for building report links in the frontend
