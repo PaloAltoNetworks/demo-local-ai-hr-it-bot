@@ -242,6 +242,7 @@
   "autoHint": {
     "text": "新功能：让 Prisma AIRS AI Gateway 为您选择云，并提供负载均衡和故障转移。",
     "try": "试用",
-    "dismiss": "不再显示"
+    "dismiss": "不再显示",
+    "tryTip": "将 LLM 提供商切换为 Load balance & fallback"
   }
 }

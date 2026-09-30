@@ -242,6 +242,7 @@
   "autoHint": {
     "text": "New: let the Prisma AIRS AI Gateway pick the cloud, with load balancing and fallback.",
     "try": "Try it",
-    "dismiss": "Don't show again"
+    "dismiss": "Don't show again",
+    "tryTip": "Switch the LLM provider to Load balance & fallback"
   }
 }

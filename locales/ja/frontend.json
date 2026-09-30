@@ -242,6 +242,7 @@
   "autoHint": {
     "text": "新機能：Prisma AIRS AI Gateway にクラウドの選択を任せられます（ロードバランシングとフォールバック）。",
     "try": "試す",
-    "dismiss": "今後表示しない"
+    "dismiss": "今後表示しない",
+    "tryTip": "LLM プロバイダーを Load balance & fallback に切り替えます"
   }
 }

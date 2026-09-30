@@ -287,9 +287,11 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
             <AutomationIcon className="size-4 shrink-0 text-primary" />
             <p className="flex-1">
               {t('autoHint.text')}{' '}
-              <button className="font-medium text-primary hover:underline" onClick={() => { setProvider('Auto'); dismissAutoHint(); }}>
-                {t('autoHint.try')}
-              </button>
+              <Tip label={t('autoHint.tryTip')}>
+                <button className="font-medium text-primary hover:underline" onClick={() => { setProvider('Auto'); dismissAutoHint(); }}>
+                  {t('autoHint.try')}
+                </button>
+              </Tip>
             </p>
             <Tip label={t('autoHint.dismiss')}>
               <button onClick={dismissAutoHint} aria-label={t('autoHint.dismiss')} className="grid size-5 shrink-0 place-items-center rounded hover:bg-muted">

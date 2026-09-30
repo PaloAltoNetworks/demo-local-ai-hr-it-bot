@@ -242,6 +242,7 @@
   "autoHint": {
     "text": "Nuevo: deje que el Prisma AIRS AI Gateway elija la nube, con balanceo de carga y fallback.",
     "try": "Probar",
-    "dismiss": "No volver a mostrar"
+    "dismiss": "No volver a mostrar",
+    "tryTip": "Cambiar el proveedor LLM a Load balance & fallback"
   }
 }

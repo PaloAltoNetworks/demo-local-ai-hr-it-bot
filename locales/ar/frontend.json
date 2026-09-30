@@ -242,6 +242,7 @@
   "autoHint": {
     "text": "جديد: دع Prisma AIRS AI Gateway تختار السحابة، مع موازنة الأحمال والتحويل الاحتياطي.",
     "try": "جرّب",
-    "dismiss": "عدم الإظهار مرة أخرى"
+    "dismiss": "عدم الإظهار مرة أخرى",
+    "tryTip": "تبديل مزود LLM إلى Load balance & fallback"
   }
 }
