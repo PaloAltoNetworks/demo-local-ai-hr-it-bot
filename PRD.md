@@ -95,33 +95,32 @@ Both input (pre-call) and output (post-call) scanning run through the configured
 
 ### Auto provider (AI Gateway routing)
 
-A fourth entry, `Auto (AI Gateway routing)`, lets the AI Gateway pick the provider: a fallback chain AWS → GCP → Azure per tier. The SCM gateway blocks inline configs (`inline_config_blocked`) but accepts a **saved config slug** in `x-portkey-config`, and that config replaces the key's default config for the request. So the regular keys are reused and two saved configs are referenced:
-- `PORTKEY_AUTO_CONFIG` — slug of `otter-auto` (phases 1–2)
-- `PORTKEY_AUTO_CONFIG_GUARDED` — slug of `otter-auto-guarded` (phase 3, same chain + AIRS guardrails, since it replaces the guarded key's config)
+A fourth entry, `Auto (AI Gateway routing)`, lets the AI Gateway pick the provider. AWS, GCP and Azure force their cloud; Auto delegates to a saved gateway config that **load-balances** (equal weights) across three **fallback** chains, each led by a different cloud and falling back to the other two. The app holds no routing logic: it sends the config slug in `x-portkey-config` and `metadata.tier` = `fast` | `powerful`, and the config picks the chain for that tier (Haiku 4.5 or Sonnet 5.5, with each cloud's model name).
 
-Configs are created in the SCM UI (config writes are not exposed by API). Every LLM call sends `metadata.tier` = `fast` | `powerful`; the config routes on it. The `Auto` tier reuses the AWS model strings for logs and pricing; the served model comes from the config. Opening the workflow replay while Auto is selected starts it in Fallback routing.
+The SCM gateway blocks inline configs (`inline_config_blocked`) but accepts a saved config slug, which replaces the key's default config for that request, so the regular keys are reused:
+- `PORTKEY_AUTO_CONFIG` — slug of `otter-auto` (phases 1–2): retry, cache, routing
+- `PORTKEY_AUTO_CONFIG_GUARDED` — slug of `otter-auto-guarded` (phase 3): the same plus `input_guardrails` / `output_guardrails` (it replaces the guarded key's config, so it must carry the AIRS guardrails itself)
 
-`otter-auto` (`otter-auto-guarded` adds `"input_guardrails": ["pg-otter-1e5ab1"]`, `"output_guardrails": ["pg-otter-8dc1ad"]`, the SCM AI Gateway `theotter` guardrails):
+Auto is listed only when `PORTKEY_AUTO_CONFIG` is set. The tier reuses the AWS model strings for logs and pricing; the served model comes from the config (`x-portkey-last-used-option-index` shows which target answered). Opening the workflow replay while Auto is selected starts it in Fallback routing.
+
+Shape of `otter-auto` (the `powerful` target mirrors `fast` with the Sonnet 5.5 models):
 ```json
 {
   "retry": { "attempts": 3 },
   "cache": { "mode": "simple", "max_age": 3600 },
-  "strategy": {
-    "mode": "conditional",
+  "strategy": { "mode": "conditional",
     "conditions": [{ "query": { "metadata.tier": { "$eq": "fast" } }, "then": "fast" }],
-    "default": "powerful"
-  },
+    "default": "powerful" },
   "targets": [
-    { "name": "fast", "strategy": { "mode": "fallback" }, "targets": [
-      { "override_params": { "model": "@aws/eu.anthropic.claude-haiku-4-5-20251001-v1:0" } },
-      { "override_params": { "model": "@gcp/anthropic.claude-haiku-4-5" } },
-      { "override_params": { "model": "@azure/claude-haiku-4-5" } }
+    { "name": "fast", "strategy": { "mode": "loadbalance" }, "targets": [
+      { "weight": 1, "strategy": { "mode": "fallback" }, "targets": [
+        { "override_params": { "model": "@aws/eu.anthropic.claude-haiku-4-5-20251001-v1:0" } },
+        { "override_params": { "model": "@gcp/anthropic.claude-haiku-4-5" } },
+        { "override_params": { "model": "@azure/claude-haiku-4-5" } } ] },
+      { "weight": 1, "strategy": { "mode": "fallback" }, "targets": [ "…GCP, AWS, Azure…" ] },
+      { "weight": 1, "strategy": { "mode": "fallback" }, "targets": [ "…Azure, AWS, GCP…" ] }
     ] },
-    { "name": "powerful", "strategy": { "mode": "fallback" }, "targets": [
-      { "override_params": { "model": "@aws/global.anthropic.claude-sonnet-5-5" } },
-      { "override_params": { "model": "@gcp/anthropic.claude-sonnet-5-5" } },
-      { "override_params": { "model": "@azure/claude-sonnet-5-5" } }
-    ] }
+    { "name": "powerful", "…": "same with @aws/global.anthropic.claude-sonnet-5-5, @gcp/anthropic.claude-sonnet-5-5, @azure/claude-sonnet-5-5" }
   ]
 }
 ```
