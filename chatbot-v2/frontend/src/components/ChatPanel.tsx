@@ -282,6 +282,20 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
       </Conversation>
 
       <div className="mx-auto w-full max-w-3xl p-4">
+        {showAutoHint && (
+          <div className="mb-2 flex w-fit max-w-full items-start gap-2 rounded-lg border border-primary/40 bg-popover p-2.5 text-xs shadow-sm">
+            <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+            <p className="flex-1">
+              {t('autoHint.text')}{' '}
+              <button className="font-medium text-primary hover:underline" onClick={() => { setProvider('Auto'); dismissAutoHint(); }}>
+                {t('autoHint.try')}
+              </button>
+            </p>
+            <button onClick={dismissAutoHint} aria-label={t('autoHint.dismiss')} title={t('autoHint.dismiss')} className="grid size-5 shrink-0 place-items-center rounded hover:bg-muted">
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputBody>
             <PromptInputTextarea placeholder={t('chat.placeholder')} disabled={isStreaming} />
@@ -289,21 +303,6 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
           <PromptInputFooter>
             <PromptInputTools>
               {providers.length > 0 && (
-                <span className="relative">
-                {showAutoHint && (
-                  <div className="absolute bottom-full start-0 z-10 mb-2 flex w-72 items-start gap-2 rounded-lg border border-primary/40 bg-popover p-2.5 text-xs shadow-md">
-                    <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-                    <div className="flex-1">
-                      <p>{t('autoHint.text')}</p>
-                      <button className="mt-1.5 font-medium text-primary hover:underline" onClick={() => { setProvider('Auto'); dismissAutoHint(); }}>
-                        {t('autoHint.try')}
-                      </button>
-                    </div>
-                    <button onClick={dismissAutoHint} aria-label={t('autoHint.dismiss')} title={t('autoHint.dismiss')} className="grid size-5 shrink-0 place-items-center rounded hover:bg-muted">
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2" title={currentProvider?.label || t('llmProvider.label')}>
@@ -325,7 +324,6 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                </span>
               )}
               {sessionUsage.totalTokens > 0 && (
                 <UsageContext
