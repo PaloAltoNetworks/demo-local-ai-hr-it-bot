@@ -208,7 +208,7 @@
   "llmProvider": {
     "label": "LLM提供商",
     "note": "在所选云上混合使用 Haiku 4.5 和 Sonnet 5.5，并在每个阶段默认启用各提供商的原生防护。",
-    "autoNote": "Auto：AI Gateway 在 AWS、GCP 和 Azure 之间分配请求（负载均衡），某一云出现故障时自动切换到其他云（故障转移）。"
+    "autoNote": "所有请求都经过 AI Gateway。选择 AWS、GCP 或 Azure 会固定使用该云；选择 Auto 时，Gateway 在三者之间分配负载（负载均衡），某一云故障时自动切换到其他云（故障转移）。"
   },
   "workflow": {
     "title": "回放工作流",

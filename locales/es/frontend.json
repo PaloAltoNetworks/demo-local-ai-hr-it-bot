@@ -208,7 +208,7 @@
   "llmProvider": {
     "label": "Proveedor LLM",
     "note": "Una combinacion de Haiku 4.5 y Sonnet 5.5 en la nube seleccionada, con las barreras nativas de cada proveedor activadas por defecto en cada fase.",
-    "autoNote": "Auto: el AI Gateway reparte las solicitudes entre AWS, GCP y Azure (balanceo de carga) y conmuta a otra nube si una falla (fallback)."
+    "autoNote": "Todas las solicitudes pasan por el AI Gateway. AWS, GCP o Azure fijan la nube; Auto deja que el gateway reparta la carga entre las tres (balanceo de carga) y conmute a otra nube si una falla (fallback)."
   },
   "workflow": {
     "title": "Reproducir flujo",
