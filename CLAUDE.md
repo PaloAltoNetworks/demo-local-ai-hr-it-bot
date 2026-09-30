@@ -94,7 +94,7 @@ LLM calls go through Portkey (`api.portkey.ai/v1`, or a self-hosted gateway via 
 
 Copy `.env.example` to `.env`. All services read the same `.env` via `env_file` in docker-compose. Provider switching requires container restart.
 
-After adding or removing a variable in `.env`, run `node scripts/sync-env-example.mjs` to realign `.env.example` (same variables, secrets replaced by `<set-me>`), then review `git diff .env.example`.
+`.env.example` is the template: it dictates which variables exist, their order and comments. After it changes, run `node scripts/sync-env.mjs` to rebuild `.env` from it (current values kept, new variables take the example value, variables missing from the template are kept at the end for review; `.env.bak` is written first).
 
 ## Gotchas
 
