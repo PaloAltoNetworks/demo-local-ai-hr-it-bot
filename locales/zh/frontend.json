@@ -219,6 +219,10 @@
     "autoNote": "所有请求都经过 Prisma AIRS AI Gateway。选择 AWS、GCP 或 Azure 会固定使用该云；选择 Load balance & fallback 时，Gateway 在三者之间分配负载，某一云故障时自动切换到其他云。"
   },
   "workflow": {
+    "viewFlow": "数据流",
+    "viewIdentity": "身份",
+    "idToday": "当前",
+    "idTarget": "目标",
     "title": "回放工作流",
     "close": "关闭",
     "normal": "正常",

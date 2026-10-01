@@ -219,6 +219,10 @@
     "autoNote": "Tutte le richieste passano dal Prisma AIRS AI Gateway. AWS, GCP o Azure fissano il cloud; con Load balance & fallback il gateway distribuisce il carico tra i tre e passa a un altro cloud in caso di errore."
   },
   "workflow": {
+    "viewFlow": "Flusso di dati",
+    "viewIdentity": "Identità",
+    "idToday": "Oggi",
+    "idTarget": "Obiettivo",
     "title": "Riproduci workflow",
     "close": "Chiudi",
     "normal": "Normale",

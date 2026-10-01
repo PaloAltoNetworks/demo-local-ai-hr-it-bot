@@ -219,6 +219,10 @@
     "autoNote": "تمر جميع الطلبات عبر Prisma AIRS AI Gateway. يؤدي اختيار AWS أو GCP أو Azure إلى تثبيت السحابة، أما Load balance & fallback فيترك للبوابة توزيع الأحمال بين الثلاث والانتقال إلى سحابة أخرى عند حدوث عطل."
   },
   "workflow": {
+    "viewFlow": "تدفق البيانات",
+    "viewIdentity": "الهوية",
+    "idToday": "اليوم",
+    "idTarget": "المستهدف",
     "title": "إعادة تشغيل سير العمل",
     "close": "إغلاق",
     "normal": "عادي",

@@ -219,6 +219,10 @@
     "autoNote": "すべてのリクエストは Prisma AIRS AI Gateway を経由します。AWS・GCP・Azure を選ぶとそのクラウドに固定され、Load balance & fallback では Gateway が 3 つに負荷を分散し、障害時は別のクラウドに切り替えます。"
   },
   "workflow": {
+    "viewFlow": "データフロー",
+    "viewIdentity": "アイデンティティ",
+    "idToday": "現状",
+    "idTarget": "目標",
     "title": "ワークフロー再生",
     "close": "閉じる",
     "normal": "通常",
