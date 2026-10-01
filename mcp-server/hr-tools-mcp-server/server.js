@@ -7,10 +7,41 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
 import express from 'express';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { z } from 'zod';
 import { HRService } from './service.js';
 
 const PORT = process.env.PORT || 3000;
+
+/**
+ * Caller identity forwarded by the AI Gateway (MCP identity forwarding, method jwt_header): an
+ * RS256 JWT in X-User-JWT, signed by the gateway and checked against the JWKS it publishes.
+ * When IDENTITY_JWKS_URL is set, /mcp refuses any request without a valid one, so only calls
+ * that went through the gateway reach the tools. Unset (local docker compose), the server stays
+ * open as before.
+ */
+const IDENTITY_JWKS_URL = process.env.IDENTITY_JWKS_URL || '';
+const IDENTITY_ISSUER = process.env.IDENTITY_ISSUER || 'portkey-mcp-gateway';
+const identityKeys = IDENTITY_JWKS_URL ? createRemoteJWKSet(new URL(IDENTITY_JWKS_URL)) : null;
+
+async function requireGatewayIdentity(req, res, next) {
+  if (!identityKeys) return next();
+  const token = req.get('x-user-jwt');
+  if (!token) {
+    console.warn(`[identity] rejected ${req.method} from ${req.ip}: no X-User-JWT`);
+    return res.status(401).json({ error: 'unauthorized', error_description: 'X-User-JWT from the AI Gateway is required' });
+  }
+  try {
+    const { payload } = await jwtVerify(token, identityKeys, { issuer: IDENTITY_ISSUER, algorithms: ['RS256'] });
+    req.identity = payload;
+    const { iat, exp, ...claims } = payload;
+    console.log(`[identity] ${req.method} ${JSON.stringify(claims)}`);
+    next();
+  } catch (err) {
+    console.warn(`[identity] rejected ${req.method} from ${req.ip}: ${err.code || err.message}`);
+    res.status(401).json({ error: 'unauthorized', error_description: 'Invalid X-User-JWT' });
+  }
+}
 
 const service = new HRService();
 
@@ -96,6 +127,8 @@ async function main() {
     }
     next();
   });
+
+  app.use('/mcp', requireGatewayIdentity);
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'healthy', name: 'hr-tools', timestamp: new Date().toISOString() });

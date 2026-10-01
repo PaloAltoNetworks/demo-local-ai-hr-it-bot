@@ -12,6 +12,7 @@ environment:
   secretKeys:
     - PORTKEY_CLIENT_AUTH
     - ORGANISATIONS_TO_SYNC
+    - JWT_PRIVATE_KEY
   data:
     SERVICE_NAME: airsgateway
     PORT: "8787"
