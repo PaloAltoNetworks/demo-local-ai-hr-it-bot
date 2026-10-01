@@ -95,6 +95,14 @@ spec:
   selector: { app: it-triage }
   ports: [{ port: 3019, targetPort: 3000 }]
 ---
+# Dedicated identity: workload attestors (CyberArk SWA) see ns/hr-it-bot/sa/chatbot-v2 instead
+# of the namespace's shared default account. The pod never calls the Kubernetes API.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chatbot-v2
+automountServiceAccountToken: false
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -106,6 +114,7 @@ spec:
     metadata:
       labels: { app: chatbot-v2 }
     spec:
+      serviceAccountName: chatbot-v2
       containers:
         - name: chatbot-v2
           image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/chatbot-v2

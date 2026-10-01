@@ -19,6 +19,11 @@ environment:
     SERVER_MODE: "all"
     LOG_STORE_FILE_PATH_FORMAT: "v2"
     TRUSTED_CUSTOM_HOSTS: "hr-tools.otter-lab.com,it-tools.otter-lab.com,it-triage.otter-lab.com"
+    # Gateway-local JWT auth: tokens are checked against the JWKS set on the organisation in
+    # SCM (the CyberArk SWA trust domain). The single synced org supplies portkey_oid and these
+    # scopes stand in for the scope claim SPIFFE JWT-SVIDs do not carry. API keys keep working.
+    JWT_ENABLED: "ON"
+    JWT_LOCAL_AUTH_DEFAULT_SCOPES: "completions.write,mcp.invoke"
 
 resources:
   requests: { cpu: 250m, memory: 512Mi }
