@@ -41,6 +41,9 @@ namespace hr-it-bot
    read "H?SMTP host: " && read "P?SMTP port [587]: " && read "U?SMTP username: " && read -rs "W?SMTP password: " && echo \
      && J=$(H="$H" P="${P:-587}" U="$U" W="$W" S="$(openssl rand -hex 32)" node -e 'const e=process.env;console.log(JSON.stringify({AUTH_SECRET:e.S,SMTP_HOST:e.H,SMTP_PORT:e.P,SMTP_USERNAME:e.U,SMTP_PASSWORD:e.W}))') \
      && aws secretsmanager put-secret-value --secret-id hr-it-bot-auth --secret-string "$J"; unset H P U W J
+   # RSA key the gateway signs forwarded identities with (merged into the gateway secret)
+   K=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048) && S=$(aws secretsmanager get-secret-value --secret-id hr-it-bot-airs-gw --query SecretString --output text) \
+     && aws secretsmanager put-secret-value --secret-id hr-it-bot-airs-gw --secret-string "$(jq -c --arg k "$K" '.JWT_PRIVATE_KEY=$k' <<<"$S")"; unset K S
    ```
    `app-env` is the demo `.env` as is. The cluster overrides `PORTKEY_BASE_URL`, `PORTKEY_MCP_BASE` and `IT_TRIAGE_MCP_URLS` to point at in-cluster services (`deploy/k8s/base/apps.yaml`). The `PORTKEY_MCP_*_SLUG` values must be the SCM slugs. `AUTH_SECRET` is generated once per instance; changing it signs everyone out.
 5. **GitHub.** Settings > Environments > New environment `aws`. Add the variables from `terraform -chdir=infra/aws output github_environment_variables` (`AWS_ROLE_ARN`, `AWS_REGION`, `EKS_CLUSTER`). The GHCR packages the release workflow creates inherit the public visibility of this repository, so the cluster pulls them without credentials.
@@ -70,6 +73,10 @@ On EKS the chatbot reaches the AI Gateway with an Idira Secure Workload Access J
 - **Configs:** a JWT has no attached config, so `hr-it-bot-app-env` must hold `PORTKEY_CONFIG` and `PORTKEY_CONFIG_GUARDED`, the slugs of the configs attached to the unguarded and guarded keys. The chatbot sends them in `x-portkey-config`; a guarded request without `PORTKEY_CONFIG_GUARDED` is refused. Admins cannot lock a config on a JWT: use Org-level Guardrails in SCM as the enforced floor.
 - **Identity:** `spiffe://<td>/<node-group>/ns/hr-it-bot/sa/chatbot-v2` (dedicated ServiceAccount), shown in the chat next to each answer.
 - **Trace links:** `PORTKEY_WORKSPACE_ID` and `PORTKEY_DEPLOYMENT_ID` in `hr-it-bot-app-env` (the cluster's SCM gateway registration, not the EC2 one) bring back the Portkey logo next to each answer.
+
+## hr-tools: identity forwarded by the gateway
+
+hr-tools refuses every MCP request without an `X-User-JWT` signed by the AI Gateway (Portkey MCP identity forwarding, method `jwt_header`): a call straight to its Service gets a 401. The gateway signs with `JWT_PRIVATE_KEY` (in `hr-it-bot-airs-gw`) and publishes the public key at `http://airs-gw:8788/.well-known/jwks.json`, which hr-tools reads (`IDENTITY_JWKS_URL`). On the SCM side, the hr-tools MCP integration carries `{"user_identity_forwarding": {"method": "jwt_header", "include_claims": [...]}}` in its configuration. it-triage therefore reaches hr-tools through the gateway, not directly.
 
 ## MCP origins and `*.otter-lab.com`
 
