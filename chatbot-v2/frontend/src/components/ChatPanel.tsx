@@ -881,13 +881,13 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
               <img src="/images/portkey-dark.svg" alt="" className="hidden size-3.5 dark:block" />
             </MessageAction>
           )}
+          {auth && <GatewayAuthBadge auth={auth} t={t} />}
           <MessageAction tooltip={t('buttons.regenerate')} label="Retry" onClick={onRetry}>
             <RefreshCw className="size-3.5" />
           </MessageAction>
           <MessageAction tooltip={t('feedback.copy')} label="Copy" onClick={() => navigator.clipboard.writeText(text)}>
             <Copy className="size-3.5" />
           </MessageAction>
-          {auth && <GatewayAuthBadge auth={auth} t={t} />}
           <MessageAction
             tooltip={t('feedback.helpful')}
             label="Like"
