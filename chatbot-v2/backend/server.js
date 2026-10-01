@@ -272,11 +272,14 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
     }
     // Metadata feeds Portkey observability and the AIRS guardrail params
     // (ai_model={{metadata.model}}, app_user={{metadata._user}}).
+    // With a JWT the gateway overwrites _user with the token's identity (the workload's SPIFFE
+    // ID), so the end user also rides in employee_id, a key the gateway leaves alone.
     // Keep it STABLE: metadata is part of the simple-cache key, so per-request volatile
     // values (thread_id, user_ip) would bust every cache lookup. The thread trace lives in
     // the x-portkey-trace-id header (not a cache-key field), so grouping is unaffected.
     headers.set('x-portkey-metadata', JSON.stringify({
       _user: STATIC_USER.employee_id,
+      employee_id: STATIC_USER.employee_id,
       app_name: 'The Otter V2',
       model,
     }));
@@ -394,6 +397,7 @@ async function connectMCP(url) {
         if (reqCtx.lastSpanId) headers.set('x-portkey-parent-span-id', reqCtx.lastSpanId);
         headers.set('x-portkey-metadata', JSON.stringify({
           _user: STATIC_USER.employee_id,
+          employee_id: STATIC_USER.employee_id,
           app_name: 'The Otter V2',
           thread_id: reqCtx.threadId,
         }));
