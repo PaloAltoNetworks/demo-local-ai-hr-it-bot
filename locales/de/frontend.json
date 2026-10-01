@@ -190,8 +190,8 @@
     "viewTrace": "Trace anzeigen"
   },
   "gatewayAuth": {
-    "workloadIdentity": "Workload-Identität: CyberArk SWA",
-    "workloadIdentityDetail": "Kurzlebiges, von CyberArk signiertes JWT, kein API-Schlüssel",
+    "workloadIdentity": "Workload-Identität: Idira SWA",
+    "workloadIdentityDetail": "Kurzlebiges, von Idira signiertes JWT, kein API-Schlüssel",
     "apiKey": "Beim AI Gateway mit einem API-Schlüssel authentifiziert"
   },
   "guardrail": {

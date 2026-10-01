@@ -1,4 +1,4 @@
-# CyberArk Secure Workload Access server (chart swa-server), release "swa-server" in
+# Idira Secure Workload Access server (chart swa-server), release "swa-server" in
 # namespace default with ServiceAccount swa-server-sa: together they form the subject
 # system:serviceaccount:default:swa-server-sa registered on the tenant's server component.
 # controlPlane.url and controlPlane.auth.authnID are tenant-specific and come from the

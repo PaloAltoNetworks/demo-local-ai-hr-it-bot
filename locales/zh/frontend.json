@@ -190,8 +190,8 @@
     "viewTrace": "查看跟踪"
   },
   "gatewayAuth": {
-    "workloadIdentity": "工作负载身份：CyberArk SWA",
-    "workloadIdentityDetail": "由 CyberArk 签名的短期 JWT，无需 API 密钥",
+    "workloadIdentity": "工作负载身份：Idira SWA",
+    "workloadIdentityDetail": "由 Idira 签名的短期 JWT，无需 API 密钥",
     "apiKey": "已使用 API 密钥向 AI Gateway 进行身份验证"
   },
   "guardrail": {

@@ -89,9 +89,9 @@ Example config attached to the guarded key (retry + cache + AIRS input/output ho
 
 Both input (pre-call) and output (post-call) scanning run through the configured Prisma AIRS profile.
 
-### Workload identity (CyberArk SWA)
+### Workload identity (Idira SWA)
 
-On Kubernetes the chatbot carries no gateway API key for LLM and MCP calls. With `SPIFFE_ENDPOINT_SOCKET` set, `backend/workload-identity.js` fetches a JWT-SVID (audience `portkey`, RS256, 5 min) from the CyberArk Secure Workload Access agent over the SPIFFE Workload API, caches it until a minute before expiry, and every request sends it in `x-portkey-api-key`. The gateway runs gateway-local JWT auth (`JWT_ENABLED=ON`) against the trust domain's JWKS declared on the SCM organisation.
+On Kubernetes the chatbot carries no gateway API key for LLM and MCP calls. With `SPIFFE_ENDPOINT_SOCKET` set, `backend/workload-identity.js` fetches a JWT-SVID (audience `portkey`, RS256, 5 min) from the Idira Secure Workload Access agent over the SPIFFE Workload API, caches it until a minute before expiry, and every request sends it in `x-portkey-api-key`. The gateway runs gateway-local JWT auth (`JWT_ENABLED=ON`) against the trust domain's JWKS declared on the SCM organisation.
 
 - A JWT has no attached config, so the two key configs travel in `x-portkey-config`: `PORTKEY_CONFIG` (unguarded) and `PORTKEY_CONFIG_GUARDED` (guarded, required: a guarded request without it is refused, never sent unguarded). The admin cannot lock the config on a JWT the way `allow_config_override=false` does on a key; Org-level Guardrails in SCM are the enforced floor.
 - No API-key fallback: if the Workload API fails, the request fails.

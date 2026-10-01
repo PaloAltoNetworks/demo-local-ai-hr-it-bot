@@ -1,5 +1,5 @@
 /**
- * Workload identity for the chatbot: a JWT-SVID from the CyberArk Secure Workload Access
+ * Workload identity for the chatbot: a JWT-SVID from the Idira Secure Workload Access
  * agent, fetched over the standard SPIFFE Workload API (gRPC on the agent's unix socket).
  * The AI Gateway accepts it in place of a Portkey API key when it runs gateway-local JWT
  * auth (JWT_ENABLED=ON) against the trust domain's JWKS.

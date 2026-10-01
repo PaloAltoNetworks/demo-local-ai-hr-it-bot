@@ -95,7 +95,7 @@ spec:
   selector: { app: it-triage }
   ports: [{ port: 3019, targetPort: 3000 }]
 ---
-# Dedicated identity: workload attestors (CyberArk SWA) see ns/hr-it-bot/sa/chatbot-v2 instead
+# Dedicated identity: workload attestors (Idira SWA) see ns/hr-it-bot/sa/chatbot-v2 instead
 # of the namespace's shared default account. The pod never calls the Kubernetes API.
 apiVersion: v1
 kind: ServiceAccount

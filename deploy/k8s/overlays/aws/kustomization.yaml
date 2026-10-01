@@ -23,7 +23,7 @@ configMapGenerator:
 # ponytail: IPs are fixed by hand per cloud; past a handful of origins, switch to an
 # in-cluster DNS rewrite.
 patches:
-  # The chatbot authenticates to the AI Gateway with its CyberArk SWA workload identity: the
+  # The chatbot authenticates to the AI Gateway with its Idira SWA workload identity: the
   # agent's Workload API socket (DaemonSet installed from deploy/helm/swa) is mounted read-only.
   - target: { kind: Deployment, name: chatbot-v2 }
     patch: |-

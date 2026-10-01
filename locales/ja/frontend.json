@@ -190,8 +190,8 @@
     "viewTrace": "トレースを表示"
   },
   "gatewayAuth": {
-    "workloadIdentity": "ワークロード ID: CyberArk SWA",
-    "workloadIdentityDetail": "CyberArk が署名した短期間有効な JWT (API キー不要)",
+    "workloadIdentity": "ワークロード ID: Idira SWA",
+    "workloadIdentityDetail": "Idira が署名した短期間有効な JWT (API キー不要)",
     "apiKey": "API キーで AI Gateway に認証済み"
   },
   "guardrail": {

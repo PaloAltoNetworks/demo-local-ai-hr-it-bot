@@ -33,7 +33,7 @@ const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai
  *   PORTKEY_API_KEY_GUARDED is guarded (config attaches PANW Prisma AIRS input+output hooks).
  *   Guarded requests (phase3) swap to the guarded key; everything else uses the default one.
  * - Workload identity (SPIFFE_ENDPOINT_SOCKET set): every LLM and MCP request carries the
- *   chatbot's CyberArk SWA JWT-SVID instead of a key. A JWT has no attached config, so the
+ *   chatbot's Idira SWA JWT-SVID instead of a key. A JWT has no attached config, so the
  *   same two configs ride in x-portkey-config: PORTKEY_CONFIG (unguarded) and
  *   PORTKEY_CONFIG_GUARDED (guarded, required: a guarded request without it is refused rather
  *   than sent unguarded). Only the feedback endpoint still uses PORTKEY_API_KEY.

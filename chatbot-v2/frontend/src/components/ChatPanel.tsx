@@ -916,7 +916,7 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
 type GatewayAuth = { mode: 'workload-identity' | 'api-key'; spiffeId?: string | null };
 
 /**
- * Action-bar badge showing how the turn reached the AI Gateway: the chatbot's CyberArk SWA
+ * Action-bar badge showing how the turn reached the AI Gateway: the chatbot's Idira SWA
  * workload identity (SPIFFE ID in the tooltip) or a static API key.
  */
 function GatewayAuthBadge({ auth, t }: { auth: GatewayAuth; t: Translate }) {

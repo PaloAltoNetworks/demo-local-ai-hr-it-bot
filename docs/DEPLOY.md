@@ -61,9 +61,9 @@ After a secret changes in Secrets Manager, External Secrets syncs it within the 
 
 The auth service sets its session cookie on `.panw.pro` so the login host and the app host share it. Other auth instances on the same domain (the EC2 gateway on `auth.panw.pro`) use the default `better-auth.*` cookie name; this one is prefixed `otter-eks.*` (`AUTH_COOKIE_PREFIX`) so signing in on one never overwrites the other. Each instance has its own users and sessions.
 
-## Chatbot workload identity (CyberArk SWA)
+## Chatbot workload identity (Idira SWA)
 
-On EKS the chatbot reaches the AI Gateway with a CyberArk Secure Workload Access JWT-SVID instead of an API key (`chatbot-v2/backend/workload-identity.js`). The AWS overlay mounts the SWA agent's socket into the chatbot pod, so **the SWA server and agent must be installed before the chatbot** (values in `deploy/helm/swa/`, tenant settings in the `hr-it-bot-swa` secret, CyberArk charts kept out of this public repo). Without the agent the chatbot pod does not start: there is deliberately no API-key fallback.
+On EKS the chatbot reaches the AI Gateway with an Idira Secure Workload Access JWT-SVID instead of an API key (`chatbot-v2/backend/workload-identity.js`). The AWS overlay mounts the SWA agent's socket into the chatbot pod, so **the SWA server and agent must be installed before the chatbot** (values in `deploy/helm/swa/`, tenant settings in the `hr-it-bot-swa` secret, Idira charts kept out of this public repo). Without the agent the chatbot pod does not start: there is deliberately no API-key fallback.
 
 - **Trust domain:** must sign in RS256 (`jwt.signature_algorithm`), the only algorithm the gateway accepts. Its JWKS (`https://<tenant>.secretsmgr.cyberark.cloud/api/swa/trust-domains/<td>/.well-known/jwks`) is declared in SCM: AI Gateway > Organisation > Authentication > JWT.
 - **Gateway:** `JWT_ENABLED=ON` and `JWT_LOCAL_AUTH_DEFAULT_SCOPES` in `deploy/helm/airs-gw/values.yaml`. API keys keep working.
