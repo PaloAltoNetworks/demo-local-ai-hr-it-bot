@@ -190,9 +190,12 @@
     "viewTrace": "عرض التتبع"
   },
   "gatewayAuth": {
-    "workloadIdentity": "هوية عبء العمل: Idira SWA",
+    "title": "كيف مرّت هذه الإجابة عبر AI Gateway",
+    "workload": "عبء العمل",
+    "workloadIdentity": "Idira SWA",
     "workloadIdentityDetail": "رمز JWT قصير الأجل موقّع من Idira، دون مفتاح API",
-    "apiKey": "تمت المصادقة على AI Gateway باستخدام مفتاح API"
+    "apiKey": "مفتاح API",
+    "openTrace": "انقر لفتح التتبع"
   },
   "guardrail": {
     "cannotProcessRequest": "لا يمكنني معالجة هذا الطلب",

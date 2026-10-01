@@ -190,9 +190,12 @@
     "viewTrace": "查看跟踪"
   },
   "gatewayAuth": {
-    "workloadIdentity": "工作负载身份：Idira SWA",
+    "title": "此回答如何经过 AI Gateway",
+    "workload": "工作负载",
+    "workloadIdentity": "Idira SWA",
     "workloadIdentityDetail": "由 Idira 签名的短期 JWT，无需 API 密钥",
-    "apiKey": "已使用 API 密钥向 AI Gateway 进行身份验证"
+    "apiKey": "API 密钥",
+    "openTrace": "点击打开追踪"
   },
   "guardrail": {
     "cannotProcessRequest": "无法处理此请求",

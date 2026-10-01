@@ -18,6 +18,7 @@
     --color-brand-green: var(--brand-green);
     --color-brand-red: var(--brand-red);
     --color-brand-blue: var(--brand-blue);
+    --color-brand-idira: var(--brand-idira);
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
@@ -51,6 +52,8 @@
     --brand-green: #00CC66;
     --brand-red: #C84727;
     --brand-blue: #00C0E8;
+    /* Idira Identity Blue (PMS 2727C): marks identity information only */
+    --brand-idira: #265BFF;
 
     --background: #FCFCF9;
     --foreground: #134252;
