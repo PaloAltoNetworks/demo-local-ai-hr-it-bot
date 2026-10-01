@@ -189,6 +189,11 @@
     "copy": "复制",
     "viewTrace": "查看跟踪"
   },
+  "gatewayAuth": {
+    "workloadIdentity": "工作负载身份：CyberArk SWA",
+    "workloadIdentityDetail": "由 CyberArk 签名的短期 JWT，无需 API 密钥",
+    "apiKey": "已使用 API 密钥向 AI Gateway 进行身份验证"
+  },
   "guardrail": {
     "cannotProcessRequest": "无法处理此请求",
     "cannotProvideResponse": "无法提供此回复",

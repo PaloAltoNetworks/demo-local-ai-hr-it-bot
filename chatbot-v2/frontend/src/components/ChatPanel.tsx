@@ -74,6 +74,8 @@ import {
   TriangleAlert,
   ExternalLink,
   Route,
+  FingerprintPattern,
+  KeyRound,
 } from 'lucide-react';
 
 // Estimated model context window — drives the Context usage ring (Claude-class).
@@ -854,6 +856,7 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
   const usage = msg.metadata?.usage;
   const traceId = msg.metadata?.traceId;
   const traceUrl = traceId ? buildTraceUrl(airsConfig, traceId, timing?.end) : null;
+  const auth: GatewayAuth | undefined = msg.metadata?.auth;
   const cost = msg.metadata?.cost; // { total, input, output } USD, from tokens × Portkey pricing
   const text = (msg.parts || []).filter((p: any) => p.type === 'text' && p.text).map((p: any) => p.text).join('');
   const canFeedback = traceId && !!text;
@@ -884,6 +887,7 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
           <MessageAction tooltip={t('feedback.copy')} label="Copy" onClick={() => navigator.clipboard.writeText(text)}>
             <Copy className="size-3.5" />
           </MessageAction>
+          {auth && <GatewayAuthBadge auth={auth} t={t} />}
           <MessageAction
             tooltip={t('feedback.helpful')}
             label="Like"
@@ -905,6 +909,34 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
         </MessageActions>
       )}
     </div>
+  );
+}
+
+/** How the backend authenticated this turn to the AI Gateway (message metadata `auth`). */
+type GatewayAuth = { mode: 'workload-identity' | 'api-key'; spiffeId?: string | null };
+
+/**
+ * Action-bar badge showing how the turn reached the AI Gateway: the chatbot's CyberArk SWA
+ * workload identity (SPIFFE ID in the tooltip) or a static API key.
+ */
+function GatewayAuthBadge({ auth, t }: { auth: GatewayAuth; t: Translate }) {
+  const workload = auth.mode === 'workload-identity';
+  const label = workload ? (
+    <div className="space-y-0.5">
+      <p className="font-medium">{t('gatewayAuth.workloadIdentity')}</p>
+      {auth.spiffeId && <p className="font-mono text-[11px] opacity-80">{auth.spiffeId}</p>}
+      <p className="opacity-80">{t('gatewayAuth.workloadIdentityDetail')}</p>
+    </div>
+  ) : (
+    t('gatewayAuth.apiKey')
+  );
+  return (
+    <Tip label={label}>
+      <Button type="button" variant="ghost" size="icon-sm" className={workload ? 'text-brand-green' : ''}>
+        {workload ? <FingerprintPattern className="size-3.5" /> : <KeyRound className="size-3.5" />}
+        <span className="sr-only">{workload ? t('gatewayAuth.workloadIdentity') : t('gatewayAuth.apiKey')}</span>
+      </Button>
+    </Tip>
   );
 }
 

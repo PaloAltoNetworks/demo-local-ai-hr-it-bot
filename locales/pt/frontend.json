@@ -189,6 +189,11 @@
     "copy": "Copiar",
     "viewTrace": "Ver rastreamento"
   },
+  "gatewayAuth": {
+    "workloadIdentity": "Identidade de workload: CyberArk SWA",
+    "workloadIdentityDetail": "JWT de curta duração assinado pela CyberArk, sem chave de API",
+    "apiKey": "Autenticado no AI Gateway com uma chave de API"
+  },
   "guardrail": {
     "cannotProcessRequest": "Não é possível processar esta solicitação",
     "cannotProvideResponse": "Não é possível fornecer esta resposta",
