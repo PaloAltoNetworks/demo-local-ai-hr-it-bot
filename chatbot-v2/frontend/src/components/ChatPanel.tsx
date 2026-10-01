@@ -854,6 +854,7 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
   const usage = msg.metadata?.usage;
   const traceId = msg.metadata?.traceId;
   const traceUrl = traceId ? buildTraceUrl(airsConfig, traceId, timing?.end) : null;
+  const auth: GatewayAuth | undefined = msg.metadata?.auth;
   const cost = msg.metadata?.cost; // { total, input, output } USD, from tokens × Portkey pricing
   const text = (msg.parts || []).filter((p: any) => p.type === 'text' && p.text).map((p: any) => p.text).join('');
   const canFeedback = traceId && !!text;
@@ -868,16 +869,7 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
       )}
       {canFeedback && (
         <MessageActions className="ms-auto">
-          {traceUrl && (
-            <MessageAction
-              tooltip={t('feedback.viewTrace')}
-              label="Trace"
-              onClick={() => window.open(traceUrl, '_blank', 'noopener,noreferrer')}
-            >
-              <img src="/images/portkey-light.svg" alt="" className="size-3.5 dark:hidden" />
-              <img src="/images/portkey-dark.svg" alt="" className="hidden size-3.5 dark:block" />
-            </MessageAction>
-          )}
+          {(traceUrl || auth) && <GatewayAction traceUrl={traceUrl} auth={auth} t={t} />}
           <MessageAction tooltip={t('buttons.regenerate')} label="Retry" onClick={onRetry}>
             <RefreshCw className="size-3.5" />
           </MessageAction>
@@ -905,6 +897,63 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
         </MessageActions>
       )}
     </div>
+  );
+}
+
+/** How the backend authenticated this turn to the AI Gateway (message metadata `auth`). */
+type GatewayAuth = { mode: 'workload-identity' | 'api-key'; spiffeId?: string | null };
+
+/**
+ * The AI Gateway entry of the action bar: the Portkey logo opens the turn's trace, and its
+ * tooltip lists one row per identity the turn carried to the gateway (today the chatbot's
+ * workload identity; an end-user identity row slots in the same list). An Idira-blue dot on
+ * the logo flags a turn authenticated with the Idira SWA workload identity, so new identities
+ * add rows here instead of icons in the bar.
+ */
+function GatewayAction({ traceUrl, auth, t }: { traceUrl: string | null; auth?: GatewayAuth; t: Translate }) {
+  const workload = auth?.mode === 'workload-identity';
+  const rows = auth
+    ? [{
+        key: 'workload',
+        label: t('gatewayAuth.workload'),
+        active: workload,
+        value: workload ? t('gatewayAuth.workloadIdentity') : t('gatewayAuth.apiKey'),
+        detail: workload ? auth.spiffeId : null,
+        note: workload ? t('gatewayAuth.workloadIdentityDetail') : null,
+      }]
+    : [];
+  const label = (
+    <div className="max-w-80 space-y-1.5">
+      {rows.length > 0 && <p className="font-medium">{t('gatewayAuth.title')}</p>}
+      {rows.map(row => (
+        <div key={row.key} className="flex gap-2">
+          <span className={`mt-1 size-2 shrink-0 rounded-full ${row.active ? 'bg-brand-idira' : 'border border-current opacity-50'}`} />
+          <div className="min-w-0">
+            <p><span className="opacity-70">{row.label}</span> {row.value}</p>
+            {row.detail && <p className="break-all font-mono text-[11px] opacity-80">{row.detail}</p>}
+            {row.note && <p className="opacity-70">{row.note}</p>}
+          </div>
+        </div>
+      ))}
+      {traceUrl && <p className="opacity-70">{t('gatewayAuth.openTrace')}</p>}
+    </div>
+  );
+  return (
+    <Tip label={label}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className={`relative ${traceUrl ? '' : 'cursor-default'}`}
+        aria-disabled={!traceUrl}
+        onClick={() => traceUrl && window.open(traceUrl, '_blank', 'noopener,noreferrer')}
+      >
+        <img src="/images/portkey-light.svg" alt="" className="size-3.5 dark:hidden" />
+        <img src="/images/portkey-dark.svg" alt="" className="hidden size-3.5 dark:block" />
+        {workload && <span className="absolute top-1 right-1 size-1.5 rounded-full bg-brand-idira" />}
+        <span className="sr-only">{t('feedback.viewTrace')}</span>
+      </Button>
+    </Tip>
   );
 }
 

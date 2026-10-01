@@ -41,9 +41,12 @@ namespace hr-it-bot
    read "H?SMTP host: " && read "P?SMTP port [587]: " && read "U?SMTP username: " && read -rs "W?SMTP password: " && echo \
      && J=$(H="$H" P="${P:-587}" U="$U" W="$W" S="$(openssl rand -hex 32)" node -e 'const e=process.env;console.log(JSON.stringify({AUTH_SECRET:e.S,SMTP_HOST:e.H,SMTP_PORT:e.P,SMTP_USERNAME:e.U,SMTP_PASSWORD:e.W}))') \
      && aws secretsmanager put-secret-value --secret-id hr-it-bot-auth --secret-string "$J"; unset H P U W J
+   # RSA key the gateway signs forwarded identities with (merged into the gateway secret)
+   K=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048) && S=$(aws secretsmanager get-secret-value --secret-id hr-it-bot-airs-gw --query SecretString --output text) \
+     && aws secretsmanager put-secret-value --secret-id hr-it-bot-airs-gw --secret-string "$(jq -c --arg k "$K" '.JWT_PRIVATE_KEY=$k' <<<"$S")"; unset K S
    ```
    `app-env` is the demo `.env` as is. The cluster overrides `PORTKEY_BASE_URL`, `PORTKEY_MCP_BASE` and `IT_TRIAGE_MCP_URLS` to point at in-cluster services (`deploy/k8s/base/apps.yaml`). The `PORTKEY_MCP_*_SLUG` values must be the SCM slugs. `AUTH_SECRET` is generated once per instance; changing it signs everyone out.
-5. **GitHub.** Settings > Environments > New environment `aws`. Add the variables from `terraform -chdir=infra/aws output github_environment_variables` (`AWS_ROLE_ARN`, `AWS_REGION`, `EKS_CLUSTER`). After the first build, set the five GHCR packages to **public** (Package settings > Change visibility) so the cluster pulls them without credentials.
+5. **GitHub.** Settings > Environments > New environment `aws`. Add the variables from `terraform -chdir=infra/aws output github_environment_variables` (`AWS_ROLE_ARN`, `AWS_REGION`, `EKS_CLUSTER`). The GHCR packages the release workflow creates inherit the public visibility of this repository, so the cluster pulls them without credentials.
 6. **First deploy.** Actions > Release > Run workflow with a version (e.g. `v0.1.1`). Or publish a release.
 
 After a secret changes in Secrets Manager, External Secrets syncs it within the hour (`kubectl -n hr-it-bot annotate externalsecret <name> force-sync=$(date +%s) --overwrite` to sync now). Pods read env vars at startup, so restart them: `kubectl -n hr-it-bot rollout restart deploy`.
@@ -60,6 +63,20 @@ After a secret changes in Secrets Manager, External Secrets syncs it within the 
 ## Auth and other `*.panw.pro` sites
 
 The auth service sets its session cookie on `.panw.pro` so the login host and the app host share it. Other auth instances on the same domain (the EC2 gateway on `auth.panw.pro`) use the default `better-auth.*` cookie name; this one is prefixed `otter-eks.*` (`AUTH_COOKIE_PREFIX`) so signing in on one never overwrites the other. Each instance has its own users and sessions.
+
+## Chatbot workload identity (Idira SWA)
+
+On EKS the chatbot reaches the AI Gateway with an Idira Secure Workload Access JWT-SVID instead of an API key (`chatbot-v2/backend/workload-identity.js`). The AWS overlay mounts the SWA agent's socket into the chatbot pod, so **the SWA server and agent must be installed before the chatbot** (values in `deploy/helm/swa/`, tenant settings in the `hr-it-bot-swa` secret, Idira charts kept out of this public repo). There is deliberately no API-key fallback: without a running agent the chatbot answers every request with a Workload API error, and on a node where the agent never ran the pod does not even start (the socket's hostPath is missing).
+
+- **Trust domain:** must sign in RS256 (`jwt.signature_algorithm`), the only algorithm the gateway accepts. Its JWKS (`https://<tenant>.secretsmgr.cyberark.cloud/api/swa/trust-domains/<td>/.well-known/jwks`) is declared in SCM: AI Gateway > Organisation > Authentication > JWT.
+- **Gateway:** `JWT_ENABLED=ON` and `JWT_LOCAL_AUTH_DEFAULT_SCOPES` in `deploy/helm/airs-gw/values.yaml`. API keys keep working.
+- **Configs:** a JWT has no attached config, so `hr-it-bot-app-env` must hold `PORTKEY_CONFIG` and `PORTKEY_CONFIG_GUARDED`, the slugs of the configs attached to the unguarded and guarded keys. The chatbot sends them in `x-portkey-config`; a guarded request without `PORTKEY_CONFIG_GUARDED` is refused. Admins cannot lock a config on a JWT: use Org-level Guardrails in SCM as the enforced floor.
+- **Identity:** `spiffe://<td>/<node-group>/ns/hr-it-bot/sa/chatbot-v2` (dedicated ServiceAccount), shown in the chat next to each answer.
+- **Trace links:** `PORTKEY_WORKSPACE_ID` and `PORTKEY_DEPLOYMENT_ID` in `hr-it-bot-app-env` (the cluster's SCM gateway registration, not the EC2 one) bring back the Portkey logo next to each answer.
+
+## hr-tools: identity forwarded by the gateway
+
+hr-tools refuses every MCP request without an `X-User-JWT` signed by the AI Gateway (Portkey MCP identity forwarding, method `jwt_header`): a call straight to its Service gets a 401. The gateway signs with `JWT_PRIVATE_KEY` (in `hr-it-bot-airs-gw`) and publishes the public key at `http://airs-gw:8788/.well-known/jwks.json`, which hr-tools reads (`IDENTITY_JWKS_URL`). On the SCM side, the hr-tools MCP integration carries `{"user_identity_forwarding": {"method": "jwt_header", "include_claims": [...]}}` in its configuration. it-triage therefore reaches hr-tools through the gateway, not directly.
 
 ## MCP origins and `*.otter-lab.com`
 

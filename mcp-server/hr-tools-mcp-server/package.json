@@ -1,6 +1,6 @@
 {
   "name": "hr-tools-mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "HR Tools MCP Server - Pure data/tools server exposing HR employee data via MCP",
   "main": "server.js",
   "type": "module",
@@ -11,6 +11,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
     "express": "^5.2.1",
+    "jose": "^6.2.12",
     "zod": "^4.6.5"
   },
   "keywords": [

@@ -189,6 +189,14 @@
     "copy": "コピー",
     "viewTrace": "トレースを表示"
   },
+  "gatewayAuth": {
+    "title": "この回答が AI Gateway を経由した方法",
+    "workload": "ワークロード",
+    "workloadIdentity": "Idira SWA",
+    "workloadIdentityDetail": "Idira が署名した短期間有効な JWT (API キー不要)",
+    "apiKey": "API キー",
+    "openTrace": "クリックしてトレースを開きます"
+  },
   "guardrail": {
     "cannotProcessRequest": "このリクエストを処理することができません",
     "cannotProvideResponse": "この応答を提供することができません",
@@ -211,6 +219,10 @@
     "autoNote": "すべてのリクエストは Prisma AIRS AI Gateway を経由します。AWS・GCP・Azure を選ぶとそのクラウドに固定され、Load balance & fallback では Gateway が 3 つに負荷を分散し、障害時は別のクラウドに切り替えます。"
   },
   "workflow": {
+    "viewFlow": "データフロー",
+    "viewIdentity": "アイデンティティ",
+    "idToday": "現状",
+    "idTarget": "目標",
     "title": "ワークフロー再生",
     "close": "閉じる",
     "normal": "通常",

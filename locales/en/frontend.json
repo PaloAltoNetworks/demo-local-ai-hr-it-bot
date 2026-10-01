@@ -189,6 +189,14 @@
     "copy": "Copy",
     "viewTrace": "View trace"
   },
+  "gatewayAuth": {
+    "title": "How this answer reached the AI Gateway",
+    "workload": "Workload",
+    "workloadIdentity": "Idira SWA",
+    "workloadIdentityDetail": "Short-lived JWT signed by Idira, no API key",
+    "apiKey": "API key",
+    "openTrace": "Click to open the trace"
+  },
   "guardrail": {
     "cannotProcessRequest": "I cannot process this request",
     "cannotProvideResponse": "I cannot provide this response",
@@ -211,6 +219,10 @@
     "autoNote": "All requests go through the Prisma AIRS AI Gateway. AWS, GCP or Azure pins the cloud; Load balance & fallback lets the gateway spread requests across the three and switch to another cloud if one fails."
   },
   "workflow": {
+    "viewFlow": "Data flow",
+    "viewIdentity": "Identity",
+    "idToday": "Today",
+    "idTarget": "Target",
     "title": "Workflow replay",
     "close": "Close",
     "normal": "Normal",

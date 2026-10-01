@@ -1,6 +1,6 @@
 {
   "name": "it-tools-mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "IT Tools MCP Server - Pure data/tools server exposing IT ticket data via MCP",
   "main": "server.js",
   "type": "module",

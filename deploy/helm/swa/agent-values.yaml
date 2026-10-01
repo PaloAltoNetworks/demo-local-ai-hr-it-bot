@@ -1,4 +1,4 @@
-# CyberArk Secure Workload Access agent (chart swa-agent), release "swa-agent" in
+# Idira Secure Workload Access agent (chart swa-agent), release "swa-agent" in
 # namespace swa-system, so its ServiceAccount swa-system:swa-agent matches the server
 # group's k8s_psat service_account_allow_list. trustDomain.name, bootstrap.bundleSourceUrl,
 # nodeAttestor.k8s_psat.cluster and podLabels.swa_nodegroup are tenant-specific and come

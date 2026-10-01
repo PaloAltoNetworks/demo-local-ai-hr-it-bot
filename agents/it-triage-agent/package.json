@@ -1,6 +1,6 @@
 {
   "name": "it-triage-agent",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "IT Triage Agent — MCP server with ToolLoopAgent for multi-step IT request triage",
   "main": "server.js",
   "type": "module",

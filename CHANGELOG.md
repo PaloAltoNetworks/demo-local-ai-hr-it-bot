@@ -3,6 +3,25 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.2
+
+### The assistant proves who it is, without an API key
+The Otter now reaches the Prisma AIRS AI Gateway with a short-lived identity issued by Idira
+Secure Workload Access instead of a stored API key. Hover the gateway logo under an answer to see
+how it was authenticated: a blue mark means the workload identity was used.
+
+### HR data only through the AI Gateway
+The HR records can no longer be read by calling their tools directly inside the cluster: every
+request must carry an identity signed by the AI Gateway, so it is always inspected and logged.
+
+### Identity explained in the workflow replay
+The workflow replay has a new Identity view. It walks through how a workload gets its identity on
+Kubernetes and how the gateway checks it, and compares today's setup with the target model where
+every tool verifies who is calling and for which user. Hover any component for an explanation.
+
+### Trace links are back
+The gateway logo next to each answer opens its trace in Strata Cloud Manager again.
+
 ## 0.1.1
 
 ### Sign in with your company email

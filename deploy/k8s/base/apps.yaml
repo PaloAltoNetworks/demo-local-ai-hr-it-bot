@@ -48,6 +48,9 @@ spec:
           image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/hr-tools-mcp-server
           ports: [{ containerPort: 3000 }]
           envFrom: [{ secretRef: { name: app-env } }]
+          env:
+            # Only calls carrying an identity signed by the AI Gateway reach the HR tools.
+            - { name: IDENTITY_JWKS_URL, value: "http://airs-gw:8788/.well-known/jwks.json" }
           readinessProbe: { httpGet: { path: /health, port: 3000 } }
           livenessProbe: { httpGet: { path: /health, port: 3000 } }
           resources:
@@ -80,7 +83,10 @@ spec:
           envFrom: [{ secretRef: { name: app-env } }]
           env:
             - { name: PORTKEY_BASE_URL, value: "http://airs-gw:8787/v1" }
-            - { name: IT_TRIAGE_MCP_URLS, value: "http://it-tools:3016/mcp,http://hr-tools:3017/mcp" }
+            # hr-tools is reached through the gateway, which signs the caller identity hr-tools
+            # requires; the slug comes from the app-env Secret. it-tools stays a direct call.
+            - { name: PORTKEY_MCP_BASE, value: "http://airs-gw:8788" }
+            - { name: IT_TRIAGE_MCP_URLS, value: "http://it-tools:3016/mcp,$(PORTKEY_MCP_BASE)/$(PORTKEY_MCP_HR_SLUG)/mcp" }
           readinessProbe: { httpGet: { path: /health, port: 3000 } }
           livenessProbe: { httpGet: { path: /health, port: 3000 } }
           resources:
@@ -95,6 +101,14 @@ spec:
   selector: { app: it-triage }
   ports: [{ port: 3019, targetPort: 3000 }]
 ---
+# Dedicated identity: workload attestors (Idira SWA) see ns/hr-it-bot/sa/chatbot-v2 instead
+# of the namespace's shared default account. The pod never calls the Kubernetes API.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chatbot-v2
+automountServiceAccountToken: false
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -106,6 +120,7 @@ spec:
     metadata:
       labels: { app: chatbot-v2 }
     spec:
+      serviceAccountName: chatbot-v2
       containers:
         - name: chatbot-v2
           image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/chatbot-v2

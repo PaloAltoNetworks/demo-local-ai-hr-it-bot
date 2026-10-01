@@ -1,6 +1,6 @@
 {
   "name": "demo-local-ai-hr-it-bot",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local AI HR/IT Bot with MCP servers",
   "type": "module",
   "workspaces": [
