@@ -63,7 +63,7 @@ The auth service sets its session cookie on `.panw.pro` so the login host and th
 
 ## Chatbot workload identity (Idira SWA)
 
-On EKS the chatbot reaches the AI Gateway with an Idira Secure Workload Access JWT-SVID instead of an API key (`chatbot-v2/backend/workload-identity.js`). The AWS overlay mounts the SWA agent's socket into the chatbot pod, so **the SWA server and agent must be installed before the chatbot** (values in `deploy/helm/swa/`, tenant settings in the `hr-it-bot-swa` secret, Idira charts kept out of this public repo). Without the agent the chatbot pod does not start: there is deliberately no API-key fallback.
+On EKS the chatbot reaches the AI Gateway with an Idira Secure Workload Access JWT-SVID instead of an API key (`chatbot-v2/backend/workload-identity.js`). The AWS overlay mounts the SWA agent's socket into the chatbot pod, so **the SWA server and agent must be installed before the chatbot** (values in `deploy/helm/swa/`, tenant settings in the `hr-it-bot-swa` secret, Idira charts kept out of this public repo). There is deliberately no API-key fallback: without a running agent the chatbot answers every request with a Workload API error, and on a node where the agent never ran the pod does not even start (the socket's hostPath is missing).
 
 - **Trust domain:** must sign in RS256 (`jwt.signature_algorithm`), the only algorithm the gateway accepts. Its JWKS (`https://<tenant>.secretsmgr.cyberark.cloud/api/swa/trust-domains/<td>/.well-known/jwks`) is declared in SCM: AI Gateway > Organisation > Authentication > JWT.
 - **Gateway:** `JWT_ENABLED=ON` and `JWT_LOCAL_AUTH_DEFAULT_SCOPES` in `deploy/helm/airs-gw/values.yaml`. API keys keep working.
