@@ -89,6 +89,16 @@ Example config attached to the guarded key (retry + cache + AIRS input/output ho
 
 Both input (pre-call) and output (post-call) scanning run through the configured Prisma AIRS profile.
 
+### Workload identity (CyberArk SWA)
+
+On Kubernetes the chatbot carries no gateway API key for LLM and MCP calls. With `SPIFFE_ENDPOINT_SOCKET` set, `backend/workload-identity.js` fetches a JWT-SVID (audience `portkey`, RS256, 5 min) from the CyberArk Secure Workload Access agent over the SPIFFE Workload API, caches it until a minute before expiry, and every request sends it in `x-portkey-api-key`. The gateway runs gateway-local JWT auth (`JWT_ENABLED=ON`) against the trust domain's JWKS declared on the SCM organisation.
+
+- A JWT has no attached config, so the two key configs travel in `x-portkey-config`: `PORTKEY_CONFIG` (unguarded) and `PORTKEY_CONFIG_GUARDED` (guarded, required: a guarded request without it is refused, never sent unguarded). The admin cannot lock the config on a JWT the way `allow_config_override=false` does on a key; Org-level Guardrails in SCM are the enforced floor.
+- No API-key fallback: if the Workload API fails, the request fails.
+- Only `/api/feedback` still uses `PORTKEY_API_KEY`.
+- Each message carries `auth: { mode, spiffeId }` in its metadata; the action bar shows it next to the thumbs (fingerprint icon, SPIFFE ID in the tooltip).
+- Identity: `spiffe://<trust-domain>/<node-group>/ns/hr-it-bot/sa/chatbot-v2` (dedicated ServiceAccount).
+
 ### Providers
 
 `GET /api/providers` returns the configured provider tiers `{ providers: [{ id, label }], default }` (AWS, GCP, Azure, and Auto when configured). The composer's provider dropdown lists them; the fast/powerful model per tier stays server-side in `PROVIDER_TIERS`.

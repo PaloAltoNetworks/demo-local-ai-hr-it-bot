@@ -14,6 +14,7 @@ import { ToolLoopAgent, pipeAgentUIStreamToResponse, isStepCount, isToolUIPart, 
 import { z } from 'zod';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
+import { WORKLOAD_IDENTITY_ENABLED, getWorkloadToken, workloadSpiffeId } from './workload-identity.js';
 
 const DEBUG = process.env.LOG_LEVEL === 'debug';
 function dbg(msg) { if (DEBUG) console.log(msg); }
@@ -25,13 +26,46 @@ const PORT = process.env.CHATBOT_V2_PORT || 3018;
 // --- Configuration ---
 
 const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai/v1';
-// Two workspace API keys, each carrying its own Portkey config (retry/cache/guardrail hooks):
-//   PORTKEY_API_KEY         — default/unguarded (config may enable response caching)
-//   PORTKEY_API_KEY_GUARDED — guarded (config attaches PANW Prisma AIRS input+output hooks)
-// Guardrails are enforced by the key's attached config, NOT by injecting x-portkey-config
-// per request. Guarded requests (phase3) swap to the guarded key; everything else uses default.
+/**
+ * Gateway authentication, two modes:
+ * - API keys (default): two workspace keys, each carrying its own Portkey config.
+ *   PORTKEY_API_KEY is default/unguarded (config may enable response caching),
+ *   PORTKEY_API_KEY_GUARDED is guarded (config attaches PANW Prisma AIRS input+output hooks).
+ *   Guarded requests (phase3) swap to the guarded key; everything else uses the default one.
+ * - Workload identity (SPIFFE_ENDPOINT_SOCKET set): every LLM and MCP request carries the
+ *   chatbot's CyberArk SWA JWT-SVID instead of a key. A JWT has no attached config, so the
+ *   same two configs ride in x-portkey-config: PORTKEY_CONFIG (unguarded) and
+ *   PORTKEY_CONFIG_GUARDED (guarded, required: a guarded request without it is refused rather
+ *   than sent unguarded). Only the feedback endpoint still uses PORTKEY_API_KEY.
+ */
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const PORTKEY_API_KEY_GUARDED = process.env.PORTKEY_API_KEY_GUARDED || PORTKEY_API_KEY;
+const PORTKEY_CONFIG = process.env.PORTKEY_CONFIG || '';
+const PORTKEY_CONFIG_GUARDED = process.env.PORTKEY_CONFIG_GUARDED || '';
+
+/**
+ * Credential and config for one gateway request. In workload-identity mode the JWT replaces
+ * the key and the config travels in a header; in key mode the key's attached config applies.
+ * @param {boolean} guarded phase3 request that must go through the AIRS guardrails
+ * @returns {Promise<{ apiKey: string, config: string }>}
+ */
+async function gatewayCredential(guarded) {
+  if (!WORKLOAD_IDENTITY_ENABLED) {
+    return { apiKey: guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY, config: '' };
+  }
+  if (guarded && !PORTKEY_CONFIG_GUARDED) {
+    throw new Error('PORTKEY_CONFIG_GUARDED is required for guarded requests with workload identity');
+  }
+  const { token } = await getWorkloadToken();
+  return { apiKey: token, config: guarded ? PORTKEY_CONFIG_GUARDED : PORTKEY_CONFIG };
+}
+
+/** How the chatbot authenticates to the gateway, for /health and the message action bar. */
+function gatewayAuthInfo() {
+  return WORKLOAD_IDENTITY_ENABLED
+    ? { mode: 'workload-identity', spiffeId: workloadSpiffeId() }
+    : { mode: 'api-key' };
+}
 /**
  * Saved AI Gateway configs for the Load balance & fallback provider, one per model tier: a
  * top-level load balancer (what gateway logs report) over fallback chains across AWS, GCP and
@@ -200,7 +234,12 @@ function makeReflectTools(stepStartRef) {
 function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = '') {
   return async (url, init) => {
     const headers = new Headers(init?.headers);
-    headers.set('x-portkey-api-key', guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY);
+    const cred = await gatewayCredential(guarded);
+    headers.set('x-portkey-api-key', cred.apiKey);
+    // The OpenAI provider also sends Authorization: Bearer <apiKey>; with workload identity no
+    // static credential may reach the gateway.
+    if (WORKLOAD_IDENTITY_ENABLED) headers.delete('authorization');
+    if (cred.config) headers.set('x-portkey-config', cred.config);
     headers.set('x-portkey-trace-id', reqCtx.traceId);
     // Every phase otherwise logs as span_name "llm", so a turn reads as N identical rows.
     // Phases run in sequence, not nested, so they stay siblings — no parent_span_id.
@@ -314,7 +353,7 @@ function computeCost(perModelUsage) {
 function getModel(modelId, reqCtx, guarded = false, noParallel = false, spanName = '') {
   const provider = createOpenAI({
     baseURL: PORTKEY_BASE_URL,
-    apiKey: PORTKEY_API_KEY,
+    apiKey: WORKLOAD_IDENTITY_ENABLED ? 'workload-identity' : PORTKEY_API_KEY,
     fetch: portkeyFetch(reqCtx, guarded, noParallel, spanName),
   });
   return provider.chat(modelId || MODEL_ID);
@@ -334,19 +373,20 @@ async function connectMCP(url) {
     transport: {
       type: 'http',
       url,
-      headers: {
-        'x-portkey-api-key': PORTKEY_API_KEY,
-      },
+      headers: WORKLOAD_IDENTITY_ENABLED ? {} : { 'x-portkey-api-key': PORTKEY_API_KEY },
       // v7 flipped the default to 'error'; Portkey MCP Gateway relies on redirects.
       redirect: 'follow',
       // Full span set so a tool call can nest under the LLM span that emitted it. As of
       // this writing the MCP gateway drops these and mints its own trace per tools/call
       // (metadata is the one thing it keeps), so thread_id also rides in the metadata:
       // filtering MCP logs on it recovers the tool calls of a conversation either way.
+      // Every request of the transport (initialize, tools/*, the SSE GET, the closing DELETE)
+      // goes through this hook, so the workload JWT is set here, fresh, on each of them.
       fetch: async (fetchUrl, init) => {
-        const reqCtx = mcpCtx.getStore();
-        if (!reqCtx) return fetch(fetchUrl, init);
         const headers = new Headers(init?.headers);
+        if (WORKLOAD_IDENTITY_ENABLED) headers.set('x-portkey-api-key', (await getWorkloadToken()).token);
+        const reqCtx = mcpCtx.getStore();
+        if (!reqCtx) return fetch(fetchUrl, { ...init, headers });
         headers.set('x-portkey-trace-id', reqCtx.traceId);
         headers.set('x-portkey-span-id', crypto.randomBytes(8).toString('hex'));
         headers.set('x-portkey-span-name', 'mcp-tool-call');
@@ -470,6 +510,7 @@ app.get('/health', (_req, res) => {
     mcpStatus: mcpClients.length > 0 ? 'connected' : 'disconnected',
     mcpUrls: MCP_URLS,
     model: MODEL_ID,
+    auth: gatewayAuthInfo(),
   });
 });
 
@@ -797,7 +838,7 @@ function createTurnMeter(stepModels, traceId) {
   const perModelUsage = {};
   let step = 0;
   let gotText = false;
-  const snapshot = () => ({ usage: { ...usage }, traceId, cost: computeCost(perModelUsage) });
+  const snapshot = () => ({ usage: { ...usage }, traceId, cost: computeCost(perModelUsage), auth: gatewayAuthInfo() });
   return ({ part }) => {
     if (part.type === 'text-delta' && part.text?.trim()) gotText = true;
     if (part.type === 'finish-step') {
