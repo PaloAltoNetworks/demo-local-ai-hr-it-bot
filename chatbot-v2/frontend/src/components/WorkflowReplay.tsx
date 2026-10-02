@@ -655,8 +655,9 @@ type IdStep = { edge?: string; reverse?: boolean; focus: string; label: string; 
  * Service), linked to every agent. Target model: the user signs in to Idira Identity (above the
  * cluster, next to the user), the chatbot proves its own identity with its SWA JWT-SVID, and Idira
  * Identity issues one delegated token carrying both (the user, and the chatbot as actor), which
- * the gateway and the MCP servers check. Strata Cloud Manager, the LLM providers and the Idira
- * trust domain sit outside the cluster, as SaaS.
+ * the gateway and the MCP servers check. Idira Identity also manages the SWA server (trust
+ * domain, workload policies, signing keys). Strata Cloud Manager and the LLM providers sit
+ * outside the cluster, as SaaS.
  */
 const ID_W = 260;
 /** Compact SWA cards: half a pod card, so the agent and the server share Node 3's bottom row. */
@@ -680,9 +681,8 @@ const HINT = {
   agent: 'Idira Secure Workload Access agent. A DaemonSet: one pod on every node. It attests the pods of its own node through the local kubelet (namespace, service account, labels) and hands them a short-lived JWT-SVID over a local Unix socket (SPIFFE Workload API). The workload is given no secret.',
   otter: 'The HR/IT chatbot pod. It holds no API key and no client secret: it proves who it is with its SWA JWT-SVID, and exchanges the user\'s sign-in at Idira Identity for a delegated token it sends to the AI Gateway.',
   gw: 'Prisma AIRS AI Gateway: hybrid data plane running in the cluster, managed from Strata Cloud Manager. It checks each JWT against the Idira JWKS, applies each MCP server\'s rule on the token groups, and forwards the token to the MCP server (identity forwarding).',
-  server: 'Idira Secure Workload Access server. A Deployment pod, on any node. It signs the JWT-SVIDs the agents request, and syncs its configuration and signing keys with the Idira trust domain, logging in with its Kubernetes service account token.',
+  server: 'Idira Secure Workload Access server. A Deployment pod, on any node. It signs the JWT-SVIDs the agents request. It is managed from Idira Identity, which holds its trust domain, workload policies and signing keys; it logs in there with its Kubernetes service account token.',
   scm: 'Strata Cloud Manager: control plane of the AI Gateway. It holds the JWT settings (the Idira JWKS URL), the authorization rule of each MCP server, the configs and the guardrails, and syncs them to the gateway.',
-  td: 'Idira trust domain (SaaS): root of the workload identities. It sets the signing algorithm and the token lifetime, and publishes the public keys (JWKS) that verify every JWT-SVID.',
   llm: 'Model providers, outside the cluster. They never see the user token: the AI Gateway calls them with the provider keys configured in Strata Cloud Manager.',
   hr: 'hr-tools MCP server: an OAuth 2.1 resource server. It verifies the forwarded token (signature, issuer, audience, scope) and returns only the records the user may read: their own, their direct reports\', or all of them for HR.',
   it: 'it-tools MCP server: an OAuth 2.1 resource server for IT tickets and assets. Employees open and read tickets; an external contractor sees and opens only their own.',
@@ -696,10 +696,12 @@ const agentCard = (id: string, node: number, extra: Handles = []) =>
 const NODE_TOP = ID_ROW.app - 22;
 /** Row above the cluster: the user and Idira Identity, clear of the cluster frame. */
 const TOP_Y = NODE_TOP - 158;
+/** The user card is wider so the name stays on one line, keeping it as tall as Idira Identity's (straight link); still centred on The Otter. */
+const USER_W = 310;
 const SCM_Y = ID_ROW.app + 20;
 const ID_NODES: { id: string; position: { x: number; y: number }; data: CardData }[] = [
-  { id: 'user', position: { x: podX(1), y: TOP_Y }, data: { title: PERSONA_LOOK.employee.name, icon: 'UserRound', role: 'triage', badge: 'employees', badgeTone: 'ctrl', w: ID_W, hint: HINT.user, handles: [H('b', 'source', Position.Bottom, '50%'), H('r', 'source', Position.Right, '50%')] } },
-  { id: 'idp', position: { x: podX(2), y: TOP_Y }, data: { title: 'Idira Identity', icon: 'UserRoundCheck', role: 'triage', badge: 'IdP', badgeTone: 'ctrl', w: ID_W, hint: HINT.idp, handles: [H('l', 'target', Position.Left, '50%'), H('bl', 'target', Position.Bottom, '25%'), H('b', 'target', Position.Bottom, '75%')] } },
+  { id: 'user', position: { x: podX(1) - (USER_W - ID_W) / 2, y: TOP_Y }, data: { title: PERSONA_LOOK.employee.name, icon: 'UserRound', role: 'triage', badge: 'employees', badgeTone: 'ctrl', w: USER_W, hint: HINT.user, handles: [H('b', 'source', Position.Bottom, '50%'), H('r', 'source', Position.Right, '50%')] } },
+  { id: 'idp', position: { x: podX(2), y: TOP_Y }, data: { title: 'Idira Identity', icon: 'UserRoundCheck', role: 'triage', badge: 'IdP', badgeTone: 'ctrl', w: ID_W, hint: HINT.idp, handles: [H('l', 'target', Position.Left, '50%'), H('r', 'target', Position.Right, '50%'), H('bl', 'target', Position.Bottom, '25%'), H('b', 'target', Position.Bottom, '75%')] } },
   { id: 'rogue', position: { x: podX(0), y: ID_ROW.app }, data: { title: 'Unknown pod', icon: 'Bot', role: 'triage', badge: 'no identity', badgeTone: 'ctrl', w: ID_W, hint: HINT.rogue, handles: [H('t', 'source', Position.Top, '50%')] } },
   agentCard('swaAgent1', 0),
   { id: 'otter', position: { x: podX(1), y: ID_ROW.app }, data: { title: 'The Otter', role: 'agent', badge: 'sa/chatbot-v2', badgeTone: 'ctrl', w: ID_W, hint: HINT.otter, handles: [H('t', 'target', Position.Top, '50%'), H('tr', 'source', Position.Top, '85%'), H('r', 'source', Position.Right, '50%'), H('lt', 'target', Position.Left, '50%')] } },
@@ -711,7 +713,6 @@ const ID_NODES: { id: string; position: { x: number; y: number }; data: CardData
   swaCard('swaServer', 2, true, 'SWA server', 'KeyRound', 'Deployment', HINT.server, [H('b', 'target', Position.Bottom, '50%'), H('l', 'target', Position.Left, '50%'), H('r', 'source', Position.Right, '50%')]),
   { id: 'llm', position: { x: SAAS_X, y: -10 }, data: { title: 'LLM providers', icon: 'Cloud', role: 'triage', w: ID_W, hint: HINT.llm, handles: [H('l', 'target', Position.Left, '50%')] } },
   { id: 'scm', position: { x: SAAS_X, y: SCM_Y }, data: { title: 'Strata Cloud Manager', img: '/images/scm.svg', role: 'triage', badge: 'Control plane', badgeTone: 'ctrl', w: ID_W, hint: HINT.scm, handles: [H('l', 'source', Position.Left, '50%')] } },
-  { id: 'td', position: { x: SAAS_X, y: ID_ROW.swa - 12 }, data: { title: 'Trust domain', icon: 'ShieldCheck', role: 'triage', badge: 'JWKS', badgeTone: 'ctrl', w: ID_W, hint: HINT.td, handles: [H('lb', 'target', Position.Left, '60%')] } },
 ];
 
 const NODE_W = ID_W + 50;
@@ -724,13 +725,12 @@ const GAP_23 = (NODE_X[1] + NODE_W + NODE_X[2]) / 2;
 const GAP_OUT = NODE_X[2] + NODE_W + 30 + (SAAS_X - 40 - (NODE_X[2] + NODE_W + 30)) / 2;
 const corridor = (node: number) => NODE_X[node] + 15;
 
-/** Kubernetes cluster framing the three worker nodes; PANW and Idira SaaS (identity, workload trust domain) framing their cards. */
+/** Kubernetes cluster framing the three worker nodes; PANW and Idira Identity SaaS framing their cards. */
 const ID_ZONES = [
   { id: 'z-cluster', type: 'zone', position: { x: NODE_X[0] - 30, y: NODE_TOP - 50 }, draggable: false, selectable: false, zIndex: 0, style: { width: NODE_X[2] + NODE_W + 60 - NODE_X[0], height: NODE_H + 80 }, data: { label: 'Kubernetes cluster · EKS', color: CUST_VAR, logo: '/images/kubernetes.svg', solid: true, fill: 7 } },
   ...NODE_X.map((x, i) => ({ id: `z-node${i + 1}`, type: 'zone', position: { x, y: NODE_TOP }, draggable: false, selectable: false, zIndex: 0, style: { width: NODE_W, height: NODE_H }, data: { label: `Node ${i + 1}`, color: GREY, labelBottom: true } })),
   { id: 'z-idira-id', type: 'zone', position: { x: podX(2) - 40, y: TOP_Y - 48 }, draggable: false, selectable: false, zIndex: 0, style: { width: ID_W + 80, height: CARD_H + 82 }, data: { label: 'Idira Identity · SaaS', color: IDIRA_VAR, fill: 7 } },
   { id: 'z-panw', type: 'zone', position: { x: SAAS_X - 40, y: SCM_Y - 48 }, draggable: false, selectable: false, zIndex: 0, style: { width: ID_W + 80, height: CARD_H + 82 }, data: { label: 'Palo Alto Networks · SaaS', color: AIRS_VAR } },
-  { id: 'z-idira', type: 'zone', position: { x: SAAS_X - 40, y: ID_ROW.swa - 12 - 48 }, draggable: false, selectable: false, zIndex: 0, style: { width: ID_W + 80, height: CARD_H + 82 }, data: { label: 'Idira SWA · SaaS', color: IDIRA_VAR, fill: 7 } },
 ];
 
 /** `quiet` edges stay dimmed: agents of the other nodes, drawn for the topology but not in the story. */
@@ -739,11 +739,11 @@ const ID_EDGES: { id: string; source: string; target: string; sourceHandle: stri
   { id: 'user-idp', source: 'user', target: 'idp', sourceHandle: 'r', targetHandle: 'l' },
   { id: 'otter-idp', source: 'otter', target: 'idp', sourceHandle: 'tr', targetHandle: 'bl', centerY: NODE_TOP - 25 },
   { id: 'gw-idp', source: 'gw', target: 'idp', sourceHandle: 'tr', targetHandle: 'b' },
+  { id: 'server-idp', source: 'swaServer', target: 'idp', sourceHandle: 'r', targetHandle: 'r', centerX: GAP_OUT - 12 },
   { id: 'agent-otter', source: 'swaAgent', target: 'otter', sourceHandle: 'l', targetHandle: 'lt', centerX: corridor(1) },
   { id: 'agent-server', source: 'swaAgent', target: 'swaServer', sourceHandle: 'b', targetHandle: 'b', centerY: BUS_Y },
   { id: 'agent1-server', source: 'swaAgent1', target: 'swaServer', sourceHandle: 'b', targetHandle: 'b', centerY: BUS_Y, quiet: true },
   { id: 'agent3-server', source: 'swaAgent3', target: 'swaServer', sourceHandle: 'r', targetHandle: 'l', quiet: true },
-  { id: 'server-td', source: 'swaServer', target: 'td', sourceHandle: 'r', targetHandle: 'lb', centerX: GAP_OUT - 12 },
   { id: 'scm-gw', source: 'scm', target: 'gw', sourceHandle: 'l', targetHandle: 'rm', centerX: GAP_OUT },
   { id: 'otter-gw', source: 'otter', target: 'gw', sourceHandle: 'r', targetHandle: 'l' },
   { id: 'gw-llm', source: 'gw', target: 'llm', sourceHandle: 'r', targetHandle: 'l', centerX: GAP_OUT + 12 },
@@ -780,6 +780,8 @@ const idOpening = (p: Persona): IdStep[] => {
   const persona = p === 'employee' ? 'EMP-034' : 'EXT-001';
   return [
     { edge: 'scm-gw', focus: 'gw', label: 'Strata Cloud Manager pushes the gateway its JWT settings and MCP rules', kind: 'sync', data: { jwks_url: 'Idira Identity JWKS', mcp_rules: { 'hr-tools': HR_RULE, 'it-tools': IT_RULE }, identity_forwarding: 'bearer' } },
+    { edge: 'server-idp', focus: 'idp', label: 'Idira Identity manages the SWA server: trust domain, policies, signing keys', kind: 'sync', data: { trust_domain: 'otter', policy: 'sa/chatbot-v2 may act for signed-in users', authn: 'SWA server logs in with its Kubernetes service account token' } },
+    { edge: 'server-idp', reverse: true, focus: 'swaServer', label: 'SWA server synced', kind: 'sync' },
     { edge: 'gw-idp', focus: 'idp', label: 'Gateway fetches the Idira signing keys (JWKS)', kind: 'sync' },
     { edge: 'gw-idp', reverse: true, focus: 'gw', label: 'Keys cached by the gateway', kind: 'sync', data: { jwks: 'public, RS256', refresh: 'on unknown kid' } },
     { edge: 'user-idp', focus: 'idp', label: `${name} signs in to Idira Identity`, kind: 'attest', data: { method: 'SSO + MFA', groups: [PERSONA_LOOK[p].badge] } },
@@ -788,7 +790,7 @@ const idOpening = (p: Persona): IdStep[] => {
     { edge: 'agent-server', focus: 'swaServer', label: 'The agent attests the pod (kubelet), the SWA server signs', kind: 'attest', data: { selectors: ['k8s:ns:hr-it-bot', 'k8s:sa:chatbot-v2'], spiffe_id: SPIFFE_ID } },
     { edge: 'agent-server', reverse: true, focus: 'swaAgent', label: 'JWT-SVID signed · 5 min', kind: 'mint', data: { sub: SPIFFE_ID, aud: ['idira-identity'] } },
     { edge: 'agent-otter', focus: 'otter', label: 'The Otter holds its JWT-SVID: no secret on disk', kind: 'deliver' },
-    { edge: 'otter-idp', focus: 'idp', label: `Token exchange: ${name}'s sign-in + the chatbot's JWT-SVID`, kind: 'present', data: { grant: 'token-exchange (RFC 8693)', subject_token: `${name}'s Idira session`, actor_token: '<JWT-SVID of the chatbot>', checks: ['actor JWT-SVID against the SWA trust domain JWKS', 'chatbot allowed to act for this user'], resource: MCP_AUDIENCE } },
+    { edge: 'otter-idp', focus: 'idp', label: `Token exchange: ${name}'s sign-in + the chatbot's JWT-SVID`, kind: 'present', data: { grant: 'token-exchange (RFC 8693)', subject_token: `${name}'s Idira session`, actor_token: '<JWT-SVID of the chatbot>', checks: ['actor JWT-SVID against the Idira SWA trust domain keys', 'chatbot allowed to act for this user'], resource: MCP_AUDIENCE } },
     { edge: 'otter-idp', reverse: true, focus: 'otter', label: `Delegated token: ${name}, acting through The Otter · 1 h`, kind: 'mint', data: tokenClaims(p) },
     { edge: 'otter-gw', focus: 'gw', label: 'LLM call with the delegated token instead of an API key', kind: 'present', data: { 'x-portkey-api-key': `<${name}'s delegated token>`, checked_by_gateway: ['signature against the cached Idira JWKS', 'not expired'], logged_user: tokenClaims(p).sub } },
     { edge: 'gw-llm', focus: 'llm', label: 'Prompt sent to the LLM, without the token', kind: 'request', data: { question: QUESTION } },
@@ -839,7 +841,7 @@ const SCRIPT_IDENTITY_ROGUE: IdStep[] = [
 ];
 
 /** Hops of the Idira identity plumbing, played in Idira blue; the user's own hops take the persona colour. */
-const IDIRA_EDGES = new Set(['gw-idp', 'user-idp', 'agent-otter', 'agent-server', 'otter-idp', 'server-td']);
+const IDIRA_EDGES = new Set(['server-idp', 'gw-idp', 'user-idp', 'agent-otter', 'agent-server', 'otter-idp']);
 
 const ID_SCRIPTS: Record<IdMode, IdStep[]> = { employee: SCRIPT_IDENTITY_EMPLOYEE, external: SCRIPT_IDENTITY_EXTERNAL, rogue: SCRIPT_IDENTITY_ROGUE };
 
