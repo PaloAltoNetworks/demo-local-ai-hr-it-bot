@@ -748,7 +748,7 @@ const ID_EDGES: { id: string; source: string; target: string; sourceHandle: stri
 
 const MCP_AUDIENCE = ['hr-tools', 'it-tools', 'it-triage'];
 const tokenClaims = (p: Persona) => ({
-  iss: 'https://auth2.panw.pro/api/auth',
+  iss: 'https://auth.panw.pro/api/auth',
   email_id: p === 'employee' ? 'aurelien.girard@company.com' : 'alex.morgan@partner.example',
   name: PERSONA_LOOK[p].name,
   persona: p === 'employee' ? 'EMP-034' : 'EXT-001',
@@ -771,7 +771,7 @@ const QUESTION = 'How many leave days do I have left?';
 const idOpening = (p: Persona): IdStep[] => {
   const { name } = PERSONA_LOOK[p];
   return [
-    { edge: 'scm-gw', focus: 'gw', label: 'Strata Cloud Manager pushes the gateway its JWT settings and MCP rules', kind: 'sync', data: { jwks_url: 'https://auth2.panw.pro/api/auth/jwks', mcp_rules: { 'hr-tools': HR_RULE, 'it-tools': IT_RULE }, identity_forwarding: 'bearer' } },
+    { edge: 'scm-gw', focus: 'gw', label: 'Strata Cloud Manager pushes the gateway its JWT settings and MCP rules', kind: 'sync', data: { jwks_url: 'https://auth.panw.pro/api/auth/jwks', mcp_rules: { 'hr-tools': HR_RULE, 'it-tools': IT_RULE }, identity_forwarding: 'bearer' } },
     { edge: 'user-otter', focus: 'otter', label: `${name}: "${QUESTION}"`, kind: 'request', data: { session: 'magic-link sign-in', persona: name, phase: 'protected (phase 3)' } },
     { edge: 'otter-auth', focus: 'auth', label: `The Otter asks the auth-service for ${name}'s token`, kind: 'request', data: { grant: 'authorization_code + PKCE', client: 'chatbot', proof: "the user's session cookie", resource: MCP_AUDIENCE } },
     { edge: 'otter-auth', reverse: true, focus: 'otter', label: `Token issued for ${name} · RS256 · 1 h`, kind: 'mint', data: tokenClaims(p) },
