@@ -139,20 +139,6 @@
             "expect": "deny"
           },
           {
-            "icon": "group",
-            "title": "Sophieのチーム · Aurélien",
-            "text": "Sophie Martinの直属の部下は誰ですか？",
-            "persona": "EMP-034",
-            "expect": "deny"
-          },
-          {
-            "icon": "group",
-            "title": "自分のチーム · Sophie",
-            "text": "私の直属の部下は誰ですか？",
-            "persona": "EMP-033",
-            "expect": "allow"
-          },
-          {
             "icon": "usb",
             "title": "チケットを起票 · Alex",
             "text": "ノートPCのUSBポートが動かなくなりました。ITチケットを起票していただけますか？",
