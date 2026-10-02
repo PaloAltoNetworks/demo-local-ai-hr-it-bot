@@ -25,15 +25,51 @@ export const SMTP_CONFIG = {
 };
 
 /**
- * Service clients allowed to get a token through the client_credentials grant
- * (POST /api/auth/oauth2/token), as a JSON array in OAUTH_CLIENTS:
- * [{"client_id":"myapp","client_secret":"s3cret","name":"My app"}]
+ * Identities a signed-in user can act as; the first is the default. This is the directory side of
+ * identity (name, email, groups), as an identity provider holds it: employees match a record of
+ * the demo HR data by employee_id, the external contractor has none. `access` names the access
+ * level the UI describes. Groups drive the gateway's authorization of the MCP servers.
  */
-export const OAUTH_CLIENTS = (() => {
-  try {
-    return JSON.parse(process.env.OAUTH_CLIENTS || "[]");
-  } catch {
-    console.error("Invalid OAUTH_CLIENTS JSON, disabling OAuth");
-    return [];
-  }
-})();
+export const PERSONAS = [
+  { id: "EMP-034", name: "Aurélien Girard", email: "aurelien.girard@company.com", groups: ["employees"], access: "employee" },
+  { id: "EMP-033", name: "Sophie Martin", email: "sophie.martin@company.com", groups: ["employees"], access: "manager" },
+  { id: "EMP-068", name: "Lisa Wang", email: "lisa.wang@company.com", groups: ["employees", "hr"], access: "hr" },
+  { id: "EXT-001", name: "Alex Morgan", email: "alex.morgan@partner.example", groups: ["external"], access: "external" },
+];
+
+/** Groups of tokens issued to a client acting on its own (client_credentials). */
+export const AGENT_GROUPS = ["agents"];
+
+/** Scopes the MCP servers check on each tool. */
+export const SCOPES = ["hr:read", "it:read", "it:write", "it:triage"];
+
+/**
+ * Protected resources (RFC 8707) tokens are issued for: the canonical URLs of the MCP servers,
+ * comma-separated in OAUTH_RESOURCES. Each server checks that its own URL is in the token audience.
+ */
+export const RESOURCES = (process.env.OAUTH_RESOURCES || "").split(",").map((r) => r.trim()).filter(Boolean);
+
+/**
+ * First-party clients, seeded at startup with skip_consent. Their secrets come from the shared
+ * app env so the client and the auth service read the same value; a client without a secret is
+ * not seeded. The chatbot's redirect URI is a loopback URL nobody visits: its backend reads the code from the
+ * authorize redirect itself.
+ */
+export const TRUSTED_CLIENTS = [
+  {
+    clientId: "chatbot",
+    name: "The Otter",
+    secret: process.env.CHATBOT_CLIENT_SECRET,
+    grantTypes: ["authorization_code", "client_credentials"],
+    redirectUris: [process.env.CHATBOT_REDIRECT_URI || "http://localhost:3018/oauth/callback"],
+    clientCredentialsScopes: SCOPES,
+  },
+  {
+    clientId: "it-triage",
+    name: "IT Triage Agent",
+    secret: process.env.IT_TRIAGE_CLIENT_SECRET,
+    grantTypes: ["client_credentials"],
+    redirectUris: [],
+    clientCredentialsScopes: ["hr:read", "it:read"],
+  },
+].filter((c) => c.secret);
