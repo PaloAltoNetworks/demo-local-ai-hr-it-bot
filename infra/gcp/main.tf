@@ -119,7 +119,7 @@ resource "google_container_cluster" "this" {
  * cloud. The preview has no auth-service: "auth" only holds the OAuth client secrets.
  */
 resource "google_secret_manager_secret" "this" {
-  for_each  = toset(["app-env", "airs-gw", "cloudflared", "auth"])
+  for_each  = toset(["app-env", "airs-gw", "cloudflared", "auth", "idira"])
   secret_id = "${var.name}-${each.key}"
   replication {
     auto {}
