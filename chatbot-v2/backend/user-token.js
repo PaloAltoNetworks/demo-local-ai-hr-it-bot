@@ -7,7 +7,8 @@
  *   with the authorization code grant and PKCE. The authorize request carries the user's session
  *   cookie (the browser's request, passed through by Caddy), so there is no redirect and no
  *   consent: the code is read from the authorize response and exchanged at once. It carries the
- *   identity of the user's persona (email, name, groups, employee_id) and names the chatbot as client.
+ *   identity of the user's persona (email, name, groups, employee_id), names the chatbot as client
+ *   and its workload identity as actor (act.sub).
  * - agentToken(): the chatbot's own token (client_credentials, group "agents", every scope): a
  *   service account, for MCP connections and the tool calls of unprotected turns. The MCP
  *   servers grant it everything its scopes allow, whoever the user is.
@@ -87,7 +88,7 @@ async function cached(key, issue) {
 
 /**
  * Token of the user whose browser sent `cookie`.
- * @returns {Promise<{ token: string, claims: { persona: string, name: string, email: string, groups: string[], employee_id?: string, client_id: string } }>}
+ * @returns {Promise<{ token: string, claims: { persona: string, name: string, email: string, groups: string[], employee_id?: string, client_id: string, act?: { sub: string } } }>}
  */
 export function userToken(cookie) {
   if (!cookie) return Promise.reject(new Error('No auth-service session cookie on the request'));

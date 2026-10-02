@@ -66,7 +66,7 @@ function gatewayCredential(guarded, token) {
 
 /**
  * How a turn reached the gateway, for the message action bar: the user (persona) and the agent
- * (OAuth client) of the token and whose identity the tool calls carried, or the API key.
+ * (the token's actor) of the token and whose identity the tool calls carried, or the API key.
  * @param {boolean} guarded protected mode, where tool calls carry the user's token
  */
 function gatewayAuthInfo(user, guarded) {
@@ -116,16 +116,17 @@ const DEFAULT_USER = { persona: 'EMP-034', employee_id: 'EMP-034', name: 'Aurél
 
 /**
  * The user of a request: the persona their auth-service token carries (id, employee_id for
- * employees, name, email, groups), the signed-in account behind it (login) and the OAuth client
- * as agent, or DEFAULT_USER without user tokens. `id` is what prompts and logs name the user by:
- * the employee ID, or the persona id of someone without one (an external contractor).
+ * employees, name, email, groups), the signed-in account behind it (login) and the agent acting
+ * for them (the token's actor, act.sub, else the OAuth client), or DEFAULT_USER without user
+ * tokens. `id` is what prompts and logs name the user by: the employee ID, or the persona id of
+ * someone without one (an external contractor).
  * @returns {Promise<{ token?: string, user: { id: string, persona: string, employee_id?: string, name?: string, email?: string, groups?: string[], login?: string, agent?: string } }>}
  */
 async function requestUser(req) {
   if (!USER_TOKENS_ENABLED) return { user: { ...DEFAULT_USER, id: DEFAULT_USER.employee_id } };
   const { token, claims } = await userToken(req.headers.cookie);
-  const { persona, employee_id, name, email, groups, client_id, login_email } = claims;
-  return { token, user: { id: employee_id || persona, persona, employee_id, name, email, groups, agent: client_id, login: login_email } };
+  const { persona, employee_id, name, email, groups, client_id, login_email, act } = claims;
+  return { token, user: { id: employee_id || persona, persona, employee_id, name, email, groups, agent: act?.sub || client_id, login: login_email } };
 }
 
 // --- Focused phase prompts for the forced ReAct loop ---
@@ -303,6 +304,7 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
       _user: reqCtx.user.email || reqCtx.user.id,
       employee_id: reqCtx.user.id,
       login_email: reqCtx.user.login,
+      agent_id: reqCtx.user.agent,
       app_name: 'The Otter V2',
       model,
     }));
@@ -428,6 +430,7 @@ async function connectMCP(url) {
           _user: reqCtx.user.email || reqCtx.user.id,
           employee_id: reqCtx.user.id,
           login_email: reqCtx.user.login,
+          agent_id: reqCtx.user.agent,
           app_name: 'The Otter V2',
           thread_id: reqCtx.threadId,
         }));
@@ -1065,6 +1068,7 @@ app.post('/api/feedback', async (req, res) => {
         metadata: {
           _user: user.email || user.id,
           login_email: user.login,
+          agent_id: user.agent,
           app_name: 'The Otter V2',
           answer_type: tools.length > 0 ? 'tool-backed' : 'direct',
           tools_used: tools.join(', '),

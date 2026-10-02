@@ -32,6 +32,21 @@ function personaClaims(personaId) {
   };
 }
 
+/**
+ * Actor of a token issued to a client for a user (RFC 8693 §4.1): `act.sub` is the workload
+ * identity of the client (its agentId), so one token names both the user (sub, email_id) and the
+ * agent acting for them. Tokens a client gets for itself carry no actor, nor do clients without
+ * an agentId.
+ */
+const actorClaims = {
+  claims: {
+    accessToken: ({ user, client }) => {
+      const agentId = TRUSTED_CLIENTS.find((c) => c.clientId === client?.clientId)?.agentId;
+      return user && agentId ? { act: { sub: agentId } } : {};
+    },
+  },
+};
+
 /** Client secrets are stored as unpadded base64url SHA-256, the same hash seedTrustedClients writes. */
 const hashSecret = (secret) => createHash("sha256").update(secret).digest("base64url");
 
@@ -46,7 +61,8 @@ const transporter = nodemailer.createTransport(SMTP_CONFIG);
  *
  * It is also the OAuth 2.1 authorization server of the MCP servers: RS256 JWT access tokens
  * (JWKS at /api/auth/jwks) carrying the identity of the user's persona, the client that asked
- * (client_id / azp), the requested MCP servers as audience and the granted scopes.
+ * (client_id / azp) and its workload identity as actor (act), the requested MCP servers as
+ * audience and the granted scopes.
  * Clients are first-party only (no dynamic registration), so every enabled resource is open to them.
  */
 const options = {
@@ -113,6 +129,7 @@ const options = {
       storeClientSecret: { hash: hashSecret },
       customAccessTokenClaims: ({ user }) =>
         user ? { ...personaClaims(user.persona), login_email: user.email } : { groups: AGENT_GROUPS },
+      extensions: [actorClaims],
     }),
   ],
 };

@@ -61,6 +61,10 @@ export const RESOURCES = (process.env.OAUTH_RESOURCES || "").split(",").map((r) 
  * app env so the client and the auth service read the same value; a client without a secret is
  * not seeded. The chatbot's redirect URI is a loopback URL nobody visits: its backend reads the code from the
  * authorize redirect itself.
+ *
+ * `agentId` is the SPIFFE ID the client's workload would hold in the target model (Idira Secure
+ * Workload Access). It is simulated: the client still proves itself with its secret, and the
+ * auth-service vouches for the mapping by writing it as the actor (`act`) of delegated tokens.
  */
 export const TRUSTED_CLIENTS = [
   {
@@ -70,6 +74,7 @@ export const TRUSTED_CLIENTS = [
     grantTypes: ["authorization_code", "client_credentials"],
     redirectUris: [process.env.CHATBOT_REDIRECT_URI || "http://localhost:3018/oauth/callback"],
     clientCredentialsScopes: SCOPES,
+    agentId: "spiffe://otter/ai/ns/hr-it-bot/sa/chatbot-v2",
   },
   {
     clientId: "it-triage",

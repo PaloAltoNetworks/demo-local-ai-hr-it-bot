@@ -91,7 +91,7 @@ export async function oauthResource(app, { name, scopes }) {
         throw new InvalidTokenError('Invalid access token');
       }
       const { sub, email, name, persona, employee_id, groups } = payload;
-      console.log(`[oauth] ${JSON.stringify({ client_id: payload.client_id, sub, email, persona, employee_id, groups, scope: payload.scope })}`);
+      console.log(`[oauth] ${JSON.stringify({ client_id: payload.client_id, act: payload.act?.sub, sub, email, persona, employee_id, groups, scope: payload.scope })}`);
       return {
         token,
         clientId: payload.client_id || payload.azp,
