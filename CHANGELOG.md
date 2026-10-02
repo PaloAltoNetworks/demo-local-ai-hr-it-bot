@@ -3,6 +3,17 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.6
+
+### A preview to try what is coming
+New versions now land first on https://otter-preview.panw.pro, a beta instance where they are
+tested before reaching https://otter.panw.pro. You sign in once for both. Present from
+otter.panw.pro; look at the preview to see what the next version brings.
+
+### Tools keep answering after an update
+The assistant no longer loses its tools when a tool server restarts during an update: it
+reconnects and retries the request on its own.
+
 ## 0.1.5
 
 ### The Otter moves to otter.panw.pro
