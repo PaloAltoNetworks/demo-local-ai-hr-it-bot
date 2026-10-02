@@ -37,6 +37,13 @@ export const PERSONAS = [
   { id: "EXT-001", name: "Alex Morgan", email: "alex.morgan@partner.example", groups: ["external"], access: "external" },
 ];
 
+/**
+ * Groups a user's persona needs for a token to name an MCP server as audience, by server (first
+ * label of the resource host, e.g. http://hr-tools.otter-lab.com:3017/mcp → hr-tools). Servers not
+ * listed are open to every signed-in user.
+ */
+export const RESOURCE_GROUPS = { "hr-tools": ["employees"] };
+
 /** Groups of tokens issued to a client acting on its own (client_credentials). */
 export const AGENT_GROUPS = ["agents"];
 

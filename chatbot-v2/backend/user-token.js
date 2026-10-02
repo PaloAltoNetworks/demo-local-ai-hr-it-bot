@@ -38,9 +38,10 @@ function sessionKey(cookie) {
   return crypto.createHash('sha256').update(session).digest('base64url');
 }
 
-async function tokenRequest(params) {
+/** Token request; `resources` names the audiences (client_credentials), absent for a code, which carries those the user was granted. */
+async function tokenRequest(params, resources = []) {
   const body = new URLSearchParams(params);
-  for (const r of RESOURCES) body.append('resource', r);
+  for (const r of resources) body.append('resource', r);
   const res = await fetch(new URL('/api/auth/oauth2/token', SERVER), {
     method: 'POST',
     headers: {
@@ -100,7 +101,7 @@ export function forgetUserToken(cookie) {
 
 /** The chatbot's own token (client_credentials). */
 export function agentToken() {
-  return cached('', () => tokenRequest({ grant_type: 'client_credentials', scope: SCOPE }));
+  return cached('', () => tokenRequest({ grant_type: 'client_credentials', scope: SCOPE }, RESOURCES));
 }
 
 let personaList = null;
