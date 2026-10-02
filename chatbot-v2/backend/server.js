@@ -1111,11 +1111,13 @@ app.post('/api/persona', async (req, res) => {
 });
 
 /**
- * App version (chatbot-v2 package.json) and the Markdown changelog. CHANGELOG.md sits next to
+ * App version, the release tag the image was built for (APP_VERSION, e.g. 0.1.6-rc.2) or else
+ * chatbot-v2 package.json, and the Markdown changelog. CHANGELOG.md sits next to
  * package.json in the image and at the repo root when run from source.
  */
 app.get('/api/about', (_req, res) => {
-  const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'));
+  const version = process.env.APP_VERSION?.replace(/^v/, '')
+    || JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')).version;
   const changelogPath = [path.join(__dirname, '../CHANGELOG.md'), path.join(__dirname, '../../CHANGELOG.md')].find(p => fs.existsSync(p));
   res.json({ version, changelog: changelogPath ? fs.readFileSync(changelogPath, 'utf-8') : '' });
 });

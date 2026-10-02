@@ -25,6 +25,10 @@ COPY --chown=chatbot:nodejs chatbot-v2/backend/ ./backend/
 # Copy built frontend
 COPY --from=frontend-build --chown=chatbot:nodejs /build/dist ./frontend/dist/
 
+# Release tag the image was built for (e.g. v0.1.6-rc.2), shown in the UI; unset for local builds
+ARG APP_VERSION=
+ENV APP_VERSION=$APP_VERSION
+
 # Changelog shown in the UI (GET /api/about)
 COPY --chown=chatbot:nodejs CHANGELOG.md ./
 
