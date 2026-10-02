@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - cluster-secret-store.yaml
+# Preview: the beta instance a GitHub pre-release deploys. It has no auth-service of its own:
+# the AI Gateway checks JWTs against one JWKS per SCM organisation, so sign-in, tokens and JWKS
+# come from production (auth.panw.pro). The session cookie is on .panw.pro, so one sign-in
+# serves both instances.
+configMapGenerator:
+  - name: edge
+    namespace: hr-it-bot
+    literals:
+      - APP_HOST=otter-preview.panw.pro
+      - AUTH_HOST=auth.panw.pro
+  - name: oauth
+    behavior: merge
+    literals:
+      - OAUTH_SERVER_URL=https://auth.panw.pro
+  - name: caddyfile
+    behavior: replace
+    files: [Caddyfile=Caddyfile-preview]
+# The AIRS gateway resolves the SCM-registered MCP origins (*.otter-lab.com) through hostAlias
+# entries in deploy/helm/airs-gw/values-gcp.yaml, which point at these ClusterIPs inside the
+# service range pinned by infra/gcp (172.21.0.0/20).
+patches:
+  - patch: |-
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata: { name: auth-service, namespace: hr-it-bot }
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata: { name: auth-service, namespace: hr-it-bot }
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata: { name: auth-data, namespace: hr-it-bot }
+  - target: { kind: Service, name: it-tools }
+    patch: '[{"op": "add", "path": "/spec/clusterIP", "value": "172.21.10.16"}]'
+  - target: { kind: Service, name: hr-tools }
+    patch: '[{"op": "add", "path": "/spec/clusterIP", "value": "172.21.10.17"}]'
+  - target: { kind: Service, name: it-triage }
+    patch: '[{"op": "add", "path": "/spec/clusterIP", "value": "172.21.10.19"}]'

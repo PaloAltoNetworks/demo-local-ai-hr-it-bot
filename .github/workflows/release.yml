@@ -1,6 +1,7 @@
 # Publishing a GitHub release builds the five demo images, pushes them to GHCR tagged
-# with the release tag (plus sha-<commit>), then deploys that version to the cluster.
-# Manual runs build and deploy the checked-out ref under the given tag.
+# with the release tag (plus sha-<commit>), then deploys that version: a pre-release to the
+# preview (gcp), a release to production (aws). Manual runs build and deploy the checked-out
+# ref under the given tag to the chosen cloud.
 name: Release
 
 on:
@@ -11,6 +12,11 @@ on:
       version:
         description: Image tag to publish and deploy (e.g. v0.1.1)
         required: true
+      cloud:
+        description: aws (production) or gcp (preview)
+        type: choice
+        options: [aws, gcp]
+        default: aws
 
 permissions:
   contents: read
@@ -62,5 +68,5 @@ jobs:
       id-token: write
     uses: ./.github/workflows/deploy.yml
     with:
-      cloud: aws
+      cloud: ${{ github.event.release.prerelease && 'gcp' || inputs.cloud || 'aws' }}
       version: ${{ inputs.version || github.event.release.tag_name }}
