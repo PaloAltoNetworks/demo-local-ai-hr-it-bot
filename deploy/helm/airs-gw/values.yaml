@@ -12,7 +12,6 @@ environment:
   secretKeys:
     - PORTKEY_CLIENT_AUTH
     - ORGANISATIONS_TO_SYNC
-    - JWT_PRIVATE_KEY
   data:
     SERVICE_NAME: airsgateway
     PORT: "8787"
@@ -21,8 +20,8 @@ environment:
     LOG_STORE_FILE_PATH_FORMAT: "v2"
     TRUSTED_CUSTOM_HOSTS: "hr-tools.otter-lab.com,it-tools.otter-lab.com,it-triage.otter-lab.com"
     # Gateway-local JWT auth: tokens are checked against the JWKS set on the organisation in
-    # SCM (the Idira SWA trust domain). The single synced org supplies portkey_oid and these
-    # scopes stand in for the scope claim SPIFFE JWT-SVIDs do not carry. API keys keep working.
+    # SCM (the auth-service). The single synced org supplies portkey_oid and these gateway
+    # scopes are granted to every valid token. API keys keep working.
     JWT_ENABLED: "ON"
     JWT_LOCAL_AUTH_DEFAULT_SCOPES: "completions.write,mcp.invoke"
 

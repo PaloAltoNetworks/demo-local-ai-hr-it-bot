@@ -13,12 +13,16 @@ import { randomUUID } from 'crypto';
 import express from 'express';
 import { z } from 'zod';
 import { initMCPClient, closeMCPClient, runTriageAgent } from './agent.js';
+import { oauthResource, missingScope, isServiceAccount } from '../../mcp-server/shared/oauth-resource.js';
 
 const PORT = process.env.PORT || 3000;
 
 /**
- * employee_id is interpolated into the agent's instructions, so its format is pinned to EMP-NNN;
- * a free-form value would be a prompt-injection channel. The SDK rejects non-matching arguments.
+ * employee_id is interpolated into the agent's instructions, so its format is pinned to EMP-NNN
+ * (employees) or EXT-NNN (external contractors); a free-form value would be a prompt-injection
+ * channel. The SDK rejects non-matching arguments. With OAuth it must also be the persona of the
+ * caller's user token, so a user triages only their own requests, and the requester's name and
+ * email come from that token. A service account token (an agent on its own) may triage for anyone.
  */
 function registerTools(server) {
   server.tool(
@@ -33,9 +37,20 @@ Use for: USB access, software install, hardware issues, VPN, password reset, onb
 Do NOT use for: simple read-only lookups like "show my tickets" or "what's the status of INC-2025-0001" — use individual data tools for those.`,
     {
       query: z.string().min(1).max(4000).describe('The user\'s IT request in natural language. For follow-ups, include the full context: original request + user\'s answers to missing information.'),
-      employee_id: z.string().regex(/^EMP-\d{3}$/, 'Expected EMP-NNN').describe('Employee ID of the requesting user (e.g. "EMP-034")'),
+      employee_id: z.string().regex(/^(EMP|EXT)-\d{3}$/, 'Expected EMP-NNN or EXT-NNN').describe('ID of the requesting user: employee ID (e.g. "EMP-034") or external contractor ID (e.g. "EXT-001")'),
     },
     async ({ query, employee_id }, extra) => {
+      const { authInfo } = extra;
+      const denied = missingScope(authInfo, 'it:triage');
+      if (denied) return denied;
+      const userToken = authInfo && !isServiceAccount(authInfo);
+      if (userToken && authInfo.extra?.persona !== employee_id) {
+        console.warn(`[mcp] triage_it_request refused: employee_id ${employee_id} is not the token's (${authInfo.extra?.persona})`);
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: 'forbidden', message: `employee_id ${employee_id} does not match the signed-in user` }) }],
+          isError: true,
+        };
+      }
       const progressToken = extra?._meta?.progressToken;
       let progress = 0;
       // The agent runs 6-10 steps (~16-27s). It returns a single JSON-RPC result at the
@@ -60,6 +75,8 @@ Do NOT use for: simple read-only lookups like "show my tickets" or "what's the s
         const result = await runTriageAgent({
           query,
           employeeId: employee_id,
+          requester: userToken ? { name: authInfo.extra.name, email: authInfo.extra.email } : null,
+          token: authInfo?.token,
           onProgress: ({ tool, detail }) => emit(detail ? `${tool}: ${detail}` : tool),
         });
         return { content: [{ type: 'text', text: result }] };
@@ -113,6 +130,8 @@ async function main() {
     }
     next();
   });
+
+  app.use('/mcp', await oauthResource(app, { name: 'it-triage', scopes: ['it:triage'] }));
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'healthy', name: 'it-triage-agent', timestamp: new Date().toISOString() });

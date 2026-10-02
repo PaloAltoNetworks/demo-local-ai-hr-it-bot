@@ -7,47 +7,39 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
 import express from 'express';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { z } from 'zod';
 import { HRService } from './service.js';
+import { oauthResource, missingScope, isServiceAccount } from '../shared/oauth-resource.js';
 
 const PORT = process.env.PORT || 3000;
-
-/**
- * Caller identity forwarded by the AI Gateway (MCP identity forwarding, method jwt_header): an
- * RS256 JWT in X-User-JWT, signed by the gateway and checked against the JWKS it publishes.
- * When IDENTITY_JWKS_URL is set, /mcp refuses any request without a valid one, so only calls
- * that went through the gateway reach the tools. Unset (local docker compose), the server stays
- * open as before.
- */
-const IDENTITY_JWKS_URL = process.env.IDENTITY_JWKS_URL || '';
-const IDENTITY_ISSUER = process.env.IDENTITY_ISSUER || 'portkey-mcp-gateway';
-const identityKeys = IDENTITY_JWKS_URL ? createRemoteJWKSet(new URL(IDENTITY_JWKS_URL)) : null;
-
-async function requireGatewayIdentity(req, res, next) {
-  if (!identityKeys) return next();
-  const token = req.get('x-user-jwt');
-  if (!token) {
-    console.warn(`[identity] rejected ${req.method} from ${req.ip}: no X-User-JWT`);
-    return res.status(401).json({ error: 'unauthorized', error_description: 'X-User-JWT from the AI Gateway is required' });
-  }
-  try {
-    const { payload } = await jwtVerify(token, identityKeys, { issuer: IDENTITY_ISSUER, algorithms: ['RS256'] });
-    req.identity = payload;
-    const { iat, exp, ...claims } = payload;
-    console.log(`[identity] ${req.method} ${JSON.stringify(claims)}`);
-    next();
-  } catch (err) {
-    console.warn(`[identity] rejected ${req.method} from ${req.ip}: ${err.code || err.message}`);
-    res.status(401).json({ error: 'unauthorized', error_description: 'Invalid X-User-JWT' });
-  }
-}
 
 const service = new HRService();
 
 function json(data) {
   return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
 }
+
+function refused(message) {
+  return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: 'forbidden', message }) }] };
+}
+
+/**
+ * Which employee records the caller may read, from the employee_id of its access token (never
+ * from tool arguments): their own, their direct reports', or everyone's when they work in
+ * Human Resources. Any other user token (an external contractor) reads none. A service account
+ * token (an agent on its own, no user) and calls without OAuth (no authInfo) read every record.
+ *
+ * @returns {{ caller?: object, canRead: (employee: object) => boolean }}
+ */
+function readAccess(authInfo) {
+  if (!authInfo || isServiceAccount(authInfo)) return { canRead: () => true };
+  const caller = authInfo.extra?.employee_id ? service.getEmployeeById(authInfo.extra.employee_id) : undefined;
+  if (!caller) return { canRead: () => false };
+  if (caller.department === 'Human Resources') return { caller, canRead: () => true };
+  return { caller, canRead: (e) => e.employee_id === caller.employee_id || e.manager_id === caller.employee_id };
+}
+
+const ACCESS_RULE = 'Employees may read their own record and their direct reports\' records; Human Resources may read all records.';
 
 /**
  * Argument formats enforced at the MCP boundary. The SDK rejects a tools/call whose arguments
@@ -62,12 +54,18 @@ function registerTools(server) {
     {
       identifier: z.string().min(1).max(254).describe('Employee ID (e.g. "EMP-008"), name, or email address')
     },
-    async ({ identifier }) => {
+    async ({ identifier }, { authInfo }) => {
+      const denied = missingScope(authInfo, 'hr:read');
+      if (denied) return denied;
       const employee = identifier.startsWith('EMP-')
         ? service.getEmployeeById(identifier)
         : (service.getEmployeeByEmail(identifier) || service.getEmployeeByName(identifier));
       if (!employee) {
         return json({ error: 'not_found', message: `Employee "${identifier}" not found` });
+      }
+      const { caller, canRead } = readAccess(authInfo);
+      if (!canRead(employee)) {
+        return refused(`${caller ? caller.employee_id : 'This caller'} may not read ${employee.employee_id}. ${ACCESS_RULE}`);
       }
       return json(employee);
     }
@@ -79,9 +77,14 @@ function registerTools(server) {
     {
       query: z.string().min(1).max(100).describe('Search term')
     },
-    async ({ query }) => {
-      const employees = service.searchEmployees(query);
-      return json({ count: employees.length, employees });
+    async ({ query }, { authInfo }) => {
+      const denied = missingScope(authInfo, 'hr:read');
+      if (denied) return denied;
+      const { canRead } = readAccess(authInfo);
+      const matches = service.searchEmployees(query);
+      const employees = matches.filter(canRead);
+      const withheld = matches.length - employees.length;
+      return json({ count: employees.length, employees, ...(withheld && { withheld, access_rule: ACCESS_RULE }) });
     }
   );
 
@@ -91,9 +94,15 @@ function registerTools(server) {
     {
       manager_id: EMPLOYEE_ID.describe('Manager employee ID (e.g. "EMP-001")')
     },
-    async ({ manager_id }) => {
+    async ({ manager_id }, { authInfo }) => {
+      const denied = missingScope(authInfo, 'hr:read');
+      if (denied) return denied;
+      const { caller, canRead } = readAccess(authInfo);
       const manager = service.getEmployeeById(manager_id);
       const reports = service.getEmployeesByManager(manager_id);
+      if (!reports.every(canRead)) {
+        return refused(`${caller ? caller.employee_id : 'This caller'} may not read the direct reports of ${manager_id}. ${ACCESS_RULE}`);
+      }
       return json({ count: reports.length, manager_id, manager_name: manager?.name, direct_reports: reports });
     }
   );
@@ -128,7 +137,7 @@ async function main() {
     next();
   });
 
-  app.use('/mcp', requireGatewayIdentity);
+  app.use('/mcp', await oauthResource(app, { name: 'hr-tools', scopes: ['hr:read'] }));
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'healthy', name: 'hr-tools', timestamp: new Date().toISOString() });

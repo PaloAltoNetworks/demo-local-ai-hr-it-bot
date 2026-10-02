@@ -2,7 +2,10 @@
 # auth-service keeps users, sessions and pending magic links in SQLite on a volume,
 # so it runs as a single replica and is recreated (never two pods on one volume).
 # Hostnames, cookie settings and the allowed email domain come from the "edge"
-# ConfigMap of the overlay; SMTP credentials and AUTH_SECRET from the auth Secret.
+# ConfigMap of the overlay; SMTP credentials, AUTH_SECRET and the secrets of the
+# first-party OAuth clients (chatbot, it-triage) from the auth Secret.
+# auth-service is also the OAuth 2.1 authorization server of the MCP servers: it issues
+# tokens for OAUTH_RESOURCES (oauth ConfigMap).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,6 +63,7 @@ spec:
           ports: [{ containerPort: 3001 }]
           envFrom:
             - configMapRef: { name: edge }
+            - configMapRef: { name: oauth }
             - secretRef: { name: auth }
           env:
             - { name: SITE_URL, value: "https://$(AUTH_HOST)" }

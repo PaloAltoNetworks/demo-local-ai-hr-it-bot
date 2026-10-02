@@ -10,6 +10,12 @@ resources:
 configMapGenerator:
   - name: caddyfile
     files: [Caddyfile]
+  # OAuth 2.1: the auth-service as reached in the cluster, and the MCP servers it issues tokens
+  # for (their URLs as registered in SCM, which the gateway forwards tokens to).
+  - name: oauth
+    literals:
+      - OAUTH_SERVER_URL=http://auth-service:3001
+      - OAUTH_RESOURCES=http://hr-tools.otter-lab.com:3017/mcp,http://it-tools.otter-lab.com:3016/mcp,http://it-triage.otter-lab.com:3019/mcp
 # Every pod runs as the non-root uid 1001 the images create, with no privilege
 # escalation and no capabilities (each Deployment has a single container). fsGroup
 # makes mounted volumes (auth-service's SQLite, Caddy's scratch dirs) writable by it.

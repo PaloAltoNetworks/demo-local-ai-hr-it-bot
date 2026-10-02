@@ -27,6 +27,9 @@ http://{$AUTH_HOST} {
 	handle /api/auth/* {
 		reverse_proxy auth-service:3001
 	}
+	handle /.well-known/* {
+		reverse_proxy auth-service:3001
+	}
 }
 
 http://{$APP_HOST} {
