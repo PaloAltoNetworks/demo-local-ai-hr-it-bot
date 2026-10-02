@@ -18,7 +18,7 @@ import {
   Server, Cpu, Database, ShieldCheck, ShieldAlert, ShieldX, Bot, Cloud, Network, X,
   Play, Pause, SkipBack, SkipForward, RotateCcw, Ban, Route, MessageSquare, SlidersHorizontal, TriangleAlert,
   Angry, ListChecks, Anchor, Link2Off, Bug, EyeOff, DatabaseZap, Code, Eraser, Wrench,
-  Boxes, Fingerprint, Scale, Activity, LineChart, ExternalLink, KeyRound,
+  Boxes, Fingerprint, Scale, Activity, LineChart, ExternalLink, KeyRound, UserRound, Globe,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Translate } from '../context/LanguageContext';
@@ -77,7 +77,7 @@ type CardData = {
   /** Single-ink product logo from public/images, inverted in dark mode. */
   img?: string;
 };
-const ICONS = { Server, Cpu, Database, ShieldCheck, ShieldAlert, ShieldX, Route, Ban, MessageSquare, SlidersHorizontal, Bot, Cloud, Network, Fingerprint, KeyRound };
+const ICONS = { Server, Cpu, Database, ShieldCheck, ShieldAlert, ShieldX, Route, Ban, MessageSquare, SlidersHorizontal, Bot, Cloud, Network, Fingerprint, KeyRound, UserRound, Globe };
 const H = (id: string, type: 'source' | 'target', pos: Position, off?: string) => ({ id, type, pos, off });
 const handleStyle = (h: { pos: Position; off?: string }) => {
   const base = { opacity: 0, pointerEvents: 'none' as const };
@@ -640,20 +640,22 @@ function Flow({ script, phase, deploy, provider, routing, t }: { script: Step[];
   );
 }
 
-/* ---------- identity replay: how The Otter proves who it is to the AI Gateway ---------- */
+/* ---------- identity replay: a user token from sign-in to the MCP servers, for two personas ---------- */
 const IDIRA_VAR = 'var(--brand-idira)';
-const SPIFFE_ID = 'spiffe://otter/ai/ns/hr-it-bot/sa/chatbot-v2';
 type IdKind = 'sync' | 'request' | 'attest' | 'mint' | 'deliver' | 'present' | 'verify' | 'allow' | 'gap' | 'denied';
-/** Identity replay variant: how the demo works today, or the end-to-end target model. */
-export type IdMode = 'today' | 'target';
-type IdStep = { edge?: string; reverse?: boolean; focus: string; label: string; kind: IdKind; data?: unknown };
+/** Identity replay scenario: an employee whose rights the MCP servers apply, an external contractor, or a pod without a token. */
+export type IdMode = 'employee' | 'external' | 'rogue';
+/** One hop of the replay; `blocked` stops the packet on its edge. */
+type IdStep = { edge?: string; reverse?: boolean; focus: string; label: string; kind: IdKind; blocked?: boolean; data?: unknown };
 
 /**
- * Three worker nodes side by side, each a column of pods: application pods on the top row, one
- * SWA agent per node right below (a DaemonSet: each agent attests only the pods of its own node
- * through the local kubelet), and the SWA server at the bottom (a Deployment, on Node 3 here,
- * reached through its Service), linked to every agent: they all get their SVIDs signed by it.
- * Strata Cloud Manager and Idira sit outside the cluster, as SaaS.
+ * Three worker nodes side by side, each a column of pods: application pods on the top rows, one
+ * SWA agent per node at the bottom (a DaemonSet: each agent attests only the pods of its own node
+ * through the local kubelet), and the SWA server on Node 3 (a Deployment, reached through its
+ * Service), linked to every agent. The SWA components carry the workloads' own identity; the
+ * scenarios follow the user's token: the user above the cluster, the auth-service on Node 1 that
+ * issues it, the gateway and the MCP servers that check it. Strata Cloud Manager, the LLM
+ * providers and the Idira trust domain sit outside the cluster, as SaaS.
  */
 const ID_W = 260;
 /** Compact SWA cards: half a pod card, so the agent and the server share Node 3's bottom row. */
@@ -664,17 +666,25 @@ const SAAS_X = 1120;
 /** Pods sit 30px inside their node frame, leaving a left corridor for the agent-to-pod links. */
 const podX = (node: number) => NODE_X[node] + 30;
 
+type Persona = 'employee' | 'external';
+const PERSONA_LOOK: Record<Persona, { name: string; badge: string; icon: keyof typeof ICONS; color: string }> = {
+  employee: { name: 'Aurélien Girard', badge: 'employees', icon: 'UserRound', color: '#0284c7' },
+  external: { name: 'Alex Morgan', badge: 'external', icon: 'Globe', color: '#ea580c' },
+};
+
 const HINT = {
-  rogue: 'Any pod that cannot reach the SWA agent socket, or is not allowed an identity. It holds no valid JWT, so the AI Gateway turns it away.',
+  user: 'A Palo Alto Networks tester signed in by magic link, acting as a demo persona. The token carries the persona, so authorization and the gateway logs see Aurélien or Alex; login_email keeps who was testing.',
+  auth: 'auth-service: magic-link sign-in and OAuth 2.1 authorization server. It issues RS256 JWT access tokens with the persona (email, groups, employee_id), the client acting for the user (the chatbot) and the MCP servers as audience, and publishes the JWKS that verifies them.',
+  rogue: 'Any pod without a token from the auth-service. It holds no valid JWT, so the AI Gateway turns it away.',
   agent: 'Idira Secure Workload Access agent. A DaemonSet: one pod on every node. It attests the pods of its own node through the local kubelet (namespace, service account, labels) and hands them a short-lived JWT-SVID over a local Unix socket (SPIFFE Workload API). The workload is given no secret.',
-  otter: 'The HR/IT chatbot pod. It runs under its own service account, chatbot-v2, which becomes its identity: spiffe://…/ns/hr-it-bot/sa/chatbot-v2. It holds no API key for the AI Gateway.',
-  gw: 'Prisma AIRS AI Gateway: hybrid data plane running in the cluster, managed from Strata Cloud Manager. It checks each JWT against the Idira JWKS (gateway-local JWT auth), then calls the LLMs and MCP servers with its own credentials.',
+  otter: 'The HR/IT chatbot pod, OAuth client "chatbot". For each signed-in user it gets an access token from the auth-service and sends it to the AI Gateway instead of an API key. In protected mode its tool calls carry that token; otherwise they carry the chatbot\'s own service-account token.',
+  gw: 'Prisma AIRS AI Gateway: hybrid data plane running in the cluster, managed from Strata Cloud Manager. It checks each JWT against the auth-service JWKS, applies each MCP server\'s rule on the token groups, and forwards the user token to the MCP server (identity forwarding).',
   server: 'Idira Secure Workload Access server. A Deployment pod, on any node. It signs the JWT-SVIDs the agents request, and syncs its configuration and signing keys with the Idira trust domain, logging in with its Kubernetes service account token.',
-  scm: 'Strata Cloud Manager: control plane of the AI Gateway. It holds the JWT authentication settings (the Idira JWKS URL), the configs and the guardrails, and syncs them to the gateway.',
+  scm: 'Strata Cloud Manager: control plane of the AI Gateway. It holds the JWT settings (the auth-service JWKS URL), the authorization rule of each MCP server, the configs and the guardrails, and syncs them to the gateway.',
   td: 'Idira trust domain (SaaS): root of the workload identities. It sets the signing algorithm and the token lifetime, and publishes the public keys (JWKS) that verify every JWT-SVID.',
-  llm: 'Model providers, outside the cluster. They never see the JWT: the AI Gateway calls them with the provider keys configured in Strata Cloud Manager.',
-  hr: 'hr-tools MCP server: its own Deployment and Service, holding the HR records. Today it answers any caller that reaches its Service. In the target model it verifies who calls (the gateway or it-triage) and for which user, before returning any data.',
-  it: 'it-tools MCP server: its own Deployment and Service, holding IT tickets and assets. Same model as hr-tools: today open to any caller in the cluster, in the target model it verifies the caller and the user.',
+  llm: 'Model providers, outside the cluster. They never see the user token: the AI Gateway calls them with the provider keys configured in Strata Cloud Manager.',
+  hr: 'hr-tools MCP server: an OAuth 2.1 resource server. It verifies the forwarded token (signature, issuer, audience, scope) and returns only the records the persona may read: their own, their direct reports\', or all of them for HR.',
+  it: 'it-tools MCP server: an OAuth 2.1 resource server for IT tickets and assets. Employees open and read tickets; an external contractor sees and opens only their own.',
 };
 
 const swaCard = (id: string, node: number, right: boolean, title: string, icon: 'Fingerprint' | 'KeyRound', badge: string, hint: string, handles: Handles) =>
@@ -682,27 +692,31 @@ const swaCard = (id: string, node: number, right: boolean, title: string, icon: 
 const agentCard = (id: string, node: number, extra: Handles = []) =>
   swaCard(id, node, false, 'SWA agent', 'Fingerprint', 'DaemonSet', HINT.agent, [H('b', 'source', Position.Bottom, '50%'), ...extra]);
 
+const NODE_TOP = ID_ROW.app - 22;
 const ID_NODES: { id: string; position: { x: number; y: number }; data: CardData }[] = [
+  { id: 'user', position: { x: podX(1), y: NODE_TOP - 140 }, data: { title: PERSONA_LOOK.employee.name, icon: 'UserRound', role: 'triage', badge: 'employees', badgeTone: 'ctrl', w: ID_W, hint: HINT.user, handles: [H('b', 'source', Position.Bottom, '50%')] } },
   { id: 'rogue', position: { x: podX(0), y: ID_ROW.app }, data: { title: 'Unknown pod', icon: 'Bot', role: 'triage', badge: 'no identity', badgeTone: 'ctrl', w: ID_W, hint: HINT.rogue, handles: [H('t', 'source', Position.Top, '50%')] } },
+  { id: 'auth', position: { x: podX(0), y: ID_ROW.mid }, data: { title: 'auth-service', icon: 'KeyRound', role: 'triage', badge: 'OAuth 2.1', badgeTone: 'ctrl', w: ID_W, hint: HINT.auth, handles: [H('r', 'target', Position.Right, '50%')] } },
   agentCard('swaAgent1', 0),
-  { id: 'otter', position: { x: podX(1), y: ID_ROW.app }, data: { title: 'The Otter', role: 'agent', badge: 'sa/chatbot-v2', badgeTone: 'ctrl', w: ID_W, hint: HINT.otter, handles: [H('r', 'source', Position.Right, '50%'), H('lt', 'target', Position.Left, '50%')] } },
+  { id: 'otter', position: { x: podX(1), y: ID_ROW.app }, data: { title: 'The Otter', role: 'agent', badge: 'client: chatbot', badgeTone: 'ctrl', w: ID_W, hint: HINT.otter, handles: [H('t', 'target', Position.Top, '50%'), H('r', 'source', Position.Right, '50%'), H('lt', 'target', Position.Left, '50%'), H('lb', 'source', Position.Left, '85%')] } },
   { id: 'hrTools', position: { x: podX(1), y: ID_ROW.mid }, data: { title: 'hr-tools', logo: 'mcp', role: 'mcp', badge: 'MCP server', badgeTone: 'ctrl', w: ID_W, hint: HINT.hr, handles: [H('r', 'target', Position.Right, '50%')] } },
   agentCard('swaAgent', 1, [H('l', 'source', Position.Left, '50%')]),
-  { id: 'gw', position: { x: podX(2), y: ID_ROW.app }, data: { title: 'AI Gateway', icon: 'Network', role: 'triage', badge: 'JWT auth', badgeTone: 'ctrl', w: ID_W, hint: HINT.gw, handles: [H('t', 'target', Position.Top, '50%'), H('lt', 'target', Position.Left, '20%'), H('l', 'target', Position.Left, '50%'), H('lb', 'source', Position.Left, '85%'), H('b', 'source', Position.Bottom, '50%'), H('r', 'source', Position.Right, '20%'), H('rm', 'target', Position.Right, '50%'), H('rd', 'source', Position.Right, '80%')] } },
+  { id: 'gw', position: { x: podX(2), y: ID_ROW.app }, data: { title: 'AI Gateway', icon: 'Network', role: 'triage', badge: 'JWT auth', badgeTone: 'ctrl', w: ID_W, hint: HINT.gw, handles: [H('t', 'target', Position.Top, '50%'), H('l', 'target', Position.Left, '50%'), H('lb', 'source', Position.Left, '85%'), H('b', 'source', Position.Bottom, '50%'), H('r', 'source', Position.Right, '20%'), H('rm', 'target', Position.Right, '50%')] } },
   { id: 'itTools', position: { x: podX(2), y: ID_ROW.mid }, data: { title: 'it-tools', logo: 'mcp', role: 'mcp', badge: 'MCP server', badgeTone: 'ctrl', w: ID_W, hint: HINT.it, handles: [H('t', 'target', Position.Top, '50%')] } },
-  agentCard('swaAgent3', 2, [H('l', 'source', Position.Left, '50%'), H('r', 'source', Position.Right, '50%')]),
+  agentCard('swaAgent3', 2, [H('r', 'source', Position.Right, '50%')]),
   swaCard('swaServer', 2, true, 'SWA server', 'KeyRound', 'Deployment', HINT.server, [H('b', 'target', Position.Bottom, '50%'), H('l', 'target', Position.Left, '50%'), H('r', 'source', Position.Right, '50%')]),
   { id: 'llm', position: { x: SAAS_X, y: -10 }, data: { title: 'LLM providers', icon: 'Cloud', role: 'triage', w: ID_W, hint: HINT.llm, handles: [H('l', 'target', Position.Left, '50%')] } },
   { id: 'scm', position: { x: SAAS_X, y: ID_ROW.app + 20 }, data: { title: 'Strata Cloud Manager', img: '/images/scm.svg', role: 'triage', badge: 'Control plane', badgeTone: 'ctrl', w: ID_W, hint: HINT.scm, handles: [H('l', 'source', Position.Left, '50%')] } },
-  { id: 'td', position: { x: SAAS_X, y: ID_ROW.swa - 12 }, data: { title: 'Trust domain', icon: 'ShieldCheck', role: 'triage', badge: 'JWKS', badgeTone: 'ctrl', w: ID_W, hint: HINT.td, handles: [H('l', 'target', Position.Left, '22%'), H('lb', 'target', Position.Left, '60%')] } },
+  { id: 'td', position: { x: SAAS_X, y: ID_ROW.swa - 12 }, data: { title: 'Trust domain', icon: 'ShieldCheck', role: 'triage', badge: 'JWKS', badgeTone: 'ctrl', w: ID_W, hint: HINT.td, handles: [H('lb', 'target', Position.Left, '60%')] } },
 ];
 
 const NODE_W = ID_W + 50;
-const NODE_TOP = ID_ROW.app - 22;
 const SWA_H = 56;
-const NODE_H = ID_ROW.swa + SWA_H + 50 - NODE_TOP;
-/** Corridors of the orthogonal edges: the bus under the SWA row, the gap between Node 2 and 3, the gap outside the cluster. */
-const BUS_Y = ID_ROW.swa + SWA_H + 18;
+/** Node frames leave room under the SWA row for the agent-to-server bus, above the node labels. */
+const NODE_H = ID_ROW.swa + SWA_H + 76 - NODE_TOP;
+/** Corridors of the orthogonal edges: the bus under the SWA row, the gaps between nodes, the gap outside the cluster. */
+const BUS_Y = ID_ROW.swa + SWA_H + 20;
+const GAP_12 = (NODE_X[0] + NODE_W + NODE_X[1]) / 2;
 const GAP_23 = (NODE_X[1] + NODE_W + NODE_X[2]) / 2;
 const GAP_OUT = NODE_X[2] + NODE_W + 30 + (SAAS_X - 40 - (NODE_X[2] + NODE_W + 30)) / 2;
 const corridor = (node: number) => NODE_X[node] + 15;
@@ -715,121 +729,164 @@ const ID_ZONES = [
   { id: 'z-idira', type: 'zone', position: { x: SAAS_X - 40, y: ID_ROW.swa - 12 - 48 }, draggable: false, selectable: false, zIndex: 0, style: { width: ID_W + 80, height: CARD_H + 82 }, data: { label: 'Idira · SaaS', color: IDIRA_VAR, fill: 7 } },
 ];
 
-/** `modes` limits an edge to one variant of the replay; `quiet` keeps it dimmed when idle (it exists but plays no part in the story). */
-const ID_EDGES: { id: string; source: string; target: string; sourceHandle: string; targetHandle: string; centerX?: number; centerY?: number; modes?: IdMode[]; quiet?: IdMode[] }[] = [
-  { id: 'agent-otter', source: 'swaAgent', target: 'otter', sourceHandle: 'l', targetHandle: 'lt', centerX: corridor(1) },
-  { id: 'agent-server', source: 'swaAgent', target: 'swaServer', sourceHandle: 'b', targetHandle: 'b', centerY: BUS_Y },
-  { id: 'agent1-server', source: 'swaAgent1', target: 'swaServer', sourceHandle: 'b', targetHandle: 'b', centerY: BUS_Y, quiet: ['today', 'target'] },
-  { id: 'agent3-server', source: 'swaAgent3', target: 'swaServer', sourceHandle: 'r', targetHandle: 'l', quiet: ['today'] },
-  { id: 'agent3-gw', source: 'swaAgent3', target: 'gw', sourceHandle: 'l', targetHandle: 'lt', centerX: corridor(2), modes: ['target'] },
-  { id: 'server-td', source: 'swaServer', target: 'td', sourceHandle: 'r', targetHandle: 'lb', centerX: GAP_OUT - 12 },
+/** `quiet` edges stay dimmed: the SWA workload identity is drawn but plays no part in the user-token story. */
+const ID_EDGES: { id: string; source: string; target: string; sourceHandle: string; targetHandle: string; centerX?: number; centerY?: number; quiet?: boolean }[] = [
+  { id: 'user-otter', source: 'user', target: 'otter', sourceHandle: 'b', targetHandle: 't' },
+  { id: 'otter-auth', source: 'otter', target: 'auth', sourceHandle: 'lb', targetHandle: 'r', centerX: GAP_12 },
+  { id: 'agent-otter', source: 'swaAgent', target: 'otter', sourceHandle: 'l', targetHandle: 'lt', centerX: corridor(1), quiet: true },
+  { id: 'agent-server', source: 'swaAgent', target: 'swaServer', sourceHandle: 'b', targetHandle: 'b', centerY: BUS_Y, quiet: true },
+  { id: 'agent1-server', source: 'swaAgent1', target: 'swaServer', sourceHandle: 'b', targetHandle: 'b', centerY: BUS_Y, quiet: true },
+  { id: 'agent3-server', source: 'swaAgent3', target: 'swaServer', sourceHandle: 'r', targetHandle: 'l', quiet: true },
+  { id: 'server-td', source: 'swaServer', target: 'td', sourceHandle: 'r', targetHandle: 'lb', centerX: GAP_OUT - 12, quiet: true },
   { id: 'scm-gw', source: 'scm', target: 'gw', sourceHandle: 'l', targetHandle: 'rm', centerX: GAP_OUT },
   { id: 'otter-gw', source: 'otter', target: 'gw', sourceHandle: 'r', targetHandle: 'l' },
-  { id: 'gw-td', source: 'gw', target: 'td', sourceHandle: 'rd', targetHandle: 'l', centerX: GAP_OUT - 12 },
   { id: 'gw-llm', source: 'gw', target: 'llm', sourceHandle: 'r', targetHandle: 'l', centerX: GAP_OUT + 12 },
   { id: 'gw-mcp', source: 'gw', target: 'hrTools', sourceHandle: 'lb', targetHandle: 'r', centerX: GAP_23 },
   { id: 'gw-it', source: 'gw', target: 'itTools', sourceHandle: 'b', targetHandle: 't' },
   { id: 'rogue-gw', source: 'rogue', target: 'gw', sourceHandle: 't', targetHandle: 't' },
 ];
 
-const JWT_HEADER = { alg: 'RS256', kid: '12ad65f6-54f5-4ace-921c-afd83f7bbcda', typ: 'JWT' };
-const JWT_CLAIMS = { sub: SPIFFE_ID, aud: ['portkey'], iss: 'https://<tenant>.secretsmgr.cyberark.cloud/api/swa/trust-domains/otter', exp: 'iat + 300 s' };
-const GW_SPIFFE_ID = 'spiffe://otter/ai/ns/hr-it-bot/sa/airs-gw';
+const MCP_AUDIENCE = ['hr-tools', 'it-tools', 'it-triage'];
+const tokenClaims = (p: Persona) => ({
+  iss: 'https://auth2.panw.pro/api/auth',
+  email_id: p === 'employee' ? 'aurelien.girard@company.com' : 'alex.morgan@partner.example',
+  name: PERSONA_LOOK[p].name,
+  persona: p === 'employee' ? 'EMP-034' : 'EXT-001',
+  ...(p === 'employee' && { employee_id: 'EMP-034' }),
+  groups: [PERSONA_LOOK[p].badge],
+  client_id: 'chatbot',
+  aud: MCP_AUDIENCE,
+  scope: 'hr:read it:read it:write it:triage',
+  login_email: '<tester>@paloaltonetworks.com',
+  exp: 'iat + 1 h',
+});
+const HR_RULE = 'groups contains employees or agents';
+const IT_RULE = 'groups contains employees, agents or external';
+const QUESTION = 'How many leave days do I have left?';
 
-/** Shared opening: the chatbot gets its JWT-SVID and the gateway verifies it. */
-const ID_OPENING: IdStep[] = [
-  { edge: 'server-td', focus: 'td', label: 'SWA server syncs its trust domain and publishes its signing key', kind: 'sync', data: { trust_domain: 'otter', jwks: 'public, RS256', authn: 'server logs in with its Kubernetes service account token' } },
-  { edge: 'scm-gw', focus: 'gw', label: 'Strata Cloud Manager pushes the gateway its JWT settings', kind: 'sync', data: { jwt_auth: 'gateway-local (JWT_ENABLED=ON)', jwks_url: 'Idira trust domain JWKS', default_scopes: ['completions.write', 'mcp.invoke'] } },
-  { edge: 'agent-otter', reverse: true, focus: 'swaAgent', label: 'The Otter asks for a JWT over the Workload API socket', kind: 'request', data: { rpc: 'FetchJWTSVID', audience: ['portkey'], socket: '/tmp/swa-agent/public/api.sock' } },
-  { focus: 'swaAgent', label: "Node 2's agent attests the calling pod through its node's kubelet", kind: 'attest', data: { node: 'Node 2 (the agent only sees pods of its own node)', selectors: ['k8s:ns:hr-it-bot', 'k8s:sa:chatbot-v2', 'k8s:pod-label:app:chatbot-v2'] } },
-  { edge: 'agent-server', focus: 'swaServer', label: 'Agent asks the SWA server (Service, Node 3) to mint a JWT-SVID', kind: 'mint', data: { spiffe_id: SPIFFE_ID, via: 'swa-server Service · port 8443 (mTLS)' } },
-  { edge: 'agent-server', reverse: true, focus: 'swaAgent', label: 'Signed JWT-SVID · RS256 · 5 min', kind: 'mint', data: { header: JWT_HEADER, claims: JWT_CLAIMS } },
-  { edge: 'agent-otter', focus: 'otter', label: 'JWT delivered, cached until a minute before expiry', kind: 'deliver', data: { spiffe_id: SPIFFE_ID, renew: 'exp - 60 s' } },
-  { edge: 'otter-gw', focus: 'gw', label: 'Request carries the JWT instead of an API key', kind: 'present', data: { 'x-portkey-api-key': '<JWT-SVID>', 'x-portkey-config': 'otter-guarded (phase 3)', metadata: { employee_id: 'EMP-034' } } },
-  { edge: 'gw-td', focus: 'td', label: 'Gateway checks the signature against the Idira JWKS', kind: 'verify', data: { checks: ['kid in JWKS', 'RS256 signature', 'iss', 'aud = portkey', 'not expired'] } },
-  { edge: 'gw-td', reverse: true, focus: 'gw', label: 'Valid · caller is the chatbot workload', kind: 'verify', data: { user: SPIFFE_ID, auth_type: 'JWT' } },
-  { edge: 'gw-llm', focus: 'llm', label: 'LLM called with the provider keys held by the gateway', kind: 'allow', data: { authorized_by: 'AI Gateway (JWT checked here)', upstream: 'the LLM never sees the JWT' } },
+/**
+ * Shared opening, every hop continuing from the previous one: the gateway gets its rules, the
+ * user asks, the chatbot gets the user's token, calls the LLM with it, and the LLM asks for get_employee.
+ */
+const idOpening = (p: Persona): IdStep[] => {
+  const { name } = PERSONA_LOOK[p];
+  return [
+    { edge: 'scm-gw', focus: 'gw', label: 'Strata Cloud Manager pushes the gateway its JWT settings and MCP rules', kind: 'sync', data: { jwks_url: 'https://auth2.panw.pro/api/auth/jwks', mcp_rules: { 'hr-tools': HR_RULE, 'it-tools': IT_RULE }, identity_forwarding: 'bearer' } },
+    { edge: 'user-otter', focus: 'otter', label: `${name}: "${QUESTION}"`, kind: 'request', data: { session: 'magic-link sign-in', persona: name, phase: 'protected (phase 3)' } },
+    { edge: 'otter-auth', focus: 'auth', label: `The Otter asks the auth-service for ${name}'s token`, kind: 'request', data: { grant: 'authorization_code + PKCE', client: 'chatbot', proof: "the user's session cookie", resource: MCP_AUDIENCE } },
+    { edge: 'otter-auth', reverse: true, focus: 'otter', label: `Token issued for ${name} · RS256 · 1 h`, kind: 'mint', data: tokenClaims(p) },
+    { edge: 'otter-gw', focus: 'gw', label: 'LLM call with the user token instead of an API key', kind: 'present', data: { 'x-portkey-api-key': `<${name}'s token>`, checked_by_gateway: ['signature against the auth-service JWKS (cached, no new call)', 'not expired'], logged_user: tokenClaims(p).email_id } },
+    { edge: 'gw-llm', focus: 'llm', label: 'Prompt sent to the LLM, without the token', kind: 'request', data: { question: QUESTION } },
+    { edge: 'gw-llm', reverse: true, focus: 'gw', label: 'The LLM asks for the tool get_employee', kind: 'deliver', data: { tool_call: 'get_employee', args: { identifier: tokenClaims(p).persona } } },
+    { edge: 'otter-gw', reverse: true, focus: 'otter', label: 'Tool request reaches The Otter', kind: 'deliver' },
+  ];
+};
+
+/** Aurélien (employees): the gateway lets the call through to hr-tools, which applies his rights. */
+const SCRIPT_IDENTITY_EMPLOYEE: IdStep[] = [
+  ...idOpening('employee'),
+  { edge: 'otter-gw', focus: 'gw', label: "get_employee(EMP-034) with Aurélien's token", kind: 'present', data: { tool: 'get_employee', args: { identifier: 'EMP-034' }, authorization: "Bearer <Aurélien's token>" } },
+  { edge: 'gw-mcp', focus: 'hrTools', label: 'hr-tools rule passed (employees) · token forwarded as is', kind: 'allow', data: { rule: HR_RULE, token_groups: ['employees'], identity_forwarding: 'bearer' } },
+  { focus: 'hrTools', label: "hr-tools verifies the token and applies Aurélien's rights", kind: 'verify', data: { checks: ['signature (auth-service JWKS)', 'iss', 'aud contains hr-tools', 'scope hr:read'], rights: 'own record, direct reports, everything for HR', result: { employee_id: 'EMP-034', remaining_leave: 12 } } },
+  { edge: 'gw-mcp', reverse: true, focus: 'gw', label: 'Record returned: 12 leave days', kind: 'deliver' },
+  { edge: 'otter-gw', reverse: true, focus: 'otter', label: 'Record reaches The Otter', kind: 'deliver' },
+  { edge: 'otter-gw', focus: 'gw', label: 'The Otter asks the LLM to write the answer (same token)', kind: 'present' },
+  { edge: 'gw-llm', focus: 'llm', label: 'Record and question sent to the LLM', kind: 'request' },
+  { edge: 'gw-llm', reverse: true, focus: 'gw', label: 'Answer written', kind: 'deliver' },
+  { edge: 'otter-gw', reverse: true, focus: 'otter', label: 'Answer reaches The Otter', kind: 'deliver' },
+  { edge: 'user-otter', reverse: true, focus: 'user', label: '"You have 12 leave days left."', kind: 'allow', data: { tool_card: 'hr-tools · get_employee' } },
 ];
 
-const ID_ROGUE: IdStep[] = [
-  { edge: 'rogue-gw', focus: 'gw', label: 'Unknown pod calls the gateway without a valid JWT', kind: 'denied', data: { 'x-portkey-api-key': '(none or forged)' } },
-  { edge: 'rogue-gw', reverse: true, focus: 'rogue', label: '401 · authentication required', kind: 'denied', data: { status: 401, error: 'Authentication required to access this resource' } },
+/** Alex (external): refused by the gateway before hr-tools, then allowed on it-tools for their own ticket. */
+const SCRIPT_IDENTITY_EXTERNAL: IdStep[] = [
+  ...idOpening('external'),
+  { edge: 'otter-gw', focus: 'gw', label: "get_employee(EXT-001) with Alex's token", kind: 'present', data: { tool: 'get_employee', args: { identifier: 'EXT-001' }, authorization: "Bearer <Alex's token>" } },
+  { focus: 'gw', label: 'hr-tools rule refuses group external · hr-tools is never called', kind: 'denied', data: { rule: HR_RULE, token_groups: ['external'], verdict: 'refused' } },
+  { edge: 'otter-gw', reverse: true, blocked: true, focus: 'otter', label: '401 back to The Otter', kind: 'denied', data: { status: 401, error: 'unauthorized', reached_hr_tools: false } },
+  { edge: 'user-otter', reverse: true, focus: 'user', label: 'Refused tool card and an answer that explains it', kind: 'denied', data: { tool_card: 'hr-tools · get_employee · Denied', reason: 'your identity is not allowed on the hr-tools MCP server' } },
+  { edge: 'user-otter', focus: 'otter', label: 'Alex: "Please open an IT ticket, my USB port is broken."', kind: 'request' },
+  { edge: 'otter-gw', focus: 'gw', label: 'LLM call with the cached token (no new auth-service call)', kind: 'present', data: { 'x-portkey-api-key': "<Alex's token, from cache>" } },
+  { edge: 'gw-llm', focus: 'llm', label: 'Prompt sent to the LLM', kind: 'request' },
+  { edge: 'gw-llm', reverse: true, focus: 'gw', label: 'The LLM asks for the tool create_ticket', kind: 'deliver', data: { tool_call: 'create_ticket', args: { employee_id: 'EXT-001', category: 'Hardware' } } },
+  { edge: 'otter-gw', reverse: true, focus: 'otter', label: 'Tool request reaches The Otter', kind: 'deliver' },
+  { edge: 'otter-gw', focus: 'gw', label: "create_ticket(EXT-001) with Alex's token", kind: 'present', data: { tool: 'create_ticket', in_the_chat: 'through it-triage, which relays the same token to it-tools' } },
+  { edge: 'gw-it', focus: 'itTools', label: 'it-tools rule passed (external) · token forwarded as is', kind: 'allow', data: { rule: IT_RULE, token_groups: ['external'] } },
+  { focus: 'itTools', label: "it-tools files the ticket under EXT-001, with the token's name and email", kind: 'verify', data: { checks: ['signature', 'aud contains it-tools', 'scope it:write'], rights: 'external users see and open only their own tickets', ticket: { id: 'INC-2025-0159', employee_id: 'EXT-001', employee_email: 'alex.morgan@partner.example' } } },
+  { edge: 'gw-it', reverse: true, focus: 'gw', label: 'Ticket INC-2025-0159 returned', kind: 'deliver' },
+  { edge: 'otter-gw', reverse: true, focus: 'otter', label: 'Ticket reaches The Otter', kind: 'deliver' },
+  { edge: 'user-otter', reverse: true, focus: 'user', label: '"Ticket INC-2025-0159 opened."', kind: 'allow', data: { tool_card: 'it-tools · create_ticket' } },
 ];
 
-/** Today: identity stops at the gateway; the MCP servers trust whoever reaches them. */
-const SCRIPT_IDENTITY_TODAY: IdStep[] = [
-  ...ID_OPENING,
-  { edge: 'gw-mcp', focus: 'hrTools', label: 'Gateway calls hr-tools with the auth set in SCM', kind: 'allow', data: { auth: 'static credential configured in SCM (or none)', identity: 'none: the MCP server learns neither the calling workload nor the user' } },
-  { focus: 'hrTools', label: 'hr-tools answers without checking who calls', kind: 'gap', data: { risks: ['any pod that reaches the hr-tools Service reads HR data', 'employee_id is a tool argument chosen by the LLM, so a prompt injection can ask for someone else'] } },
-  ...ID_ROGUE,
+/** A pod with no token from the auth-service: turned away by the gateway. */
+const SCRIPT_IDENTITY_ROGUE: IdStep[] = [
+  { edge: 'rogue-gw', focus: 'gw', label: 'Unknown pod calls the gateway without a valid token', kind: 'denied', data: { 'x-portkey-api-key': '(none or forged)' } },
+  { edge: 'rogue-gw', reverse: true, blocked: true, focus: 'rogue', label: '401 · authentication required', kind: 'denied', data: { status: 401, error: 'Authentication required to access this resource' } },
 ];
 
-/** Target: every hop carries its own token; the MCP server verifies the caller and the user. */
-const SCRIPT_IDENTITY_TARGET: IdStep[] = [
-  ...ID_OPENING,
-  { edge: 'agent3-gw', reverse: true, focus: 'swaAgent3', label: 'Gateway asks its own node agent for a JWT for hr-tools', kind: 'request', data: { rpc: 'FetchJWTSVID', audience: ['hr-tools'], caller: 'gateway pod, Node 3' } },
-  { edge: 'agent3-server', focus: 'swaServer', label: 'Node 3 agent attests the gateway, the SWA server signs', kind: 'mint', data: { selectors: ['k8s:ns:hr-it-bot', 'k8s:sa:airs-gw'], spiffe_id: GW_SPIFFE_ID } },
-  { edge: 'agent3-gw', focus: 'gw', label: 'Gateway receives its own JWT-SVID', kind: 'deliver', data: { sub: GW_SPIFFE_ID, aud: ['hr-tools'] } },
-  { edge: 'gw-mcp', focus: 'hrTools', label: 'Gateway calls hr-tools with its JWT and a delegated user token', kind: 'present', data: { authorization: 'Bearer <gateway JWT-SVID, aud=hr-tools>', user_token: { sub: 'EMP-034', act: { sub: SPIFFE_ID }, aud: 'hr-tools' }, never_forwarded: 'the chatbot JWT (aud=portkey)' } },
-  { focus: 'hrTools', label: 'hr-tools verifies the caller and the user, then applies data policy', kind: 'verify', data: { checks: ['signature against the Idira JWKS', 'aud = hr-tools', 'caller allowed: sa/airs-gw, sa/it-triage', 'user EMP-034, acting through the chatbot'], policy: 'EMP-034 reads EMP-034 records only' } },
-  ...ID_ROGUE,
-];
+const ID_SCRIPTS: Record<IdMode, IdStep[]> = { employee: SCRIPT_IDENTITY_EMPLOYEE, external: SCRIPT_IDENTITY_EXTERNAL, rogue: SCRIPT_IDENTITY_ROGUE };
 
 /** Idle stroke of the identity edges: visible enough to read the topology before playback. */
 const ID_IDLE = 'color-mix(in srgb, var(--muted-foreground) 45%, transparent)';
 
 function IdentityFlow({ mode, t }: { mode: IdMode; t: Translate }) {
-  const script = mode === 'target' ? SCRIPT_IDENTITY_TARGET : SCRIPT_IDENTITY_TODAY;
+  const script = ID_SCRIPTS[mode];
   const pb = usePlayback(script.length);
   const { reset } = pb;
   useEffect(() => { reset(); }, [mode, reset]);
   const step = script[pb.idx];
   const denied = step?.kind === 'denied';
-  const accent = denied || step?.kind === 'gap' ? RED : IDIRA_VAR;
+  const look = PERSONA_LOOK[mode === 'external' ? 'external' : 'employee'];
+  const accent = denied || step?.kind === 'gap' ? RED : look.color;
 
   const nodes = useMemo(() => [
     ...ID_ZONES,
     ...ID_NODES.map((n) => ({
       // React Flow drops pointer events on inert nodes; re-enable them so the hover hint shows.
       ...n, type: 'card', zIndex: 1, draggable: false, selectable: false, style: { pointerEvents: 'all' as const },
-      data: { ...n.data, accent, active: step?.focus === n.id, failed: denied && n.id === 'rogue' && !!step?.reverse },
+      data: {
+        ...n.data,
+        ...(n.id === 'user' && { title: look.name, badge: look.badge, icon: look.icon }),
+        accent, active: step?.focus === n.id, failed: !!step?.blocked && n.id === 'rogue',
+      },
     })),
-  ], [step, accent, denied]);
+  ], [step, accent, denied, look]);
 
   const edges = useMemo(() => ID_EDGES.map((e) => ({
     id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle, type: 'spoke',
-    hidden: (e.id === 'rogue-gw' && !denied) || (!!e.modes && !e.modes.includes(mode)),
+    hidden: e.id === 'rogue-gw' && step?.edge !== 'rogue-gw',
     data: {
       active: e.id === step?.edge, reverse: e.id === step?.edge ? step?.reverse : false, color: accent, idle: ID_IDLE,
-      blockedPkt: e.id === step?.edge && denied && !!step?.reverse,
+      blockedPkt: e.id === step?.edge && !!step?.blocked,
       arc: e.id === 'rogue-gw' ? 80 : undefined,
       orthogonal: e.id !== 'rogue-gw', centerX: e.centerX, centerY: e.centerY,
       manage: e.id === 'scm-gw' && e.id !== step?.edge,
-      dim: !!e.quiet?.includes(mode),
+      dim: !!e.quiet,
     },
-  })), [step, accent, denied, mode]);
+  })), [step, accent, denied]);
 
   return (
-    <div className="relative h-full w-full">
-      <ReactFlow
-        nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
-        fitView fitViewOptions={{ padding: 0.08, maxZoom: 1.2 }} proOptions={{ hideAttribution: true }}
-        nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
-        zoomOnScroll minZoom={0.3} maxZoom={2} zoomOnDoubleClick={false}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="var(--border)" />
-      </ReactFlow>
-      <PlaybackBar pb={pb} length={script.length} accent={accent} t={t} />
-      <div className="absolute right-4 top-4 w-72 rounded-xl border bg-card/95 p-3 shadow-lg backdrop-blur">
+    <div className="flex h-full w-full">
+      <div className="relative min-w-0 flex-1">
+        <ReactFlow
+          nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+          fitView fitViewOptions={{ padding: 0.08, maxZoom: 1.2 }} proOptions={{ hideAttribution: true }}
+          nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
+          zoomOnScroll minZoom={0.3} maxZoom={2} zoomOnDoubleClick={false}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="var(--border)" />
+        </ReactFlow>
+        <PlaybackBar pb={pb} length={script.length} accent={accent} t={t} />
+      </div>
+      <aside className="w-80 shrink-0 overflow-y-auto border-s bg-card/95 p-3">
         <div className="flex items-center gap-2">
-          <span className="grid size-6 place-items-center rounded-md text-white" style={{ background: accent }}>
-            {denied ? <Ban className="size-3.5" /> : step?.kind === 'gap' ? <TriangleAlert className="size-3.5" /> : step?.kind === 'verify' || step?.kind === 'allow' ? <ShieldCheck className="size-3.5" /> : step?.kind === 'attest' ? <Fingerprint className="size-3.5" /> : <KeyRound className="size-3.5" />}
+          <span className="grid size-6 shrink-0 place-items-center rounded-md text-white" style={{ background: accent }}>
+            {denied ? <Ban className="size-3.5" /> : step?.kind === 'verify' || step?.kind === 'allow' ? <ShieldCheck className="size-3.5" /> : step?.kind === 'attest' ? <Fingerprint className="size-3.5" /> : <KeyRound className="size-3.5" />}
           </span>
           <div className="text-sm font-medium text-foreground">{step?.label}</div>
         </div>
         <div className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{step?.kind}</div>
         {step?.data != null && <JsonBlock label={t('workflow.payload')} value={step.data} />}
-      </div>
+      </aside>
     </div>
   );
 }
@@ -955,7 +1012,7 @@ export default function WorkflowReplay({ initialPhase = 'phase1', initialProvide
   const [deploy, setDeploy] = useState<Deploy>('saas');
   const [routing, setRouting] = useState<Routing>(initialRouting);
   const [view, setView] = useState<'flow' | 'identity'>('flow');
-  const [idMode, setIdMode] = useState<IdMode>('today');
+  const [idMode, setIdMode] = useState<IdMode>('employee');
   const script = useMemo(() => demoScriptFor(phase), [phase]);
 
   return (
@@ -971,8 +1028,9 @@ export default function WorkflowReplay({ initialPhase = 'phase1', initialProvide
           { v: 'phase3', label: t('workflow.protected'), color: PHASE_VAR.phase3 },
         ]} />}
         {view === 'identity' && <Seg value={idMode} onChange={setIdMode} opts={[
-          { v: 'today', label: t('workflow.idToday') },
-          { v: 'target', label: t('workflow.idTarget'), color: 'var(--brand-idira)' },
+          { v: 'employee', label: PERSONA_LOOK.employee.name, color: PERSONA_LOOK.employee.color },
+          { v: 'external', label: PERSONA_LOOK.external.name, color: PERSONA_LOOK.external.color },
+          { v: 'rogue', label: 'Unknown pod', color: RED },
         ]} />}
         {view === 'flow' && <div className="ms-auto flex items-center gap-4">
           <div className="flex items-center gap-1.5">
