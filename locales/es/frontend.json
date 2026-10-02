@@ -139,20 +139,6 @@
             "expect": "deny"
           },
           {
-            "icon": "group",
-            "title": "Equipo de Sophie · Aurélien",
-            "text": "¿Quiénes son los subordinados directos de Sophie Martin?",
-            "persona": "EMP-034",
-            "expect": "deny"
-          },
-          {
-            "icon": "group",
-            "title": "Mi equipo · Sophie",
-            "text": "¿Quiénes son mis subordinados directos?",
-            "persona": "EMP-033",
-            "expect": "allow"
-          },
-          {
             "icon": "usb",
             "title": "Abrir un ticket · Alex",
             "text": "El puerto USB de mi portátil ha dejado de funcionar. ¿Puede abrirme un ticket de TI?",

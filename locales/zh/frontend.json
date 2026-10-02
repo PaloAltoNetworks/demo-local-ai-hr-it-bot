@@ -139,20 +139,6 @@
             "expect": "deny"
           },
           {
-            "icon": "group",
-            "title": "Sophie的团队 · Aurélien",
-            "text": "Sophie Martin的直属下属有哪些人？",
-            "persona": "EMP-034",
-            "expect": "deny"
-          },
-          {
-            "icon": "group",
-            "title": "我的团队 · Sophie",
-            "text": "我的直属下属有哪些人？",
-            "persona": "EMP-033",
-            "expect": "allow"
-          },
-          {
             "icon": "usb",
             "title": "提交工单 · Alex",
             "text": "我的笔记本电脑USB接口坏了，请您帮我提交一个IT工单。",

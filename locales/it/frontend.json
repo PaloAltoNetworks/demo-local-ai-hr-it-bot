@@ -139,20 +139,6 @@
             "expect": "deny"
           },
           {
-            "icon": "group",
-            "title": "Team di Sophie · Aurélien",
-            "text": "Chi sono i collaboratori diretti di Sophie Martin?",
-            "persona": "EMP-034",
-            "expect": "deny"
-          },
-          {
-            "icon": "group",
-            "title": "Il mio team · Sophie",
-            "text": "Chi sono i miei collaboratori diretti?",
-            "persona": "EMP-033",
-            "expect": "allow"
-          },
-          {
             "icon": "usb",
             "title": "Aprire un ticket · Alex",
             "text": "La porta USB del mio portatile non funziona più. Può aprirmi un ticket IT?",

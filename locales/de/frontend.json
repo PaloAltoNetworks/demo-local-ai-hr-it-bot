@@ -139,20 +139,6 @@
             "expect": "deny"
           },
           {
-            "icon": "group",
-            "title": "Team von Sophie · Aurélien",
-            "text": "Wer sind die direkten Mitarbeiter von Sophie Martin?",
-            "persona": "EMP-034",
-            "expect": "deny"
-          },
-          {
-            "icon": "group",
-            "title": "Mein Team · Sophie",
-            "text": "Wer sind meine direkten Mitarbeiter?",
-            "persona": "EMP-033",
-            "expect": "allow"
-          },
-          {
             "icon": "usb",
             "title": "Ticket eröffnen · Alex",
             "text": "Der USB-Anschluss meines Laptops funktioniert nicht mehr. Können Sie bitte ein IT-Ticket für mich eröffnen?",

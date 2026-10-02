@@ -469,6 +469,19 @@ let cachedTools = null;
  * slug without its random suffix ("…/hr-tools-ed99dd/mcp" → "hr-tools"), or the host of a direct URL.
  */
 let toolServers = {};
+
+/**
+ * What the LLM sees of an MCP tool result: the text of its content, not the MCP envelope
+ * ({ content: [{ type: 'text', text }], isError }). In protected mode the guardrail scans the
+ * prompt, and its topic allow-list does not recognize HR or IT data escaped inside that
+ * envelope (topic_violation), while it does as plain text. A result flagged isError goes as error-text.
+ */
+const mcpModelOutput = ({ output }) => {
+  const text = Array.isArray(output?.content)
+    ? output.content.filter((c) => c?.type === 'text').map((c) => c.text).join('\n')
+    : JSON.stringify(output);
+  return { type: output?.isError ? 'error-text' : 'text', value: text };
+};
 const mcpServerName = (url) => {
   const { pathname, hostname } = new URL(url);
   return (pathname.split('/').filter(Boolean).at(-2) || hostname).replace(/-[0-9a-f]{6}$/, '');
@@ -500,6 +513,7 @@ async function loadMCPTools() {
     // them server-side. Strip the flag so the execute() function runs on the backend.
     for (const [name, tool] of Object.entries(tools)) {
       if (tool.type === 'dynamic') delete tool.type;
+      tool.toModelOutput = mcpModelOutput;
       merged[name] = tool;
       servers[name] = mcpServerName(entry.url);
     }

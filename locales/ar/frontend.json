@@ -139,20 +139,6 @@
             "expect": "deny"
           },
           {
-            "icon": "group",
-            "title": "فريق Sophie · Aurélien",
-            "text": "من هم المرؤوسون المباشرون لـ Sophie Martin؟",
-            "persona": "EMP-034",
-            "expect": "deny"
-          },
-          {
-            "icon": "group",
-            "title": "فريقي · Sophie",
-            "text": "من هم مرؤوسيّ المباشرون؟",
-            "persona": "EMP-033",
-            "expect": "allow"
-          },
-          {
             "icon": "usb",
             "title": "فتح تذكرة · Alex",
             "text": "توقف منفذ USB في حاسوبي المحمول عن العمل. هل يمكنكم فتح تذكرة دعم تقني لي؟",

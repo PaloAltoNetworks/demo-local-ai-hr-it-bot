@@ -139,20 +139,6 @@
             "expect": "deny"
           },
           {
-            "icon": "group",
-            "title": "Sophie's team · Aurélien",
-            "text": "Who are Sophie Martin's direct reports?",
-            "persona": "EMP-034",
-            "expect": "deny"
-          },
-          {
-            "icon": "group",
-            "title": "My team · Sophie",
-            "text": "Who are my direct reports?",
-            "persona": "EMP-033",
-            "expect": "allow"
-          },
-          {
             "icon": "usb",
             "title": "Open a ticket · Alex",
             "text": "My laptop's USB port stopped working. Please open an IT ticket for me.",
