@@ -14,7 +14,7 @@ import { ToolLoopAgent, pipeAgentUIStreamToResponse, isStepCount, isToolUIPart, 
 import { z } from 'zod';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
-import { WORKLOAD_IDENTITY_ENABLED, getWorkloadToken, workloadSpiffeId } from './workload-identity.js';
+import { USER_TOKENS_ENABLED, userToken, forgetUserToken, agentToken, setPersona, personas } from './user-token.js';
 
 const DEBUG = process.env.LOG_LEVEL === 'debug';
 function dbg(msg) { if (DEBUG) console.log(msg); }
@@ -32,11 +32,15 @@ const PORTKEY_BASE_URL = process.env.PORTKEY_BASE_URL || 'https://api.portkey.ai
  *   PORTKEY_API_KEY is default/unguarded (config may enable response caching),
  *   PORTKEY_API_KEY_GUARDED is guarded (config attaches PANW Prisma AIRS input+output hooks).
  *   Guarded requests (phase3) swap to the guarded key; everything else uses the default one.
- * - Workload identity (SPIFFE_ENDPOINT_SOCKET set): every LLM and MCP request carries the
- *   chatbot's Idira SWA JWT-SVID instead of a key. A JWT has no attached config, so the
- *   same two configs ride in x-portkey-config: PORTKEY_CONFIG (unguarded) and
- *   PORTKEY_CONFIG_GUARDED (guarded, required: a guarded request without it is refused rather
- *   than sent unguarded). Only the feedback endpoint still uses PORTKEY_API_KEY.
+ * - User tokens (OAUTH_SERVER_URL set, see user-token.js): every LLM request of a turn carries
+ *   the signed-in user's auth-service token instead of a key, so gateway logs name the persona.
+ *   MCP requests carry the user's token in protected mode (phase3), where the gateway and the
+ *   MCP servers enforce the user's rights; in phases 1-2 and outside a turn they carry the
+ *   chatbot's own token, a service account with full scopes (the user's identity stops at the
+ *   chatbot). A JWT has no attached config, so the same two configs ride
+ *   in x-portkey-config: PORTKEY_CONFIG (unguarded) and PORTKEY_CONFIG_GUARDED (guarded,
+ *   required: a guarded request without it is refused rather than sent unguarded). Only the
+ *   feedback endpoint still uses PORTKEY_API_KEY.
  */
 const PORTKEY_API_KEY = process.env.PORTKEY_API_KEY || '';
 const PORTKEY_API_KEY_GUARDED = process.env.PORTKEY_API_KEY_GUARDED || PORTKEY_API_KEY;
@@ -44,26 +48,33 @@ const PORTKEY_CONFIG = process.env.PORTKEY_CONFIG || '';
 const PORTKEY_CONFIG_GUARDED = process.env.PORTKEY_CONFIG_GUARDED || '';
 
 /**
- * Credential and config for one gateway request. In workload-identity mode the JWT replaces
+ * Credential and config for one gateway request. With user tokens the turn's token replaces
  * the key and the config travels in a header; in key mode the key's attached config applies.
  * @param {boolean} guarded phase3 request that must go through the AIRS guardrails
- * @returns {Promise<{ apiKey: string, config: string }>}
+ * @param {string} [token] the turn's user token
+ * @returns {{ apiKey: string, config: string }}
  */
-async function gatewayCredential(guarded) {
-  if (!WORKLOAD_IDENTITY_ENABLED) {
+function gatewayCredential(guarded, token) {
+  if (!USER_TOKENS_ENABLED) {
     return { apiKey: guarded ? PORTKEY_API_KEY_GUARDED : PORTKEY_API_KEY, config: '' };
   }
   if (guarded && !PORTKEY_CONFIG_GUARDED) {
-    throw new Error('PORTKEY_CONFIG_GUARDED is required for guarded requests with workload identity');
+    throw new Error('PORTKEY_CONFIG_GUARDED is required for guarded requests with user tokens');
   }
-  const { token } = await getWorkloadToken();
   return { apiKey: token, config: guarded ? PORTKEY_CONFIG_GUARDED : PORTKEY_CONFIG };
 }
 
-/** How the chatbot authenticates to the gateway, for /health and the message action bar. */
-function gatewayAuthInfo() {
-  return WORKLOAD_IDENTITY_ENABLED
-    ? { mode: 'workload-identity', spiffeId: workloadSpiffeId() }
+/**
+ * How a turn reached the gateway, for the message action bar: the user (persona) and the agent
+ * (OAuth client) of the token and whose identity the tool calls carried, or the API key.
+ * @param {boolean} guarded protected mode, where tool calls carry the user's token
+ */
+function gatewayAuthInfo(user, guarded) {
+  return USER_TOKENS_ENABLED
+    ? {
+        mode: 'user-token', name: user.name, email: user.email, persona: user.persona, groups: user.groups,
+        login: user.login, agent: user.agent, toolsAs: guarded ? 'user' : 'agent',
+      }
     : { mode: 'api-key' };
 }
 /**
@@ -100,17 +111,30 @@ const MCP_SLUGS = Object.entries(process.env)
   .map(([, v]) => v);
 const MCP_URLS = MCP_SLUGS.map(slug => `${PORTKEY_MCP_BASE}/${slug}/mcp`);
 
-const STATIC_USER = {
-  employee_id: 'EMP-034',
-};
+/** The user when the chatbot runs without user tokens (local docker compose): one fixed employee. */
+const DEFAULT_USER = { persona: 'EMP-034', employee_id: 'EMP-034', name: 'Aurélien Girard' };
+
+/**
+ * The user of a request: the persona their auth-service token carries (id, employee_id for
+ * employees, name, email, groups), the signed-in account behind it (login) and the OAuth client
+ * as agent, or DEFAULT_USER without user tokens. `id` is what prompts and logs name the user by:
+ * the employee ID, or the persona id of someone without one (an external contractor).
+ * @returns {Promise<{ token?: string, user: { id: string, persona: string, employee_id?: string, name?: string, email?: string, groups?: string[], login?: string, agent?: string } }>}
+ */
+async function requestUser(req) {
+  if (!USER_TOKENS_ENABLED) return { user: { ...DEFAULT_USER, id: DEFAULT_USER.employee_id } };
+  const { token, claims } = await userToken(req.headers.cookie);
+  const { persona, employee_id, name, email, groups, client_id, login_email } = claims;
+  return { token, user: { id: employee_id || persona, persona, employee_id, name, email, groups, agent: client_id, login: login_email } };
+}
 
 // --- Focused phase prompts for the forced ReAct loop ---
 
-const REASON_PROMPT = `You are the REASON phase of a corporate assistant. The current user's employee ID is ${STATIC_USER.employee_id}.
+const REASON_PROMPT = (employeeId) => `You are the REASON phase of a corporate assistant. The current user's employee ID is ${employeeId}.
 
 Call reflect_reason to PLAN only. In this phase you can ONLY call reflect_reason or reflect_conclude — data tools are not available yet, so do NOT try to call any other tool.
 - State what the user is asking and which tools you will need in the next phase
-- When asked about "my" anything, use employee ID: ${STATIC_USER.employee_id}
+- When asked about "my" anything, use employee ID: ${employeeId}
 - Do NOT answer the user — only plan
 
 Decide reflect_reason vs reflect_conclude by whether the NEXT phase needs to fetch or write data:
@@ -119,7 +143,7 @@ Decide reflect_reason vs reflect_conclude by whether the NEXT phase needs to fet
 
 // FETCH phase — data tools are now active. Routing guidance lives here (not in REASON) so
 // the model is never told to call these tools while they are inactive (→ NoSuchToolError).
-const FETCH_PROMPT = `You are the FETCH phase of a corporate assistant. The current user's employee ID is ${STATIC_USER.employee_id}.
+const FETCH_PROMPT = (employeeId) => `You are the FETCH phase of a corporate assistant. The current user's employee ID is ${employeeId}.
 
 Call the data tool(s) needed to fulfill your plan. Do NOT answer the user yet — only call tools.
 
@@ -128,8 +152,8 @@ Tool routing:
 - Use the granular IT tools (get_ticket, get_tickets_by_employee, update_ticket_status) only to look up or modify an EXISTING ticket by id.
 - For HR/employee data questions, use the HR tools (get_employee, etc.) directly.`;
 
-const OBSERVE_PROMPT = `You are the OBSERVE phase of a corporate assistant's ReAct loop.
-The current user's employee ID is ${STATIC_USER.employee_id}.
+const OBSERVE_PROMPT = (employeeId) => `You are the OBSERVE phase of a corporate assistant's ReAct loop.
+The current user's employee ID is ${employeeId}.
 
 You have just received tool results. Your ONLY job: call reflect with phase EXACTLY equal to 'observe'.
 You MUST call: reflect({ phase: 'observe', observation: '<key facts from tool results>', gaps: '<still unknown if any>', next_action: '<done or needs more tools>', needs_more_data: <true|false> })
@@ -138,8 +162,8 @@ The phase field MUST be 'observe' — not 'decide', not 'reason'. Only 'observe'
 - Do NOT answer the user — only observe
 - Never guess or fabricate — if a tool returned nothing, say so`;
 
-const DECIDE_PROMPT = `You are the final answer generator for a corporate assistant.
-The current user's employee ID is ${STATIC_USER.employee_id}.
+const DECIDE_PROMPT = (employeeId) => `You are the final answer generator for a corporate assistant.
+The current user's employee ID is ${employeeId}.
 
 You have all the data you need. Give a clear, professional, concise answer to the user.
 - Never approve a ticket on behalf of the requesting user — approvals must come from the designated approver
@@ -234,11 +258,9 @@ function makeReflectTools(stepStartRef) {
 function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = '') {
   return async (url, init) => {
     const headers = new Headers(init?.headers);
-    const cred = await gatewayCredential(guarded);
+    const cred = gatewayCredential(guarded, reqCtx.token);
     headers.set('x-portkey-api-key', cred.apiKey);
-    // The OpenAI provider also sends Authorization: Bearer <apiKey>; with workload identity no
-    // static credential may reach the gateway.
-    if (WORKLOAD_IDENTITY_ENABLED) headers.delete('authorization');
+    if (USER_TOKENS_ENABLED) headers.delete('authorization');
     if (cred.config) headers.set('x-portkey-config', cred.config);
     headers.set('x-portkey-trace-id', reqCtx.traceId);
     // Every phase otherwise logs as span_name "llm", so a turn reads as N identical rows.
@@ -254,7 +276,7 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
     let model = '';
     if (init?.body) {
       const body = JSON.parse(init.body);
-      body.user = STATIC_USER.employee_id;
+      body.user = reqCtx.user.id;
       model = body.model || '';
       if (noParallel) {
         body.parallel_tool_calls = false;
@@ -272,14 +294,15 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
     }
     // Metadata feeds Portkey observability and the AIRS guardrail params
     // (ai_model={{metadata.model}}, app_user={{metadata._user}}).
-    // With a JWT the gateway overwrites _user with the token's identity (the workload's SPIFFE
-    // ID), so the end user also rides in employee_id, a key the gateway leaves alone.
+    // With a JWT the gateway overwrites _user with the token's identity, so the employee also
+    // rides in employee_id, a key the gateway leaves alone.
     // Keep it STABLE: metadata is part of the simple-cache key, so per-request volatile
     // values (thread_id, user_ip) would bust every cache lookup. The thread trace lives in
     // the x-portkey-trace-id header (not a cache-key field), so grouping is unaffected.
     headers.set('x-portkey-metadata', JSON.stringify({
-      _user: STATIC_USER.employee_id,
-      employee_id: STATIC_USER.employee_id,
+      _user: reqCtx.user.email || reqCtx.user.id,
+      employee_id: reqCtx.user.id,
+      login_email: reqCtx.user.login,
       app_name: 'The Otter V2',
       model,
     }));
@@ -356,7 +379,7 @@ function computeCost(perModelUsage) {
 function getModel(modelId, reqCtx, guarded = false, noParallel = false, spanName = '') {
   const provider = createOpenAI({
     baseURL: PORTKEY_BASE_URL,
-    apiKey: WORKLOAD_IDENTITY_ENABLED ? 'workload-identity' : PORTKEY_API_KEY,
+    apiKey: USER_TOKENS_ENABLED ? 'user-token' : PORTKEY_API_KEY,
     fetch: portkeyFetch(reqCtx, guarded, noParallel, spanName),
   });
   return provider.chat(modelId || MODEL_ID);
@@ -376,7 +399,7 @@ async function connectMCP(url) {
     transport: {
       type: 'http',
       url,
-      headers: WORKLOAD_IDENTITY_ENABLED ? {} : { 'x-portkey-api-key': PORTKEY_API_KEY },
+      headers: USER_TOKENS_ENABLED ? {} : { 'x-portkey-api-key': PORTKEY_API_KEY },
       // v7 flipped the default to 'error'; Portkey MCP Gateway relies on redirects.
       redirect: 'follow',
       // Full span set so a tool call can nest under the LLM span that emitted it. As of
@@ -384,11 +407,17 @@ async function connectMCP(url) {
       // (metadata is the one thing it keeps), so thread_id also rides in the metadata:
       // filtering MCP logs on it recovers the tool calls of a conversation either way.
       // Every request of the transport (initialize, tools/*, the SSE GET, the closing DELETE)
-      // goes through this hook, so the workload JWT is set here, fresh, on each of them.
+      // goes through this hook: in a protected turn it carries the user's token, otherwise the
+      // chatbot's own. The gateway authenticates x-portkey-api-key and checks the MCP server's
+      // jwt_validation rule on Authorization, so the token goes in both.
       fetch: async (fetchUrl, init) => {
         const headers = new Headers(init?.headers);
-        if (WORKLOAD_IDENTITY_ENABLED) headers.set('x-portkey-api-key', (await getWorkloadToken()).token);
         const reqCtx = mcpCtx.getStore();
+        if (USER_TOKENS_ENABLED) {
+          const token = reqCtx?.guarded ? reqCtx.token : (await agentToken()).token;
+          headers.set('x-portkey-api-key', token);
+          headers.set('authorization', `Bearer ${token}`);
+        }
         if (!reqCtx) return fetch(fetchUrl, { ...init, headers });
         headers.set('x-portkey-trace-id', reqCtx.traceId);
         headers.set('x-portkey-span-id', crypto.randomBytes(8).toString('hex'));
@@ -396,8 +425,9 @@ async function connectMCP(url) {
         // Parent = the LLM span whose tool call triggered this request.
         if (reqCtx.lastSpanId) headers.set('x-portkey-parent-span-id', reqCtx.lastSpanId);
         headers.set('x-portkey-metadata', JSON.stringify({
-          _user: STATIC_USER.employee_id,
-          employee_id: STATIC_USER.employee_id,
+          _user: reqCtx.user.email || reqCtx.user.id,
+          employee_id: reqCtx.user.id,
+          login_email: reqCtx.user.login,
           app_name: 'The Otter V2',
           thread_id: reqCtx.threadId,
         }));
@@ -434,12 +464,23 @@ async function reconnectMissingClients() {
 // fetch all clients in parallel; refresh() re-warms it.
 let cachedTools = null;
 
+/**
+ * MCP server of each tool (tool name → server name), for the tool cards of the chat: the gateway
+ * slug without its random suffix ("…/hr-tools-ed99dd/mcp" → "hr-tools"), or the host of a direct URL.
+ */
+let toolServers = {};
+const mcpServerName = (url) => {
+  const { pathname, hostname } = new URL(url);
+  return (pathname.split('/').filter(Boolean).at(-2) || hostname).replace(/-[0-9a-f]{6}$/, '');
+};
+
 // Loads tools from every live client in parallel. A client whose tools/list fails is dropped
 // from mcpClients so reconnectMissingClients() retries a fresh connection next cycle. Returns
 // the merged map plus the count of clients that failed this pass.
 async function loadMCPTools() {
   if (mcpClients.length === 0) return { merged: {}, failed: 0 };
   const merged = {};
+  const servers = {};
   let failed = 0;
   const results = await Promise.all(mcpClients.map(async (entry) => {
     try {
@@ -452,7 +493,7 @@ async function loadMCPTools() {
   }));
   // Drop clients that failed so they get reconnected; keep the ones that answered.
   mcpClients = results.filter(r => r.tools !== null).map(r => r.entry);
-  for (const { tools } of results) {
+  for (const { entry, tools } of results) {
     if (!tools) continue;
     // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() by default (type: 'dynamic'),
     // which tells streamText to send them to the client for execution instead of running
@@ -460,8 +501,10 @@ async function loadMCPTools() {
     for (const [name, tool] of Object.entries(tools)) {
       if (tool.type === 'dynamic') delete tool.type;
       merged[name] = tool;
+      servers[name] = mcpServerName(entry.url);
     }
   }
+  if (Object.keys(merged).length > 0) toolServers = servers;
   console.log(`[mcp] tools loaded (${Object.keys(merged).length}): ${Object.keys(merged).join(', ')}`);
   return { merged, failed };
 }
@@ -514,7 +557,7 @@ app.get('/health', (_req, res) => {
     mcpStatus: mcpClients.length > 0 ? 'connected' : 'disconnected',
     mcpUrls: MCP_URLS,
     model: MODEL_ID,
-    auth: gatewayAuthInfo(),
+    auth: USER_TOKENS_ENABLED ? 'user-token' : 'api-key',
   });
 });
 
@@ -612,7 +655,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
 
   return new ToolLoopAgent({
     model: getModel(tiers.fast, reqCtx, guarded),
-    instructions: REASON_PROMPT,
+    instructions: REASON_PROMPT(reqCtx.user.id),
     tools: allTools,
     toolApproval,
     maxRetries: 0,
@@ -637,16 +680,18 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
     prepareStep: async ({ stepNumber, steps, messages }) => {
       stepStartRef.current = Date.now();
 
-      // A tool counts toward phase progress only if it actually EXECUTED (produced a result).
-      // A wrong-phase call that never ran (NoSuchToolError → no result) must not advance the
-      // loop, or a bogus triage_it_request attempt would mark data as "fetched", skip FETCH,
-      // and let the model fabricate a result it never obtained. A tool that ran but returned
-      // an isError payload DOES count — the loop should OBSERVE and honestly relay the failure.
-      const ranTool = (name) => priorRan.has(name) || steps.some(s =>
-        s.toolResults?.some(tr =>
-          tr.toolName === name && !tr.error && tr.output !== undefined
-        )
-      );
+      // A tool counts toward phase progress only if it actually EXECUTED: it produced a result,
+      // or its execution failed (an isError payload, or a thrown error such as the gateway
+      // refusing the call). A wrong-phase call that never ran (NoSuchToolError, an `invalid`
+      // tool call) must not advance the loop, or a bogus triage_it_request attempt would mark
+      // data as "fetched", skip FETCH, and let the model fabricate a result it never obtained.
+      // A failed execution DOES count, so the loop OBSERVEs and honestly relays the failure
+      // instead of trying every other data tool until the step limit.
+      const executedIn = (s, name) =>
+        s.toolResults?.some(tr => tr.toolName === name && !tr.error && tr.output !== undefined) ||
+        s.content?.some(p => p.type === 'tool-error' && p.toolName === name &&
+          !s.toolCalls?.some(tc => tc.toolCallId === p.toolCallId && tc.invalid));
+      const ranTool = (name) => priorRan.has(name) || steps.some(s => executedIn(s, name));
       const ranReason = ranTool('reflect_reason');
       const ranConclude = ranTool('reflect_conclude');
       const ranDataTools = DATA_TOOL_NAMES.some(ranTool);
@@ -659,7 +704,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         stepModels[stepNumber] = tiers.powerful;
         return {
           model: getModel(tiers.powerful, reqCtx, guarded, false, 'answer-no-data'),
-          instructions: DECIDE_PROMPT,
+          instructions: DECIDE_PROMPT(reqCtx.user.id),
           messages: withAnswerTurn(messages),
           toolChoice: 'none',
         };
@@ -673,7 +718,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         stepModels[stepNumber] = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded, true, 'reason'),
-          instructions: REASON_PROMPT,
+          instructions: REASON_PROMPT(reqCtx.user.id),
           activeTools: ['reflect_reason', 'reflect_conclude'],
           toolChoice: 'required',
         };
@@ -687,16 +732,14 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         stepModels[stepNumber] = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded, false, 'fetch'),
-          instructions: FETCH_PROMPT,
+          instructions: FETCH_PROMPT(reqCtx.user.id),
           activeTools: DATA_TOOL_NAMES,
           toolChoice: 'required',
         };
       };
       if (!ranDataTools && DATA_TOOL_NAMES.length > 0) return fetch();
 
-      const isDataStep = (s) => s.toolResults?.some(tr =>
-        DATA_TOOL_NAMES.includes(tr.toolName) && !tr.error && tr.output !== undefined
-      );
+      const isDataStep = (s) => DATA_TOOL_NAMES.some(name => executedIn(s, name));
       const lastDataIdx = steps.findLastIndex(isDataStep);
       const observeAttempted = steps.length > lastDataIdx + 1;
       if (!observeAttempted) {
@@ -704,7 +747,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
         stepModels[stepNumber] = tiers.fast;
         return {
           model: getModel(tiers.fast, reqCtx, guarded, false, 'observe'),
-          instructions: OBSERVE_PROMPT,
+          instructions: OBSERVE_PROMPT(reqCtx.user.id),
           activeTools: ['reflect_observe'],
           toolChoice: 'required',
         };
@@ -726,7 +769,7 @@ function buildReactAgent(tiers, reqCtx, mcpTools, guarded, approvalToolNames = [
       stepModels[stepNumber] = tiers.powerful;
       return {
         model: getModel(tiers.powerful, reqCtx, guarded, false, 'answer'),
-        instructions: DECIDE_PROMPT,
+        instructions: DECIDE_PROMPT(reqCtx.user.id),
         messages: withAnswerTurn(messages),
         toolChoice: 'none',
       };
@@ -837,12 +880,12 @@ function trimHistoryToolOutputs(messages) {
  * @param {string} traceId Portkey trace id the thumbs feedback targets
  * @returns {({ part }: { part: object }) => object | undefined}
  */
-function createTurnMeter(stepModels, traceId) {
+function createTurnMeter(stepModels, traceId, user, guarded) {
   const usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   const perModelUsage = {};
   let step = 0;
   let gotText = false;
-  const snapshot = () => ({ usage: { ...usage }, traceId, cost: computeCost(perModelUsage), auth: gatewayAuthInfo() });
+  const snapshot = () => ({ usage: { ...usage }, traceId, cost: computeCost(perModelUsage), auth: gatewayAuthInfo(user, guarded), toolServers });
   return ({ part }) => {
     if (part.type === 'text-delta' && part.text?.trim()) gotText = true;
     if (part.type === 'finish-step') {
@@ -870,8 +913,12 @@ app.post('/api/chat', async (req, res) => {
     const phase = req.body.phase;
     const guarded = phase === 'phase3';
     const threadId = req.body.threadId || crypto.randomUUID();
+    const { token, user } = await requestUser(req);
     const reqCtx = {
       threadId,
+      token,
+      user,
+      guarded,
       // Trace-id = the browser conversation (threadId). Portkey's AIRS plugin sends this as
       // AIRS tr_id, which Strata treats as the AI-session id — so every turn of a conversation
       // lands in ONE ai-sessions view. It's also the key thumbs feedback targets, so feedback
@@ -908,10 +955,11 @@ app.post('/api/chat', async (req, res) => {
       agent,
       uiMessages: safeMessages,
       onError: (err) => normalizeError(err, tiers?.fast),
-      messageMetadata: createTurnMeter(stepModels, reqCtx.traceId),
+      messageMetadata: createTurnMeter(stepModels, reqCtx.traceId, user, guarded),
     }));
   } catch (err) {
     console.error(`[chat] ${err.message}`);
+    if (/^auth-service|session cookie/.test(err.message) && !res.headersSent) return res.status(401).json({ error: err.message });
     const errMsg = normalizeError(err, tiers?.fast);
     if (!res.headersSent) res.status(500).json({ error: errMsg });
   }
@@ -944,6 +992,7 @@ app.get('/api/airs-config', (_req, res) => {
 // value: +1 (👍) / -1 (👎); Portkey accepts [-10,10]. Feedback shows on the trace's log.
 app.post('/api/feedback', async (req, res) => {
   const { traceId, value, weight, toolsUsed, comment } = req.body || {};
+  const { user } = await requestUser(req).catch(() => ({ user: { ...DEFAULT_USER, id: DEFAULT_USER.employee_id } }));
   if (!traceId || typeof value !== 'number') {
     return res.status(400).json({ error: 'traceId and numeric value are required' });
   }
@@ -957,7 +1006,8 @@ app.post('/api/feedback', async (req, res) => {
         value,
         weight: typeof weight === 'number' ? weight : 1,
         metadata: {
-          _user: STATIC_USER.employee_id,
+          _user: user.email || user.id,
+          login_email: user.login,
           app_name: 'The Otter V2',
           answer_type: tools.length > 0 ? 'tool-backed' : 'direct',
           tools_used: tools.join(', '),
@@ -975,6 +1025,31 @@ app.post('/api/feedback', async (req, res) => {
   } catch (err) {
     console.error(`[feedback] ${err.message}`);
     res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * The signed-in user as the gateway and the MCP servers see them (persona, name, email, groups,
+ * agent), and the personas they can switch to.
+ */
+app.get('/api/me', async (req, res) => {
+  try {
+    const { user } = await requestUser(req);
+    res.json({ userTokens: USER_TOKENS_ENABLED, ...user, personas: USER_TOKENS_ENABLED ? await personas() : [] });
+  } catch (err) {
+    res.status(401).json({ error: err.message });
+  }
+});
+
+/** Switches the persona ({ persona: "<id>" }) through the auth-service; the next turn's token carries it. */
+app.post('/api/persona', async (req, res) => {
+  if (!USER_TOKENS_ENABLED) return res.status(404).json({ error: 'Personas need user tokens (OAUTH_SERVER_URL)' });
+  try {
+    const resp = await setPersona(req.headers.cookie || '', req.body?.persona);
+    if (resp.ok) forgetUserToken(req.headers.cookie);
+    res.status(resp.status).json(await resp.json().catch(() => ({})));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
   }
 });
 

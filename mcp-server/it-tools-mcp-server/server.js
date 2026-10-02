@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 import express from 'express';
 import { z } from 'zod';
 import { ITService } from './service.js';
+import { oauthResource, missingScope, isServiceAccount } from '../shared/oauth-resource.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -19,13 +20,34 @@ function json(data) {
   return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
 }
 
+function refused(message) {
+  return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: 'forbidden', message }) }] };
+}
+
+/**
+ * The caller when it is a user without an employee record (an external contractor): they see and
+ * open only their own tickets, under their persona id with the name and email of their token,
+ * and cannot change a ticket's status. Null for employees, service accounts and calls without
+ * OAuth, which this server does not restrict per ticket.
+ *
+ * @returns {{ id: string, email?: string, name?: string } | null}
+ */
+function externalCaller(authInfo) {
+  if (!authInfo || isServiceAccount(authInfo) || authInfo.extra?.employee_id) return null;
+  const { persona, email, name } = authInfo.extra || {};
+  return { id: persona || '', email, name };
+}
+
+const OWN_ONLY = 'External users may only see and open their own tickets.';
+const isSelf = (caller, identifier) => identifier === caller.id || (caller.email && identifier.toLowerCase() === caller.email.toLowerCase());
+
 /**
  * Argument formats enforced at the MCP boundary. The SDK rejects a tools/call whose arguments
  * fail these schemas before the handler runs; SQL always binds values as parameters on top of that.
  */
 const TICKET_ID = z.string().regex(/^INC-\d{4}-\d{4}$/, 'Expected INC-YYYY-NNNN');
-const EMPLOYEE_ID = z.string().regex(/^EMP-\d{3}$/, 'Expected EMP-NNN');
-const EMPLOYEE_REF = z.string().max(254).regex(/^(EMP-\d{3}|[^\s@]+@[^\s@]+\.[^\s@]+)$/, 'Expected EMP-NNN or an email address');
+const EMPLOYEE_ID = z.string().regex(/^(EMP|EXT)-\d{3}$/, 'Expected EMP-NNN or EXT-NNN');
+const EMPLOYEE_REF = z.string().max(254).regex(/^((EMP|EXT)-\d{3}|[^\s@]+@[^\s@]+\.[^\s@]+)$/, 'Expected EMP-NNN, EXT-NNN or an email address');
 const EMAIL = z.email().max(254);
 const NAME = z.string().min(1).max(100);
 
@@ -38,11 +60,15 @@ function registerTools(server) {
     {
       ticket_id: TICKET_ID.describe('Ticket ID in INC-XXXX-XXXX format')
     },
-    async ({ ticket_id }) => {
+    async ({ ticket_id }, { authInfo }) => {
+      const denied = missingScope(authInfo, 'it:read');
+      if (denied) return denied;
       const ticket = service.getTicketById(ticket_id);
       if (!ticket) {
         return json({ error: 'not_found', message: `Ticket ${ticket_id} not found` });
       }
+      const external = externalCaller(authInfo);
+      if (external && ticket.employee_id !== external.id) return refused(`${external.id} may not read ${ticket_id}. ${OWN_ONLY}`);
       const discussions = service.getTicketDiscussions(ticket_id);
       return json({ ...ticket, discussions });
     }
@@ -54,8 +80,12 @@ function registerTools(server) {
     {
       identifier: EMPLOYEE_REF.describe('Employee ID (e.g. "EMP-008") or email address')
     },
-    async ({ identifier }) => {
-      const tickets = identifier.startsWith('EMP-')
+    async ({ identifier }, { authInfo }) => {
+      const denied = missingScope(authInfo, 'it:read');
+      if (denied) return denied;
+      const external = externalCaller(authInfo);
+      if (external && !isSelf(external, identifier)) return refused(`${external.id} may not read the tickets of ${identifier}. ${OWN_ONLY}`);
+      const tickets = /^(EMP|EXT)-/.test(identifier)
         ? service.getTicketsByEmployeeId(identifier)
         : service.getTicketsByEmployee(identifier);
       return json({ count: tickets.length, identifier, tickets });
@@ -77,9 +107,17 @@ function registerTools(server) {
       status: z.enum(['Open', 'Pending Approval']).default('Open').describe('Initial status. Use "Pending Approval" for requests that require manager approval.'),
       asset_id: z.string().regex(/^ASSET-\d{5}$/, 'Expected ASSET-NNNNN').optional().describe('Asset ID if the request is linked to a specific device'),
     },
-    async ({ employee_id, employee_email, employee_name, description, priority, category, status, asset_id }) => {
+    async ({ employee_id, employee_email, employee_name, description, priority, category, status, asset_id }, { authInfo }) => {
+      const denied = missingScope(authInfo, 'it:write');
+      if (denied) return denied;
       // Security-sensitive requests always require manager approval — enforce regardless
       // of the model's chosen status so the approval workflow is deterministic.
+      const external = externalCaller(authInfo);
+      if (external) {
+        if (employee_id !== external.id) return refused(`${external.id} may not open a ticket for ${employee_id}. ${OWN_ONLY}`);
+        employee_email = external.email || employee_email;
+        employee_name = external.name || employee_name;
+      }
       const approvalText = `${category} ${description}`.toLowerCase();
       const requiresApproval = /\b(usb|vpn|security|access request|privileged|admin access)\b/.test(approvalText);
       const effectiveStatus = requiresApproval ? 'Pending Approval' : status;
@@ -109,7 +147,11 @@ function registerTools(server) {
       approver_email: EMAIL.optional().describe('Email of the person approving/rejecting (required for approval actions)'),
       approver_name: NAME.optional().describe('Name of the person approving/rejecting'),
     },
-    async ({ ticket_id, status, approver_email, approver_name }) => {
+    async ({ ticket_id, status, approver_email, approver_name }, { authInfo }) => {
+      const denied = missingScope(authInfo, 'it:write');
+      if (denied) return denied;
+      const external = externalCaller(authInfo);
+      if (external) return refused(`${external.id} may not change the status of a ticket. ${OWN_ONLY}`);
       const result = service.updateTicketStatus(ticket_id, status, approver_email, approver_name);
       if (!result) {
         return json({ error: 'update_failed', message: `Ticket ${ticket_id} not found or update failed` });
@@ -126,8 +168,12 @@ function registerTools(server) {
     {
       identifier: EMPLOYEE_REF.describe('Employee ID (e.g. "EMP-008") or email address')
     },
-    async ({ identifier }) => {
-      const assets = identifier.startsWith('EMP-')
+    async ({ identifier }, { authInfo }) => {
+      const denied = missingScope(authInfo, 'it:read');
+      if (denied) return denied;
+      const external = externalCaller(authInfo);
+      if (external && !isSelf(external, identifier)) return refused(`${external.id} may not read the assets of ${identifier}. ${OWN_ONLY}`);
+      const assets = /^(EMP|EXT)-/.test(identifier)
         ? service.getAssetsByEmployeeId(identifier)
         : service.getAssetsByEmployee(identifier);
       return json({ count: assets.length, identifier, assets });
@@ -163,6 +209,8 @@ async function main() {
     }
     next();
   });
+
+  app.use('/mcp', await oauthResource(app, { name: 'it-tools', scopes: ['it:read', 'it:write'] }));
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'healthy', name: 'it-tools', timestamp: new Date().toISOString() });

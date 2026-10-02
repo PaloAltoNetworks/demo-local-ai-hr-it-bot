@@ -8,7 +8,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tip } from '@/components/ui/tooltip';
-import { Check, Languages, SunMoon, Moon, Sun, ShieldQuestionMark, ShieldAlert, ShieldCheck, Route } from 'lucide-react';
+import type { Persona } from '../hooks/usePersona';
+import {
+  Check, Languages, SunMoon, Moon, Sun, ShieldQuestionMark, ShieldAlert, ShieldCheck, Route,
+  UserRound, UserStar, HeartHandshake, Globe,
+} from 'lucide-react';
 
 type ThemeChoice = 'system' | 'light' | 'dark';
 
@@ -23,19 +27,31 @@ const THEMES: { value: ThemeChoice; icon: typeof SunMoon; label: string }[] = [
   { value: 'dark', icon: Moon, label: 'Dark' },
 ];
 
+/** Icon and colour per access level, so the four personas tell apart at a glance. */
+const PERSONA_LOOKS: Record<Persona['access'], { icon: typeof UserRound; color: string }> = {
+  employee: { icon: UserRound, color: 'text-sky-600 dark:text-sky-400' },
+  manager: { icon: UserStar, color: 'text-amber-600 dark:text-amber-400' },
+  hr: { icon: HeartHandshake, color: 'text-violet-600 dark:text-violet-400' },
+  external: { icon: Globe, color: 'text-orange-600 dark:text-orange-400' },
+};
+
 interface HeaderProps {
   phase: string;
   setPhase: (p: string) => void;
   theme: ThemeChoice;
   setTheme: (t: ThemeChoice) => void;
   onOpenWorkflow: () => void;
+  personas: Persona[];
+  persona: Persona | null;
+  setPersona: (id: string) => void;
 }
 
-export default function Header({ phase, setPhase, theme, setTheme, onOpenWorkflow }: HeaderProps) {
+export default function Header({ phase, setPhase, theme, setTheme, onOpenWorkflow, personas, persona, setPersona }: HeaderProps) {
   const { t, language, setLanguage, languages } = useLanguage();
 
   const ThemeIcon = (THEMES.find(x => x.value === theme) || THEMES[0]).icon;
   const currentLang = languages.find(l => l.code === language);
+  const PersonaIcon = persona ? PERSONA_LOOKS[persona.access].icon : UserRound;
 
   return (
     <header
@@ -70,6 +86,33 @@ export default function Header({ phase, setPhase, theme, setTheme, onOpenWorkflo
       </nav>
 
       <div className="flex items-center gap-2">
+        {persona && (
+          <DropdownMenu>
+            <Tip label={`${t('persona.title')}: ${persona.name}, ${t(`persona.${persona.access}`)}`}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="size-10" aria-label={t('persona.title')}>
+                  <PersonaIcon className={`size-5 ${PERSONA_LOOKS[persona.access].color}`} />
+                </Button>
+              </DropdownMenuTrigger>
+            </Tip>
+            <DropdownMenuContent align="end" className="min-w-80">
+              {personas.map(p => {
+                const { icon: Icon, color } = PERSONA_LOOKS[p.access];
+                return (
+                <DropdownMenuItem key={p.id} onClick={() => setPersona(p.id)}>
+                  <Icon className={`size-5 ${color}`} />
+                  <div className="flex flex-col">
+                    <span>{p.name}</span>
+                    <span className="text-xs text-muted-foreground">{t(`persona.${p.access}`)} · {p.id}</span>
+                  </div>
+                  {p.id === persona.id && <Check className="ms-auto size-4 text-primary" />}
+                </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         {/* Workflow replay — opens the AI Gateway pipeline visualizer */}
         <Tip label={t('workflow.title')}>
           <Button variant="outline" size="icon" className="size-10" onClick={onOpenWorkflow} aria-label={t('workflow.title')}>

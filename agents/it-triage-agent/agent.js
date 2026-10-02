@@ -38,6 +38,49 @@ const MCP_URLS = process.env.IT_TRIAGE_MCP_URLS
   ? process.env.IT_TRIAGE_MCP_URLS.split(',').map(s => s.trim()).filter(Boolean)
   : MCP_SLUGS.map(slug => `${PORTKEY_MCP_BASE}/${slug}/mcp`);
 
+/**
+ * OAuth 2.1 (auth-service): inside a run, every MCP request relays the token the caller sent to
+ * triage_it_request, so hr-tools and it-tools apply that user's rights. Outside a run (connection,
+ * tool listing) the agent uses its own client_credentials token as OAuth client "it-triage".
+ * Enabled when OAUTH_SERVER_URL, OAUTH_RESOURCES and IT_TRIAGE_CLIENT_SECRET are set. Requests to
+ * the gateway are forwarded upstream with the same token.
+ */
+const OAUTH_SERVER_URL = process.env.OAUTH_SERVER_URL || '';
+const OAUTH_RESOURCES = (process.env.OAUTH_RESOURCES || '').split(',').map(s => s.trim()).filter(Boolean);
+const IT_TRIAGE_CLIENT_SECRET = process.env.IT_TRIAGE_CLIENT_SECRET || '';
+const OAUTH_ENABLED = Boolean(OAUTH_SERVER_URL && OAUTH_RESOURCES.length && IT_TRIAGE_CLIENT_SECRET);
+
+let agentTokenCache = null;
+
+/** The agent's own token, cached until 60 s before expiry. */
+async function agentToken() {
+  if (agentTokenCache && agentTokenCache.exp - 60 > Date.now() / 1000) return agentTokenCache.token;
+  const body = new URLSearchParams({ grant_type: 'client_credentials', scope: 'hr:read it:read' });
+  for (const r of OAUTH_RESOURCES) body.append('resource', r);
+  const res = await fetch(new URL('/api/auth/oauth2/token', OAUTH_SERVER_URL), {
+    method: 'POST',
+    headers: {
+      Authorization: 'Basic ' + Buffer.from(`it-triage:${IT_TRIAGE_CLIENT_SECRET}`).toString('base64'),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) throw new Error(`auth-service token ${res.status}: ${data.error_description || data.error || 'no token'}`);
+  const { exp } = JSON.parse(Buffer.from(data.access_token.split('.')[1], 'base64url'));
+  agentTokenCache = { token: data.access_token, exp };
+  return data.access_token;
+}
+
+/**
+ * Sets the bearer of one MCP request. A tools server reads Authorization; the gateway also
+ * authenticates x-portkey-api-key, and checks the MCP server's jwt_validation rule on Authorization.
+ */
+function setMcpToken(headers, url, token) {
+  headers.set('authorization', `Bearer ${token}`);
+  if (String(url).startsWith(PORTKEY_MCP_BASE)) headers.set('x-portkey-api-key', token);
+}
+
 // --- IT Process Data (local — agent owns this domain) ---
 
 const IT_PROCESSES = JSON.parse(readFileSync(join(__dirname, 'it-processes.json'), 'utf-8'));
@@ -79,22 +122,22 @@ function makeOpenAI({ traceId, employeeId }) {
 // docker-network path (IT_TRIAGE_MCP_URLS) there is no gateway to read the headers.
 const runCtx = new AsyncLocalStorage();
 
-let mcpClients = [];
+/** One MCP client per data server URL. */
+const mcpClients = new Map();
 
 async function connectMCP(url) {
   const connectPromise = createMCPClient({
     transport: {
       type: 'http',
       url,
-      headers: {
-        'x-portkey-api-key': PORTKEY_API_KEY,
-      },
+      headers: OAUTH_ENABLED ? {} : { 'x-portkey-api-key': PORTKEY_API_KEY },
       // v7 flipped the default to 'error'; Portkey MCP Gateway relies on redirects.
       redirect: 'follow',
       fetch: async (fetchUrl, init) => {
         const ctx = runCtx.getStore();
-        if (!ctx) return fetch(fetchUrl, init);
         const headers = new Headers(init?.headers);
+        if (OAUTH_ENABLED) setMcpToken(headers, url, ctx?.token || await agentToken());
+        if (!ctx) return fetch(fetchUrl, { ...init, headers });
         headers.set('x-portkey-trace-id', ctx.traceId);
         headers.set('x-portkey-metadata', portkeyMetadata(ctx.employeeId));
         return fetch(fetchUrl, { ...init, headers });
@@ -107,43 +150,51 @@ async function connectMCP(url) {
   return Promise.race([connectPromise, timeoutPromise]);
 }
 
+/** Replaces the client of one MCP server with a fresh connection (closing the old one, if any). */
+async function freshClient(url) {
+  await mcpClients.get(url)?.close().catch(() => {});
+  const client = await connectMCP(url);
+  mcpClients.set(url, client);
+  console.log(`[it-triage] MCP client connected: ${url}`);
+  return client;
+}
+
 export async function initMCPClient() {
-  mcpClients = [];
   for (const url of MCP_URLS) {
-    try {
-      const client = await connectMCP(url);
-      mcpClients.push({ url, client });
-      console.log(`[it-triage] MCP client connected: ${url}`);
-    } catch (err) {
-      console.error(`[it-triage] Failed to connect MCP client ${url}: ${err.message}`);
-    }
+    await freshClient(url).catch((err) => console.error(`[it-triage] Failed to connect MCP client ${url}: ${err.message}`));
   }
 }
 
 export async function closeMCPClient() {
-  for (const entry of mcpClients) {
-    try { await entry.client.close(); } catch (_) {}
-  }
+  for (const client of mcpClients.values()) await client.close().catch(() => {});
 }
 
 /**
- * Get data tools (hr-tools, it-tools) from the Portkey MCP Gateway.
- * Each server has its own client, so no self-referential tools appear here.
+ * Data tools (hr-tools, it-tools) from every MCP server, one client each, so no
+ * self-referential tools appear here. A server unreachable at start is connected now; a client
+ * whose session the server no longer knows (the server restarted) is replaced by a fresh
+ * connection and asked once more.
  */
 async function getMCPTools() {
-  if (mcpClients.length === 0) return {};
   const merged = {};
-  for (const entry of mcpClients) {
+  for (const url of MCP_URLS) {
+    let tools;
     try {
-      const tools = await entry.client.tools();
-      // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() (type: 'dynamic') by default,
-      // which would prevent ToolLoopAgent from executing them server-side. Strip the flag.
-      for (const [name, t] of Object.entries(tools)) {
-        if (t.type === 'dynamic') delete t.type;
-        merged[name] = t;
-      }
+      tools = await (mcpClients.get(url) || await freshClient(url)).tools();
     } catch (err) {
-      console.warn(`[it-triage] MCP tools unavailable from ${entry.url}: ${err.message}`);
+      console.warn(`[it-triage] MCP tools unavailable from ${url}: ${err.message}; reconnecting`);
+      try {
+        tools = await (await freshClient(url)).tools();
+      } catch (retryErr) {
+        console.warn(`[it-triage] MCP tools still unavailable from ${url}: ${retryErr.message}`);
+        continue;
+      }
+    }
+    // @ai-sdk/mcp v1.0.26+ wraps MCP tools as dynamicTool() (type: 'dynamic') by default,
+    // which would prevent ToolLoopAgent from executing them server-side. Strip the flag.
+    for (const [name, t] of Object.entries(tools)) {
+      if (t.type === 'dynamic') delete t.type;
+      merged[name] = t;
     }
   }
   return merged;
@@ -292,8 +343,12 @@ Step D: Return a concise structured summary (severity, team, SLA, approval statu
 /**
  * Run the IT triage agent for a given query.
  * Creates a fresh ToolLoopAgent per invocation with current MCP tools.
+ * @param {{ query: string, employeeId: string, requester?: { name: string, email: string } | null, token?: string, onProgress?: Function }} run
+ *   requester: name and email from the caller's token; token: the caller's access token,
+ *   relayed on every MCP data call of the run. An EXT- requester (external contractor) has no
+ *   HR record, so the agent files the ticket with the token's name and email instead.
  */
-export async function runTriageAgent({ query, employeeId, onProgress = () => {} }) {
+export async function runTriageAgent({ query, employeeId, requester, token, onProgress = () => {} }) {
   const mcpTools = await getMCPTools();
   const toolTimings = [];
   const traceId = `triage-${randomUUID()}`;
@@ -309,9 +364,14 @@ export async function runTriageAgent({ query, employeeId, onProgress = () => {} 
     check_approval_required: checkApprovalRequired,
   };
 
-  const instructions = `${TRIAGE_INSTRUCTIONS}
+  const requesterLine = requester ? ` Requester: ${requester.name} <${requester.email}>.` : '';
+  const instructions = employeeId.startsWith('EXT-')
+    ? `${TRIAGE_INSTRUCTIONS}
 
-The requesting employee's ID is ${employeeId}. Use this ID when looking up employee data.`;
+The requester is an external contractor (ID ${employeeId}) with no HR record and no assets.${requesterLine} Do NOT call get_employee or get_employee_assets. File the ticket under employee_id ${employeeId} with this name and email; there is no manager, so approval requests go to IT.`
+    : `${TRIAGE_INSTRUCTIONS}
+
+The requesting employee's ID is ${employeeId}.${requesterLine} Use this ID when looking up employee data.`;
 
   const agent = new ToolLoopAgent({
     model: openai.chat(MODEL_ID),
@@ -344,7 +404,7 @@ The requesting employee's ID is ${employeeId}. Use this ID when looking up emplo
   });
 
   // Run inside runCtx so MCP data-tool calls inherit this run's trace.
-  const result = await runCtx.run({ traceId, employeeId }, () => agent.generate({ prompt: query }));
+  const result = await runCtx.run({ traceId, employeeId, token }, () => agent.generate({ prompt: query }));
   return result.text;
 }
 

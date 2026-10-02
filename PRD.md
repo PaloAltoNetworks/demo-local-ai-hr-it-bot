@@ -89,15 +89,20 @@ Example config attached to the guarded key (retry + cache + AIRS input/output ho
 
 Both input (pre-call) and output (post-call) scanning run through the configured Prisma AIRS profile.
 
-### Workload identity (Idira SWA)
+### User and agent identity (OAuth 2.1)
 
-On Kubernetes the chatbot carries no gateway API key for LLM and MCP calls. With `SPIFFE_ENDPOINT_SOCKET` set, `backend/workload-identity.js` fetches a JWT-SVID (audience `portkey`, RS256, 5 min) from the Idira Secure Workload Access agent over the SPIFFE Workload API, caches it until a minute before expiry, and every request sends it in `x-portkey-api-key`. The gateway runs gateway-local JWT auth (`JWT_ENABLED=ON`) against the trust domain's JWKS declared on the SCM organisation.
+On Kubernetes the chatbot carries no gateway API key for LLM and MCP calls. The auth-service (Better Auth + `@better-auth/oauth-provider`) is the OAuth 2.1 authorization server: RS256 JWT access tokens, JWKS at `https://<auth host>/api/auth/jwks`, discovery at `/.well-known/oauth-authorization-server/api/auth`. The gateway runs gateway-local JWT auth (`JWT_ENABLED=ON`) against that JWKS, declared on the SCM organisation.
 
-- A JWT has no attached config, so the two key configs travel in `x-portkey-config`: `PORTKEY_CONFIG` (unguarded) and `PORTKEY_CONFIG_GUARDED` (guarded, required: a guarded request without it is refused, never sent unguarded). The admin cannot lock the config on a JWT the way `allow_config_override=false` does on a key; Org-level Guardrails in SCM are the enforced floor.
-- No API-key fallback: if the Workload API fails, the request fails.
-- Only `/api/feedback` still uses `PORTKEY_API_KEY`.
-- Each message carries `auth: { mode, spiffeId }` in its metadata; the action bar shows it next to the thumbs (fingerprint icon, SPIFFE ID in the tooltip).
-- Identity: `spiffe://<trust-domain>/<node-group>/ns/hr-it-bot/sa/chatbot-v2` (dedicated ServiceAccount).
+- **User token** (`backend/user-token.js`): for each signed-in user the chatbot runs the authorization code grant with PKCE as the first-party client `chatbot`, sending the user's session cookie (passed through by Caddy), and exchanges the code at once; cached per session until a minute before expiry. Claims: the persona (`email_id`, `email`, `name`, `persona`, `employee_id` for employees, `groups`), `login_email` (the signed-in account), `client_id`/`azp` (the agent), `aud` = the MCP servers (`OAUTH_RESOURCES`), `scope` = `hr:read it:read it:write it:triage`. Portkey logs the user by `email_id`, so logs show the persona; the chatbot also sends `login_email` in the metadata.
+- **Agent token**: `client_credentials` for the client `chatbot` (group `agents`, every scope), used for MCP connections and for the tool calls of unprotected turns.
+- **Per phase**: LLM calls always carry the user token. MCP calls carry the user token in phase 3, where the gateway and the MCP servers enforce the persona's rights, and the agent token in phases 1-2 (the user's identity stops at the chatbot).
+- **Personas**: Aurélien Girard (EMP-034, employee), Sophie Martin (EMP-033, manager), Lisa Wang (EMP-068, HR), Alex Morgan (EXT-001, external contractor, no HR record). Defined in `auth-service/lib/config.js`, switched from the header (`POST /api/persona` → auth-service `POST /auth/persona`) without signing in again; `GET /api/me` returns the current persona and the list.
+- **Gateway authorization**: each MCP integration in SCM has `jwt_validation` on `groups` (hr-tools: `employees` or `agents`; it-tools and it-triage: also `external`) and identity forwarding `bearer` (the token is forwarded as is). The gateway reads the rule's token from `Authorization`, so MCP requests carry the token in both `x-portkey-api-key` and `Authorization`.
+- **MCP servers** (`mcp-server/shared/oauth-resource.js`): OAuth 2.1 resource servers with the MCP SDK's `requireBearerAuth` and `mcpAuthMetadataRouter` (RFC 9728 metadata, 401 + `WWW-Authenticate`), tokens checked with jose (signature, issuer, `aud` contains the server's `OAUTH_RESOURCE`), scopes per tool. hr-tools: own record, direct reports, everything for HR; service accounts read everything; other users nothing. it-tools: an external user sees and opens only their own tickets, under the token's name and email, and cannot change a status. it-triage: `employee_id` must be the token's persona, and it relays the caller's token on its own MCP calls.
+- A JWT has no attached config, so the two key configs travel in `x-portkey-config`: `PORTKEY_CONFIG` (unguarded) and `PORTKEY_CONFIG_GUARDED` (guarded, required). Only `/api/feedback` still uses `PORTKEY_API_KEY`.
+- Each message carries `auth: { mode, name, email, persona, groups, login, agent, toolsAs }` and `toolServers` (tool → MCP server) in its metadata. The Portkey logo tooltip lists the user, the signed-in account, the agent and whose identity the tools received; tool cards show their MCP server, and a call refused by the gateway (401/403) or by the server (`forbidden`) shows as a denied step.
+- Without `OAUTH_SERVER_URL` (local docker compose) the chatbot uses the API keys and the fixed user EMP-034, and the MCP servers stay open.
+- The Idira SWA workload identity of 0.1.2 is set aside: its code is in the `v0.1.2` tag; the workflow replay still draws the SWA components.
 
 ### Providers
 

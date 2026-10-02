@@ -68,6 +68,7 @@ import {
   Copy,
   ShieldCheck,
   ShieldAlert,
+  ShieldX,
   Check,
   X,
   RefreshCw,
@@ -105,11 +106,29 @@ const isReflect = (name: string) => KNOWN_REFLECT.has(name) || name?.endsWith('-
 // Strip the MCP server prefix: "hr_tools_mcp_server-get_employee" → "get_employee"
 const shortToolName = (name: string) => (name.includes('-') ? name.split('-').slice(1).join('-') : name);
 
+/**
+ * A tool call refused for the caller's identity, or null: by the AI Gateway (its MCP
+ * authorization rule answered 401/403) or by the MCP server itself (a forbidden or
+ * insufficient_scope result), with the reason either gave.
+ */
+const toolDenial = (part: any): { by: 'gateway' | 'server'; reason: string } | null => {
+  const errorText = String(part.errorText || '');
+  if (part.state === 'output-error' && /HTTP 40[13]/.test(errorText)) {
+    return { by: 'gateway', reason: /"error_description":"([^"]*)"/.exec(errorText)?.[1] || '' };
+  }
+  if (!part.output?.isError) return null;
+  const out = unwrapMcpOutput(part.output);
+  if (out?.error === 'forbidden') return { by: 'server', reason: out.message || '' };
+  if (out?.error === 'insufficient_scope') return { by: 'server', reason: `scope ${out.required_scope}` };
+  return null;
+};
+
 interface ChatPanelProps {
   providers: Provider[];
   provider: string;
   setProvider: (p: string) => void;
   phase: string;
+  userName?: string;
 }
 
 // Brand hex per phase — mirrors .phaseN-active { --primary } in index.css. Used to tint
@@ -120,7 +139,7 @@ const PHASE_COLOR: Record<string, string> = {
   phase3: '#00C0E8',
 };
 
-export default function ChatPanel({ providers, provider, setProvider, phase }: ChatPanelProps) {
+export default function ChatPanel({ providers, provider, setProvider, phase, userName }: ChatPanelProps) {
   const { t } = useLanguage();
   const { messages, sendMessage, sendFeedback, regenerate, stop, addToolApprovalResponse, status, error, phaseMap, sessionUsage } = useChatContext();
   const airsConfig = useAirsConfig();
@@ -228,7 +247,7 @@ export default function ChatPanel({ providers, provider, setProvider, phase }: C
     <section className="flex min-h-0 flex-col overflow-hidden">
       <Conversation>
         <ConversationContent className="mx-auto w-full max-w-3xl">
-          {messages.length === 0 && <EmptyGreeting phase={phase} t={t} />}
+          {messages.length === 0 && <EmptyGreeting phase={phase} userName={userName} t={t} />}
 
           {renderItems.map(item => {
             if (item.type === 'divider') return <PhaseDivider key={item.key} phase={item.phase} t={t} />;
@@ -486,7 +505,7 @@ function ScrambleReveal({ durationMs = 5200, revealText = '', onDone }: { durati
 
 // Home empty state: shares one `typing` flag so the halo shows speaking while the
 // greeting is being typed, and thinking once it settles.
-function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
+function EmptyGreeting({ phase, userName, t }: { phase: string; userName?: string; t: Translate }) {
   const [typing, setTyping] = useState(false);
   const [forceEgg, setForceEgg] = useState(false);
   const [runKey, setRunKey] = useState(0);
@@ -514,7 +533,7 @@ function EmptyGreeting({ phase, t }: { phase: string; t: Translate }) {
     window.setTimeout(() => { setForceEgg(false); setRunKey(k => k + 1); }, dur);
   };
 
-  const greeting = t('chat.greeting', { name: t('userProfile.name') });
+  const greeting = t('chat.greeting', { name: userName || '' });
   const brand = t('app.brand');
 
   return (
@@ -677,9 +696,12 @@ function HaloOtter({ phase, state = 'thinking' }: { phase: string; state?: 'idle
 function AssistantParts({ msg, onApprove, t }: { msg: any; onApprove: (r: { id: string; approved: boolean }) => void; t: Translate }) {
   const parts: any[] = msg.parts || [];
   // A wrong-phase tool call (AI_NoSuchToolError) never executes — it surfaces as an
-  // input-error/output-error part. Drop these: they're phase-lock noise, not real steps.
-  // Genuine tool failures keep state 'output-available' with output.isError, so they stay.
-  const isErroredToolPart = (p: any) => p.state === 'output-error' || p.state === 'input-error';
+  // input-error part or an output-error naming NoSuchToolError. Drop these: they're phase-lock
+  // noise, not real steps. A call that ran and failed (the gateway refusing it, a server error)
+  // stays, so the chain shows the refusal.
+  const isErroredToolPart = (p: any) =>
+    p.state === 'input-error' || (p.state === 'output-error' && /NoSuchToolError/.test(String(p.errorText || '')));
+  const toolServers: Record<string, string> = msg.metadata?.toolServers || {};
   const isReflectPart = (p: any) => {
     const name = partToolName(p);
     if (name?.startsWith('reflect_') && !KNOWN_REFLECT.has(name)) return false; // hallucinated reflect_*
@@ -727,9 +749,28 @@ function AssistantParts({ msg, onApprove, t }: { msg: any; onApprove: (r: { id: 
   };
 
   const renderToolStep = (p: any, key: number) => {
-    const name = shortToolName(partToolName(p));
+    const rawName = partToolName(p);
+    const name = shortToolName(rawName);
+    const server = toolServers[rawName];
+    const denial = toolDenial(p);
+    const label = (
+      <span className="flex flex-wrap items-center gap-2">
+        {server && <span className="font-mono text-xs text-muted-foreground">{server} ·</span>}
+        <span>{name}</span>
+        {denial && (
+          <span className="rounded-md bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">{t('tools.denied')}</span>
+        )}
+      </span>
+    );
+    const description = denial && (
+      <span className="text-destructive">
+        {t(denial.by === 'gateway' ? 'tools.deniedByGateway' : 'tools.deniedByServer', { server: server || 'MCP' })}
+        {denial.reason && <span className="block font-mono text-xs opacity-80">{denial.reason}</span>}
+      </span>
+    );
+    const done = p.state === 'output-available' || p.state === 'output-error';
     return (
-      <ChainOfThoughtStep key={key} icon={Wrench} label={name} status={p.state === 'output-available' ? 'complete' : 'active'}>
+      <ChainOfThoughtStep key={key} icon={denial ? ShieldX : Wrench} label={label} description={description} status={done ? 'complete' : 'active'}>
         <Tool defaultOpen={false}>
           {p.type === 'dynamic-tool'
             ? <ToolHeader type="dynamic-tool" state={p.state} toolName={name} />
@@ -900,34 +941,52 @@ function MetaRow({ msg, timing, feedback, onFeedback, onRetry, t, airsConfig }: 
   );
 }
 
-/** How the backend authenticated this turn to the AI Gateway (message metadata `auth`). */
-type GatewayAuth = { mode: 'workload-identity' | 'api-key'; spiffeId?: string | null };
+/**
+ * How the backend authenticated this turn to the AI Gateway (message metadata `auth`): the
+ * signed-in user's auth-service token (user, persona, agent = OAuth client) or the API key.
+ */
+type GatewayAuth = {
+  mode: 'user-token' | 'api-key';
+  name?: string;
+  email?: string;
+  persona?: string;
+  groups?: string[];
+  login?: string;
+  agent?: string;
+  toolsAs?: 'user' | 'agent';
+};
 
 /**
  * The AI Gateway entry of the action bar: the Portkey logo opens the turn's trace, and its
- * tooltip lists one row per identity the turn carried to the gateway (today the chatbot's
- * workload identity; an end-user identity row slots in the same list). An Idira-blue dot on
- * the logo flags a turn authenticated with the Idira SWA workload identity, so new identities
- * add rows here instead of icons in the bar.
+ * tooltip lists one row per identity the turn carried to the gateway: the user and the agent
+ * acting for them, both in one token, and whose identity the tool calls carried (the user's in
+ * protected mode, the agent's own otherwise), or the API key. A dot on the logo flags a turn that
+ * carried a user token, so identities add rows here instead of icons in the bar.
  */
 function GatewayAction({ traceUrl, auth, t }: { traceUrl: string | null; auth?: GatewayAuth; t: Translate }) {
-  const workload = auth?.mode === 'workload-identity';
-  const rows = auth
-    ? [{
-        key: 'workload',
-        label: t('gatewayAuth.workload'),
-        active: workload,
-        value: workload ? t('gatewayAuth.workloadIdentity') : t('gatewayAuth.apiKey'),
-        detail: workload ? auth.spiffeId : null,
-        note: workload ? t('gatewayAuth.workloadIdentityDetail') : null,
-      }]
-    : [];
+  const userToken = auth?.mode === 'user-token';
+  const rows = !auth
+    ? []
+    : userToken
+      ? [
+          {
+            key: 'user', label: t('gatewayAuth.user'), active: true, value: auth.name,
+            detail: [auth.email, auth.persona, auth.groups?.join(', ')].filter(Boolean).join(' · '), note: null,
+          },
+          ...(auth.login ? [{ key: 'login', label: t('gatewayAuth.login'), active: false, value: auth.login, detail: null, note: null }] : []),
+          { key: 'agent', label: t('gatewayAuth.agent'), active: true, value: auth.agent, detail: null, note: t('gatewayAuth.userTokenDetail') },
+          {
+            key: 'tools', label: t('gatewayAuth.tools'), active: auth.toolsAs === 'user',
+            value: t(auth.toolsAs === 'user' ? 'gatewayAuth.toolsAsUser' : 'gatewayAuth.toolsAsAgent'), detail: null, note: null,
+          },
+        ]
+      : [{ key: 'key', label: t('gatewayAuth.agent'), active: false, value: t('gatewayAuth.apiKey'), detail: null, note: null }];
   const label = (
     <div className="max-w-80 space-y-1.5">
       {rows.length > 0 && <p className="font-medium">{t('gatewayAuth.title')}</p>}
       {rows.map(row => (
         <div key={row.key} className="flex gap-2">
-          <span className={`mt-1 size-2 shrink-0 rounded-full ${row.active ? 'bg-brand-idira' : 'border border-current opacity-50'}`} />
+          <span className={`mt-1 size-2 shrink-0 rounded-full ${row.active ? 'bg-primary' : 'border border-current opacity-50'}`} />
           <div className="min-w-0">
             <p><span className="opacity-70">{row.label}</span> {row.value}</p>
             {row.detail && <p className="break-all font-mono text-[11px] opacity-80">{row.detail}</p>}
@@ -950,7 +1009,7 @@ function GatewayAction({ traceUrl, auth, t }: { traceUrl: string | null; auth?: 
       >
         <img src="/images/portkey-light.svg" alt="" className="size-3.5 dark:hidden" />
         <img src="/images/portkey-dark.svg" alt="" className="hidden size-3.5 dark:block" />
-        {workload && <span className="absolute top-1 right-1 size-1.5 rounded-full bg-brand-idira" />}
+        {userToken && <span className="absolute top-1 right-1 size-1.5 rounded-full bg-primary" />}
         <span className="sr-only">{t('feedback.viewTrace')}</span>
       </Button>
     </Tip>

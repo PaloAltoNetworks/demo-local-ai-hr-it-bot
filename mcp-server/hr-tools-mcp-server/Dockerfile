@@ -6,10 +6,12 @@ USER mcpserver
 
 WORKDIR /app
 
-# Install agent dependencies
+# Dependencies at /app, code at its repo path so the shared module resolves them too
 COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/package*.json ./
 RUN npm install --only=production
 
+WORKDIR /app/mcp-server/hr-tools-mcp-server
+COPY --chown=mcpserver:nodejs mcp-server/shared/ /app/mcp-server/shared/
 # Copy source, then build the demo database from its SQL dump
 COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/server.js ./
 COPY --chown=mcpserver:nodejs mcp-server/hr-tools-mcp-server/service.js ./
@@ -19,4 +21,4 @@ RUN node seed.js
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

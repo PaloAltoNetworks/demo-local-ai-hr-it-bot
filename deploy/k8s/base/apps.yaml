@@ -1,7 +1,9 @@
 # The four demo services. Every pod loads the full .env from the app-env Secret, then
 # the env entries below override the endpoints for the cluster: LLM and MCP traffic goes
-# to the in-cluster AIRS gateway, and it-triage reaches the tools servers directly.
+# to the in-cluster AIRS gateway, and it-triage reaches it-tools directly.
 # Service ports match the MCP registrations in SCM (it-tools 3016, hr-tools 3017, it-triage 3019).
+# The three MCP servers are OAuth 2.1 resource servers: they accept auth-service tokens
+# (OAUTH_SERVER_URL from the oauth ConfigMap) that name their own URL (OAUTH_RESOURCE).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,7 +19,9 @@ spec:
         - name: it-tools
           image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/it-tools-mcp-server
           ports: [{ containerPort: 3000 }]
-          envFrom: [{ secretRef: { name: app-env } }]
+          envFrom: [{ secretRef: { name: app-env } }, { configMapRef: { name: oauth } }]
+          env:
+            - { name: OAUTH_RESOURCE, value: "http://it-tools.otter-lab.com:3016/mcp" }
           readinessProbe: { httpGet: { path: /health, port: 3000 } }
           livenessProbe: { httpGet: { path: /health, port: 3000 } }
           resources:
@@ -47,10 +51,9 @@ spec:
         - name: hr-tools
           image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/hr-tools-mcp-server
           ports: [{ containerPort: 3000 }]
-          envFrom: [{ secretRef: { name: app-env } }]
+          envFrom: [{ secretRef: { name: app-env } }, { configMapRef: { name: oauth } }]
           env:
-            # Only calls carrying an identity signed by the AI Gateway reach the HR tools.
-            - { name: IDENTITY_JWKS_URL, value: "http://airs-gw:8788/.well-known/jwks.json" }
+            - { name: OAUTH_RESOURCE, value: "http://hr-tools.otter-lab.com:3017/mcp" }
           readinessProbe: { httpGet: { path: /health, port: 3000 } }
           livenessProbe: { httpGet: { path: /health, port: 3000 } }
           resources:
@@ -80,11 +83,15 @@ spec:
         - name: it-triage
           image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/it-triage-agent
           ports: [{ containerPort: 3000 }]
-          envFrom: [{ secretRef: { name: app-env } }]
+          envFrom: [{ secretRef: { name: app-env } }, { configMapRef: { name: oauth } }]
           env:
+            - { name: OAUTH_RESOURCE, value: "http://it-triage.otter-lab.com:3019/mcp" }
+            # Its own token (OAuth client "it-triage") for connecting; each run relays the caller's.
+            - name: IT_TRIAGE_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: auth, key: IT_TRIAGE_CLIENT_SECRET } }
             - { name: PORTKEY_BASE_URL, value: "http://airs-gw:8787/v1" }
-            # hr-tools is reached through the gateway, which signs the caller identity hr-tools
-            # requires; the slug comes from the app-env Secret. it-tools stays a direct call.
+            # hr-tools is reached through the gateway, which checks the relayed token and forwards
+            # it; the slug comes from the app-env Secret. it-tools stays a direct call.
             - { name: PORTKEY_MCP_BASE, value: "http://airs-gw:8788" }
             - { name: IT_TRIAGE_MCP_URLS, value: "http://it-tools:3016/mcp,$(PORTKEY_MCP_BASE)/$(PORTKEY_MCP_HR_SLUG)/mcp" }
           readinessProbe: { httpGet: { path: /health, port: 3000 } }
@@ -101,8 +108,8 @@ spec:
   selector: { app: it-triage }
   ports: [{ port: 3019, targetPort: 3000 }]
 ---
-# Dedicated identity: workload attestors (Idira SWA) see ns/hr-it-bot/sa/chatbot-v2 instead
-# of the namespace's shared default account. The pod never calls the Kubernetes API.
+# Dedicated identity instead of the namespace's shared default account, for workload
+# identity attestors. The pod never calls the Kubernetes API.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -125,8 +132,11 @@ spec:
         - name: chatbot-v2
           image: ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/chatbot-v2
           ports: [{ containerPort: 3018 }]
-          envFrom: [{ secretRef: { name: app-env } }]
+          # Gateway and MCP calls carry the signed-in user's auth-service token (OAuth client "chatbot").
+          envFrom: [{ secretRef: { name: app-env } }, { configMapRef: { name: oauth } }]
           env:
+            - name: CHATBOT_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: auth, key: CHATBOT_CLIENT_SECRET } }
             - { name: PORTKEY_BASE_URL, value: "http://airs-gw:8787/v1" }
             - { name: PORTKEY_MCP_BASE, value: "http://airs-gw:8788" }
           readinessProbe: { httpGet: { path: /health, port: 3018 } }

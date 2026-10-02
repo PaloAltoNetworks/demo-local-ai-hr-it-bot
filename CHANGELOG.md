@@ -3,6 +3,38 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.3
+
+### Act as four different people
+A new menu in the header lets you act as Aurélien Girard (employee), Sophie Martin (his manager),
+Lisa Wang (HR director) or Alex Morgan (an external contractor), without signing in again. Each
+one has its own icon and colour, and the assistant greets you by that name.
+
+### Protected mode checks who is asking
+In protected mode, the AI Gateway and every tool check the identity of the person behind the
+question. Aurélien reads his own record but not Sophie's, Sophie sees her team, Lisa sees
+everyone, and Alex can open IT tickets but cannot reach HR data at all. In normal and risky
+modes the assistant still uses its own all-access identity, so you can compare.
+
+### See the refusals happen
+When a tool call is refused, it stays in the reasoning steps with a red "Denied" mark and says
+who refused it: the AI Gateway or the tool itself. Every tool now shows which server it belongs
+to, and the questions in protected mode tell you which person they switch to and whether access
+is expected (green check) or refused (red cross).
+
+### Logs show the persona, and who was testing
+Gateway logs show the persona's email as the user, and keep the real signed-in account in a
+separate `login_email` field. Hover the gateway logo under an answer to see both, plus whose
+identity the tools received.
+
+### The identity replay follows two people
+The Identity view of the workflow replay now plays Aurélien's and Alex's requests hop by hop,
+from sign-in to the tools, and shows where Alex is stopped.
+
+### Fixes
+The assistant no longer tries every tool in turn when one is refused, and IT ticket triage keeps
+working after the tools server restarts.
+
 ## 0.1.2
 
 ### The assistant proves who it is, without an API key
