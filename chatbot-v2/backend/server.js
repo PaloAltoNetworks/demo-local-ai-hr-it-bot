@@ -482,6 +482,48 @@ const mcpModelOutput = ({ output }) => {
     : JSON.stringify(output);
   return { type: output?.isError ? 'error-text' : 'text', value: text };
 };
+/** Errors of an MCP session the server or the gateway no longer knows (it restarted). */
+const STALE_SESSION = /restore session|reinitialize|not initialized|session not found/i;
+
+/**
+ * Wraps an MCP tool's execute: a call on a session the server no longer knows reconnects that
+ * server, reloads the tool cache and runs once more on the fresh client (no second retry).
+ */
+function recoverSession(url, name, execute) {
+  const wrapped = async (args, options) => {
+    try {
+      return await execute(args, options);
+    } catch (err) {
+      if (!STALE_SESSION.test(err.message)) throw err;
+      console.warn(`[mcp] ${name}: session lost on ${url} (${err.message}), reconnecting`);
+      await reconnectClient(url);
+      const fresh = cachedTools?.[name]?.execute;
+      if (!fresh) throw err;
+      return (fresh.raw || fresh)(args, options);
+    }
+  };
+  wrapped.raw = execute;
+  return wrapped;
+}
+
+/** Calls reconnecting one server share a single reconnection. */
+const reconnecting = new Map();
+
+/** Replaces the client of one MCP server with a fresh connection, then reloads the tool cache. */
+function reconnectClient(url) {
+  if (!reconnecting.has(url)) {
+    reconnecting.set(url, (async () => {
+      const stale = mcpClients.find((e) => e.url === url);
+      mcpClients = mcpClients.filter((e) => e.url !== url);
+      await stale?.client.close().catch(() => {});
+      await reconnectMissingClients();
+      const { merged } = await loadMCPTools();
+      if (Object.keys(merged).length > 0) cachedTools = merged;
+    })().finally(() => reconnecting.delete(url)));
+  }
+  return reconnecting.get(url);
+}
+
 const mcpServerName = (url) => {
   const { pathname, hostname } = new URL(url);
   return (pathname.split('/').filter(Boolean).at(-2) || hostname).replace(/-[0-9a-f]{6}$/, '');
@@ -514,6 +556,7 @@ async function loadMCPTools() {
     for (const [name, tool] of Object.entries(tools)) {
       if (tool.type === 'dynamic') delete tool.type;
       tool.toModelOutput = mcpModelOutput;
+      tool.execute = recoverSession(entry.url, name, tool.execute);
       merged[name] = tool;
       servers[name] = mcpServerName(entry.url);
     }
