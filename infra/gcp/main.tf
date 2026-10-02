@@ -30,6 +30,7 @@ data "google_project" "this" {}
 
 resource "google_project_service" "this" {
   for_each = toset([
+    "compute.googleapis.com",
     "container.googleapis.com",
     "secretmanager.googleapis.com",
     "iam.googleapis.com",
@@ -67,9 +68,28 @@ resource "google_compute_subnetwork" "this" {
 }
 
 /**
+ * The organisation forbids GKE nodes with public IPs, so the pods reach the internet (GHCR, the
+ * Portkey registry, SCM, Cloudflare, the production auth-service) through Cloud NAT.
+ */
+resource "google_compute_router" "this" {
+  name    = var.name
+  network = google_compute_network.this.id
+  region  = var.region
+}
+
+resource "google_compute_router_nat" "this" {
+  name                               = var.name
+  router                             = google_compute_router.this.name
+  region                             = var.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+}
+
+/**
  * Autopilot: Google runs the nodes and bills the pods' requests; the cluster fee is covered by
  * the GKE free tier for one cluster per billing account. Workload Identity Federation is on by
- * default. The Kubernetes version follows the REGULAR channel.
+ * default. The Kubernetes version follows the REGULAR channel. Nodes are private (organisation
+ * policy); the control plane endpoint stays public for GitHub Actions and kubectl.
  */
 resource "google_container_cluster" "this" {
   name                = var.name
@@ -78,6 +98,11 @@ resource "google_container_cluster" "this" {
   network             = google_compute_network.this.id
   subnetwork          = google_compute_subnetwork.this.id
   deletion_protection = false
+
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false
+  }
 
   ip_allocation_policy {
     cluster_secondary_range_name  = "pods"
