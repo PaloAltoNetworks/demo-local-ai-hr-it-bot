@@ -782,7 +782,7 @@ const idOpening = (p: Persona): IdStep[] => {
   ];
 };
 
-/** Aurélien (employees): the gateway lets the call through to hr-tools, which applies his rights. */
+/** Aurélien (employees): the gateway lets the call through to hr-tools, which applies Aurélien's rights. */
 const SCRIPT_IDENTITY_EMPLOYEE: IdStep[] = [
   ...idOpening('employee'),
   { edge: 'otter-gw', focus: 'gw', label: "get_employee(EMP-034) with Aurélien's token", kind: 'present', data: { tool: 'get_employee', args: { identifier: 'EMP-034' }, authorization: "Bearer <Aurélien's token>" } },
