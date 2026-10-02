@@ -777,6 +777,8 @@ const ID_EDGES: { id: string; source: string; target: string; sourceHandle: stri
 ];
 
 const MCP_AUDIENCE = ['hr-tools', 'it-tools', 'it-triage'];
+/** MCP servers Idira issues a persona's token for: an external contractor gets no HR audience. */
+const audienceOf = (p: Persona) => (p === 'employee' ? MCP_AUDIENCE : MCP_AUDIENCE.filter((a) => a !== 'hr-tools'));
 const SPIFFE_ID = 'spiffe://otter/ai/ns/hr-it-bot/sa/chatbot-v2';
 const tokenClaims = (p: Persona) => ({
   iss: 'https://<tenant>.idira/oauth2',
@@ -785,7 +787,7 @@ const tokenClaims = (p: Persona) => ({
   ...(p === 'employee' && { employee_id: 'EMP-034' }),
   groups: [PERSONA_LOOK[p].badge],
   act: { sub: SPIFFE_ID },
-  aud: MCP_AUDIENCE,
+  aud: audienceOf(p),
   scope: 'hr:read it:read it:write it:triage',
   exp: 'iat + 1 h',
 });
@@ -824,7 +826,7 @@ const idOpening = (p: Persona): IdStep[] => {
     { edge: 'agent-server', focus: 'swaServer', label: 'The agent attests the pod (kubelet), the SWA server signs', kind: 'attest', data: { selectors: ['k8s:ns:hr-it-bot', 'k8s:sa:chatbot-v2'], spiffe_id: SPIFFE_ID } },
     { edge: 'agent-server', reverse: true, focus: 'swaAgent', label: 'JWT-SVID signed · 5 min', kind: 'mint', data: { sub: SPIFFE_ID, aud: ['idira-identity'] } },
     { edge: 'agent-otter', focus: 'otter', label: 'The Otter holds its JWT-SVID: no secret on disk', kind: 'deliver' },
-    { edge: 'otter-idp', focus: 'idp', label: `Token exchange: ${name}'s sign-in + the chatbot's JWT-SVID`, kind: 'present', data: { grant: 'token-exchange (RFC 8693)', subject_token: `${name}'s Idira session`, actor_token: '<JWT-SVID of the chatbot>', checks: ['actor JWT-SVID against the Idira SWA trust domain keys', 'chatbot allowed to act for this user'], resource: MCP_AUDIENCE } },
+    { edge: 'otter-idp', focus: 'idp', label: `Token exchange: ${name}'s sign-in + the chatbot's JWT-SVID`, kind: 'present', data: { grant: 'token-exchange (RFC 8693)', subject_token: `${name}'s Idira session`, actor_token: '<JWT-SVID of the chatbot>', checks: ['actor JWT-SVID against the Idira SWA trust domain keys', 'chatbot allowed to act for this user', 'audiences limited to what the user may reach'], resource: MCP_AUDIENCE, granted: audienceOf(p) } },
     { edge: 'otter-idp', reverse: true, focus: 'otter', label: `Delegated token: ${name}, acting through The Otter · 1 h`, kind: 'mint', data: tokenClaims(p) },
     { edge: 'otter-gw', focus: 'gw', label: 'LLM call with the delegated token instead of an API key', kind: 'present', data: { 'x-portkey-api-key': `<${name}'s delegated token>`, checked_by_gateway: ['signature against the cached Idira JWKS', 'not expired'], logged_user: tokenClaims(p).sub } },
     { edge: 'gw-llm', focus: 'llm', label: 'Prompt sent to the LLM, without the token', kind: 'request', data: { question: QUESTION } },
@@ -851,7 +853,7 @@ const SCRIPT_IDENTITY_EMPLOYEE: IdStep[] = [
 const SCRIPT_IDENTITY_EXTERNAL: IdStep[] = [
   ...idOpening('external'),
   { edge: 'otter-gw', focus: 'gw', label: "get_employee(EXT-001) with Alex's token", kind: 'present', data: { tool: 'get_employee', args: { identifier: 'EXT-001' }, authorization: "Bearer <Alex's token>" } },
-  { edge: 'otter-gw', reverse: true, blocked: true, focus: 'gw', label: "Refused by the gateway's hr-tools rule (group external): 401, hr-tools never called", kind: 'denied', data: { rule: HR_RULE, token_groups: ['external'], status: 401, reached_hr_tools: false } },
+  { edge: 'otter-gw', reverse: true, blocked: true, focus: 'gw', label: "Refused by the gateway's hr-tools rule (group external): 401, hr-tools never called", kind: 'denied', data: { rule: HR_RULE, token_groups: ['external'], token_aud: audienceOf('external'), status: 401, reached_hr_tools: false, note: 'even past the gateway, hr-tools would reject a token not issued for it' } },
   { edge: 'user-otter', reverse: true, focus: 'user', label: 'Refused tool card and an answer that explains it', kind: 'denied', data: { tool_card: 'hr-tools · get_employee · Denied', reason: 'your identity is not allowed on the hr-tools MCP server' } },
   { edge: 'user-otter', focus: 'otter', label: 'Alex: "Please open an IT ticket, my USB port is broken."', kind: 'request' },
   { edge: 'otter-gw', focus: 'gw', label: 'LLM call with the cached delegated token (no new exchange)', kind: 'present', data: { 'x-portkey-api-key': "<Alex's token, from cache>" } },

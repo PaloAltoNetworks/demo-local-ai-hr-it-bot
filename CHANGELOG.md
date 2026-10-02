@@ -15,6 +15,10 @@ The Identity view of the workflow replay now plays the target model hop by hop: 
 in to Idira Identity, the assistant proves who it is with its Idira Secure Workload Access
 identity, and one delegated token carries both to the AI Gateway and the tools.
 
+### Tokens only open what the person may reach
+Alex Morgan's tokens are no longer issued for the HR tools at all: the gateway refuses them, and
+the HR tools would reject them too. Employees' tokens still cover HR and IT.
+
 ### Tools keep answering after an update
 The assistant no longer loses its tools when a tool server restarts during an update: it
 reconnects and retries the request on its own.
