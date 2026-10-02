@@ -3,7 +3,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { oauthProviderAuthServerMetadata, oauthProviderOpenIdConfigMetadata } from "@better-auth/oauth-provider";
 import { auth, setPersona } from "./auth.js";
-import { PORT, ALLOWED_DOMAIN, PERSONAS } from "./lib/config.js";
+import { PORT, ALLOWED_DOMAIN, PERSONAS, RESOURCE_GROUPS } from "./lib/config.js";
 import { renderLoginPage } from "./views/login.js";
 import { renderConsentPage } from "./views/consent.js";
 
@@ -97,6 +97,25 @@ app.get("/auth/logout", async (c) => {
     console.error("Logout error:", err.message);
   });
   return c.redirect("/auth/login");
+});
+
+/**
+ * Authorization requests keep only the MCP servers the signed-in user's persona may reach
+ * (RESOURCE_GROUPS): the code, and the token exchanged for it, are then limited to those audiences.
+ * Without a session the request goes through unchanged and the provider sends the user to sign in.
+ */
+app.get("/api/auth/oauth2/authorize", async (c) => {
+  const session = await auth.api.getSession({ headers: c.req.raw.headers }).catch(() => null);
+  if (!session) return auth.handler(c.req.raw);
+  const groups = (PERSONAS.find((p) => p.id === session.user.persona) || PERSONAS[0]).groups;
+  const url = new URL(c.req.url);
+  const allowed = url.searchParams.getAll("resource").filter((r) => {
+    const needed = RESOURCE_GROUPS[new URL(r).hostname.split(".")[0]];
+    return !needed || needed.some((g) => groups.includes(g));
+  });
+  url.searchParams.delete("resource");
+  for (const r of allowed) url.searchParams.append("resource", r);
+  return auth.handler(new Request(url, c.req.raw));
 });
 
 /** Every other /api/auth/* route (magic link, session, OAuth 2.1, JWKS) is Better Auth's. */

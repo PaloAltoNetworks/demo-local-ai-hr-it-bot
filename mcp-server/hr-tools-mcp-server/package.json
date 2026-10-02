@@ -1,6 +1,6 @@
 {
   "name": "hr-tools-mcp-server",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "HR Tools MCP Server - Pure data/tools server exposing HR employee data via MCP",
   "main": "server.js",
   "type": "module",

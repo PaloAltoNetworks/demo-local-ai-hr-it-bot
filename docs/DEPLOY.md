@@ -1,10 +1,10 @@
 # Deploying to Kubernetes
 
-Publishing a GitHub release builds the five images, pushes them to GHCR and deploys them to EKS. Everything runs in the cluster: the Otter (chatbot-v2), the three MCP servers, the Prisma AIRS AI Gateway (hybrid data plane), the magic-link auth service behind Caddy, and cloudflared. The Cloudflare tunnel only reaches Caddy, which lets signed-in `@paloaltonetworks.com` users through to the chatbot. Nothing else is exposed.
+Publishing a GitHub release builds the five images, pushes them to GHCR and deploys them to production on EKS (`otter.panw.pro`). Publishing a **pre-release** does the same to the preview on GKE (`otter-preview.panw.pro`), a beta instance to try what is coming before it reaches production. Everything runs in the cluster: the Otter (chatbot-v2), the three MCP servers, the Prisma AIRS AI Gateway (hybrid data plane), the magic-link auth service behind Caddy, and cloudflared. The Cloudflare tunnel only reaches Caddy, which lets signed-in `@paloaltonetworks.com` users through to the chatbot. Nothing else is exposed.
 
 ```
-GitHub release vX.Y.Z
-  └─ release.yml   build 5 images -> ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/<svc>:vX.Y.Z
+GitHub release vX.Y.Z (production, aws) / pre-release vX.Y.Z-rc.N (preview, gcp)
+  └─ release.yml   build 5 images -> ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/<svc>:<tag>
      └─ deploy.yml  OIDC login -> External Secrets -> kubectl apply -k -> helm airs-gw -> rollout
 
 namespace hr-it-bot
@@ -18,10 +18,12 @@ namespace hr-it-bot
 | Path | Role |
 |---|---|
 | `infra/aws/` | Terraform: VPC, EKS Auto Mode, Secrets Manager entries, Pod Identity for External Secrets, GitHub OIDC deploy role |
+| `infra/gcp/` | Terraform for the preview: VPC, Cloud NAT, GKE Autopilot (private nodes), Secret Manager entries, Workload Identity for External Secrets and GitHub |
 | `auth-service/` | Magic-link login (Better Auth), Caddy's `forward_auth` target |
 | `deploy/k8s/base/` | Cloud-agnostic manifests: the 4 demo services, Caddy + auth-service, cloudflared, ExternalSecrets |
 | `deploy/k8s/overlays/aws/` | `ClusterSecretStore` for Secrets Manager, EBS StorageClass, fixed ClusterIPs of the MCP services, public hostnames (`edge` ConfigMap) |
-| `deploy/helm/airs-gw/` | Values for the `Portkey-AI/airs-gw-helm` chart (+ `values-aws.yaml` for hostAlias) |
+| `deploy/k8s/overlays/gcp/` | Preview: no auth-service (production's is used), its own Caddyfile, `ClusterSecretStore` for Secret Manager, fixed ClusterIPs, preview hostname |
+| `deploy/helm/airs-gw/` | Values for the `Portkey-AI/airs-gw-helm` chart (+ `values-aws.yaml`, `values-gcp.yaml` for hostAlias) |
 | `.github/workflows/` | `release.yml` (build, then deploy), `deploy.yml` (deploy or roll back a version) |
 
 ## First-time setup (AWS)
@@ -88,9 +90,20 @@ SCM registers the MCP servers as `http://{hr-tools,it-tools,it-triage}.otter-lab
 
 The two files must stay in sync.
 
-## Adding Azure or GCP
+## Preview on GKE
 
-The images, `deploy/k8s/base/` and `deploy/helm/airs-gw/values.yaml` do not change. A new cloud adds:
+The preview runs the same base on GKE Autopilot (`infra/gcp`, `deploy/k8s/overlays/gcp`), in its own GCP project. A pre-release deploys it; `Actions > Deploy` with `cloud: gcp` redeploys a tag. Production does not move until a regular release.
+
+- **One sign-in, production's:** the AI Gateway checks JWTs against one JWKS per SCM organisation, so the preview has no auth-service. Caddy asks production's (`forward_auth https://auth.panw.pro`), and the chatbot and the MCP servers get and check their tokens there (`OAUTH_SERVER_URL=https://auth.panw.pro`). An auth-service change cannot be tried in the preview.
+- **Setup:** `TF_VAR_project=<project> terraform -chdir=infra/gcp apply` (the project id is never committed; `GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token)` works without application-default credentials). The organisation forbids public GKE nodes, so the nodes are private and egress goes through Cloud NAT.
+- **Gateway:** its own SCM registration; its `values.yaml` fills `hr-it-bot-airs-gw` (`PORTKEY_CLIENT_AUTH`, `ORGANISATIONS_TO_SYNC`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`).
+- **Secrets** (`gcloud secrets versions add <name> --project <project> --data-file=-`): `hr-it-bot-app-env` (the demo `.env` as JSON), `hr-it-bot-auth` (`CHATBOT_CLIENT_SECRET` and `IT_TRIAGE_CLIENT_SECRET`, the same as production's), `hr-it-bot-cloudflared` (token of the preview tunnel, whose public hostname `otter-preview.panw.pro` points to `http://caddy.hr-it-bot.svc.cluster.local:3010`).
+- **GitHub:** environment `gcp` with the variables of `terraform -chdir=infra/gcp output github_environment_variables`.
+- **kubectl:** `gcloud container clusters get-credentials hr-it-bot --region europe-west9 --project <project>` (needs the `gke-gcloud-auth-plugin` component). A VPN that inspects TLS breaks the connection to the GKE API; the public URLs still work.
+
+## Adding another cloud
+
+The images, `deploy/k8s/base/` and `deploy/helm/airs-gw/values.yaml` do not change. GCP was added this way for the preview; a new cloud (Azure) adds:
 
 1. `infra/<cloud>/`: cluster (AKS/GKE) with a pinned service CIDR, a secret manager (Key Vault / Secret Manager) holding the 4 secrets under the same names, a workload identity for the `external-secrets/external-secrets` ServiceAccount, and a federated GitHub identity for the environment `<cloud>`.
 2. `deploy/k8s/overlays/<cloud>/`: `ClusterSecretStore` named `cloud-secrets` (provider `azurekv` or `gcpsm`), the fixed ClusterIPs inside that cluster's service CIDR, and the `edge` ConfigMap with that deployment's hostnames and its own cookie prefix. AKS and GKE ship a default StorageClass, so no `storage-class.yaml`.

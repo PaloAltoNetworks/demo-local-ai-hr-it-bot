@@ -40,9 +40,9 @@ curl http://localhost:3019/health    # IT Triage Agent (agentic MCP)
 
 No formal test framework is configured. Testing is manual via curl and the web UI at `http://localhost:3018`.
 
-### Kubernetes (EKS)
+### Kubernetes (EKS production, GKE preview)
 
-A published GitHub release builds the five images to GHCR and deploys them to EKS (`.github/workflows/release.yml` → `deploy.yml`). Setup, secrets and rollback: `docs/DEPLOY.md`.
+A published GitHub release builds the five images to GHCR and deploys them to production on EKS (`otter.panw.pro`); a pre-release deploys them to the preview on GKE (`otter-preview.panw.pro`) (`.github/workflows/release.yml` → `deploy.yml`). Test in the preview, present in production. Setup, secrets and rollback: `docs/DEPLOY.md`.
 
 ```bash
 # Render locally before pushing
@@ -148,6 +148,8 @@ When asked to merge, release and prep next version, follow this exact sequence:
 5. Tag: `git tag v<version> main && git push origin v<version>`
 6. Release notes = the version's section of `CHANGELOG.md` (written before the version bump, written for demo users, not developers: what each change brings to the demo, newest first; the chatbot shows this file from its version link). Copy that section to `/tmp/release-notes-v<version>.md`, then `gh release create`. Publishing the release triggers the image build and the EKS deploy
 7. Prep next: `git checkout -b v.0.0.<next> && git push -u origin v.0.0.<next>`
+
+To try a version in the preview before releasing it, publish a pre-release from the working branch (version bumped, CHANGELOG written): `git tag -a v<version>-rc.<n> -m v<version>-rc.<n> && git push origin v<version>-rc.<n>`, then `gh release create v<version>-rc.<n> --prerelease --verify-tag --notes-file /tmp/release-notes-v<version>.md`. It deploys to `otter-preview.panw.pro` only; production moves at the regular release.
 
 ### Working Branch Convention
 

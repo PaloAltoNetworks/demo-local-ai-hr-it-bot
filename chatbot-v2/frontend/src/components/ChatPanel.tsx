@@ -974,7 +974,7 @@ function GatewayAction({ traceUrl, auth, t }: { traceUrl: string | null; auth?: 
             detail: [auth.email, auth.persona, auth.groups?.join(', ')].filter(Boolean).join(' · '), note: null,
           },
           ...(auth.login ? [{ key: 'login', label: t('gatewayAuth.login'), active: false, value: auth.login, detail: null, note: null }] : []),
-          { key: 'agent', label: t('gatewayAuth.agent'), active: true, value: auth.agent, detail: null, note: t('gatewayAuth.userTokenDetail') },
+          { key: 'agent', label: t('gatewayAuth.agent'), active: true, value: null, detail: auth.agent, note: t('gatewayAuth.userTokenDetail') },
           {
             key: 'tools', label: t('gatewayAuth.tools'), active: auth.toolsAs === 'user',
             value: t(auth.toolsAs === 'user' ? 'gatewayAuth.toolsAsUser' : 'gatewayAuth.toolsAsAgent'), detail: null, note: null,

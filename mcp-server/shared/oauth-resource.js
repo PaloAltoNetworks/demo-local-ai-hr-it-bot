@@ -17,25 +17,37 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 const OAUTH_SERVER_URL = process.env.OAUTH_SERVER_URL || '';
 const OAUTH_RESOURCE = process.env.OAUTH_RESOURCE || '';
 
-/** Authorization server metadata of the auth-service, retried every 2 s until it answers. */
-async function fetchAuthServerMetadata() {
+/**
+ * Authorization server metadata of the auth-service. At startup (`untilReady`) it is retried
+ * every 2 s until the auth-service answers; a refresh tries once and throws on failure.
+ */
+async function fetchAuthServerMetadata({ untilReady = false } = {}) {
   const url = new URL('/.well-known/oauth-authorization-server/api/auth', OAUTH_SERVER_URL);
   for (;;) {
     try {
       const res = await fetch(url);
       if (res.ok) return await res.json();
+      if (!untilReady) throw new Error(`${url} answered ${res.status}`);
       console.warn(`[oauth] ${url} answered ${res.status}, retrying`);
     } catch (err) {
+      if (!untilReady) throw err;
       console.warn(`[oauth] ${url} unreachable (${err.cause?.code || err.message}), retrying`);
     }
     await new Promise((r) => setTimeout(r, 2000));
   }
 }
 
+/** Minimum time between two metadata refreshes triggered by tokens from an unknown issuer. */
+const REFRESH_MIN_MS = 60_000;
+
 /**
  * Mounts the protected resource metadata on `app` and returns the middleware guarding /mcp.
  * Verified tokens land in req.auth, which the MCP SDK hands to tool handlers as extra.authInfo
  * (claims in authInfo.extra).
+ *
+ * The issuer and JWKS come from the auth-service's metadata, read at startup. When a token
+ * fails on its issuer (the auth-service changed host, or restarted after this server during a
+ * deploy), the metadata is read again, at most once a minute, and the token checked once more.
  *
  * @param {import('express').Express} app
  * @param {{ name: string, scopes: string[] }} options resource name and the scopes its tools check
@@ -47,24 +59,39 @@ export async function oauthResource(app, { name, scopes }) {
     return (_req, _res, next) => next();
   }
   const resourceUrl = new URL(OAUTH_RESOURCE);
-  const oauthMetadata = await fetchAuthServerMetadata();
-  const keys = createRemoteJWKSet(new URL(new URL(oauthMetadata.jwks_uri).pathname, OAUTH_SERVER_URL));
+  const load = (oauthMetadata) => ({
+    oauthMetadata,
+    keys: createRemoteJWKSet(new URL(new URL(oauthMetadata.jwks_uri).pathname, OAUTH_SERVER_URL)),
+    router: mcpAuthMetadataRouter({ oauthMetadata, resourceServerUrl: resourceUrl, scopesSupported: scopes, resourceName: name }),
+  });
+  let current = load(await fetchAuthServerMetadata({ untilReady: true }));
+  let refreshedAt = 0;
+
+  const verify = (token) => jwtVerify(token, current.keys, {
+    issuer: current.oauthMetadata.issuer,
+    audience: OAUTH_RESOURCE,
+    algorithms: ['RS256'],
+  });
 
   const verifier = {
     async verifyAccessToken(token) {
       let payload;
       try {
-        ({ payload } = await jwtVerify(token, keys, {
-          issuer: oauthMetadata.issuer,
-          audience: OAUTH_RESOURCE,
-          algorithms: ['RS256'],
-        }));
+        try {
+          ({ payload } = await verify(token));
+        } catch (err) {
+          if (err.claim !== 'iss' || Date.now() - refreshedAt < REFRESH_MIN_MS) throw err;
+          refreshedAt = Date.now();
+          current = load(await fetchAuthServerMetadata());
+          console.log(`[oauth] issuer refreshed: ${current.oauthMetadata.issuer}`);
+          ({ payload } = await verify(token));
+        }
       } catch (err) {
         console.warn(`[oauth] rejected token: ${err.code || err.message}`);
         throw new InvalidTokenError('Invalid access token');
       }
       const { sub, email, name, persona, employee_id, groups } = payload;
-      console.log(`[oauth] ${JSON.stringify({ client_id: payload.client_id, sub, email, persona, employee_id, groups, scope: payload.scope })}`);
+      console.log(`[oauth] ${JSON.stringify({ client_id: payload.client_id, act: payload.act?.sub, sub, email, persona, employee_id, groups, scope: payload.scope })}`);
       return {
         token,
         clientId: payload.client_id || payload.azp,
@@ -76,7 +103,7 @@ export async function oauthResource(app, { name, scopes }) {
     },
   };
 
-  app.use(mcpAuthMetadataRouter({ oauthMetadata, resourceServerUrl: resourceUrl, scopesSupported: scopes, resourceName: name }));
+  app.use((req, res, next) => current.router(req, res, next));
   return requireBearerAuth({ verifier, resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceUrl) });
 }
 

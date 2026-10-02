@@ -66,7 +66,7 @@ function gatewayCredential(guarded, token) {
 
 /**
  * How a turn reached the gateway, for the message action bar: the user (persona) and the agent
- * (OAuth client) of the token and whose identity the tool calls carried, or the API key.
+ * (the token's actor) of the token and whose identity the tool calls carried, or the API key.
  * @param {boolean} guarded protected mode, where tool calls carry the user's token
  */
 function gatewayAuthInfo(user, guarded) {
@@ -116,16 +116,17 @@ const DEFAULT_USER = { persona: 'EMP-034', employee_id: 'EMP-034', name: 'Aurél
 
 /**
  * The user of a request: the persona their auth-service token carries (id, employee_id for
- * employees, name, email, groups), the signed-in account behind it (login) and the OAuth client
- * as agent, or DEFAULT_USER without user tokens. `id` is what prompts and logs name the user by:
- * the employee ID, or the persona id of someone without one (an external contractor).
+ * employees, name, email, groups), the signed-in account behind it (login) and the agent acting
+ * for them (the token's actor, act.sub, else the OAuth client), or DEFAULT_USER without user
+ * tokens. `id` is what prompts and logs name the user by: the employee ID, or the persona id of
+ * someone without one (an external contractor).
  * @returns {Promise<{ token?: string, user: { id: string, persona: string, employee_id?: string, name?: string, email?: string, groups?: string[], login?: string, agent?: string } }>}
  */
 async function requestUser(req) {
   if (!USER_TOKENS_ENABLED) return { user: { ...DEFAULT_USER, id: DEFAULT_USER.employee_id } };
   const { token, claims } = await userToken(req.headers.cookie);
-  const { persona, employee_id, name, email, groups, client_id, login_email } = claims;
-  return { token, user: { id: employee_id || persona, persona, employee_id, name, email, groups, agent: client_id, login: login_email } };
+  const { persona, employee_id, name, email, groups, client_id, login_email, act } = claims;
+  return { token, user: { id: employee_id || persona, persona, employee_id, name, email, groups, agent: act?.sub || client_id, login: login_email } };
 }
 
 // --- Focused phase prompts for the forced ReAct loop ---
@@ -303,6 +304,7 @@ function portkeyFetch(reqCtx, guarded = false, noParallel = false, spanName = ''
       _user: reqCtx.user.email || reqCtx.user.id,
       employee_id: reqCtx.user.id,
       login_email: reqCtx.user.login,
+      agent_id: reqCtx.user.agent,
       app_name: 'The Otter V2',
       model,
     }));
@@ -428,6 +430,7 @@ async function connectMCP(url) {
           _user: reqCtx.user.email || reqCtx.user.id,
           employee_id: reqCtx.user.id,
           login_email: reqCtx.user.login,
+          agent_id: reqCtx.user.agent,
           app_name: 'The Otter V2',
           thread_id: reqCtx.threadId,
         }));
@@ -482,6 +485,48 @@ const mcpModelOutput = ({ output }) => {
     : JSON.stringify(output);
   return { type: output?.isError ? 'error-text' : 'text', value: text };
 };
+/** Errors of an MCP session the server or the gateway no longer knows (it restarted). */
+const STALE_SESSION = /restore session|reinitialize|not initialized|session not found/i;
+
+/**
+ * Wraps an MCP tool's execute: a call on a session the server no longer knows reconnects that
+ * server, reloads the tool cache and runs once more on the fresh client (no second retry).
+ */
+function recoverSession(url, name, execute) {
+  const wrapped = async (args, options) => {
+    try {
+      return await execute(args, options);
+    } catch (err) {
+      if (!STALE_SESSION.test(err.message)) throw err;
+      console.warn(`[mcp] ${name}: session lost on ${url} (${err.message}), reconnecting`);
+      await reconnectClient(url);
+      const fresh = cachedTools?.[name]?.execute;
+      if (!fresh) throw err;
+      return (fresh.raw || fresh)(args, options);
+    }
+  };
+  wrapped.raw = execute;
+  return wrapped;
+}
+
+/** Calls reconnecting one server share a single reconnection. */
+const reconnecting = new Map();
+
+/** Replaces the client of one MCP server with a fresh connection, then reloads the tool cache. */
+function reconnectClient(url) {
+  if (!reconnecting.has(url)) {
+    reconnecting.set(url, (async () => {
+      const stale = mcpClients.find((e) => e.url === url);
+      mcpClients = mcpClients.filter((e) => e.url !== url);
+      await stale?.client.close().catch(() => {});
+      await reconnectMissingClients();
+      const { merged } = await loadMCPTools();
+      if (Object.keys(merged).length > 0) cachedTools = merged;
+    })().finally(() => reconnecting.delete(url)));
+  }
+  return reconnecting.get(url);
+}
+
 const mcpServerName = (url) => {
   const { pathname, hostname } = new URL(url);
   return (pathname.split('/').filter(Boolean).at(-2) || hostname).replace(/-[0-9a-f]{6}$/, '');
@@ -514,6 +559,7 @@ async function loadMCPTools() {
     for (const [name, tool] of Object.entries(tools)) {
       if (tool.type === 'dynamic') delete tool.type;
       tool.toModelOutput = mcpModelOutput;
+      tool.execute = recoverSession(entry.url, name, tool.execute);
       merged[name] = tool;
       servers[name] = mcpServerName(entry.url);
     }
@@ -1022,6 +1068,7 @@ app.post('/api/feedback', async (req, res) => {
         metadata: {
           _user: user.email || user.id,
           login_email: user.login,
+          agent_id: user.agent,
           app_name: 'The Otter V2',
           answer_type: tools.length > 0 ? 'tool-backed' : 'direct',
           tools_used: tools.join(', '),
@@ -1068,11 +1115,13 @@ app.post('/api/persona', async (req, res) => {
 });
 
 /**
- * App version (chatbot-v2 package.json) and the Markdown changelog. CHANGELOG.md sits next to
+ * App version, the release tag the image was built for (APP_VERSION, e.g. 0.1.6-rc.2) or else
+ * chatbot-v2 package.json, and the Markdown changelog. CHANGELOG.md sits next to
  * package.json in the image and at the repo root when run from source.
  */
 app.get('/api/about', (_req, res) => {
-  const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'));
+  const version = process.env.APP_VERSION?.replace(/^v/, '')
+    || JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')).version;
   const changelogPath = [path.join(__dirname, '../CHANGELOG.md'), path.join(__dirname, '../../CHANGELOG.md')].find(p => fs.existsSync(p));
   res.json({ version, changelog: changelogPath ? fs.readFileSync(changelogPath, 'utf-8') : '' });
 });

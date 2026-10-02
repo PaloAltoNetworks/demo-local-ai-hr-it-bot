@@ -3,6 +3,32 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.6
+
+### One token names the person and the assistant
+The token the assistant gets for you now names both: you as the user, and the assistant as the
+agent acting for you, with its workload identity. The AI Gateway logs show that agent identity
+next to the user, and so does the gateway logo under each answer. This simulates the delegated
+token of the target model shown in the identity replay; Idira does not issue it yet.
+
+### A preview to try what is coming
+New versions now land first on https://otter-preview.panw.pro, a beta instance where they are
+tested before reaching https://otter.panw.pro. You sign in once for both. Present from
+otter.panw.pro; look at the preview to see what the next version brings.
+
+### The identity replay shows the target model
+The Identity view of the workflow replay now plays the target model hop by hop: the user signs
+in to Idira Identity, the assistant proves who it is with its Idira Secure Workload Access
+identity, and one delegated token carries both to the AI Gateway and the tools.
+
+### Tokens only open what the person may reach
+Alex Morgan's tokens are no longer issued for the HR tools at all: the gateway refuses them, and
+the HR tools would reject them too. Employees' tokens still cover HR and IT.
+
+### Tools keep answering after an update
+The assistant no longer loses its tools when a tool server restarts during an update: it
+reconnects and retries the request on its own.
+
 ## 0.1.5
 
 ### The Otter moves to otter.panw.pro

@@ -94,7 +94,7 @@ module "eks" {
  * also accept, so deploy/k8s/base references the same keys on every cloud.
  */
 resource "aws_secretsmanager_secret" "this" {
-  for_each = toset(["app-env", "airs-gw", "cloudflared", "auth", "swa"])
+  for_each = toset(["app-env", "airs-gw", "cloudflared", "auth", "swa", "idira"])
 
   name                    = "${var.name}-${each.key}"
   recovery_window_in_days = 0

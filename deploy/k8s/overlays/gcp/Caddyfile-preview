@@ -1,0 +1,22 @@
+# Preview entry point behind its own Cloudflare tunnel. Only the app host is served: visitors
+# sign in on the production auth host, and forward_auth asks the production auth-service, over
+# its public URL, whether the browser's .panw.pro session is valid.
+{
+	http_port 3010
+	auto_https off
+	admin off
+}
+
+http://{$APP_HOST} {
+	forward_auth https://{$AUTH_HOST} {
+		uri /auth/check
+		header_up Host {$AUTH_HOST}
+		copy_headers X-Auth-User X-Auth-Email X-Auth-Roles X-Auth-Origin
+
+		@unauthorized status 401
+		handle_response @unauthorized {
+			redir * https://{$AUTH_HOST}/auth/login?redirect_url=https://{http.request.host}{http.request.uri} 302
+		}
+	}
+	reverse_proxy chatbot-v2:3018
+}
