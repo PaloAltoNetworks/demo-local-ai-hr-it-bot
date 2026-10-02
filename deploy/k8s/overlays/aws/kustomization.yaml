@@ -11,8 +11,8 @@ configMapGenerator:
   - name: edge
     namespace: hr-it-bot
     literals:
-      - APP_HOST=otter-v3.panw.pro
-      - AUTH_HOST=auth2.panw.pro
+      - APP_HOST=otter.panw.pro
+      - AUTH_HOST=auth.panw.pro
       - AUTH_COOKIE_DOMAIN=panw.pro
       - AUTH_COOKIE_PREFIX=otter-eks
       - TRUSTED_ORIGINS=https://*.panw.pro
