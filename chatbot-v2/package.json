@@ -1,6 +1,6 @@
 {
   "name": "chatbot-v2",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "AI SDK chatbot host with native MCP tool calling",
   "type": "module",
   "main": "backend/server.js",
