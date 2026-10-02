@@ -18,6 +18,9 @@ import {
   Usb,
   TriangleAlert,
   BookCopy,
+  IdCard,
+  CircleCheck,
+  CircleX,
   X,
 } from 'lucide-react';
 
@@ -26,6 +29,9 @@ interface QuestionItem {
   text?: string;
   icon?: string;
   action?: string;
+  persona?: string;
+  /** Outcome the question demonstrates for its persona: access granted or refused. */
+  expect?: 'allow' | 'deny';
   questions?: QuestionItem[];
   steps?: QuestionItem[];
 }
@@ -38,6 +44,7 @@ const ICONS: Record<string, LucideIcon> = {
   event: Calendar,
   group: Users,
   help: CircleHelp,
+  id_card: IdCard,
   person: User,
   shield_person: ShieldUser,
   syringe: Syringe,
@@ -47,7 +54,12 @@ const ICONS: Record<string, LucideIcon> = {
 
 const NUMBERED = new Set(['looks_one', 'looks_two', 'looks_3', 'looks_4', 'looks_5']);
 
-export default function Sidebar({ phase }: { phase: string }) {
+/**
+ * Example questions of the current phase. A question that demonstrates a persona's rights names
+ * it (`persona`): clicking it switches to that persona first, so the answer shows that persona's
+ * access, then sends the question.
+ */
+export default function Sidebar({ phase, onPersona }: { phase: string; onPersona?: (id: string) => Promise<void> }) {
   const { t } = useLanguage();
   const { sendMessage, status } = useChatContext();
 
@@ -55,12 +67,13 @@ export default function Sidebar({ phase }: { phase: string }) {
   const questions = t(`questions.${phase}`);
   if (!Array.isArray(questions)) return null;
 
-  const handleClick = (item: QuestionItem) => {
+  const handleClick = async (item: QuestionItem) => {
     if (isStreaming) return;
     if (item.action === 'refresh') {
       location.reload();
       return;
     }
+    if (item.persona && onPersona) await onPersona(item.persona);
     sendMessage({ text: item.text });
   };
 
@@ -155,6 +168,8 @@ function QuestionCard({ item, index, onClick }: { item: QuestionItem; index?: nu
           <MessageSquare className="mt-0.5 size-4 shrink-0 text-primary" />
         )}
         <span className="text-sm font-medium leading-snug">{item.title}</span>
+        {item.expect === 'allow' && <CircleCheck className="ms-auto mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />}
+        {item.expect === 'deny' && <CircleX className="ms-auto mt-0.5 size-4 shrink-0 text-destructive" />}
       </button>
     </Tip>
   );

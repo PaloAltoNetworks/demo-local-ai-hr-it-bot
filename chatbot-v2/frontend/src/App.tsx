@@ -5,6 +5,7 @@ import ChatPanel from './components/ChatPanel';
 import WorkflowOverlay from './components/WorkflowOverlay';
 import { ChatProvider } from './context/ChatContext';
 import { useProviders } from './hooks/useProviders';
+import { usePersona } from './hooks/usePersona';
 
 type ThemeChoice = 'system' | 'light' | 'dark';
 
@@ -13,6 +14,7 @@ export default function App() {
   const [theme, setTheme] = useState<ThemeChoice>(() => (localStorage.getItem('theme') as ThemeChoice) || 'system');
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const { providers, provider, setProvider } = useProviders();
+  const { personas, persona, setPersona, userName } = usePersona();
 
   useEffect(() => {
     localStorage.setItem('currentPhase', phase);
@@ -40,10 +42,11 @@ export default function App() {
           phase={phase} setPhase={setPhase}
           theme={theme} setTheme={setTheme}
           onOpenWorkflow={() => setWorkflowOpen(true)}
+          personas={personas} persona={persona} setPersona={setPersona}
         />
         <main className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[320px_1fr]">
-          <Sidebar phase={phase} />
-          <ChatPanel providers={providers} provider={provider} setProvider={setProvider} phase={phase} />
+          <Sidebar phase={phase} onPersona={setPersona} />
+          <ChatPanel providers={providers} provider={provider} setProvider={setProvider} phase={phase} userName={userName} />
         </main>
         {workflowOpen && (
           <WorkflowOverlay phase={phase} provider={provider} onClose={() => setWorkflowOpen(false)} />
