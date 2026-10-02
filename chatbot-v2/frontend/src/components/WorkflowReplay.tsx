@@ -676,7 +676,7 @@ const PERSONA_LOOK: Record<Persona, { name: string; badge: string; icon: keyof t
 
 const HINT = {
   user: 'The employee or contractor using the chatbot. They sign in once to Idira Identity (SSO, MFA); the chatbot never sees their password.',
-  idp: 'Idira Identity (SaaS): the workforce identity provider. It authenticates the user, and issues the delegated token the chatbot uses: the user as subject, the chatbot (its SWA JWT-SVID) as actor, the MCP servers as audience. It publishes the JWKS that verifies it.',
+  idp: 'Idira Identity, on the global Idira SaaS platform that manages both human and workload identities. As workforce identity provider it authenticates the user and issues the delegated token the chatbot uses: the user as subject, the chatbot (its SWA JWT-SVID) as actor, the MCP servers as audience. It publishes the JWKS that verifies it.',
   rogue: 'Any pod that holds no token from Idira. It cannot present a valid JWT, so the AI Gateway turns it away.',
   agent: 'Idira Secure Workload Access agent. A DaemonSet: one pod on every node. It attests the pods of its own node through the local kubelet (namespace, service account, labels) and hands them a short-lived JWT-SVID over a local Unix socket (SPIFFE Workload API). The workload is given no secret.',
   otter: 'The HR/IT chatbot pod. It holds no API key and no client secret: it proves who it is with its SWA JWT-SVID, and exchanges the user\'s sign-in at Idira Identity for a delegated token it sends to the AI Gateway.',
@@ -725,11 +725,11 @@ const GAP_23 = (NODE_X[1] + NODE_W + NODE_X[2]) / 2;
 const GAP_OUT = NODE_X[2] + NODE_W + 30 + (SAAS_X - 40 - (NODE_X[2] + NODE_W + 30)) / 2;
 const corridor = (node: number) => NODE_X[node] + 15;
 
-/** Kubernetes cluster framing the three worker nodes; PANW and Idira Identity SaaS framing their cards. */
+/** Kubernetes cluster framing the three worker nodes; the PANW and Idira SaaS platforms framing their cards. */
 const ID_ZONES = [
   { id: 'z-cluster', type: 'zone', position: { x: NODE_X[0] - 30, y: NODE_TOP - 50 }, draggable: false, selectable: false, zIndex: 0, style: { width: NODE_X[2] + NODE_W + 60 - NODE_X[0], height: NODE_H + 80 }, data: { label: 'Kubernetes cluster · EKS', color: CUST_VAR, logo: '/images/kubernetes.svg', solid: true, fill: 7 } },
   ...NODE_X.map((x, i) => ({ id: `z-node${i + 1}`, type: 'zone', position: { x, y: NODE_TOP }, draggable: false, selectable: false, zIndex: 0, style: { width: NODE_W, height: NODE_H }, data: { label: `Node ${i + 1}`, color: GREY, labelBottom: true } })),
-  { id: 'z-idira-id', type: 'zone', position: { x: podX(2) - 40, y: TOP_Y - 48 }, draggable: false, selectable: false, zIndex: 0, style: { width: ID_W + 80, height: CARD_H + 82 }, data: { label: 'Idira Identity · SaaS', color: IDIRA_VAR, fill: 7 } },
+  { id: 'z-idira-id', type: 'zone', position: { x: podX(2) - 40, y: TOP_Y - 48 }, draggable: false, selectable: false, zIndex: 0, style: { width: ID_W + 80, height: CARD_H + 82 }, data: { label: 'Idira · SaaS', color: IDIRA_VAR, fill: 7 } },
   { id: 'z-panw', type: 'zone', position: { x: SAAS_X - 40, y: SCM_Y - 48 }, draggable: false, selectable: false, zIndex: 0, style: { width: ID_W + 80, height: CARD_H + 82 }, data: { label: 'Palo Alto Networks · SaaS', color: AIRS_VAR } },
 ];
 
