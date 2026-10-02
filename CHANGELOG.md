@@ -10,6 +10,11 @@ New versions now land first on https://otter-preview.panw.pro, a beta instance w
 tested before reaching https://otter.panw.pro. You sign in once for both. Present from
 otter.panw.pro; look at the preview to see what the next version brings.
 
+### The identity replay shows the target model
+The Identity view of the workflow replay now plays the target model hop by hop: the user signs
+in to Idira Identity, the assistant proves who it is with its Idira Secure Workload Access
+identity, and one delegated token carries both to the AI Gateway and the tools.
+
 ### Tools keep answering after an update
 The assistant no longer loses its tools when a tool server restarts during an update: it
 reconnects and retries the request on its own.
