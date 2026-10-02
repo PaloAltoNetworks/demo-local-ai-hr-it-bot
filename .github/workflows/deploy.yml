@@ -56,9 +56,13 @@ jobs:
           cluster_name: ${{ vars.GKE_CLUSTER }}
           location: ${{ vars.GCP_REGION }}
           project_id: ${{ vars.GCP_PROJECT }}
-      # The project id stays out of git: the GCP secret store gets it at deploy time.
+      # The project id stays out of git and out of the public run logs: the GCP secret store
+      # gets it at deploy time, through an env var so the step title shows only its name.
       - if: inputs.cloud == 'gcp'
-        run: sed -i "s/GCP_PROJECT/${{ vars.GCP_PROJECT }}/" deploy/k8s/overlays/gcp/cluster-secret-store.yaml
+        name: GCP project of the secret store
+        env:
+          GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+        run: sed -i "s/GCP_PROJECT/$GCP_PROJECT/" deploy/k8s/overlays/gcp/cluster-secret-store.yaml
 
       - name: External Secrets Operator
         run: >
