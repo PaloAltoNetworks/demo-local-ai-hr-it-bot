@@ -113,7 +113,7 @@ On Kubernetes the chatbot carries no gateway API key for LLM and MCP calls. The 
 A fourth entry, `Load balance & fallback` (internal id `Auto`, listed first and preselected), lets the AI Gateway pick the cloud. AWS, GCP and Azure force their cloud; this entry references a saved gateway config that **load-balances** (equal weights, top level) across three **fallback** chains, each led by a different cloud and falling back to the other two. The app holds no routing logic: each LLM call sends the slug of the config for its model tier in `x-portkey-config`.
 
 The SCM gateway blocks inline configs (`inline_config_blocked`) but accepts a saved config slug, which replaces the key's default config for that request (configs do not stack), so the regular keys are reused and the guarded variants carry the AIRS guardrails themselves:
-- `PORTKEY_AUTO_FAST_CONFIG` / `PORTKEY_AUTO_POWERFUL_CONFIG` — `otter-lb-fast` (Haiku 4.5) and `otter-lb-powerful` (Sonnet 5.5), phases 1–2: retry, cache, routing
+- `PORTKEY_AUTO_FAST_CONFIG` / `PORTKEY_AUTO_POWERFUL_CONFIG` — `otter-lb-fast` (Haiku 5.5) and `otter-lb-powerful` (Sonnet 5.5), phases 1–2: retry, cache, routing
 - `PORTKEY_AUTO_FAST_CONFIG_GUARDED` / `PORTKEY_AUTO_POWERFUL_CONFIG_GUARDED` — the same plus `input_guardrails` / `output_guardrails`, phase 3
 
 The provider is listed only when both unguarded slugs are set. Load balancing sits at the top of each config because gateway logs only report the top-level mode (`mode: loadbalance`); fallback is nested. The tier reuses the AWS model strings for logs and pricing; the served model comes from the config. Opening the workflow replay while this provider is selected starts it in Fallback routing.
@@ -126,9 +126,9 @@ Shape of `otter-lb-fast` (`otter-lb-powerful` uses `@aws/global.anthropic.claude
   "strategy": { "mode": "loadbalance" },
   "targets": [
     { "weight": 1, "strategy": { "mode": "fallback" }, "targets": [
-      { "override_params": { "model": "@aws/eu.anthropic.claude-haiku-4-5-20251001-v1:0" } },
-      { "override_params": { "model": "@gcp/anthropic.claude-haiku-4-5" } },
-      { "override_params": { "model": "@azure/claude-haiku-4-5" } } ] },
+      { "override_params": { "model": "@aws/global.anthropic.claude-haiku-5-5" } },
+      { "override_params": { "model": "@gcp/anthropic.claude-haiku-5-5" } },
+      { "override_params": { "model": "@azure/claude-haiku-5-5" } } ] },
     { "weight": 1, "strategy": { "mode": "fallback" }, "targets": [ "…GCP, AWS, Azure…" ] },
     { "weight": 1, "strategy": { "mode": "fallback" }, "targets": [ "…Azure, AWS, GCP…" ] }
   ]

@@ -246,7 +246,7 @@
   },
   "llmProvider": {
     "label": "Fournisseur LLM",
-    "note": "Un melange de Haiku 4.5 et Sonnet 5.5 sur le cloud choisi, avec les garde-fous natifs de chaque fournisseur actives par defaut dans chaque phase.",
+    "note": "Un melange de Haiku 5.5 et Sonnet 5.5 sur le cloud choisi, avec les garde-fous natifs de chaque fournisseur actives par defaut dans chaque phase.",
     "autoNote": "Toutes les requêtes passent par la Prisma AIRS AI Gateway. AWS, GCP ou Azure imposent le cloud ; Load balance & fallback laisse la gateway répartir la charge entre les trois et basculer sur un autre cloud en cas d'échec."
   },
   "workflow": {
