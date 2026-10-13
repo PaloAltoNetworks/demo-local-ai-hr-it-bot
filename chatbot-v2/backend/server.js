@@ -195,17 +195,17 @@ const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
 const PROVIDER_TIERS = {
   AWS: {
     label: 'AWS Bedrock',
-    fast:     process.env.PORTKEY_AWS_FAST     || `${AWS_PROVIDER}/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
+    fast:     process.env.PORTKEY_AWS_FAST     || `${AWS_PROVIDER}/global.anthropic.claude-haiku-5-5`,
     powerful: process.env.PORTKEY_AWS_POWERFUL || `${AWS_PROVIDER}/global.anthropic.claude-sonnet-5-5`,
   },
   GCP: {
     label: 'GCP Vertex AI',
-    fast:     process.env.PORTKEY_GCP_FAST     || `${GCP_PROVIDER}/anthropic.claude-haiku-4-5`,
+    fast:     process.env.PORTKEY_GCP_FAST     || `${GCP_PROVIDER}/anthropic.claude-haiku-5-5`,
     powerful: process.env.PORTKEY_GCP_POWERFUL || `${GCP_PROVIDER}/anthropic.claude-sonnet-5-5`,
   },
   Azure: {
     label: 'Azure AI Foundry',
-    fast:     process.env.PORTKEY_AZURE_FAST     || `${AZURE_PROVIDER}/claude-haiku-4-5`,
+    fast:     process.env.PORTKEY_AZURE_FAST     || `${AZURE_PROVIDER}/claude-haiku-5-5`,
     powerful: process.env.PORTKEY_AZURE_POWERFUL || `${AZURE_PROVIDER}/claude-sonnet-5-5`,
   },
 };
@@ -327,7 +327,7 @@ const pricingCache = new Map(); // key: "@provider/model" → { in, out } | null
  * ponytail: anthropic list price, ignores the ~10% premium of regional Bedrock/Vertex
  * endpoints; add a per-provider multiplier if exact cost matters.
  *
- * @param {string} tierModel Portkey model string, e.g. "@azure/claude-haiku-4-5"
+ * @param {string} tierModel Portkey model string, e.g. "@azure/claude-haiku-5-5"
  * @returns {Promise<{ in: number, out: number }>} cents per input/output token
  */
 async function fetchPrice(tierModel) {

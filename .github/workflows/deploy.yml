@@ -1,8 +1,10 @@
 # Deploys an already-published image version to one cloud's cluster. Called by
 # release.yml, or run by hand to redeploy or roll back to an older tag.
-# Only the login steps are cloud-specific; everything after them is plain kubectl/helm.
-# A new cloud adds its login steps here, its choice below, a GitHub environment of the
-# same name, deploy/k8s/overlays/<cloud> and deploy/helm/airs-gw/values-<cloud>.yaml.
+# The job runs on the self-hosted runner inside the target cluster (deploy/k8s/runner, label
+# otter-<cloud>) and reaches the API server in-cluster, so no cloud login is needed: the
+# control planes only accept the corporate egress IPs, not GitHub-hosted runners.
+# A new cloud adds its runner, its choice below, a GitHub environment of the same name,
+# deploy/k8s/overlays/<cloud> and deploy/helm/airs-gw/values-<cloud>.yaml.
 name: Deploy
 
 on:
@@ -22,14 +24,13 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: deploy-${{ inputs.cloud }}
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, "otter-${{ inputs.cloud }}"]
     environment: ${{ inputs.cloud }}
     env:
       CLOUD: ${{ inputs.cloud }}
@@ -37,25 +38,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - if: inputs.cloud == 'aws'
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-      - if: inputs.cloud == 'aws'
-        run: aws eks update-kubeconfig --name "${{ vars.EKS_CLUSTER }}" --region "${{ vars.AWS_REGION }}"
+      - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+      - name: Kustomize
+        run: |
+          curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.3/kustomize_v5.8.3_linux_$(dpkg --print-architecture).tar.gz" | tar xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
-      - if: inputs.cloud == 'gcp'
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_DEPLOY_SA }}
-      - if: inputs.cloud == 'gcp'
-        uses: google-github-actions/get-gke-credentials@3da1e46a907576cefaa90c484278bb5b259dd395 # v3.0.0
-        with:
-          cluster_name: ${{ vars.GKE_CLUSTER }}
-          location: ${{ vars.GCP_REGION }}
-          project_id: ${{ vars.GCP_PROJECT }}
       # The project id stays out of git and out of the public run logs: the GCP secret store
       # gets it at deploy time, through an env var so the step title shows only its name.
       - if: inputs.cloud == 'gcp'

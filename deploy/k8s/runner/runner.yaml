@@ -1,0 +1,86 @@
+# Self-hosted GitHub Actions runner that runs the deploy workflow from inside the cluster.
+# The control plane's public endpoint only accepts the corporate egress IPs, so GitHub-hosted
+# runners cannot reach it; this pod talks to the API server through the in-cluster service,
+# which the authorized networks do not filter.
+#
+# The runner registers once with the one-hour token from the repository's "New self-hosted
+# runner" page (Secret runner-registration, created by hand, see docs/DEPLOY.md), then keeps
+# the credentials GitHub hands back on its volume and reuses them on every restart.
+# ponytail: one persistent runner per cluster, jobs run one after another on the same pod;
+# switch to Actions Runner Controller (GitHub App, ephemeral runners) if deploys need to run
+# in parallel or isolated from each other.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gha-runner
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: runner
+---
+# The deploy installs CRDs and cluster-scoped charts (External Secrets Operator), so the
+# runner needs cluster-admin.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gha-runner
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: cluster-admin }
+subjects:
+  - { kind: ServiceAccount, name: runner, namespace: gha-runner }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: runner-state
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: { storage: 1Gi }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runner
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: runner }
+  template:
+    metadata:
+      labels: { app: runner }
+    spec:
+      serviceAccountName: runner
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: runner
+          image: ghcr.io/actions/actions-runner:2.338.0
+          envFrom:
+            - secretRef: { name: runner-registration }
+          command: [sh, -ec]
+          args:
+            - |
+              cd /home/runner
+              if [ -f state/.runner ]; then
+                cp state/.runner state/.credentials state/.credentials_rsaparams .
+              else
+                ./config.sh --unattended --replace \
+                  --url https://github.com/PaloAltoNetworks/demo-local-ai-hr-it-bot \
+                  --token "$RUNNER_TOKEN" --name "$RUNNER_LABEL" --labels "$RUNNER_LABEL"
+                cp .runner .credentials .credentials_rsaparams state/
+              fi
+              exec ./run.sh
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+          volumeMounts:
+            - { name: state, mountPath: /home/runner/state }
+      volumes:
+        - { name: state, persistentVolumeClaim: { claimName: runner-state } }

@@ -1,17 +1,17 @@
 {
   "name": "auth-service",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@better-auth/oauth-provider": "^1.7.6",
-    "@hono/node-server": "^1.19.12",
-    "better-auth": "^1.7.6",
-    "better-sqlite3": "^12.8.0",
-    "hono": "^4.12.10",
-    "nodemailer": "^8.0.4"
+    "@better-auth/oauth-provider": "^1.7.7",
+    "@hono/node-server": "^2.1.5",
+    "better-auth": "^1.7.7",
+    "better-sqlite3": "^13.0.3",
+    "hono": "^4.13.13",
+    "nodemailer": "^10.1.0"
   }
 }

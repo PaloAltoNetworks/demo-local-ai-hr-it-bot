@@ -3,6 +3,17 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.7
+
+### Faster answers with Claude Haiku 5.5
+The quick steps of each answer (reading your request, checking what the tools returned) now run
+on Claude Haiku 5.5 instead of Haiku 4.5, on AWS, GCP and Azure alike. The final answer still
+comes from Sonnet 5.5.
+
+### A safer sign-in
+The service that sends your sign-in link runs on patched libraries, closing known flaws in how
+it reads email addresses.
+
 ## 0.1.6
 
 ### One token names the person and the assistant

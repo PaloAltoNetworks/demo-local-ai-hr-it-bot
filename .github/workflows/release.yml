@@ -66,7 +66,6 @@ jobs:
     needs: build
     permissions:
       contents: read
-      id-token: write
     uses: ./.github/workflows/deploy.yml
     with:
       cloud: ${{ github.event.release.prerelease && 'gcp' || inputs.cloud || 'aws' }}
