@@ -107,19 +107,22 @@ const isReflect = (name: string) => KNOWN_REFLECT.has(name) || name?.endsWith('-
 const shortToolName = (name: string) => (name.includes('-') ? name.split('-').slice(1).join('-') : name);
 
 /**
- * A tool call refused for the caller's identity, or null: by the AI Gateway (its MCP
- * authorization rule answered 401/403) or by the MCP server itself (a forbidden or
- * insufficient_scope result), with the reason either gave.
+ * A tool call refused, or null: by the AI Gateway's MCP authorization rule (401/403), MCP
+ * guardrail (JSON-RPC -32446) or MCP rate limit (429), or by the MCP server itself (a
+ * forbidden or insufficient_scope result), with the reason given. `by` suffixes the
+ * tools.deniedBy* translation key.
  */
-const toolDenial = (part: any): { by: 'gateway' | 'server'; reason: string } | null => {
+const toolDenial = (part: any): { by: 'Gateway' | 'Guardrail' | 'RateLimit' | 'Server'; reason: string } | null => {
   const errorText = String(part.errorText || '');
-  if (part.state === 'output-error' && /HTTP 40[13]/.test(errorText)) {
-    return { by: 'gateway', reason: /"error_description":"([^"]*)"/.exec(errorText)?.[1] || '' };
+  if (part.state === 'output-error') {
+    if (/HTTP 40[13]/.test(errorText)) return { by: 'Gateway', reason: /"error_description":"([^"]*)"/.exec(errorText)?.[1] || '' };
+    if (/MCP error -32446/.test(errorText)) return { by: 'Guardrail', reason: errorText.replace(/^MCP error -32446: /, '') };
+    if (/HTTP 429/.test(errorText)) return { by: 'RateLimit', reason: /"message":"([^"]*)"/.exec(errorText)?.[1] || '' };
   }
   if (!part.output?.isError) return null;
   const out = unwrapMcpOutput(part.output);
-  if (out?.error === 'forbidden') return { by: 'server', reason: out.message || '' };
-  if (out?.error === 'insufficient_scope') return { by: 'server', reason: `scope ${out.required_scope}` };
+  if (out?.error === 'forbidden') return { by: 'Server', reason: out.message || '' };
+  if (out?.error === 'insufficient_scope') return { by: 'Server', reason: `scope ${out.required_scope}` };
   return null;
 };
 
@@ -764,7 +767,7 @@ function AssistantParts({ msg, onApprove, t }: { msg: any; onApprove: (r: { id: 
     );
     const description = denial && (
       <span className="text-destructive">
-        {t(denial.by === 'gateway' ? 'tools.deniedByGateway' : 'tools.deniedByServer', { server: server || 'MCP' })}
+        {t(`tools.deniedBy${denial.by}`, { server: server || 'MCP' })}
         {denial.reason && <span className="block font-mono text-xs opacity-80">{denial.reason}</span>}
       </span>
     );

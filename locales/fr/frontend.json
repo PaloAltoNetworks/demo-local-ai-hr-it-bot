@@ -208,7 +208,9 @@
     "deny": "Refuser",
     "denied": "Refusé",
     "deniedByGateway": "L'AI Gateway a refusé cet appel : votre identité n'est pas autorisée sur le serveur MCP {{server}}.",
-    "deniedByServer": "Le serveur MCP {{server}} a refusé cet appel pour votre identité."
+    "deniedByServer": "Le serveur MCP {{server}} a refusé cet appel pour votre identité.",
+    "deniedByGuardrail": "L'AI Gateway a bloqué cet appel : un guardrail du serveur MCP {{server}} a rejeté son contenu.",
+    "deniedByRateLimit": "L'AI Gateway a limité cet appel : la limite de débit du serveur MCP {{server}} est atteinte."
   },
   "feedback": {
     "helpful": "Utile",

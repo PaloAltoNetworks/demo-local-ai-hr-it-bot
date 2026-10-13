@@ -488,15 +488,23 @@ const mcpModelOutput = ({ output }) => {
 /** Errors of an MCP session the server or the gateway no longer knows (it restarted). */
 const STALE_SESSION = /restore session|reinitialize|not initialized|session not found/i;
 
+/** JSON-RPC error code of a tool call the gateway's MCP guardrail blocked. */
+const MCP_GUARDRAIL_BLOCK = -32446;
+
 /**
  * Wraps an MCP tool's execute: a call on a session the server no longer knows reconnects that
  * server, reloads the tool cache and runs once more on the fresh client (no second retry).
+ * A guardrail block keeps its code, check and reason in the message, the only part of the
+ * error the tool card receives.
  */
 function recoverSession(url, name, execute) {
   const wrapped = async (args, options) => {
     try {
       return await execute(args, options);
     } catch (err) {
+      if (err.code === MCP_GUARDRAIL_BLOCK) {
+        err.message = `MCP error ${err.code}: ${err.message} [${err.data?.guardrail_id || ''}] ${err.data?.reason || ''}`.trim();
+      }
       if (!STALE_SESSION.test(err.message)) throw err;
       console.warn(`[mcp] ${name}: session lost on ${url} (${err.message}), reconnecting`);
       await reconnectClient(url);
