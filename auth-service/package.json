@@ -12,6 +12,6 @@
     "better-auth": "^1.7.6",
     "better-sqlite3": "^12.8.0",
     "hono": "^4.12.10",
-    "nodemailer": "^8.0.4"
+    "nodemailer": "^10.1.0"
   }
 }
