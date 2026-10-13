@@ -6,6 +6,11 @@
 imagePullSecrets:
   - airs-gw-registry
 
+# Gateway release pinned past the chart's default (2.21.0) for per-attempt retry logs (2.24.0).
+images:
+  gatewayImage:
+    tag: "2.28.0"
+
 environment:
   create: false
   existingSecret: airs-gw-env
