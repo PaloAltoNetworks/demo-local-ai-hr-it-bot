@@ -5,7 +5,7 @@ Publishing a GitHub release builds the five images, pushes them to GHCR and depl
 ```
 GitHub release vX.Y.Z (production, aws) / pre-release vX.Y.Z-rc.N (preview, gcp)
   └─ release.yml   build 5 images -> ghcr.io/paloaltonetworks/demo-local-ai-hr-it-bot/<svc>:<tag>
-     └─ deploy.yml  OIDC login -> External Secrets -> kubectl apply -k -> helm airs-gw -> rollout
+     └─ deploy.yml  runner in the cluster -> External Secrets -> kubectl apply -k -> helm airs-gw -> rollout
 
 namespace hr-it-bot
   cloudflared ──> caddy:3010 ──(forward_auth)──> auth-service:3001 (SQLite on an EBS volume, OAuth 2.1 authorization server)
@@ -23,6 +23,7 @@ namespace hr-it-bot
 | `deploy/k8s/base/` | Cloud-agnostic manifests: the 4 demo services, Caddy + auth-service, cloudflared, ExternalSecrets |
 | `deploy/k8s/overlays/aws/` | `ClusterSecretStore` for Secrets Manager, EBS StorageClass, fixed ClusterIPs of the MCP services, public hostnames (`edge` ConfigMap) |
 | `deploy/k8s/overlays/gcp/` | Preview: no auth-service (production's is used), its own Caddyfile, `ClusterSecretStore` for Secret Manager, fixed ClusterIPs, preview hostname |
+| `deploy/k8s/runner/` | Self-hosted GitHub Actions runner that runs `deploy.yml` from inside the cluster, applied by hand |
 | `deploy/helm/airs-gw/` | Values for the `Portkey-AI/airs-gw-helm` chart (+ `values-aws.yaml`, `values-gcp.yaml` for hostAlias) |
 | `.github/workflows/` | `release.yml` (build, then deploy), `deploy.yml` (deploy or roll back a version) |
 
@@ -50,7 +51,8 @@ namespace hr-it-bot
    ```
    `app-env` is the demo `.env` as is. The cluster overrides `PORTKEY_BASE_URL`, `PORTKEY_MCP_BASE` and `IT_TRIAGE_MCP_URLS` to point at in-cluster services (`deploy/k8s/base/apps.yaml`). The `PORTKEY_MCP_*_SLUG` values must be the SCM slugs. `AUTH_SECRET` is generated once per instance; changing it signs everyone out.
 5. **GitHub.** Settings > Environments > New environment `aws`. Add the variables from `terraform -chdir=infra/aws output github_environment_variables` (`AWS_ROLE_ARN`, `AWS_REGION`, `EKS_CLUSTER`). The GHCR packages the release workflow creates inherit the public visibility of this repository, so the cluster pulls them without credentials.
-6. **First deploy.** Actions > Release > Run workflow with a version (e.g. `v0.1.1`). Or publish a release.
+6. **Deploy runner.** See [Deploy runner](#deploy-runner), with the label `otter-aws`.
+7. **First deploy.** Actions > Release > Run workflow with a version (e.g. `v0.1.1`). Or publish a release.
 
 After a secret changes in Secrets Manager, External Secrets syncs it within the hour (`kubectl -n hr-it-bot annotate externalsecret <name> force-sync=$(date +%s) --overwrite` to sync now). Pods read env vars at startup, so restart them: `kubectl -n hr-it-bot rollout restart deploy`.
 
@@ -58,7 +60,7 @@ After a secret changes in Secrets Manager, External Secrets syncs it within the 
 
 - **Release:** publish a GitHub release. The tag becomes the image tag.
 - **Roll back:** Actions > Deploy > Run workflow with an older tag. The manifests come from the branch you run it from.
-- **Status:** `aws eks update-kubeconfig --name hr-it-bot --region eu-west-3`, then `kubectl -n hr-it-bot get pods,externalsecrets`.
+- **Status:** from the corporate network (VPN), `aws eks update-kubeconfig --name hr-it-bot --region eu-west-3`, then `kubectl -n hr-it-bot get pods,externalsecrets`.
 - **Demo data:** it-tools writes to its SQLite file inside the pod. Restarting the pod resets the demo data (`kubectl -n hr-it-bot rollout restart deploy/it-tools`).
 - **Sign-in:** magic link by email, restricted to `ALLOWED_EMAIL_DOMAIN`, sessions last 7 days. Users and sessions live on the `auth-data` volume and survive restarts and redeploys.
 - **Cost:** around $73/month for the control plane, $35 for the NAT gateway, plus the Auto Mode nodes. `terraform -chdir=infra/aws destroy` removes everything, secrets included (delete the namespace first so the auth volume is released).
@@ -99,7 +101,25 @@ The preview runs the same base on GKE Autopilot (`infra/gcp`, `deploy/k8s/overla
 - **Gateway:** its own SCM registration; its `values.yaml` fills `hr-it-bot-airs-gw` (`PORTKEY_CLIENT_AUTH`, `ORGANISATIONS_TO_SYNC`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`).
 - **Secrets** (`gcloud secrets versions add <name> --project <project> --data-file=-`): `hr-it-bot-app-env` (the demo `.env` as JSON), `hr-it-bot-auth` (`CHATBOT_CLIENT_SECRET` and `IT_TRIAGE_CLIENT_SECRET`, the same as production's), `hr-it-bot-cloudflared` (token of the preview tunnel, whose public hostname `otter-preview.panw.pro` points to `http://caddy.hr-it-bot.svc.cluster.local:3010`).
 - **GitHub:** environment `gcp` with the variables of `terraform -chdir=infra/gcp output github_environment_variables`.
+- **Deploy runner:** see [Deploy runner](#deploy-runner), with the label `otter-gcp`.
 - **kubectl:** `gcloud container clusters get-credentials hr-it-bot --region europe-west9 --project <project>` (needs the `gke-gcloud-auth-plugin` component). A VPN that inspects TLS breaks the connection to the GKE API; the public URLs still work.
+
+## Deploy runner
+
+Palo Alto Networks' SOC locks every Kubernetes control plane down to the corporate egress IPs (Cortex remediation, `eks_public_lockdown` on EKS, authorized networks on GKE), so GitHub-hosted runners cannot reach the clusters. `deploy.yml` therefore runs on a self-hosted runner inside each cluster (`deploy/k8s/runner/`, namespace `gha-runner`), which talks to the API server through the in-cluster service, unaffected by that restriction. It has no cloud credentials: its ServiceAccount is bound to `cluster-admin`.
+
+The runner registers once with the one-hour token of Settings > Actions > Runners > New self-hosted runner, then keeps the credentials GitHub returns on its `runner-state` volume. Set it up from the corporate network, with kubectl on the cluster:
+
+```bash
+kubectl apply -k deploy/k8s/runner
+read -rs "T?Registration token: " && kubectl -n gha-runner create secret generic runner-registration \
+  --from-literal=RUNNER_TOKEN="$T" --from-literal=RUNNER_LABEL=otter-<cloud>; unset T
+kubectl -n gha-runner logs deploy/runner -f   # "Listening for Jobs"
+```
+
+- **Not redeployed by the workflow:** a job applying the Deployment it runs on would restart its own pod. Change `deploy/k8s/runner/` (runner image bump) with `kubectl apply -k deploy/k8s/runner` by hand.
+- **Register again** (volume lost, runner removed by GitHub after 14 days offline): delete the Secret and the PVC, then repeat the setup with a new token; `--replace` takes over the old runner name.
+- **Public repository:** jobs run one after another on the same pod, so only `deploy.yml` may target the `otter-*` labels, and workflows from forks need approval (Settings > Actions > General > Fork pull request workflows: require approval for all external contributors).
 
 ## Adding another cloud
 
@@ -108,6 +128,6 @@ The images, `deploy/k8s/base/` and `deploy/helm/airs-gw/values.yaml` do not chan
 1. `infra/<cloud>/`: cluster (AKS/GKE) with a pinned service CIDR, a secret manager (Key Vault / Secret Manager) holding the 4 secrets under the same names, a workload identity for the `external-secrets/external-secrets` ServiceAccount, and a federated GitHub identity for the environment `<cloud>`.
 2. `deploy/k8s/overlays/<cloud>/`: `ClusterSecretStore` named `cloud-secrets` (provider `azurekv` or `gcpsm`), the fixed ClusterIPs inside that cluster's service CIDR, and the `edge` ConfigMap with that deployment's hostnames and its own cookie prefix. AKS and GKE ship a default StorageClass, so no `storage-class.yaml`.
 3. `deploy/helm/airs-gw/values-<cloud>.yaml`: the matching `hostAlias`.
-4. `deploy.yml`: the login steps (`azure/login` + `az aks get-credentials`, or `google-github-actions/auth` + `get-gke-credentials`), the choice in `workflow_dispatch`, and a GitHub environment `<cloud>`. In `release.yml`, one more `deploy` job with `cloud: <cloud>`.
+4. A [deploy runner](#deploy-runner) labelled `otter-<cloud>`, the choice in `workflow_dispatch` of `deploy.yml`, and a GitHub environment `<cloud>`. In `release.yml`, one more `deploy` job with `cloud: <cloud>`.
 
 External Secrets may need extra ServiceAccount annotations on Azure/GCP (workload identity). Pass them as `--set` on its `helm upgrade` for that cloud.
