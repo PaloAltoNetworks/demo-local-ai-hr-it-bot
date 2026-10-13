@@ -56,15 +56,19 @@ module "vpc" {
  * The Kubernetes version is EKS's default at creation. STANDARD support makes AWS
  * upgrade the cluster when standard support ends, instead of moving it to the
  * paid extended support.
+ *
+ * The API server has no public endpoint (the module default): the SOC only allows
+ * corporate IPs, the deploy runner works in-cluster and kubectl goes through a CloudShell
+ * VPC environment. No IRSA: External Secrets uses Pod Identity.
  */
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0"
 
-  name                   = var.name
-  endpoint_public_access = true
-  service_ipv4_cidr      = "172.20.0.0/16"
-  upgrade_policy         = { support_type = "STANDARD" }
+  name              = var.name
+  service_ipv4_cidr = "172.20.0.0/16"
+  upgrade_policy    = { support_type = "STANDARD" }
+  enable_irsa       = false
 
   enable_cluster_creator_admin_permissions = true
 
