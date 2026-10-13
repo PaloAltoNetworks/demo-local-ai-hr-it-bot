@@ -60,7 +60,10 @@ After a secret changes in Secrets Manager, External Secrets syncs it within the 
 
 - **Release:** publish a GitHub release. The tag becomes the image tag.
 - **Roll back:** Actions > Deploy > Run workflow with an older tag. The manifests come from the branch you run it from.
-- **Status:** from the corporate network (VPN), `aws eks update-kubeconfig --name hr-it-bot --region eu-west-3`, then `kubectl -n hr-it-bot get pods,externalsecrets`.
+- **Status:** the public endpoint only accepts the corporate egress IPs, and the corporate firewall re-signs the API certificate. Use AWS CloudShell in a VPC environment instead (VPC `hr-it-bot`, a private subnet, the EKS cluster security group), which reaches the private endpoint: `aws eks update-kubeconfig --name hr-it-bot --region eu-west-3`, then `kubectl -n hr-it-bot get pods,externalsecrets`.
+- **Cluster admin access:** `enable_cluster_creator_admin_permissions` grants it to whoever runs `terraform apply`. When the console role changes (SAML role `sso_admin` since October 2026), give the new role an access entry by hand (`aws eks create-access-entry` + `associate-access-policy` with `AmazonEKSClusterAdminPolicy`), then import it before the next apply:
+  `terraform -chdir=infra/aws import 'module.eks.aws_eks_access_entry.this["cluster_creator"]' 'hr-it-bot:arn:aws:iam::<account>:role/sso_admin'`
+  `terraform -chdir=infra/aws import 'module.eks.aws_eks_access_policy_association.this["cluster_creator_admin"]' 'hr-it-bot#arn:aws:iam::<account>:role/sso_admin#arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy'`
 - **Demo data:** it-tools writes to its SQLite file inside the pod. Restarting the pod resets the demo data (`kubectl -n hr-it-bot rollout restart deploy/it-tools`).
 - **Sign-in:** magic link by email, restricted to `ALLOWED_EMAIL_DOMAIN`, sessions last 7 days. Users and sessions live on the `auth-data` volume and survive restarts and redeploys.
 - **Cost:** around $73/month for the control plane, $35 for the NAT gateway, plus the Auto Mode nodes. `terraform -chdir=infra/aws destroy` removes everything, secrets included (delete the namespace first so the auth volume is released).
