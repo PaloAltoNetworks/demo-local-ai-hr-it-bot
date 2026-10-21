@@ -3,6 +3,13 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.10
+
+### The gateway shows the persona, not your account
+Hovering the AI Gateway logo under an answer now lists only the persona you play, the agent
+acting for it and whose identity the tools received. Your own sign-in account no longer shows
+there: the demo is about the persona's access.
+
 ## 0.1.9
 
 ### Signed-in conversations answer again

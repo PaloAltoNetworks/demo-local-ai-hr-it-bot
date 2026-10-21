@@ -954,7 +954,6 @@ type GatewayAuth = {
   email?: string;
   persona?: string;
   groups?: string[];
-  login?: string;
   agent?: string;
   toolsAs?: 'user' | 'agent';
 };
@@ -976,7 +975,6 @@ function GatewayAction({ traceUrl, auth, t }: { traceUrl: string | null; auth?: 
             key: 'user', label: t('gatewayAuth.user'), active: true, value: auth.name,
             detail: [auth.email, auth.persona, auth.groups?.join(', ')].filter(Boolean).join(' · '), note: null,
           },
-          ...(auth.login ? [{ key: 'login', label: t('gatewayAuth.login'), active: false, value: auth.login, detail: null, note: null }] : []),
           { key: 'agent', label: t('gatewayAuth.agent'), active: true, value: null, detail: auth.agent, note: t('gatewayAuth.userTokenDetail') },
           {
             key: 'tools', label: t('gatewayAuth.tools'), active: auth.toolsAs === 'user',

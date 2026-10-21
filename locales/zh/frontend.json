@@ -227,8 +227,7 @@
     "toolsAsUser": "您的令牌，强制执行您的权限",
     "toolsAsAgent": "代理身份，未传递用户身份",
     "apiKey": "API 密钥",
-    "openTrace": "点击打开追踪",
-    "login": "登录账户"
+    "openTrace": "点击打开追踪"
   },
   "guardrail": {
     "cannotProcessRequest": "无法处理此请求",

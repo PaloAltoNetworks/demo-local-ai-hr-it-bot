@@ -227,8 +227,7 @@
     "toolsAsUser": "お客様のトークン（権限を適用）",
     "toolsAsAgent": "エージェントの ID（ユーザーは伝播されません）",
     "apiKey": "API キー",
-    "openTrace": "クリックしてトレースを開きます",
-    "login": "ログイン中のアカウント"
+    "openTrace": "クリックしてトレースを開きます"
   },
   "guardrail": {
     "cannotProcessRequest": "このリクエストを処理することができません",

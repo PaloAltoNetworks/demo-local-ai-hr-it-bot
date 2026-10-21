@@ -227,8 +227,7 @@
     "toolsAsUser": "your token, your rights enforced",
     "toolsAsAgent": "the agent identity, user not propagated",
     "apiKey": "API key",
-    "openTrace": "Click to open the trace",
-    "login": "Signed-in account"
+    "openTrace": "Click to open the trace"
   },
   "guardrail": {
     "cannotProcessRequest": "I cannot process this request",
