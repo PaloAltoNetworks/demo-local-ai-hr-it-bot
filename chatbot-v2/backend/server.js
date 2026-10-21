@@ -73,7 +73,7 @@ function gatewayAuthInfo(user, guarded) {
   return USER_TOKENS_ENABLED
     ? {
         mode: 'user-token', name: user.name, email: user.email, persona: user.persona, groups: user.groups,
-        login: user.login, agent: user.agent, toolsAs: guarded ? 'user' : 'agent',
+        agent: user.agent, toolsAs: guarded ? 'user' : 'agent',
       }
     : { mode: 'api-key' };
 }

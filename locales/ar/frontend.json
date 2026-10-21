@@ -227,8 +227,7 @@
     "toolsAsUser": "رمزك، مع تطبيق صلاحياتك",
     "toolsAsAgent": "هوية الوكيل، دون تمرير المستخدم",
     "apiKey": "مفتاح API",
-    "openTrace": "انقر لفتح التتبع",
-    "login": "الحساب المسجَّل دخوله"
+    "openTrace": "انقر لفتح التتبع"
   },
   "guardrail": {
     "cannotProcessRequest": "لا يمكنني معالجة هذا الطلب",

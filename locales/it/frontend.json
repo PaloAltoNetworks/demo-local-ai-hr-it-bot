@@ -227,8 +227,7 @@
     "toolsAsUser": "il suo token, i suoi diritti applicati",
     "toolsAsAgent": "identità dell'agente, utente non propagato",
     "apiKey": "Chiave API",
-    "openTrace": "Faccia clic per aprire la traccia",
-    "login": "Account connesso"
+    "openTrace": "Faccia clic per aprire la traccia"
   },
   "guardrail": {
     "cannotProcessRequest": "Non posso elaborare questa richiesta",

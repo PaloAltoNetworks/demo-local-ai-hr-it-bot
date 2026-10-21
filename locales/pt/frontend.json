@@ -227,8 +227,7 @@
     "toolsAsUser": "o seu token, os seus direitos aplicados",
     "toolsAsAgent": "identidade do agente, utilizador não propagado",
     "apiKey": "Chave de API",
-    "openTrace": "Clique para abrir o rastreamento",
-    "login": "Conta com sessão iniciada"
+    "openTrace": "Clique para abrir o rastreamento"
   },
   "guardrail": {
     "cannotProcessRequest": "Não é possível processar esta solicitação",
