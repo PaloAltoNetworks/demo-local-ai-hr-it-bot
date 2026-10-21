@@ -1034,7 +1034,7 @@ function StreamError({ error, airsConfig, t, onRetry }: { error: any; airsConfig
   const type = error?.type || '';
   const isGuardrail = type === 'guardrail_violation' || type === 'guardrail_scan_error';
   const isGuardrailConfig = type === 'guardrail_config_error';
-  const reportUrl = isGuardrail ? buildReportUrl(airsConfig, { trId: error.tr_id }) : null;
+  const reportUrl = isGuardrail ? buildReportUrl(airsConfig, { trId: error.tr_id, provider: error.provider }) : null;
   const traceUrl = error.tr_id ? buildTraceUrl(airsConfig, error.tr_id) : null;
 
   if (isGuardrailConfig) {

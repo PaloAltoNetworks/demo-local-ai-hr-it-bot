@@ -137,11 +137,11 @@ Shape of `otter-lb-fast` (`otter-lb-powerful` uses `@aws/global.anthropic.claude
 
 ### AIRS Config
 
-`GET /api/airs-config` returns `{ tsgId, appId, baseUrl, gateway }` for building Strata Cloud Manager report links in the frontend. The link opens the **AI-session** view (last segment is the literal source `Portkey`):
+`GET /api/airs-config` returns `{ tsgId, appId, baseUrl, gateway }` for building Strata Cloud Manager report links in the frontend. The link opens the **AI-session** view of a blocked turn:
 ```
-{baseUrl}/{tr_id}/{appId}/Portkey
+{baseUrl}/{tr_id}/{appId}/Portkey-{provider}
 ```
-where `baseUrl = https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions`.
+where `baseUrl = https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions`. The gateway's AIRS app splits its sessions into one view per provider (`Portkey-bedrock`, `Portkey-vertex-ai`, `Portkey-azure-ai`). `provider` is the `x-portkey-provider` header of the 446 answer, which names the target the load balancer had picked when AIRS blocked; the backend adds it to the guardrail error. No provider, no link.
 
 ### Trace-id / AIRS session model
 

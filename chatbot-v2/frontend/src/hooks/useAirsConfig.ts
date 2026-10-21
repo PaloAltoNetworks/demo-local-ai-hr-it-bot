@@ -24,14 +24,17 @@ export function useAirsConfig(): AirsConfig | null {
   return config;
 }
 
+/**
+ * Strata AI-session link of a blocked turn: {baseUrl}/{trId}/{appId}/Portkey-{provider}.
+ * The gateway's AIRS app splits its sessions into one view per provider (Portkey-bedrock,
+ * Portkey-vertex-ai, Portkey-azure-ai), so the link needs the provider that served the call.
+ */
 export function buildReportUrl(
   config: AirsConfig | null,
-  { trId }: { trId?: string }
+  { trId, provider }: { trId?: string; provider?: string }
 ): string | null {
-  if (!config?.tsgId || !trId || !config.appId) return null;
-  // AI-session link: {baseUrl}/{trId}/{appId}/Portkey — groups the turn's chats.
-  // Last segment is the literal source ("Portkey"), not the app name.
-  return `${config.baseUrl}/${trId}/${config.appId}/Portkey`;
+  if (!config?.tsgId || !trId || !config.appId || !provider) return null;
+  return `${config.baseUrl}/${trId}/${config.appId}/Portkey-${provider}`;
 }
 
 const SCM_LOGS_URL =
