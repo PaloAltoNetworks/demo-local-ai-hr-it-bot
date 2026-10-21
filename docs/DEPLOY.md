@@ -17,8 +17,8 @@ namespace hr-it-bot
 
 | Path | Role |
 |---|---|
-| `infra/aws/` | Terraform: VPC, EKS Auto Mode, Secrets Manager entries, Pod Identity for External Secrets, GitHub OIDC deploy role |
-| `infra/gcp/` | Terraform for the preview: VPC, Cloud NAT, GKE Autopilot (private nodes), Secret Manager entries, Workload Identity for External Secrets and GitHub |
+| `infra/aws/` | Terraform: VPC, EKS Auto Mode, Secrets Manager entries, Pod Identity for External Secrets |
+| `infra/gcp/` | Terraform for the preview: VPC, Cloud NAT, GKE Autopilot (private nodes), Secret Manager entries, Workload Identity for External Secrets |
 | `auth-service/` | Magic-link login (Better Auth), Caddy's `forward_auth` target |
 | `deploy/k8s/base/` | Cloud-agnostic manifests: the 4 demo services, Caddy + auth-service, cloudflared, ExternalSecrets |
 | `deploy/k8s/overlays/aws/` | `ClusterSecretStore` for Secrets Manager, EBS StorageClass, fixed ClusterIPs of the MCP services, public hostnames (`edge` ConfigMap) |
@@ -29,8 +29,7 @@ namespace hr-it-bot
 
 ## First-time setup (AWS)
 
-1. **Cluster.** `terraform -chdir=infra/aws init && terraform -chdir=infra/aws apply`. It takes about 15 min. The state stays local (gitignored). If the account already has a GitHub OIDC provider, import it first:
-   `terraform -chdir=infra/aws import aws_iam_openid_connect_provider.github arn:aws:iam::<account>:oidc-provider/token.actions.githubusercontent.com`
+1. **Cluster.** `terraform -chdir=infra/aws init && terraform -chdir=infra/aws apply`. It takes about 15 min. The state stays local (gitignored).
 2. **Gateway registration.** In SCM: AI Gateway > Gateway Registration > Register New Gateway, then download `values.yaml`. You need `environment.data.PORTKEY_CLIENT_AUTH`, `environment.data.ORGANISATIONS_TO_SYNC` and the `imageCredentials` username/password. Register one gateway per cluster: every replica of the release shares its `client_auth`, and a separate registration per cluster tells the data planes apart in SCM logs.
 3. **Cloudflare tunnel.** Zero Trust > Networks > Tunnels > Create (cloudflared). Keep the token. Add two published applications, both with service `http://caddy.hr-it-bot.svc.cluster.local:3010`: the app host and the login host set in `deploy/k8s/overlays/aws/kustomization.yaml` (`otter.panw.pro`, `auth.panw.pro`). No Cloudflare Access application: the auth service does the login, and the login host must stay public.
 4. **Secrets.** Values never go through Terraform. Run these in a terminal (the `read -s` prompts keep values off screen):
@@ -50,7 +49,7 @@ namespace hr-it-bot
        '.CHATBOT_CLIENT_SECRET //= $a | .IT_TRIAGE_CLIENT_SECRET //= $b' <<<"$S")"; unset S
    ```
    `app-env` is the demo `.env` as is. The cluster overrides `PORTKEY_BASE_URL`, `PORTKEY_MCP_BASE` and `IT_TRIAGE_MCP_URLS` to point at in-cluster services (`deploy/k8s/base/apps.yaml`). The `PORTKEY_MCP_*_SLUG` values must be the SCM slugs. `AUTH_SECRET` is generated once per instance; changing it signs everyone out.
-5. **GitHub.** Settings > Environments > New environment `aws`. Add the variables from `terraform -chdir=infra/aws output github_environment_variables` (`AWS_ROLE_ARN`, `AWS_REGION`, `EKS_CLUSTER`). The GHCR packages the release workflow creates inherit the public visibility of this repository, so the cluster pulls them without credentials.
+5. **GitHub.** Settings > Environments > New environment `aws` (no variables: the deploy runs inside the cluster). The GHCR packages the release workflow creates inherit the public visibility of this repository, so the cluster pulls them without credentials.
 6. **Deploy runner.** See [Deploy runner](#deploy-runner), with the label `otter-aws`.
 7. **First deploy.** Actions > Release > Run workflow with a version (e.g. `v0.1.1`). Or publish a release.
 
@@ -60,10 +59,8 @@ After a secret changes in Secrets Manager, External Secrets syncs it within the 
 
 - **Release:** publish a GitHub release. The tag becomes the image tag.
 - **Roll back:** Actions > Deploy > Run workflow with an older tag. The manifests come from the branch you run it from.
-- **Status:** the public endpoint only accepts the corporate egress IPs, and the corporate firewall re-signs the API certificate. Use AWS CloudShell in a VPC environment instead (VPC `hr-it-bot`, a private subnet, the EKS cluster security group), which reaches the private endpoint: `aws eks update-kubeconfig --name hr-it-bot --region eu-west-3`, then `kubectl -n hr-it-bot get pods,externalsecrets`.
-- **Cluster admin access:** `enable_cluster_creator_admin_permissions` grants it to whoever runs `terraform apply`. When the console role changes (SAML role `sso_admin` since October 2026), give the new role an access entry by hand (`aws eks create-access-entry` + `associate-access-policy` with `AmazonEKSClusterAdminPolicy`), then import it before the next apply:
-  `terraform -chdir=infra/aws import 'module.eks.aws_eks_access_entry.this["cluster_creator"]' 'hr-it-bot:arn:aws:iam::<account>:role/sso_admin'`
-  `terraform -chdir=infra/aws import 'module.eks.aws_eks_access_policy_association.this["cluster_creator_admin"]' 'hr-it-bot#arn:aws:iam::<account>:role/sso_admin#arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy'`
+- **Status:** the cluster has no public endpoint. Use AWS CloudShell in a VPC environment (VPC `hr-it-bot`, a private subnet, the EKS cluster security group), which reaches the private endpoint: `aws eks update-kubeconfig --name hr-it-bot --region eu-west-3`, then `kubectl -n hr-it-bot get pods,externalsecrets`.
+- **Cluster admin access:** `enable_cluster_creator_admin_permissions` grants it to whoever runs `terraform apply`. When the console role changes (SAML role `sso_admin` since October 2026), give the new role an access entry by hand to use kubectl right away (`aws eks create-access-entry` + `associate-access-policy` with `AmazonEKSClusterAdminPolicy`). The next apply recreates that entry as the cluster creator's and drops the old role's: delete the manual entry just before it (`aws eks delete-access-entry --cluster-name hr-it-bot --principal-arn <role arn>`), or the apply fails on an existing entry.
 - **Demo data:** it-tools writes to its SQLite file inside the pod. Restarting the pod resets the demo data (`kubectl -n hr-it-bot rollout restart deploy/it-tools`).
 - **Sign-in:** magic link by email, restricted to `ALLOWED_EMAIL_DOMAIN`, sessions last 7 days. Users and sessions live on the `auth-data` volume and survive restarts and redeploys.
 - **Cost:** around $73/month for the control plane, $35 for the NAT gateway, plus the Auto Mode nodes. `terraform -chdir=infra/aws destroy` removes everything, secrets included (delete the namespace first so the auth volume is released).
@@ -103,7 +100,7 @@ The preview runs the same base on GKE Autopilot (`infra/gcp`, `deploy/k8s/overla
 - **Setup:** `TF_VAR_project=<project> terraform -chdir=infra/gcp apply` (the project id is never committed; `GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token)` works without application-default credentials). The organisation forbids public GKE nodes, so the nodes are private and egress goes through Cloud NAT.
 - **Gateway:** its own SCM registration; its `values.yaml` fills `hr-it-bot-airs-gw` (`PORTKEY_CLIENT_AUTH`, `ORGANISATIONS_TO_SYNC`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`).
 - **Secrets** (`gcloud secrets versions add <name> --project <project> --data-file=-`): `hr-it-bot-app-env` (the demo `.env` as JSON), `hr-it-bot-auth` (`CHATBOT_CLIENT_SECRET` and `IT_TRIAGE_CLIENT_SECRET`, the same as production's), `hr-it-bot-cloudflared` (token of the preview tunnel, whose public hostname `otter-preview.panw.pro` points to `http://caddy.hr-it-bot.svc.cluster.local:3010`).
-- **GitHub:** environment `gcp` with the variables of `terraform -chdir=infra/gcp output github_environment_variables`.
+- **GitHub:** environment `gcp` with the variable of `terraform -chdir=infra/gcp output github_environment_variables` (`GCP_PROJECT`, for the secret store).
 - **Deploy runner:** see [Deploy runner](#deploy-runner), with the label `otter-gcp`.
 - **kubectl:** `gcloud container clusters get-credentials hr-it-bot --region europe-west9 --project <project>` (needs the `gke-gcloud-auth-plugin` component). A VPN that inspects TLS breaks the connection to the GKE API; the public URLs still work.
 
@@ -128,7 +125,7 @@ kubectl -n gha-runner logs deploy/runner -f   # "Listening for Jobs"
 
 The images, `deploy/k8s/base/` and `deploy/helm/airs-gw/values.yaml` do not change. GCP was added this way for the preview; a new cloud (Azure) adds:
 
-1. `infra/<cloud>/`: cluster (AKS/GKE) with a pinned service CIDR, a secret manager (Key Vault / Secret Manager) holding the 4 secrets under the same names, a workload identity for the `external-secrets/external-secrets` ServiceAccount, and a federated GitHub identity for the environment `<cloud>`.
+1. `infra/<cloud>/`: cluster (AKS/GKE) with a pinned service CIDR, a secret manager (Key Vault / Secret Manager) holding the 4 secrets under the same names, and a workload identity for the `external-secrets/external-secrets` ServiceAccount.
 2. `deploy/k8s/overlays/<cloud>/`: `ClusterSecretStore` named `cloud-secrets` (provider `azurekv` or `gcpsm`), the fixed ClusterIPs inside that cluster's service CIDR, and the `edge` ConfigMap with that deployment's hostnames and its own cookie prefix. AKS and GKE ship a default StorageClass, so no `storage-class.yaml`.
 3. `deploy/helm/airs-gw/values-<cloud>.yaml`: the matching `hostAlias`.
 4. A [deploy runner](#deploy-runner) labelled `otter-<cloud>`, the choice in `workflow_dispatch` of `deploy.yml`, and a GitHub environment `<cloud>`. In `release.yml`, one more `deploy` job with `cloud: <cloud>`.

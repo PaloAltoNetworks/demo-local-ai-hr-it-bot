@@ -100,7 +100,7 @@ On Kubernetes the chatbot carries no gateway API key for LLM and MCP calls. The 
 - **Gateway authorization**: each MCP integration in SCM has `jwt_validation` on `groups` (hr-tools: `employees` or `agents`; it-tools and it-triage: also `external`) and identity forwarding `bearer` (the token is forwarded as is). The gateway reads the rule's token from `Authorization`, so MCP requests carry the token in both `x-portkey-api-key` and `Authorization`.
 - **MCP servers** (`mcp-server/shared/oauth-resource.js`): OAuth 2.1 resource servers with the MCP SDK's `requireBearerAuth` and `mcpAuthMetadataRouter` (RFC 9728 metadata, 401 + `WWW-Authenticate`), tokens checked with jose (signature, issuer, `aud` contains the server's `OAUTH_RESOURCE`), scopes per tool. hr-tools: own record, direct reports, everything for HR; service accounts read everything; other users nothing. it-tools: an external user sees and opens only their own tickets, under the token's name and email, and cannot change a status. it-triage: `employee_id` must be the token's persona, and it relays the caller's token on its own MCP calls.
 - A JWT has no attached config, so the two key configs travel in `x-portkey-config`: `PORTKEY_CONFIG` (unguarded) and `PORTKEY_CONFIG_GUARDED` (guarded, required). Only `/api/feedback` still uses `PORTKEY_API_KEY`.
-- Each message carries `auth: { mode, name, email, persona, groups, login, agent, toolsAs }` and `toolServers` (tool → MCP server) in its metadata. The Portkey logo tooltip lists the user, the signed-in account, the agent and whose identity the tools received; tool cards show their MCP server, and a call refused by the gateway (401/403) or by the server (`forbidden`) shows as a denied step.
+- Each message carries `auth: { mode, name, email, persona, groups, login, agent, toolsAs }` and `toolServers` (tool → MCP server) in its metadata. The Portkey logo tooltip lists the user, the signed-in account, the agent and whose identity the tools received; tool cards show their MCP server, and a call refused by the gateway (authorization rule 401/403, MCP guardrail JSON-RPC `-32446`, MCP rate limit 429) or by the server (`forbidden`) shows as a denied step with the reason given.
 - Without `OAUTH_SERVER_URL` (local docker compose) the chatbot uses the API keys and the fixed user EMP-034, and the MCP servers stay open.
 - The Idira SWA workload identity of 0.1.2 is set aside: its code is in the `v0.1.2` tag; the workflow replay still draws the SWA components.
 
@@ -137,11 +137,11 @@ Shape of `otter-lb-fast` (`otter-lb-powerful` uses `@aws/global.anthropic.claude
 
 ### AIRS Config
 
-`GET /api/airs-config` returns `{ tsgId, appId, baseUrl, gateway }` for building Strata Cloud Manager report links in the frontend. The link opens the **AI-session** view (last segment is the literal source `Portkey`):
+`GET /api/airs-config` returns `{ tsgId, appId, baseUrl, gateway }` for building Strata Cloud Manager report links in the frontend. The link opens the **AI-session** view of a blocked turn:
 ```
-{baseUrl}/{tr_id}/{appId}/Portkey
+{baseUrl}/{tr_id}/{appId}/Portkey-{provider}
 ```
-where `baseUrl = https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions`.
+where `baseUrl = https://stratacloudmanager.paloaltonetworks.com/ai-security/runtime/ai-sessions`. The gateway's AIRS app splits its sessions into one view per provider (`Portkey-bedrock`, `Portkey-vertex-ai`, `Portkey-azure-ai`). `provider` is the `x-portkey-provider` header of the 446 answer, which names the target the load balancer had picked when AIRS blocked; the backend adds it to the guardrail error. No provider, no link.
 
 ### Trace-id / AIRS session model
 
@@ -261,7 +261,7 @@ LanguageProvider (context: t, language, setLanguage, languages)
 Multi-stage Dockerfile: Stage 1 builds React with Vite, Stage 2 runs Express serving built frontend + locales.
 
 ### Kubernetes (CI/CD)
-A published GitHub release runs `.github/workflows/release.yml`: the five images go to GHCR under the release tag, then `deploy.yml` deploys that tag to production on EKS (`otter.panw.pro`, GitHub OIDC, no static keys). A pre-release deploys it to the preview on GKE Autopilot (`otter-preview.panw.pro`), which shares production's auth-service. The cluster runs the chatbot, the three MCP servers, the Prisma AIRS AI Gateway (chart `Portkey-AI/airs-gw-helm`), Caddy with the magic-link `auth-service` (Better Auth, sign-in restricted to one email domain) and cloudflared, which publishes only Caddy: visitors reach the chatbot once signed in. Secrets live in AWS Secrets Manager and are synced by External Secrets Operator. Cloud-specific parts are isolated (`infra/<cloud>`, `deploy/k8s/overlays/<cloud>`, `values-<cloud>.yaml`, the login steps): `aws` for production, `gcp` for the preview. See `docs/DEPLOY.md`.
+A published GitHub release runs `.github/workflows/release.yml`: the five images go to GHCR under the release tag, then `deploy.yml` deploys that tag to production on EKS (`otter.panw.pro`). The job runs on a self-hosted runner inside each cluster (`deploy/k8s/runner`), since the control planes only accept the corporate egress IPs, so GitHub holds no cloud credentials. A pre-release deploys it to the preview on GKE Autopilot (`otter-preview.panw.pro`), which shares production's auth-service. The cluster runs the chatbot, the three MCP servers, the Prisma AIRS AI Gateway (chart `Portkey-AI/airs-gw-helm`), Caddy with the magic-link `auth-service` (Better Auth, sign-in restricted to one email domain) and cloudflared, which publishes only Caddy: visitors reach the chatbot once signed in. Secrets live in AWS Secrets Manager and are synced by External Secrets Operator. Cloud-specific parts are isolated (`infra/<cloud>`, `deploy/k8s/overlays/<cloud>`, `values-<cloud>.yaml`, the runner label): `aws` for production, `gcp` for the preview. See `docs/DEPLOY.md`.
 
 ### Package Structure
 ```

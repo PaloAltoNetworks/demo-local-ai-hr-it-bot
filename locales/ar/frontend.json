@@ -208,7 +208,9 @@
     "deny": "رفض",
     "denied": "مرفوض",
     "deniedByGateway": "رفضت AI Gateway هذا الاستدعاء: هويتك غير مصرح لها على خادم MCP ‏{{server}}.",
-    "deniedByServer": "رفض خادم MCP ‏{{server}} هذا الاستدعاء بسبب هويتك."
+    "deniedByServer": "رفض خادم MCP ‏{{server}} هذا الاستدعاء بسبب هويتك.",
+    "deniedByGuardrail": "حظر AI Gateway هذا الاستدعاء: رفضت إحدى قواعد الحماية في خادم MCP ‏{{server}} محتواه.",
+    "deniedByRateLimit": "قيّد AI Gateway هذا الاستدعاء: تم بلوغ حد المعدل لخادم MCP ‏{{server}}."
   },
   "feedback": {
     "helpful": "مفيد",

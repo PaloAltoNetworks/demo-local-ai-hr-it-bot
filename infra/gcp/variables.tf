@@ -13,9 +13,3 @@ variable "region" {
   type    = string
   default = "europe-west9"
 }
-
-variable "github_repo" {
-  description = "owner/repo allowed to deploy (case-sensitive, as in the OIDC repository claim)."
-  type        = string
-  default     = "PaloAltoNetworks/demo-local-ai-hr-it-bot"
-}

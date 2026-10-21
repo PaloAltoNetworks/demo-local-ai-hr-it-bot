@@ -488,15 +488,23 @@ const mcpModelOutput = ({ output }) => {
 /** Errors of an MCP session the server or the gateway no longer knows (it restarted). */
 const STALE_SESSION = /restore session|reinitialize|not initialized|session not found/i;
 
+/** JSON-RPC error code of a tool call the gateway's MCP guardrail blocked. */
+const MCP_GUARDRAIL_BLOCK = -32446;
+
 /**
  * Wraps an MCP tool's execute: a call on a session the server no longer knows reconnects that
  * server, reloads the tool cache and runs once more on the fresh client (no second retry).
+ * A guardrail block keeps its code, check and reason in the message, the only part of the
+ * error the tool card receives.
  */
 function recoverSession(url, name, execute) {
   const wrapped = async (args, options) => {
     try {
       return await execute(args, options);
     } catch (err) {
+      if (err.code === MCP_GUARDRAIL_BLOCK) {
+        err.message = `MCP error ${err.code}: ${err.message} [${err.data?.guardrail_id || ''}] ${err.data?.reason || ''}`.trim();
+      }
       if (!STALE_SESSION.test(err.message)) throw err;
       console.warn(`[mcp] ${name}: session lost on ${url} (${err.message}), reconnecting`);
       await reconnectClient(url);
@@ -621,9 +629,15 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// Extract structured guardrail detail from Portkey's hook_results (HTTP 446).
-// Returns a JSON string the frontend parses into a guardrail_violation error, or null.
-function parseGuardrailBlock(parsed) {
+/**
+ * Structured guardrail detail from Portkey's hook_results (HTTP 446), as a JSON string the
+ * frontend parses into a guardrail_violation error, or null.
+ * `provider` is the gateway's x-portkey-provider (bedrock, vertex-ai, azure-ai): the target the
+ * load balancer had picked when AIRS blocked, which names the Strata AI-session view of the scan.
+ * @param {object} parsed 446 response body
+ * @param {string} [provider]
+ */
+function parseGuardrailBlock(parsed, provider) {
   const hooks = parsed?.hook_results;
   if (!hooks) return null;
   const before = (hooks.before_request_hooks || []).find(h => h.verdict === false);
@@ -635,6 +649,7 @@ function parseGuardrailBlock(parsed) {
   return JSON.stringify({
     type: 'guardrail_violation',
     tr_id: data.tr_id || data.session_id || '',
+    provider,
     prompt_detected: isResponse ? undefined : data.prompt_detected,
     response_detected: isResponse ? (data.response_detected || {}) : undefined,
     isResponseBlock: isResponse,
@@ -649,7 +664,7 @@ function normalizeError(err, modelId) {
   let summary = err.message || String(err);
   try {
     const p = JSON.parse(body);
-    const guardrail = parseGuardrailBlock(p);
+    const guardrail = parseGuardrailBlock(p, apiError?.responseHeaders?.['x-portkey-provider']);
     if (guardrail) return guardrail;
     summary = p?.error?.message || summary;
   } catch {}

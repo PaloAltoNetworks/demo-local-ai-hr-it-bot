@@ -208,7 +208,9 @@
     "deny": "拒否",
     "denied": "拒否",
     "deniedByGateway": "AI Gateway がこの呼び出しを拒否しました。お客様の ID は MCP サーバー {{server}} で許可されていません。",
-    "deniedByServer": "MCP サーバー {{server}} がお客様の ID に対してこの呼び出しを拒否しました。"
+    "deniedByServer": "MCP サーバー {{server}} がお客様の ID に対してこの呼び出しを拒否しました。",
+    "deniedByGuardrail": "AI Gateway がこの呼び出しをブロックしました：MCP サーバー {{server}} のガードレールが内容を拒否しました。",
+    "deniedByRateLimit": "AI Gateway がこの呼び出しを制限しました：MCP サーバー {{server}} のレート制限に達しました。"
   },
   "feedback": {
     "helpful": "役に立った",

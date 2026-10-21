@@ -3,6 +3,23 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.8
+
+### The AIRS report link opens the right session again
+When a guardrail blocks a message in protected mode, the report link opens the session in
+Strata Cloud Manager again. AIRS now files each session under the cloud that served it (AWS,
+GCP or Azure), and the link follows the cloud the load balancer picked.
+
+### Clearer reasons when the AI Gateway stops a tool
+When the AI Gateway stops a tool call, its card now says why: a guardrail rejected what the
+tool was sent or returned, or the tool hit its usage limit. Refusals because of who you are
+still read as before. Each case shows the reason the gateway gave.
+
+### Every retry visible in the gateway logs
+The AI Gateway now logs each failed attempt of a request, not only the final one, under the
+same trace. With Load balance & fallback selected, the logs show the switch from one cloud to
+the next as it happened.
+
 ## 0.1.7
 
 ### Faster answers with Claude Haiku 5.5

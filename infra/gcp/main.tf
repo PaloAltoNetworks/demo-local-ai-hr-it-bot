@@ -1,8 +1,8 @@
 /**
  * GCP landing zone for the preview: a VPC with pinned pod and service ranges, a GKE Autopilot
  * cluster, the Secret Manager entries the cluster reads through External Secrets Operator
- * (Workload Identity Federation for GKE, no key), and the identity GitHub Actions uses to deploy
- * (Workload Identity Federation, no static key).
+ * (Workload Identity Federation for GKE, no key). GitHub Actions deploys from a runner inside the
+ * cluster (deploy/k8s/runner), so it has no GCP identity.
  *
  * Secrets are created empty: their values are added by hand with `gcloud secrets versions add`
  * so they never land in the Terraform state. The project id comes from TF_VAR_project and is
@@ -138,48 +138,4 @@ resource "google_secret_manager_secret_iam_member" "external_secrets" {
   member    = "principal://iam.googleapis.com/projects/${data.google_project.this.number}/locations/global/workloadIdentityPools/${var.project}.svc.id.goog/subject/ns/external-secrets/sa/external-secrets"
 
   depends_on = [google_container_cluster.this]
-}
-
-/**
- * GitHub OIDC federation, accepted only for workflow jobs of var.github_repo that run in the
- * GitHub environment "gcp".
- */
-resource "google_iam_workload_identity_pool" "github" {
-  workload_identity_pool_id = "${var.name}-github"
-  depends_on                = [google_project_service.this]
-}
-
-resource "google_iam_workload_identity_pool_provider" "github" {
-  workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
-  workload_identity_pool_provider_id = "github"
-  attribute_mapping = {
-    "google.subject"        = "assertion.sub"
-    "attribute.repository"  = "assertion.repository"
-    "attribute.environment" = "assertion.environment"
-  }
-  attribute_condition = "assertion.repository == '${var.github_repo}' && assertion.environment == 'gcp'"
-  oidc {
-    issuer_uri = "https://token.actions.githubusercontent.com"
-  }
-}
-
-/**
- * Deploy identity. container.admin because the deploy installs External Secrets Operator,
- * whose chart creates CRDs and cluster-wide RBAC.
- */
-resource "google_service_account" "github_deploy" {
-  account_id   = "${var.name}-github-deploy"
-  display_name = "GitHub Actions deploy (${var.github_repo})"
-}
-
-resource "google_service_account_iam_member" "github_deploy" {
-  service_account_id = google_service_account.github_deploy.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repo}"
-}
-
-resource "google_project_iam_member" "github_deploy" {
-  project = var.project
-  role    = "roles/container.admin"
-  member  = "serviceAccount:${google_service_account.github_deploy.email}"
 }

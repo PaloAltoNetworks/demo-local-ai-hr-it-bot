@@ -208,7 +208,9 @@
     "deny": "拒绝",
     "denied": "已拒绝",
     "deniedByGateway": "AI Gateway 拒绝了此调用：您的身份未获准访问 MCP 服务器 {{server}}。",
-    "deniedByServer": "MCP 服务器 {{server}} 针对您的身份拒绝了此调用。"
+    "deniedByServer": "MCP 服务器 {{server}} 针对您的身份拒绝了此调用。",
+    "deniedByGuardrail": "AI Gateway 已阻止此调用：MCP 服务器 {{server}} 的防护规则拒绝了其内容。",
+    "deniedByRateLimit": "AI Gateway 已限制此调用：已达到 MCP 服务器 {{server}} 的速率限制。"
   },
   "feedback": {
     "helpful": "有帮助",
