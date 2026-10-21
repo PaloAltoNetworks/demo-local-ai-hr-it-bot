@@ -27,8 +27,12 @@ environment:
     # Gateway-local JWT auth: tokens are checked against the JWKS set on the organisation in
     # SCM (the auth-service). The single synced org supplies portkey_oid and these gateway
     # scopes are granted to every valid token. API keys keep working.
+    # The tokens carry the persona's email, which makes them user tokens, and the gateway rejects
+    # a user token that is not an active member of the resolved workspace (403, code 033). The
+    # personas are not SCM users, so JIT access admits them as the workspace's service key instead.
     JWT_ENABLED: "ON"
     JWT_LOCAL_AUTH_DEFAULT_SCOPES: "completions.write,mcp.invoke"
+    JWT_JIT_USER_ACCESS: "ON"
 
 resources:
   requests: { cpu: 250m, memory: 512Mi }
