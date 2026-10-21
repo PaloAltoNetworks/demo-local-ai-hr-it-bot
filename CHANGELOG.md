@@ -3,6 +3,13 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.9
+
+### Signed-in conversations answer again
+After signing in, every message failed with a "not a member of the resolved workspace" error
+from the AI Gateway. The gateway now serves the demo personas again, under the workspace's
+service access.
+
 ## 0.1.8
 
 ### The AIRS report link opens the right session again
