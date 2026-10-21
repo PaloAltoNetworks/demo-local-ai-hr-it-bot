@@ -5,6 +5,11 @@ chatbot reliable and safe. Newest version first.
 
 ## 0.1.8
 
+### The AIRS report link opens the right session again
+When a guardrail blocks a message in protected mode, the report link opens the session in
+Strata Cloud Manager again. AIRS now files each session under the cloud that served it (AWS,
+GCP or Azure), and the link follows the cloud the load balancer picked.
+
 ### Clearer reasons when the AI Gateway stops a tool
 When the AI Gateway stops a tool call, its card now says why: a guardrail rejected what the
 tool was sent or returned, or the tool hit its usage limit. Refusals because of who you are
