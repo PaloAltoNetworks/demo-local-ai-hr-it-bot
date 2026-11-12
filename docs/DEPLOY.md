@@ -53,7 +53,7 @@ namespace hr-it-bot
 6. **Deploy runner.** See [Deploy runner](#deploy-runner), with the label `otter-aws`.
 7. **First deploy.** Actions > Release > Run workflow with a version (e.g. `v0.1.1`). Or publish a release.
 
-After a secret changes in Secrets Manager, External Secrets syncs it within the hour (`kubectl -n hr-it-bot annotate externalsecret <name> force-sync=$(date +%s) --overwrite` to sync now). Pods read env vars at startup, so restart them: `kubectl -n hr-it-bot rollout restart deploy`.
+After a secret changes in Secrets Manager, External Secrets syncs it within the hour, and pods read env vars at startup only. `Actions > Restart` (`gh workflow run restart.yml -f cloud=<cloud>`) syncs now and restarts the pods from the in-cluster runner. To rotate keys of `app-env`, `scripts/rotate-secret.sh <cloud> KEY...` writes the values of `.env` (or prompted ones) into that cloud's secret and starts the Restart workflow. The corporate VPN cuts Secrets Manager calls from a laptop: run it for `aws` in CloudShell (`bash <(curl -fsSL https://raw.githubusercontent.com/PaloAltoNetworks/demo-local-ai-hr-it-bot/main/scripts/rotate-secret.sh) aws KEY...`), which prompts for the values.
 
 ## Day to day
 
