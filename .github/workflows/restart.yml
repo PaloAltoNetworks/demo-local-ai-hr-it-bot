@@ -1,0 +1,47 @@
+# Reloads the cloud secrets into one cluster and restarts its pods, after a value changed in the
+# cloud secret manager (key rotation, scripts/rotate-secret.sh). Runs on the in-cluster runner
+# like deploy.yml, so it needs no cloud login and no kubectl access from a laptop.
+name: Restart
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloud:
+        type: choice
+        options: [aws, gcp]
+        default: aws
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.cloud }}
+
+jobs:
+  restart:
+    runs-on: [self-hosted, "otter-${{ inputs.cloud }}"]
+    environment: ${{ inputs.cloud }}
+    steps:
+      - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+
+      # Pods read env vars at startup, so they restart only once every ExternalSecret has
+      # refreshed after the force-sync (refreshTime later than the request).
+      - name: Sync secrets
+        run: |
+          since=$(date -u +%FT%TZ)
+          sleep 1
+          kubectl -n hr-it-bot annotate externalsecret --all force-sync="$(date +%s)" --overwrite
+          for i in $(seq 60); do
+            stale=$(kubectl -n hr-it-bot get externalsecret -o jsonpath='{range .items[*]}{.status.refreshTime}{"\n"}{end}' | awk -v s="$since" '$0 <= s')
+            [ -z "$stale" ] && exit 0
+            sleep 2
+          done
+          echo "::error::ExternalSecrets did not refresh within 2 minutes"
+          exit 1
+
+      - name: Restart
+        run: |
+          kubectl -n hr-it-bot rollout restart deploy
+          for d in $(kubectl -n hr-it-bot get deploy -o name); do
+            kubectl -n hr-it-bot rollout status "$d" --timeout=5m
+          done
