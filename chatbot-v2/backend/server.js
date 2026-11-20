@@ -14,7 +14,7 @@ import { ToolLoopAgent, pipeAgentUIStreamToResponse, isStepCount, isToolUIPart, 
 import { z } from 'zod';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
-import { USER_TOKENS_ENABLED, userToken, forgetUserToken, agentToken, setPersona, personas } from './user-token.js';
+import { USER_TOKENS_ENABLED, userToken, bearerToken, forgetUserToken, agentToken, setPersona, personas } from './user-token.js';
 
 const DEBUG = process.env.LOG_LEVEL === 'debug';
 function dbg(msg) { if (DEBUG) console.log(msg); }
@@ -115,7 +115,8 @@ const MCP_URLS = MCP_SLUGS.map(slug => `${PORTKEY_MCP_BASE}/${slug}/mcp`);
 const DEFAULT_USER = { persona: 'EMP-034', employee_id: 'EMP-034', name: 'Aurélien Girard' };
 
 /**
- * The user of a request: the persona their auth-service token carries (id, employee_id for
+ * The user of a request: the persona their auth-service token carries (the session cookie's, else
+ * the `Authorization: Bearer` token of a caller that cannot sign in) (id, employee_id for
  * employees, name, email, groups), the signed-in account behind it (login) and the agent acting
  * for them (the token's actor, act.sub, else the OAuth client), or DEFAULT_USER without user
  * tokens. `id` is what prompts and logs name the user by: the employee ID, or the persona id of
@@ -124,7 +125,7 @@ const DEFAULT_USER = { persona: 'EMP-034', employee_id: 'EMP-034', name: 'Aurél
  */
 async function requestUser(req) {
   if (!USER_TOKENS_ENABLED) return { user: { ...DEFAULT_USER, id: DEFAULT_USER.employee_id } };
-  const { token, claims } = await userToken(req.headers.cookie);
+  const { token, claims } = req.headers.cookie ? await userToken(req.headers.cookie) : await bearerToken(req.headers.authorization);
   const { persona, employee_id, name, email, groups, client_id, login_email, act } = claims;
   return { token, user: { id: employee_id || persona, persona, employee_id, name, email, groups, agent: act?.sub || client_id, login: login_email } };
 }

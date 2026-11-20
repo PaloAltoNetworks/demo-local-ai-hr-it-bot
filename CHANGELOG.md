@@ -5,6 +5,12 @@ chatbot reliable and safe. Newest version first.
 
 ## 0.1.11
 
+### Prisma AIRS Red Teaming can attack The Otter
+A Prisma AIRS Red Teaming target can now chat with The Otter without signing in, on
+https://otter.panw.pro and on the preview. It gets a token for the persona Aurélien Girard and
+talks to the assistant as him, so one scan in Risky mode and one in Protected mode show what
+Prisma AIRS stops.
+
 ### Manager Impersonation works again in Risky mode
 The assistant no longer refuses identity claims or self-approvals on its own, in any mode. Normal
 and Risky now behave like a company chatbot built without these rules in its prompt, and in
