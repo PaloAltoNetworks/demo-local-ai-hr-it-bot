@@ -121,13 +121,14 @@ const DEFAULT_USER = { persona: 'EMP-034', employee_id: 'EMP-034', name: 'Aurél
  * for them (the token's actor, act.sub, else the OAuth client), or DEFAULT_USER without user
  * tokens. `id` is what prompts and logs name the user by: the employee ID, or the persona id of
  * someone without one (an external contractor).
- * @returns {Promise<{ token?: string, user: { id: string, persona: string, employee_id?: string, name?: string, email?: string, groups?: string[], login?: string, agent?: string } }>}
+ * @returns {Promise<{ token?: string, user: { id: string, persona: string, employee_id?: string, name?: string, email?: string, groups?: string[], login?: string, agent?: string, bearer?: boolean } }>}
  */
 async function requestUser(req) {
   if (!USER_TOKENS_ENABLED) return { user: { ...DEFAULT_USER, id: DEFAULT_USER.employee_id } };
-  const { token, claims } = req.headers.cookie ? await userToken(req.headers.cookie) : await bearerToken(req.headers.authorization);
+  const bearer = !req.headers.cookie;
+  const { token, claims } = bearer ? await bearerToken(req.headers.authorization) : await userToken(req.headers.cookie);
   const { persona, employee_id, name, email, groups, client_id, login_email, act } = claims;
-  return { token, user: { id: employee_id || persona, persona, employee_id, name, email, groups, agent: act?.sub || client_id, login: login_email } };
+  return { token, user: { id: employee_id || persona, persona, employee_id, name, email, groups, agent: act?.sub || client_id, login: login_email, bearer } };
 }
 
 // --- Focused phase prompts for the forced ReAct loop ---
@@ -185,7 +186,11 @@ const GW_ORG_ID = process.env.PORTKEY_ORG_ID || '';
 /** Maximum FETCH → OBSERVE rounds per request (e.g. a lookup followed by a write). */
 const MAX_FETCH_ROUNDS = 3;
 
-// Tools that mutate state — require explicit user approval before execution
+/**
+ * Tools that mutate state: the user approves each call on a card before it runs. A caller that
+ * brings its own token (`Authorization: Bearer`, the Prisma AIRS Red Teaming target) has no card
+ * to click and is the user who would click it, so its calls run as approved.
+ */
 const TOOLS_REQUIRING_APPROVAL = ['create_ticket', 'update_ticket_status'];
 
 // Provider → fast (Reason/Observe) + powerful (Decide) model tiers.
@@ -1011,7 +1016,7 @@ app.post('/api/chat', async (req, res) => {
 
     // MCP tools only — reflect variants added inside buildReactAgent per phase.
     // v7: approval is declared on the agent (toolApproval), not the tool.
-    const approvalToolNames = Object.keys(mcpTools).filter(key =>
+    const approvalToolNames = user.bearer ? [] : Object.keys(mcpTools).filter(key =>
       TOOLS_REQUIRING_APPROVAL.some(suffix => key.endsWith(suffix))
     );
 

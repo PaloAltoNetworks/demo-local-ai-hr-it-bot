@@ -3,6 +3,13 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.12
+
+### Red Teaming scans can approve tickets
+When Prisma AIRS Red Teaming chats with The Otter, ticket changes run without the approval card,
+as if the persona had clicked Approve. A scan can now find out whether the assistant lets someone
+approve their own ticket.
+
 ## 0.1.11
 
 ### Prisma AIRS Red Teaming can attack The Otter
