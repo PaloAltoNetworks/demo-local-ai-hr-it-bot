@@ -65,6 +65,11 @@ export const RESOURCES = (process.env.OAUTH_RESOURCES || "").split(",").map((r) 
  * `agentId` is the SPIFFE ID the client's workload would hold in the target model (Idira Secure
  * Workload Access). It is simulated: the client still proves itself with its secret, and the
  * auth-service vouches for the mapping by writing it as the actor (`act`) of delegated tokens.
+ *
+ * `persona` makes a client_credentials client act as that persona, for callers that cannot sign
+ * in: its tokens carry the persona's identity, the MCP servers as audience and the client as
+ * actor, so the chatbot, the AI Gateway and the tools treat them as that persona's tokens. The
+ * Prisma AIRS Red Teaming target uses the `redteam` client this way.
  */
 export const TRUSTED_CLIENTS = [
   {
@@ -83,5 +88,15 @@ export const TRUSTED_CLIENTS = [
     grantTypes: ["client_credentials"],
     redirectUris: [],
     clientCredentialsScopes: ["hr:read", "it:read"],
+  },
+  {
+    clientId: "redteam",
+    name: "Prisma AIRS Red Teaming",
+    secret: process.env.REDTEAM_CLIENT_SECRET,
+    grantTypes: ["client_credentials"],
+    redirectUris: [],
+    clientCredentialsScopes: SCOPES,
+    persona: process.env.REDTEAM_PERSONA || "EMP-034",
+    agentId: "spiffe://otter/ai/ns/hr-it-bot/sa/redteam",
   },
 ].filter((c) => c.secret);

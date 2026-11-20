@@ -1,6 +1,6 @@
 {
   "name": "auth-service",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "better-auth": "^1.7.7",
     "better-sqlite3": "^13.0.3",
     "hono": "^4.13.13",
+    "jose": "^6.2.18",
     "nodemailer": "^10.1.0"
   }
 }

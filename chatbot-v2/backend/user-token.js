@@ -9,6 +9,9 @@
  *   consent: the code is read from the authorize response and exchanged at once. It carries the
  *   identity of the user's persona (email, name, groups, employee_id), names the chatbot as client
  *   and its workload identity as actor (act.sub).
+ * - bearerToken(header): a token the caller brings as `Authorization: Bearer`, for callers that
+ *   cannot sign in (the Prisma AIRS Red Teaming target, with the auth-service's `redteam` persona
+ *   client). Caddy's forward_auth has accepted it; it is checked again here and used as the user's.
  * - agentToken(): the chatbot's own token (client_credentials, group "agents", every scope): a
  *   service account, for MCP connections and the tool calls of unprotected turns. The MCP
  *   servers grant it everything its scopes allow, whoever the user is.
@@ -17,6 +20,7 @@
  * expiry. Enabled when OAUTH_SERVER_URL, OAUTH_RESOURCES and CHATBOT_CLIENT_SECRET are set.
  */
 import crypto from 'crypto';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const SERVER = process.env.OAUTH_SERVER_URL || '';
 const RESOURCES = (process.env.OAUTH_RESOURCES || '').split(',').map((r) => r.trim()).filter(Boolean);
@@ -93,6 +97,25 @@ async function cached(key, issue) {
 export function userToken(cookie) {
   if (!cookie) return Promise.reject(new Error('No auth-service session cookie on the request'));
   return cached(sessionKey(cookie), () => authorizationCode(cookie));
+}
+
+/** Signing keys of the auth-service (JWKS), fetched on first use and cached by jose. */
+const jwks = SERVER ? createRemoteJWKSet(new URL('/api/auth/jwks', SERVER)) : null;
+
+/**
+ * Token sent as `Authorization: Bearer`, checked as the MCP servers check theirs: an RS256 JWT
+ * signed by the auth-service, unexpired, with an MCP server as audience.
+ * @returns {Promise<{ token: string, claims: object }>} same shape as userToken
+ */
+export async function bearerToken(header) {
+  const token = header?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  if (!token || !jwks) throw new Error('No auth-service session cookie on the request');
+  try {
+    const { payload } = await jwtVerify(token, jwks, { audience: RESOURCES, algorithms: ['RS256'] });
+    return { token, claims: payload };
+  } catch (err) {
+    throw new Error(`auth-service bearer token rejected: ${err.code || err.message}`);
+  }
 }
 
 /** Drops the cached token of this session, so the next one carries a changed persona. */

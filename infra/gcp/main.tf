@@ -51,11 +51,21 @@ resource "google_compute_network" "this" {
   depends_on              = [google_project_service.this]
 }
 
+/**
+ * Flow logs feed Prisma AIRS discovery: the project's `otter-ge-lab` log sink (created by the
+ * SCM onboarding Terraform, not here) routes this subnet's vpc_flows to the bucket AIRS reads.
+ */
 resource "google_compute_subnetwork" "this" {
   name          = var.name
   network       = google_compute_network.this.id
   region        = var.region
   ip_cidr_range = "10.10.0.0/20"
+
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
 
   secondary_ip_range {
     range_name    = "pods"

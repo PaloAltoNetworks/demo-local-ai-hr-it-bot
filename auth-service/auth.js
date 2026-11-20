@@ -35,17 +35,31 @@ function personaClaims(personaId) {
 /**
  * Actor of a token issued to a client for a user (RFC 8693 §4.1): `act.sub` is the workload
  * identity of the client (its agentId), so one token names both the user (sub, email_id) and the
- * agent acting for them. Tokens a client gets for itself carry no actor, nor do clients without
- * an agentId.
+ * agent acting for them. A persona client's own tokens name it as actor of its persona the same
+ * way. Other tokens a client gets for itself carry no actor, nor do clients without an agentId.
  */
 const actorClaims = {
   claims: {
     accessToken: ({ user, client }) => {
-      const agentId = TRUSTED_CLIENTS.find((c) => c.clientId === client?.clientId)?.agentId;
-      return user && agentId ? { act: { sub: agentId } } : {};
+      const c = TRUSTED_CLIENTS.find((x) => x.clientId === client?.clientId);
+      return (user || c?.persona) && c?.agentId ? { act: { sub: c.agentId } } : {};
     },
   },
 };
+
+/**
+ * Audience of a persona client's client_credentials token: a request naming no MCP server gets
+ * all of them (RESOURCES), as a signed-in user's token does. The Red Teaming target sends a fixed
+ * form body and cannot repeat `resource`. The client id comes from Basic auth, else the body.
+ */
+function personaClientAudience(ctx) {
+  const body = ctx.body;
+  if (body?.grant_type !== "client_credentials" || body.resource) return;
+  const basic = ctx.headers?.get("authorization")?.match(/^Basic\s+(.+)$/i)?.[1];
+  const clientId = basic ? decodeURIComponent(Buffer.from(basic, "base64").toString().split(":")[0]) : body.client_id;
+  if (!TRUSTED_CLIENTS.some((c) => c.clientId === clientId && c.persona)) return;
+  return { context: { body: { ...body, resource: RESOURCES } } };
+}
 
 /** Client secrets are stored as unpadded base64url SHA-256, the same hash seedTrustedClients writes. */
 const hashSecret = (secret) => createHash("sha256").update(secret).digest("base64url");
@@ -94,6 +108,7 @@ const options = {
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/oauth2/token") return personaClientAudience(ctx);
       if (!ctx.path.startsWith("/sign-in")) return;
       const email = ctx.body?.email;
       if (!email || typeof email !== "string") return;
@@ -127,8 +142,9 @@ const options = {
       resourceSeedMode: "overwrite",
       enforcePerClientResources: false,
       storeClientSecret: { hash: hashSecret },
-      customAccessTokenClaims: ({ user }) =>
-        user ? { ...personaClaims(user.persona), login_email: user.email } : { groups: AGENT_GROUPS },
+      customAccessTokenClaims: ({ user, metadata }) =>
+        user ? { ...personaClaims(user.persona), login_email: user.email }
+          : metadata?.persona ? personaClaims(metadata.persona) : { groups: AGENT_GROUPS },
       extensions: [actorClaims],
     }),
   ],
@@ -139,7 +155,8 @@ export const auth = betterAuth(options);
 
 /**
  * Creates or updates the first-party clients so their settings and secrets follow the config
- * on every start. They skip consent and must use PKCE on the authorization code grant.
+ * on every start. They skip consent and must use PKCE on the authorization code grant. A persona
+ * client's persona is stored in its metadata, where customAccessTokenClaims reads it.
  */
 async function seedTrustedClients() {
   const { adapter } = await auth.$context;
@@ -156,6 +173,7 @@ async function seedTrustedClients() {
       redirectUris: c.redirectUris,
       scopes: SCOPES,
       clientCredentialsScopes: c.clientCredentialsScopes,
+      metadata: c.persona ? JSON.stringify({ persona: c.persona }) : null,
       updatedAt: new Date(),
     };
     const where = [{ field: "clientId", value: c.clientId }];

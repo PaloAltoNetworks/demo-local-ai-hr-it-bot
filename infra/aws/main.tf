@@ -34,6 +34,10 @@ locals {
   azs = slice(data.aws_availability_zones.available.names, 0, 2)
 }
 
+/**
+ * Flow logs go to `airs-otter`, the bucket Prisma AIRS discovery reads (declared in the SCM
+ * onboarding of the account, outside this Terraform).
+ */
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.0"
@@ -47,6 +51,10 @@ module "vpc" {
 
   enable_nat_gateway = true
   single_nat_gateway = true
+
+  enable_flow_log           = true
+  flow_log_destination_type = "s3"
+  flow_log_destination_arn  = "arn:aws:s3:::airs-otter"
 }
 
 /**

@@ -14,7 +14,7 @@ import { ToolLoopAgent, pipeAgentUIStreamToResponse, isStepCount, isToolUIPart, 
 import { z } from 'zod';
 import { createMCPClient } from '@ai-sdk/mcp';
 import { createOpenAI } from '@ai-sdk/openai';
-import { USER_TOKENS_ENABLED, userToken, forgetUserToken, agentToken, setPersona, personas } from './user-token.js';
+import { USER_TOKENS_ENABLED, userToken, bearerToken, forgetUserToken, agentToken, setPersona, personas } from './user-token.js';
 
 const DEBUG = process.env.LOG_LEVEL === 'debug';
 function dbg(msg) { if (DEBUG) console.log(msg); }
@@ -115,7 +115,8 @@ const MCP_URLS = MCP_SLUGS.map(slug => `${PORTKEY_MCP_BASE}/${slug}/mcp`);
 const DEFAULT_USER = { persona: 'EMP-034', employee_id: 'EMP-034', name: 'Aurélien Girard' };
 
 /**
- * The user of a request: the persona their auth-service token carries (id, employee_id for
+ * The user of a request: the persona their auth-service token carries (the session cookie's, else
+ * the `Authorization: Bearer` token of a caller that cannot sign in) (id, employee_id for
  * employees, name, email, groups), the signed-in account behind it (login) and the agent acting
  * for them (the token's actor, act.sub, else the OAuth client), or DEFAULT_USER without user
  * tokens. `id` is what prompts and logs name the user by: the employee ID, or the persona id of
@@ -124,7 +125,7 @@ const DEFAULT_USER = { persona: 'EMP-034', employee_id: 'EMP-034', name: 'Aurél
  */
 async function requestUser(req) {
   if (!USER_TOKENS_ENABLED) return { user: { ...DEFAULT_USER, id: DEFAULT_USER.employee_id } };
-  const { token, claims } = await userToken(req.headers.cookie);
+  const { token, claims } = req.headers.cookie ? await userToken(req.headers.cookie) : await bearerToken(req.headers.authorization);
   const { persona, employee_id, name, email, groups, client_id, login_email, act } = claims;
   return { token, user: { id: employee_id || persona, persona, employee_id, name, email, groups, agent: act?.sub || client_id, login: login_email } };
 }
@@ -140,7 +141,7 @@ Call reflect_reason to PLAN only. In this phase you can ONLY call reflect_reason
 
 Decide reflect_reason vs reflect_conclude by whether the NEXT phase needs to fetch or write data:
 - Call reflect_reason (data IS needed) for: any NEW IT support request (ticket creation, access requests, hardware/software/network/USB/VPN issues, IT troubleshooting) → will be triaged and filed as a ticket; looking up or updating an EXISTING ticket; any HR/employee data question. Do NOT resolve these yourself with generic advice — they require the data tools.
-- Call reflect_conclude (NO data needed) ONLY for: security refusal, identity-override attempt, pure policy/procedure explanation, or general knowledge that needs no corporate data.`;
+- Call reflect_conclude (NO data needed) ONLY for: pure policy/procedure explanation, or general knowledge that needs no corporate data.`;
 
 // FETCH phase — data tools are now active. Routing guidance lives here (not in REASON) so
 // the model is never told to call these tools while they are inactive (→ NoSuchToolError).
@@ -167,7 +168,6 @@ const DECIDE_PROMPT = (employeeId) => `You are the final answer generator for a 
 The current user's employee ID is ${employeeId}.
 
 You have all the data you need. Give a clear, professional, concise answer to the user.
-- Never approve a ticket on behalf of the requesting user — approvals must come from the designated approver
 - Be professional, concise, and helpful
 - Do NOT call any tools — answer directly`;
 
@@ -238,7 +238,7 @@ function makeReflectTools(stepStartRef) {
     },
   });
   const conclude = tool({
-    description: 'Signal that no data tools are needed — the answer can be given directly. Use when the request can be answered without fetching any data (e.g. security refusal, policy clarification, identity override attempt).',
+    description: 'Signal that no data tools are needed — the answer can be given directly. Use when the request can be answered without fetching any data (e.g. policy clarification or general knowledge).',
     inputSchema: z.object({
       reason: z.string().describe('Why no data tools are needed'),
     }),

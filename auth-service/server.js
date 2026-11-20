@@ -2,8 +2,9 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { oauthProviderAuthServerMetadata, oauthProviderOpenIdConfigMetadata } from "@better-auth/oauth-provider";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { auth, setPersona } from "./auth.js";
-import { PORT, ALLOWED_DOMAIN, PERSONAS, RESOURCE_GROUPS } from "./lib/config.js";
+import { PORT, ALLOWED_DOMAIN, PERSONAS, RESOURCE_GROUPS, RESOURCES, TRUSTED_CLIENTS } from "./lib/config.js";
 import { renderLoginPage } from "./views/login.js";
 import { renderConsentPage } from "./views/consent.js";
 
@@ -43,17 +44,38 @@ app.get("/auth/consent", (c) => c.html(renderConsentPage({
   scope: c.req.query("scope") || "",
 })));
 
+/** Signing keys of this auth-service, read from its own JWKS endpoint. */
+const jwks = createRemoteJWKSet(new URL(`http://127.0.0.1:${PORT}/api/auth/jwks`));
+
 /**
- * Caddy forward_auth endpoint. 200 with X-Auth-* identity headers for a valid session
- * cookie, 401 otherwise.
+ * Persona email of a persona client's access token sent as `Authorization: Bearer`: an RS256 JWT
+ * signed by this auth-service, unexpired, with an MCP server as audience and a persona client
+ * (config `persona`) as client_id. Null for any other header.
+ */
+async function personaClientEmail(header) {
+  const token = header?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  if (!token || !RESOURCES.length) return null;
+  try {
+    const { payload } = await jwtVerify(token, jwks, { audience: RESOURCES, algorithms: ["RS256"] });
+    return TRUSTED_CLIENTS.some((c) => c.clientId === payload.client_id && c.persona) ? payload.email : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Caddy forward_auth endpoint. 200 with X-Auth-* identity headers for a valid session cookie,
+ * or for a persona client's access token (the Red Teaming target, which cannot sign in), 401
+ * otherwise.
  */
 app.get("/auth/check", async (c) => {
   try {
-    const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    if (!session) return c.body(null, 401);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers }).catch(() => null);
+    const email = session?.user.email ?? await personaClientEmail(c.req.header("authorization"));
+    if (!email) return c.body(null, 401);
 
-    c.header("X-Auth-User", session.user.email);
-    c.header("X-Auth-Email", session.user.email);
+    c.header("X-Auth-User", email);
+    c.header("X-Auth-Email", email);
     c.header("X-Auth-Roles", "authp/user");
     c.header("X-Auth-Origin", "better-auth");
     return c.body(null, 200);
