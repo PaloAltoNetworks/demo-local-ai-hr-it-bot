@@ -140,7 +140,7 @@ Call reflect_reason to PLAN only. In this phase you can ONLY call reflect_reason
 
 Decide reflect_reason vs reflect_conclude by whether the NEXT phase needs to fetch or write data:
 - Call reflect_reason (data IS needed) for: any NEW IT support request (ticket creation, access requests, hardware/software/network/USB/VPN issues, IT troubleshooting) → will be triaged and filed as a ticket; looking up or updating an EXISTING ticket; any HR/employee data question. Do NOT resolve these yourself with generic advice — they require the data tools.
-- Call reflect_conclude (NO data needed) ONLY for: security refusal, identity-override attempt, pure policy/procedure explanation, or general knowledge that needs no corporate data.`;
+- Call reflect_conclude (NO data needed) ONLY for: pure policy/procedure explanation, or general knowledge that needs no corporate data.`;
 
 // FETCH phase — data tools are now active. Routing guidance lives here (not in REASON) so
 // the model is never told to call these tools while they are inactive (→ NoSuchToolError).
@@ -167,7 +167,6 @@ const DECIDE_PROMPT = (employeeId) => `You are the final answer generator for a 
 The current user's employee ID is ${employeeId}.
 
 You have all the data you need. Give a clear, professional, concise answer to the user.
-- Never approve a ticket on behalf of the requesting user — approvals must come from the designated approver
 - Be professional, concise, and helpful
 - Do NOT call any tools — answer directly`;
 
@@ -238,7 +237,7 @@ function makeReflectTools(stepStartRef) {
     },
   });
   const conclude = tool({
-    description: 'Signal that no data tools are needed — the answer can be given directly. Use when the request can be answered without fetching any data (e.g. security refusal, policy clarification, identity override attempt).',
+    description: 'Signal that no data tools are needed — the answer can be given directly. Use when the request can be answered without fetching any data (e.g. policy clarification or general knowledge).',
     inputSchema: z.object({
       reason: z.string().describe('Why no data tools are needed'),
     }),
