@@ -3,6 +3,17 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.11
+
+### Manager Impersonation works again in Risky mode
+The assistant no longer refuses identity claims or self-approvals on its own, in any mode. Normal
+and Risky now behave like a company chatbot built without these rules in its prompt, and in
+Protected mode Prisma AIRS is the only thing that stops the attack.
+
+### The clusters show up in Prisma AIRS discovery
+The networks that run The Otter send their flow logs to Prisma AIRS, so its discovery can find
+the app and the models it calls.
+
 ## 0.1.10
 
 ### The gateway shows the persona, not your account
