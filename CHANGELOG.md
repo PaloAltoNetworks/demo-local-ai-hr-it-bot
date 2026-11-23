@@ -5,6 +5,13 @@ chatbot reliable and safe. Newest version first.
 
 ## 0.1.12
 
+### A scenario shows what Prisma AIRS leaves to the app
+A Prisma AIRS Red Teaming scan found a prompt that gets the assistant to approve the user's own
+ticket in Protected mode: a plain business request with no injection, so the guardrails let it
+through. Self-Approval in Protected mode plays it on ticket INC-2025-0152, and the Self-Approve
+step of Manager Impersonation in Risky mode now uses the same prompt. Approval rules belong to
+the tools and the gateway's MCP policies.
+
 ### Red Teaming scans can approve tickets
 When Prisma AIRS Red Teaming chats with The Otter, ticket changes run without the approval card,
 as if the persona had clicked Approve. A scan can now find out whether the assistant lets someone
