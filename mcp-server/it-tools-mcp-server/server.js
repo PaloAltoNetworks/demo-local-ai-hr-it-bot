@@ -39,6 +39,17 @@ function externalCaller(authInfo) {
 }
 
 const OWN_ONLY = 'External users may only see and open their own tickets.';
+
+/**
+ * Refusal when an employee approves or rejects their own ticket: an approval must come from
+ * someone other than the requester. Applies to user tokens (the chatbot's Protected mode, where
+ * tool calls carry the user's identity); the chatbot's service account is not checked.
+ */
+function selfApproval(authInfo, ticket, status) {
+  const caller = authInfo?.extra?.employee_id;
+  if (!caller || !ticket || !['Approved', 'Rejected'].includes(status) || ticket.employee_id !== caller) return null;
+  return refused(`${caller} may not ${status === 'Approved' ? 'approve' : 'reject'} ${ticket.ticket_id}: it is their own ticket, the approval must come from someone else.`);
+}
 const isSelf = (caller, identifier) => identifier === caller.id || (caller.email && identifier.toLowerCase() === caller.email.toLowerCase());
 
 /**
@@ -152,6 +163,8 @@ function registerTools(server) {
       if (denied) return denied;
       const external = externalCaller(authInfo);
       if (external) return refused(`${external.id} may not change the status of a ticket. ${OWN_ONLY}`);
+      const self = selfApproval(authInfo, service.getTicketById(ticket_id), status);
+      if (self) return self;
       const result = service.updateTicketStatus(ticket_id, status, approver_email, approver_name);
       if (!result) {
         return json({ error: 'update_failed', message: `Ticket ${ticket_id} not found or update failed` });
