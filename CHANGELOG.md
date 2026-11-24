@@ -9,7 +9,8 @@ chatbot reliable and safe. Newest version first.
 Self-Approval is now one example in Risky and in Protected mode, on ticket INC-2025-0152. Risky
 mode lets you approve it, Protected mode refuses. Approving a ticket that is already approved
 changes nothing and adds no history entry, so every demo sees a clean ticket. The Manager
-Impersonation steps in Risky mode and their page refresh are gone.
+Impersonation steps in Risky mode and their page refresh are gone. USB Access Request in Normal mode
+stops at the ticket: its Request Approval step is gone too.
 
 ## 0.1.12
 
