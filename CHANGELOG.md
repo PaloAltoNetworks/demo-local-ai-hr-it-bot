@@ -5,11 +5,11 @@ chatbot reliable and safe. Newest version first.
 
 ## 0.1.13
 
-### Self-Approval plays on the ticket you just created
-Self-Approval is now one example in Risky mode, and it approves the USB access ticket from Normal
-mode in the same conversation, so every demo starts from a fresh ticket. In Protected mode it
-targets ticket INC-2025-0152, which the refusal leaves untouched, so it plays again and again. The Manager Impersonation steps in Risky mode
-and their page refresh are gone: switching modes keeps the conversation.
+### Self-Approval plays again and again
+Self-Approval is now one example in Risky and in Protected mode, on ticket INC-2025-0152. Risky
+mode lets you approve it, Protected mode refuses. Approving a ticket that is already approved
+changes nothing and adds no history entry, so every demo sees a clean ticket. The Manager
+Impersonation steps in Risky mode and their page refresh are gone.
 
 ## 0.1.12
 
