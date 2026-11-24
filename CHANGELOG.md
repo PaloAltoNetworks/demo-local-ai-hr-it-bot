@@ -3,6 +3,16 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.13
+
+### Self-Approval plays again and again
+Self-Approval is now one example in Risky and in Protected mode, on ticket INC-2025-0152. Risky
+mode lets you approve it, Protected mode refuses. Approving a ticket that is already approved
+changes nothing and adds no history entry, so every demo sees a clean ticket. Each starts
+with a page refresh, so the assistant meets the request in a fresh conversation. The Manager
+Impersonation steps in Risky mode are gone. USB Access Request in Normal mode
+stops at the ticket: its Request Approval step is gone too.
+
 ## 0.1.12
 
 ### You can no longer approve your own ticket in Protected mode

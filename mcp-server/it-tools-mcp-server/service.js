@@ -61,12 +61,15 @@ export class ITService {
   }
 
   /**
-   * Sets a ticket's status and, when an approver is given, records an approval comment on it.
+   * Sets a ticket's status and, when an approver is given, records an approval comment on it. A
+   * ticket already in that status is left as is, so a repeated call adds no duplicate comment.
    * @returns {{ ticket_id: string, status: string } | null} null when the ticket does not exist
    */
   updateTicketStatus(ticketId, status, approverEmail, approverName) {
-    const { changes } = this.db.prepare('UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?').run(status, ticketId);
-    if (changes === 0) return null;
+    const current = this.db.prepare('SELECT status FROM tickets WHERE ticket_id = ?').get(ticketId);
+    if (!current) return null;
+    if (current.status === status) return { ticket_id: ticketId, status };
+    this.db.prepare('UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?').run(status, ticketId);
     if (approverEmail) {
       const author = approverName || approverEmail;
       this.db.prepare(`
