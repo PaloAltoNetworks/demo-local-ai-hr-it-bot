@@ -73,6 +73,10 @@ const transporter = nodemailer.createTransport(SMTP_CONFIG);
  * is configurable so two instances can share a cookie domain without overwriting each other.
  * Magic links expire after 10 minutes.
  *
+ * Requests are rate limited per client IP, read from cf-connecting-ip (set by Cloudflare in front
+ * of the tunnel; X-Forwarded-For only holds the cloudflared pod): 5 magic links a minute, 100
+ * requests per 10 seconds elsewhere. Counters live in memory, which holds for the single replica.
+ *
  * It is also the OAuth 2.1 authorization server of the MCP servers: RS256 JWT access tokens
  * (JWKS at /api/auth/jwks) carrying the identity of the user's persona, the client that asked
  * (client_id / azp) and its workload identity as actor (act), the requested MCP servers as
@@ -99,7 +103,9 @@ const options = {
       maxAge: 60 * 5,
     },
   },
+  rateLimit: { enabled: true },
   advanced: {
+    ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
     cookiePrefix: COOKIE_PREFIX,
     crossSubDomainCookies: {
       enabled: !!process.env.AUTH_COOKIE_DOMAIN,
