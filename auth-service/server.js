@@ -4,7 +4,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { oauthProviderAuthServerMetadata, oauthProviderOpenIdConfigMetadata } from "@better-auth/oauth-provider";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { auth, setPersona } from "./auth.js";
-import { PORT, ALLOWED_DOMAIN, PERSONAS, RESOURCE_GROUPS, RESOURCES, TRUSTED_CLIENTS } from "./lib/config.js";
+import { PORT, ALLOWED_DOMAIN, CLIENT_IP_HEADER, PERSONAS, RESOURCE_GROUPS, RESOURCES, TRUSTED_CLIENTS } from "./lib/config.js";
 import { renderLoginPage } from "./views/login.js";
 import { renderConsentPage } from "./views/consent.js";
 
@@ -84,20 +84,25 @@ app.get("/auth/check", async (c) => {
   }
 });
 
-/** Current session identity, for pages that want to show who is signed in. */
+/**
+ * Current session identity, for pages that want to show who is signed in, and the public IP
+ * the service sees for the caller (the rate limit key).
+ */
 app.get("/auth/whoami", async (c) => {
+  const ip = c.req.header(CLIENT_IP_HEADER) || null;
   try {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    if (!session) return c.json({ authenticated: false });
+    if (!session) return c.json({ authenticated: false, ip });
     return c.json({
       authenticated: true,
+      ip,
       email: session.user.email,
       name: session.user.name,
       persona: session.user.persona || PERSONAS[0].id,
       roles: ["authp/user"],
     });
   } catch {
-    return c.json({ authenticated: false });
+    return c.json({ authenticated: false, ip });
   }
 });
 

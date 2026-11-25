@@ -2,6 +2,8 @@ export const PORT = parseInt(process.env.PORT || "3001", 10);
 export const AUTH_SECRET = process.env.AUTH_SECRET || process.env.JWT_SHARED_SECRET;
 export const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN || "paloaltonetworks.com";
 export const SITE_URL = process.env.SITE_URL || "https://localhost";
+/** Header holding the visitor's public IP, set by Cloudflare in front of the tunnel. */
+export const CLIENT_IP_HEADER = "cf-connecting-ip";
 /**
  * Addresses that never receive a sign-in link (executives), from comma-separated BLOCKED_EMAILS.
  * The list lives in the auth secret only, never in the repository.
