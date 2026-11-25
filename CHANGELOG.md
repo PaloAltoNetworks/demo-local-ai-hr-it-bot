@@ -9,6 +9,7 @@ chatbot reliable and safe. Newest version first.
 Anyone can ask The Otter for a sign-in link for any company address, and the link goes to that
 mailbox. Each visitor can now ask for five links a minute at most, so the sign-in page can no
 longer be used to spam a colleague or burn through the sending quota.
+A short list of executive addresses never receives a sign-in link at all.
 
 ## 0.1.13
 

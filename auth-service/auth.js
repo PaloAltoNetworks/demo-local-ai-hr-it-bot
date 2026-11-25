@@ -7,7 +7,7 @@ import { getMigrations } from "better-auth/db/migration";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import nodemailer from "nodemailer";
 import {
-  ALLOWED_DOMAIN, SITE_URL, SMTP_CONFIG, AUTH_SECRET, TRUSTED_ORIGINS, COOKIE_PREFIX,
+  ALLOWED_DOMAIN, BLOCKED_EMAILS, SITE_URL, SMTP_CONFIG, AUTH_SECRET, TRUSTED_ORIGINS, COOKIE_PREFIX,
   PERSONAS, AGENT_GROUPS, SCOPES, RESOURCES, TRUSTED_CLIENTS,
 } from "./lib/config.js";
 import { renderEmail } from "./views/email.js";
@@ -71,7 +71,8 @@ const transporter = nodemailer.createTransport(SMTP_CONFIG);
  * Sessions last 7 days, refresh daily, and are cached in the cookie for 5 minutes.
  * The cookie is shared across subdomains when AUTH_COOKIE_DOMAIN is set; its name prefix
  * is configurable so two instances can share a cookie domain without overwriting each other.
- * Magic links expire after 10 minutes.
+ * Magic links expire after 10 minutes. An address of BLOCKED_EMAILS gets no link, yet the
+ * request answers as if it was sent, so the list cannot be probed from the sign-in page.
  *
  * Requests are rate limited per client IP, read from cf-connecting-ip (set by Cloudflare in front
  * of the tunnel; X-Forwarded-For only holds the cloudflared pod): 5 magic links a minute, 100
@@ -129,6 +130,7 @@ const options = {
   plugins: [
     magicLink({
       sendMagicLink: async ({ email, url }) => {
+        if (BLOCKED_EMAILS.has(email.toLowerCase())) return console.warn("Sign-in link withheld for a blocked address");
         await transporter.sendMail({
           from: `"The Otter - Auth" <${SMTP_CONFIG.auth.user}>`,
           to: email,
