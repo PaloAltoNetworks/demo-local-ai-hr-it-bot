@@ -5,6 +5,10 @@ chatbot reliable and safe. Newest version first.
 
 ## 0.1.15
 
+### A safer sign-in page
+A crafted link to the sign-in page could run its own code there or send you on to another site
+once signed in. The page now ignores such links and only returns you to The Otter.
+
 ### Behind-the-scenes improvements
 Each sign-in link request is now traced with the address asked for and where it came from, so
 unexpected requests can be followed up. Addresses with fewer than 3 characters before the @ are
