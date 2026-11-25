@@ -88,24 +88,23 @@ app.get("/auth/check", async (c) => {
 });
 
 /**
- * Current session identity, for pages that want to show who is signed in, and the public IP
- * the service sees for the caller (the rate limit key).
+ * Identity of the signed-in caller and the public IP the service sees for them (the rate limit
+ * key). 401 without a session.
  */
 app.get("/auth/whoami", async (c) => {
-  const ip = c.req.header(CLIENT_IP_HEADER) || null;
   try {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    if (!session) return c.json({ authenticated: false, ip });
+    if (!session) return c.json({ authenticated: false }, 401);
     return c.json({
       authenticated: true,
-      ip,
+      ip: c.req.header(CLIENT_IP_HEADER) || null,
       email: session.user.email,
       name: session.user.name,
       persona: session.user.persona || PERSONAS[0].id,
       roles: ["authp/user"],
     });
   } catch {
-    return c.json({ authenticated: false, ip });
+    return c.json({ authenticated: false }, 401);
   }
 });
 
