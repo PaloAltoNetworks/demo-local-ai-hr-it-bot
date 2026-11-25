@@ -5,3 +5,8 @@ export function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+/** JSON for a value written inside an inline <script>: `<` is escaped so the value cannot close the tag. */
+export function scriptJson(value) {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}

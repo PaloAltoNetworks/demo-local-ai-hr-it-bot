@@ -4,7 +4,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { oauthProviderAuthServerMetadata, oauthProviderOpenIdConfigMetadata } from "@better-auth/oauth-provider";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { auth, setPersona } from "./auth.js";
-import { PORT, ALLOWED_DOMAIN, PERSONAS, RESOURCE_GROUPS, RESOURCES, TRUSTED_CLIENTS } from "./lib/config.js";
+import { PORT, ALLOWED_DOMAIN, CLIENT_IP_HEADER, PERSONAS, RESOURCE_GROUPS, RESOURCES, TRUSTED_CLIENTS } from "./lib/config.js";
 import { renderLoginPage } from "./views/login.js";
 import { renderConsentPage } from "./views/consent.js";
 
@@ -21,20 +21,23 @@ app.get("/.well-known/oauth-authorization-server", (c) => authServerMetadata(c.r
 app.get("/.well-known/openid-configuration/*", (c) => openIdMetadata(c.req.raw));
 app.get("/.well-known/openid-configuration", (c) => openIdMetadata(c.req.raw));
 
+/** redirect_url when it is a relative path or a trusted origin (TRUSTED_ORIGINS), "/" otherwise. */
+async function safeRedirectUrl(url) {
+  return url && (await auth.$context).isTrustedOrigin(url, { allowRelativePaths: true }) ? url : "/";
+}
+
 /** Login page; redirects straight to redirect_url when the visitor already has a session. */
 app.get("/auth/login", async (c) => {
+  const redirectUrl = await safeRedirectUrl(c.req.query("redirect_url"));
   try {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    if (session) {
-      const redirectUrl = c.req.query("redirect_url") || "/";
-      return c.redirect(redirectUrl);
-    }
+    if (session) return c.redirect(redirectUrl);
   } catch {}
   return c.html(renderLoginPage({
     error: c.req.query("error") || "",
     sent: c.req.query("sent") || "",
     allowedDomain: ALLOWED_DOMAIN,
-    redirectUrl: c.req.query("redirect_url") || "/",
+    redirectUrl,
   }));
 });
 
@@ -84,20 +87,24 @@ app.get("/auth/check", async (c) => {
   }
 });
 
-/** Current session identity, for pages that want to show who is signed in. */
+/**
+ * Identity of the signed-in caller and the public IP the service sees for them (the rate limit
+ * key). 401 without a session.
+ */
 app.get("/auth/whoami", async (c) => {
   try {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    if (!session) return c.json({ authenticated: false });
+    if (!session) return c.json({ authenticated: false }, 401);
     return c.json({
       authenticated: true,
+      ip: c.req.header(CLIENT_IP_HEADER) || null,
       email: session.user.email,
       name: session.user.name,
       persona: session.user.persona || PERSONAS[0].id,
       roles: ["authp/user"],
     });
   } catch {
-    return c.json({ authenticated: false });
+    return c.json({ authenticated: false }, 401);
   }
 });
 
