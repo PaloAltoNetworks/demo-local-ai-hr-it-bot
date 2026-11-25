@@ -3,6 +3,12 @@
 The Otter is an HR and IT assistant that shows how the Prisma AIRS AI Gateway keeps a company
 chatbot reliable and safe. Newest version first.
 
+## 0.1.15
+
+### Behind-the-scenes improvements
+Each sign-in link request is now traced with the address asked for and where it came from, so
+unexpected requests can be followed up.
+
 ## 0.1.14
 
 ### The sign-in page cannot be used to flood a mailbox
