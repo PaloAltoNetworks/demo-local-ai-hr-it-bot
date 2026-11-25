@@ -2,6 +2,11 @@ export const PORT = parseInt(process.env.PORT || "3001", 10);
 export const AUTH_SECRET = process.env.AUTH_SECRET || process.env.JWT_SHARED_SECRET;
 export const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN || "paloaltonetworks.com";
 export const SITE_URL = process.env.SITE_URL || "https://localhost";
+/**
+ * Addresses that never receive a sign-in link (executives), from comma-separated BLOCKED_EMAILS.
+ * The list lives in the auth secret only, never in the repository.
+ */
+export const BLOCKED_EMAILS = new Set((process.env.BLOCKED_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean));
 /** Origins allowed to call the auth API, from comma-separated TRUSTED_ORIGINS (wildcards allowed). */
 export const TRUSTED_ORIGINS = (process.env.TRUSTED_ORIGINS || "https://*.panw.pro").split(",").map((o) => o.trim()).filter(Boolean);
 /** Session cookie name prefix; two instances sharing a cookie domain need different prefixes. */
