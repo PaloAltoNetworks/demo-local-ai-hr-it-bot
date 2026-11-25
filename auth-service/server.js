@@ -21,20 +21,23 @@ app.get("/.well-known/oauth-authorization-server", (c) => authServerMetadata(c.r
 app.get("/.well-known/openid-configuration/*", (c) => openIdMetadata(c.req.raw));
 app.get("/.well-known/openid-configuration", (c) => openIdMetadata(c.req.raw));
 
+/** redirect_url when it is a relative path or a trusted origin (TRUSTED_ORIGINS), "/" otherwise. */
+async function safeRedirectUrl(url) {
+  return url && (await auth.$context).isTrustedOrigin(url, { allowRelativePaths: true }) ? url : "/";
+}
+
 /** Login page; redirects straight to redirect_url when the visitor already has a session. */
 app.get("/auth/login", async (c) => {
+  const redirectUrl = await safeRedirectUrl(c.req.query("redirect_url"));
   try {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    if (session) {
-      const redirectUrl = c.req.query("redirect_url") || "/";
-      return c.redirect(redirectUrl);
-    }
+    if (session) return c.redirect(redirectUrl);
   } catch {}
   return c.html(renderLoginPage({
     error: c.req.query("error") || "",
     sent: c.req.query("sent") || "",
     allowedDomain: ALLOWED_DOMAIN,
-    redirectUrl: c.req.query("redirect_url") || "/",
+    redirectUrl,
   }));
 });
 

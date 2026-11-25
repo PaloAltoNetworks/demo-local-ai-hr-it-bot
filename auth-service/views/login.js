@@ -1,4 +1,4 @@
-import { escapeHtml } from "./helpers.js";
+import { escapeHtml, scriptJson } from "./helpers.js";
 
 export function renderLoginPage({ error, sent, allowedDomain, redirectUrl }) {
   return `<!DOCTYPE html>
@@ -36,8 +36,8 @@ export function renderLoginPage({ error, sent, allowedDomain, redirectUrl }) {
       const btn = document.getElementById('submitBtn');
       const alertErr = document.getElementById('alert-error');
       const alertOk = document.getElementById('alert-success');
-      const domain = ${JSON.stringify(allowedDomain)};
-      const redirectUrl = ${JSON.stringify(redirectUrl || "/")};
+      const domain = ${scriptJson(allowedDomain)};
+      const redirectUrl = ${scriptJson(redirectUrl || "/")};
 
       const saved = localStorage.getItem('auth_email');
       if (saved) { input.value = saved; }

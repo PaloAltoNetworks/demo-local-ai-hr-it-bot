@@ -121,7 +121,7 @@ const options = {
       if (!ctx.path.startsWith("/sign-in")) return;
       const email = ctx.body?.email;
       if (!email || typeof email !== "string") return;
-      console.log(`Sign-in link requested for ${email} from ${ctx.headers?.get(CLIENT_IP_HEADER)}`);
+      console.log(`Sign-in link requested for ${JSON.stringify(email)} from ${ctx.headers?.get(CLIENT_IP_HEADER)}`);
       const at = email.lastIndexOf("@");
       if (email.slice(at + 1).toLowerCase() !== ALLOWED_DOMAIN) {
         throw new APIError("BAD_REQUEST", {
