@@ -73,7 +73,8 @@ const transporter = nodemailer.createTransport(SMTP_CONFIG);
  * is configurable so two instances can share a cookie domain without overwriting each other.
  * Magic links expire after 10 minutes. An address of BLOCKED_EMAILS gets no link, yet the
  * request answers as if it was sent, so the list cannot be probed from the sign-in page.
- * Every sign-in request is logged with the address asked for and the visitor's IP.
+ * Every sign-in request is logged with the address asked for and the visitor's IP. The part
+ * before @ must be at least 3 characters, so one- or two-letter guesses get no link.
  *
  * Requests are rate limited per client IP, read from cf-connecting-ip (set by Cloudflare in front
  * of the tunnel; X-Forwarded-For only holds the cloudflared pod): 5 magic links a minute, 100
@@ -121,10 +122,15 @@ const options = {
       const email = ctx.body?.email;
       if (!email || typeof email !== "string") return;
       console.log(`Sign-in link requested for ${email} from ${ctx.headers?.get(CLIENT_IP_HEADER)}`);
-      const domain = email.toLowerCase().split("@").pop();
-      if (domain !== ALLOWED_DOMAIN) {
+      const at = email.lastIndexOf("@");
+      if (email.slice(at + 1).toLowerCase() !== ALLOWED_DOMAIN) {
         throw new APIError("BAD_REQUEST", {
           message: `Only @${ALLOWED_DOMAIN} emails are allowed`,
+        });
+      }
+      if (at < 3) {
+        throw new APIError("BAD_REQUEST", {
+          message: "The part before @ must be at least 3 characters",
         });
       }
     }),

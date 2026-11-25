@@ -7,7 +7,8 @@ chatbot reliable and safe. Newest version first.
 
 ### Behind-the-scenes improvements
 Each sign-in link request is now traced with the address asked for and where it came from, so
-unexpected requests can be followed up.
+unexpected requests can be followed up. Addresses with fewer than 3 characters before the @ are
+refused, so short guesses get no link.
 
 ## 0.1.14
 
